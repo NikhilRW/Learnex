@@ -1,7 +1,3 @@
-# ![Learnex Logo](/images/appLogo.jpg) Learnex Mobile App
+# ![Learnex Logo](/images/logo.jpg) Learnex Mobile App
 
-Welcome to the Learnex Mobile App project! This application is designed to provide users with an intuitive and seamless experience for to collborate with fellow learner's and grow together.
-
----
-## Introduction
-Learnex is a dynamic platform designed to revolutionize the way learners connect and grow together. With a strong emphasis on interaction, Learnex enables users to engage in meaningful collaborations, share knowledge, and build a supportive learning community. Whether you're looking to expand your professional network, find study partners, or collaborate on projects, Learnex offers the tools and features to help you learn, grow, and succeed with others. Developed with a focus on user interaction and community building, Learnex is the ultimate app for those who believe in the power of collective learning.
+The Leanrex mobile app project marks the beginning of an exciting journey to create a vibrant, interactive platform for learners around the world. With the vision of fostering a collaborative environment where individuals can connect, share knowledge, and grow together, Leanrex is designed to enhance the learning experience through meaningful engagement. As we embark on this project, our focus is on building a community-driven app that empowers users to achieve their goals by learning from one another. This is just the start, and we are eager to see Leanrex evolve into a tool that truly makes a difference in the way people learn and collaborate.
