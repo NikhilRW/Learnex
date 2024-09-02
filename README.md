@@ -1,4 +1,4 @@
-# ![Learnex Logo](https://i.ibb.co/xmYQt8V/Learnexlogo2.jpg) Learnex Mobile App
+# ![Learnex Logo](/images/appLogo.jpg) Learnex Mobile App
 
 Welcome to the Learnex Mobile App project! This application is designed to provide users with an intuitive and seamless experience for to collborate with fellow learner's and grow together.
 
