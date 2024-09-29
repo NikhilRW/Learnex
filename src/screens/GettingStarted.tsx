@@ -21,7 +21,7 @@ const GettingStarted = () => {
           </View>
         </View>
       </View>
-      <TouchableOpacity className='bg-[#3EB9F1] absolute bottom-[10%] px-[15%] py-[8%] rounded-3xl w-full'>
+      <TouchableOpacity activeOpacity={0.65} className='bg-[#3EB9F1] absolute bottom-[10%] px-[15%] py-[8%] rounded-3xl w-full'>
         <Text className='text-white text-center text-2xl font-bold'>Getting Started</Text>
       </TouchableOpacity>
     </View>

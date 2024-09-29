@@ -11,12 +11,10 @@ type CreateUserAccount = {
   name: string;
   password: string;
 };
-
 type LoginUserAccount = {
   email: string;
   password: string;
 };
-
 class AppwriteService {
   account: Account;
   constructor() {
