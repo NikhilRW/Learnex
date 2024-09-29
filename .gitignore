@@ -2,7 +2,7 @@
 #
 .DS_Store
 vscode/
-
+nativewind-env.d.ts
 # Xcode
 #
 build/
