@@ -14,6 +14,18 @@
 		13B07FC11A68108700A75B9A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
 		7699B88040F8A987B510C191 /* libPods-Learnex-LearnexTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 19F6CBCC0A4E27FBF8BF4A61 /* libPods-Learnex-LearnexTests.a */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
+		D934D0AA1BFA4247BB127094 /* Kufam-Black.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 3E8432AAD05C4F56B2DD3F14 /* Kufam-Black.ttf */; };
+		C370646C56F3493996E80F09 /* Kufam-BlackItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 70A23F51F3004A71AE8498AD /* Kufam-BlackItalic.ttf */; };
+		707CC9C49A7F412AB77DF624 /* Kufam-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 5B07CE05FA594D418360CE67 /* Kufam-Bold.ttf */; };
+		A851560C79664F049C997756 /* Kufam-BoldItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 210E1A1A7D4947B194204619 /* Kufam-BoldItalic.ttf */; };
+		BF807B659720403F8CE5357E /* Kufam-ExtraBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 7BE13F6FE30C4BB09D21D233 /* Kufam-ExtraBold.ttf */; };
+		75118D5B1C5047468D441C32 /* Kufam-ExtraBoldItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F363B290E42B4A6DA36B60C1 /* Kufam-ExtraBoldItalic.ttf */; };
+		311C442762F84690A9E05EC3 /* Kufam-Italic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 8D7AA2A8AC8E4DD3AA045CB1 /* Kufam-Italic.ttf */; };
+		4F89D2A21399432CB22DC4D8 /* Kufam-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 85C325838F55488EB4A25D52 /* Kufam-Medium.ttf */; };
+		04602C0BD6654FDE994BCE2D /* Kufam-MediumItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 1F7AFC4F3A7B4EA1BDEC5298 /* Kufam-MediumItalic.ttf */; };
+		57CF4D4F554047758EC9302E /* Kufam-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 3AC60D8C1C824835AF2931B3 /* Kufam-Regular.ttf */; };
+		A070FD6787F14D74A87F23D8 /* Kufam-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = B8178C4D2A6D486EAB74F186 /* Kufam-SemiBold.ttf */; };
+		6F9C713A172E448282455156 /* Kufam-SemiBoldItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 3152FFE17DE543AFAFEB5340 /* Kufam-SemiBoldItalic.ttf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -45,6 +57,18 @@
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = Learnex/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		89C6BE57DB24E9ADA2F236DE /* Pods-Learnex-LearnexTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Learnex-LearnexTests.release.xcconfig"; path = "Target Support Files/Pods-Learnex-LearnexTests/Pods-Learnex-LearnexTests.release.xcconfig"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
+		3E8432AAD05C4F56B2DD3F14 /* Kufam-Black.ttf */ = {isa = PBXFileReference; name = "Kufam-Black.ttf"; path = "../src/res/fonts/Kufam-Black.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		70A23F51F3004A71AE8498AD /* Kufam-BlackItalic.ttf */ = {isa = PBXFileReference; name = "Kufam-BlackItalic.ttf"; path = "../src/res/fonts/Kufam-BlackItalic.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		5B07CE05FA594D418360CE67 /* Kufam-Bold.ttf */ = {isa = PBXFileReference; name = "Kufam-Bold.ttf"; path = "../src/res/fonts/Kufam-Bold.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		210E1A1A7D4947B194204619 /* Kufam-BoldItalic.ttf */ = {isa = PBXFileReference; name = "Kufam-BoldItalic.ttf"; path = "../src/res/fonts/Kufam-BoldItalic.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		7BE13F6FE30C4BB09D21D233 /* Kufam-ExtraBold.ttf */ = {isa = PBXFileReference; name = "Kufam-ExtraBold.ttf"; path = "../src/res/fonts/Kufam-ExtraBold.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		F363B290E42B4A6DA36B60C1 /* Kufam-ExtraBoldItalic.ttf */ = {isa = PBXFileReference; name = "Kufam-ExtraBoldItalic.ttf"; path = "../src/res/fonts/Kufam-ExtraBoldItalic.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		8D7AA2A8AC8E4DD3AA045CB1 /* Kufam-Italic.ttf */ = {isa = PBXFileReference; name = "Kufam-Italic.ttf"; path = "../src/res/fonts/Kufam-Italic.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		85C325838F55488EB4A25D52 /* Kufam-Medium.ttf */ = {isa = PBXFileReference; name = "Kufam-Medium.ttf"; path = "../src/res/fonts/Kufam-Medium.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		1F7AFC4F3A7B4EA1BDEC5298 /* Kufam-MediumItalic.ttf */ = {isa = PBXFileReference; name = "Kufam-MediumItalic.ttf"; path = "../src/res/fonts/Kufam-MediumItalic.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		3AC60D8C1C824835AF2931B3 /* Kufam-Regular.ttf */ = {isa = PBXFileReference; name = "Kufam-Regular.ttf"; path = "../src/res/fonts/Kufam-Regular.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		B8178C4D2A6D486EAB74F186 /* Kufam-SemiBold.ttf */ = {isa = PBXFileReference; name = "Kufam-SemiBold.ttf"; path = "../src/res/fonts/Kufam-SemiBold.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		3152FFE17DE543AFAFEB5340 /* Kufam-SemiBoldItalic.ttf */ = {isa = PBXFileReference; name = "Kufam-SemiBoldItalic.ttf"; path = "../src/res/fonts/Kufam-SemiBoldItalic.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -124,6 +148,7 @@
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
 				BBD78D7AC51CEA395F1C20DB /* Pods */,
+				B6EFE64C92ED446AA7999BB4 /* Resources */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -149,6 +174,26 @@
 			);
 			path = Pods;
 			sourceTree = "<group>";
+		};
+		B6EFE64C92ED446AA7999BB4 /* Resources */ = {
+			isa = "PBXGroup";
+			children = (
+				3E8432AAD05C4F56B2DD3F14 /* Kufam-Black.ttf */,
+				70A23F51F3004A71AE8498AD /* Kufam-BlackItalic.ttf */,
+				5B07CE05FA594D418360CE67 /* Kufam-Bold.ttf */,
+				210E1A1A7D4947B194204619 /* Kufam-BoldItalic.ttf */,
+				7BE13F6FE30C4BB09D21D233 /* Kufam-ExtraBold.ttf */,
+				F363B290E42B4A6DA36B60C1 /* Kufam-ExtraBoldItalic.ttf */,
+				8D7AA2A8AC8E4DD3AA045CB1 /* Kufam-Italic.ttf */,
+				85C325838F55488EB4A25D52 /* Kufam-Medium.ttf */,
+				1F7AFC4F3A7B4EA1BDEC5298 /* Kufam-MediumItalic.ttf */,
+				3AC60D8C1C824835AF2931B3 /* Kufam-Regular.ttf */,
+				B8178C4D2A6D486EAB74F186 /* Kufam-SemiBold.ttf */,
+				3152FFE17DE543AFAFEB5340 /* Kufam-SemiBoldItalic.ttf */,
+			);
+			name = Resources;
+			sourceTree = "<group>";
+			path = "";
 		};
 /* End PBXGroup section */
 
@@ -245,6 +290,18 @@
 			files = (
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
+				D934D0AA1BFA4247BB127094 /* Kufam-Black.ttf in Resources */,
+				C370646C56F3493996E80F09 /* Kufam-BlackItalic.ttf in Resources */,
+				707CC9C49A7F412AB77DF624 /* Kufam-Bold.ttf in Resources */,
+				A851560C79664F049C997756 /* Kufam-BoldItalic.ttf in Resources */,
+				BF807B659720403F8CE5357E /* Kufam-ExtraBold.ttf in Resources */,
+				75118D5B1C5047468D441C32 /* Kufam-ExtraBoldItalic.ttf in Resources */,
+				311C442762F84690A9E05EC3 /* Kufam-Italic.ttf in Resources */,
+				4F89D2A21399432CB22DC4D8 /* Kufam-Medium.ttf in Resources */,
+				04602C0BD6654FDE994BCE2D /* Kufam-MediumItalic.ttf in Resources */,
+				57CF4D4F554047758EC9302E /* Kufam-Regular.ttf in Resources */,
+				A070FD6787F14D74A87F23D8 /* Kufam-SemiBold.ttf in Resources */,
+				6F9C713A172E448282455156 /* Kufam-SemiBoldItalic.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
