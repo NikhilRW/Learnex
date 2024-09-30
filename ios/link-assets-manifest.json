@@ -1,0 +1,53 @@
+{
+  "migIndex": 1,
+  "data": [
+    {
+      "path": "src/res/fonts/Kufam-Black.ttf",
+      "sha1": "9786227d06884f49ce89b18769458a061f37d031"
+    },
+    {
+      "path": "src/res/fonts/Kufam-BlackItalic.ttf",
+      "sha1": "b062e9f9aeac03d0532f01b449af8777e2b59942"
+    },
+    {
+      "path": "src/res/fonts/Kufam-Bold.ttf",
+      "sha1": "f33b36c6d5019284d9edee72e303e1d2142b92ea"
+    },
+    {
+      "path": "src/res/fonts/Kufam-BoldItalic.ttf",
+      "sha1": "851558f2b9d30c254f6256738afadfacd6dc29e0"
+    },
+    {
+      "path": "src/res/fonts/Kufam-ExtraBold.ttf",
+      "sha1": "645d93361db13e9cedb833c69799c4465ac7b10b"
+    },
+    {
+      "path": "src/res/fonts/Kufam-ExtraBoldItalic.ttf",
+      "sha1": "dcd907bedbbd28936b6b8371a54fff8d5b6978b7"
+    },
+    {
+      "path": "src/res/fonts/Kufam-Italic.ttf",
+      "sha1": "c15428b81e5c4e19e214bd208601731c7a23195e"
+    },
+    {
+      "path": "src/res/fonts/Kufam-Medium.ttf",
+      "sha1": "1c6ba42b8f5fea8431ffafa05424218168b0577d"
+    },
+    {
+      "path": "src/res/fonts/Kufam-MediumItalic.ttf",
+      "sha1": "0b91cabbcda2a2332a7abc445fce3f8e2bcb0154"
+    },
+    {
+      "path": "src/res/fonts/Kufam-Regular.ttf",
+      "sha1": "9a3bebe9ba64f82e4e2e921eae08a7626be72200"
+    },
+    {
+      "path": "src/res/fonts/Kufam-SemiBold.ttf",
+      "sha1": "d03612dfd9ea9944cdc4f412d5949080f253d59d"
+    },
+    {
+      "path": "src/res/fonts/Kufam-SemiBoldItalic.ttf",
+      "sha1": "aa3a9530f90b140fae3934b42799d1825eb6a919"
+    }
+  ]
+}
