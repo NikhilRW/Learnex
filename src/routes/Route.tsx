@@ -9,6 +9,7 @@ import SignUp from '../screens/auth/SignUp'
 export type StackParamList = {
   GettingStarted: undefined;
   SignUp: undefined;
+  Login:undefined;
 };
 export type NavigationProps = NativeStackNavigationProp<StackParamList>;
 const Route = () => {

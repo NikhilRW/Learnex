@@ -6,6 +6,7 @@ export const appwriteSlice = createSlice({
     initialState: {
         appwrite:new AppWrite(),
     },
-    reducers:{}
+    reducers:{
+    }
 });
 export default appwriteSlice.reducer;
