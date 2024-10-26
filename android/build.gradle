@@ -5,17 +5,19 @@ buildscript {
         compileSdkVersion = 34
         targetSdkVersion = 34
         ndkVersion = "26.1.10909125"
-        kotlinVersion = "1.9.24"
+        kotlinVersion = "1.9.10" // Consider adjusting if there's a version mismatch
     }
     repositories {
         google()
         mavenCentral()
     }
     dependencies {
-        classpath("com.android.tools.build:gradle")
+        classpath('com.android.tools.build:gradle:8.7.0')
         classpath("com.facebook.react:react-native-gradle-plugin")
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:${kotlinVersion}")
+        classpath("com.google.gms:google-services:4.4.2") // Firebase plugin
     }
 }
 
+// Apply the React Native plugin
 apply plugin: "com.facebook.react.rootproject"

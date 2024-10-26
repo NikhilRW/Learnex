@@ -1,5 +1,3 @@
 export type userState = {
-    userReducer:{
-        isLoggedIn:boolean,
-    }
+    isLoggedIn:boolean,
 }

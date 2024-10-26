@@ -1,50 +1,29 @@
-import { Text, View } from 'react-native'
-import React, { useEffect, useState } from 'react'
-import { NavigationContainer } from '@react-navigation/native'
-import { createNativeStackNavigator, NativeStackNavigationProp } from '@react-navigation/native-stack'
-import GettingStarted from '../screens/GettingStarted'
-import AsyncStorage from '@react-native-async-storage/async-storage'
-import SignUp from '../screens/auth/SignUp'
+import {Text, View} from 'react-native';
+import React, { useEffect } from 'react';
+import {NavigationContainer} from '@react-navigation/native';
+import AuthStack from './AuthStack';
+import UserStack from './UserStack';
+import { useTypedSelector } from '../hooks/useTypedSelector';
+import { useTypedDispatch } from '../hooks/useTypedDispatch';
+import { changeIsLoggedIn } from '../reducers/User';
 
-export type StackParamList = {
-  GettingStarted: undefined;
-  SignUp: undefined;
-  Login:undefined;
-};
-export type NavigationProps = NativeStackNavigationProp<StackParamList>;
 const Route = () => {
-  const Stack = createNativeStackNavigator<StackParamList>();
-  const [isNewInstalled, setIsNewInstalled] = useState<boolean>(false);
-  const checkNewApp = async ()=>{
-    try {
-      if(await AsyncStorage.getItem("isNewlyOpenedApp")==null){
-        await AsyncStorage.setItem("isNewlyOpenedApp","true");
-        setIsNewInstalled(true);
-      }
-      else{
-        setIsNewInstalled(false);
-      }
-    } catch (error) {
-      console.log(error);
+  const isLoggedIn = useTypedSelector((state)=>state.user.isLoggedIn);
+  const firebase = useTypedSelector((state)=>state.firebase.firebase);
+  const dispatch = useTypedDispatch();
+  useEffect(() => {
+    if(firebase.isUserLoggedIn()){
+      dispatch(changeIsLoggedIn(true))
     }
-  }
-  useEffect(()=>{
-    checkNewApp();
-  },[]);
+    else{
+      dispatch(changeIsLoggedIn(false));
+    }
+  }, []);
   return (
     <NavigationContainer>
-        <Stack.Navigator initialRouteName={`${isNewInstalled ? 'GettingStarted' :'SignUp'}`}>
-            <Stack.Screen component={GettingStarted} 
-            options={{ headerShown: false }}
-            name='GettingStarted'>
-            </Stack.Screen> 
-            <Stack.Screen component={SignUp} 
-            options={{ headerShown: false }}
-            name='SignUp'>
-            </Stack.Screen>
-        </Stack.Navigator>
+      {isLoggedIn ? <UserStack /> : <AuthStack />}
     </NavigationContainer>
-  )
-}
+  );
+};
 
-export default Route
+export default Route;
