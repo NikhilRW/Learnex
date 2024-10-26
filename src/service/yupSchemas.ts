@@ -13,14 +13,34 @@ export const signUpSchema = Yup.object().shape({
     
   password: Yup.string()
     .required("Password is required")
-    .min(6, "Password must be at least 6 characters long")
-    .max(12, "Password must be at most 12 characters long")
+    .min(8, "Password must be at least 8 characters long")
+    .max(25, "Password must be at most 25 characters long")
     .matches(/[a-z]/, "Password must contain at least one lowercase letter")
     .matches(/[A-Z]/, "Password must contain at least one uppercase letter"),
     
   confirmPassword: Yup.string()
+    .oneOf([Yup.ref('password'),],"Passwords must match")
+    .required("Confirm password is required")
+    .min(8, "Password must be at least 8 characters long")
+    .max(25, "Password must be at most 25 characters long")
+});
+
+export const signInSchema = Yup.object().shape({
+  usernameOrEmail: Yup.string()
+    .required("Username Or Email is required"),
+  password: Yup.string().required("Password is required")
+});
+
+export const forgotPasswordSchema = Yup.object().shape({
+  password: Yup.string()
+    .required("Password is required")
+    .min(8, "Password must be at least 8 characters long")
+    .max(25, "Password must be at most 25 characters long")
+    .matches(/[a-z]/, "Password must contain at least one lowercase letter")
+    .matches(/[A-Z]/, "Password must contain at least one uppercase letter"),
+  confirmPassword: Yup.string()
     .oneOf([Yup.ref('password'),], "Passwords must match")
     .required("Confirm password is required")
-    .min(6, "Confirm password must be at least 6 characters long")
-    .max(12, "Confirm password must be at most 12 characters long"),
+    .min(8, "Password must be at least 8 characters long")
+    .max(25, "Password must be at most 25 characters long")
 });

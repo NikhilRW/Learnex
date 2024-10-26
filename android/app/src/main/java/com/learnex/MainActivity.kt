@@ -2,17 +2,30 @@ package com.learnex
 
 import android.os.Bundle
 import com.facebook.react.ReactActivity
-import org.devio.rn.splashscreen.SplashScreen // Import the splash screen package
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
 import com.facebook.react.defaults.DefaultReactActivityDelegate
+import com.google.firebase.FirebaseApp
+import com.google.firebase.appcheck.FirebaseAppCheck
+import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory
+import org.devio.rn.splashscreen.SplashScreen // Import the splash screen package
 
 class MainActivity : ReactActivity() {
 
-    // Show splash screen when the activity is created
     override fun onCreate(savedInstanceState: Bundle?) {
-        SplashScreen.show(this)  // Show splash screen
+        // Show splash screen
+        SplashScreen.show(this)
+        
         super.onCreate(savedInstanceState)
+        
+        // Initialize Firebase
+        FirebaseApp.initializeApp(this)
+        
+        // Set up Firebase App Check with Play Integrity
+        val firebaseAppCheck = FirebaseAppCheck.getInstance()
+        firebaseAppCheck.installAppCheckProviderFactory(
+            PlayIntegrityAppCheckProviderFactory.getInstance()
+        )
     }
 
     /**

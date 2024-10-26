@@ -6,15 +6,15 @@ import { Provider } from 'react-redux';
 import { store } from './store/store';
 const App = () => {
   useEffect(() => {
-    if(Platform.OS==='android'){
+    if (Platform.OS === 'android') {
       SplashScreen.hide();
     };
-  },[]);
+  }, []);
   return (
     <>
-    <Provider store={store}>
-    <Route/>
-    </Provider>
+      <Provider store={store}>
+        <Route />
+      </Provider>
     </>
   )
 };
