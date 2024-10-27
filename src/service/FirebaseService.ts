@@ -126,7 +126,6 @@ class Firebase{
 	}
 	isUserLoggedIn():boolean{
 		return auth().currentUser != null; 
-		console.log("just checking");
 	}		  
 };
 
