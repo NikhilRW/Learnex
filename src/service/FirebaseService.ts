@@ -107,11 +107,11 @@ class Firebase{
 	async githubSignIn() {
 		try {
 			const config = {
-				issuer: 'https://github.com', // Add this line
+				issuer: 'https://github.com',
 				clientId: Config.GITHUB_CLIENT_ID,
 				clientSecret: Config.GITHUB_CLIENT_SECRET,
 				redirectUrl: 'myapp://callback',
-				scopes: ['user:email'], // Adjust scopes as needed
+				scopes: ['user:email'],
 				serviceConfiguration: {
 					authorizationEndpoint: 'https://github.com/login/oauth/authorize',
 					tokenEndpoint: 'https://github.com/login/oauth/access_token',
@@ -126,6 +126,7 @@ class Firebase{
 	}
 	isUserLoggedIn():boolean{
 		return auth().currentUser != null; 
+		console.log("just checking");
 	}		  
 };
 
