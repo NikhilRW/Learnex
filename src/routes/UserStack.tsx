@@ -1,25 +1,20 @@
-import { StyleSheet, Text, View } from 'react-native'
-import React, { useEffect, useState } from 'react'
-import { NavigationContainer } from '@react-navigation/native'
-import { createNativeStackNavigator, NativeStackNavigationProp } from '@react-navigation/native-stack'
-import GettingStarted from '../screens/starter/GettingStarted'
-import AsyncStorage from '@react-native-async-storage/async-storage'
-import SignUp from '../screens/auth/SignUp'
-import SignIn from '../screens/auth/SignIn'
+import { Alert, StyleSheet, Text } from 'react-native'
 import Home from '../screens/userscreens/Home'
-export type UserStackParamList = {
-    Home:undefined;
-};
-export type UserNavigationProps = NativeStackNavigationProp<UserStackParamList>;
-const Stack = createNativeStackNavigator<UserStackParamList>();
+import { createDrawerNavigator } from '@react-navigation/drawer';
+import Loader from '../components/auth/Loader';
+import CustomDrawer from '../components/user/NavigationDrawerButton';
+import { Button } from 'react-native';
+import NavigationDrawer from '../components/user/NavigationDrawer';
+import NavigationDrawerButton from '../components/user/NavigationDrawerButton';
 const UserStack = () => {
+  const Drawer = createDrawerNavigator();
   return (
-    <Stack.Navigator initialRouteName={"Home"}>
-    <Stack.Screen component={Home}
-      options={{ headerShown: false }}
-      name='Home'>
-    </Stack.Screen>
-  </Stack.Navigator>
+  <Drawer.Navigator initialRouteName='Home' drawerContent={NavigationDrawer}
+  screenOptions={{header: ({ navigation }) => (<NavigationDrawerButton navigation={navigation} tintColor={"red"}/>),
+  }}>
+    <Drawer.Screen name="Home" component={Home} />
+    <Drawer.Screen name="Loader" component={Loader} />
+  </Drawer.Navigator>
   )
 }
 
