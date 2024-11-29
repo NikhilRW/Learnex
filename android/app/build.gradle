@@ -8,7 +8,6 @@ apply plugin: "com.google.gms.google-services" // Add Firebase plugin here direc
  * By default, you don't need to apply any configuration; just uncomment the lines you need.
  */
 react {
-    // Your existing react configuration
     autolinkLibrariesWithApp()
 }
 
@@ -40,6 +39,8 @@ android {
         jniLibs {
             useLegacyPackaging true
         }
+        pickFirst '**/libhermes-executor-debug.so'
+        pickFirst '**/libhermes-executor-release.so'
     }
     signingConfigs {
         debug {
@@ -62,7 +63,6 @@ android {
 }
 
 dependencies {
-    // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
     implementation platform('com.google.firebase:firebase-bom:33.4.0')
     implementation 'com.google.firebase:firebase-analytics'

@@ -18,7 +18,7 @@ const Route = () => {
     else{
       dispatch(changeIsLoggedIn(false));
     }
-  }, []);
+  }, []);//jagiv87998@operades.com
   return (
     <NavigationContainer>
       {isLoggedIn ? <UserStack /> : <AuthStack />}
