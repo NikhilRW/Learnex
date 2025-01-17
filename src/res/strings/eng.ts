@@ -5,3 +5,6 @@ export const privacyWebPageLink = "https://github.com/NikhilRW/Learnex";
 export const welcomeQuoteSignIn = "Let’s help you meet up your success";
 export const emailNotAvailErrMsg = "Email is not available";
 export const usernameNotAvailErrMsg = "Username is not available";
+export const primaryColor = "#3EB9F1";
+export const primaryFocusedColor = "#006d9e";
+export const primaryDarkColor = "#3EB9F1";

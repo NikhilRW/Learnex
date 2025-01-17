@@ -28,6 +28,8 @@ import {
 import {useTypedDispatch} from '../../hooks/useTypedDispatch';
 import {getRandomColors} from '../../helpers/stringHelpers';
 import Loader from '../../components/auth/Loader';
+import ButtonLoader from '../../components/auth/ButtonLoader';
+import { primaryColor, primaryDarkColor } from '../../res/strings/eng';
 
 const SignIn = () => {
   const theme = useTypedSelector(state => state.user.theme);
@@ -64,7 +66,7 @@ const SignIn = () => {
       }
     } else {
       Snackbar.show({
-        text: "User Doesn't ExistT",
+        text: "User Doesn't Exist",
         duration: Snackbar.LENGTH_LONG,
         textColor: 'white',
         backgroundColor: '#007cb5',
@@ -136,7 +138,10 @@ const SignIn = () => {
             isSubmitting,
           }) => (
             <>
-              {isSubmitting && <Loader />}
+              {/* 
+              feature : Loading Effect Center
+              {false && <Loader />} 
+              */}
               <View className="w-full h-full justify-center gap-y-[10%] flex items-center px-[6%]">
                 <View className="w-full gap-y-4 items-center justify-center ">
                   <View className="mb-[5%] w-full justify-center items-center">
@@ -186,14 +191,14 @@ const SignIn = () => {
                           size={20}
                         />
                       }
-                    />
+                    />                    
                   </View>
                   {errors.password && <ErrorMessage error={errors.password} />}
                   <View className="flex-row justify-between w-full items-center">
                     <BouncyCheckbox
                       size={28}
                       isChecked={true}
-                      fillColor={`${isDark ? '#3EB9F1' : '#1a9cd8'}`}
+                      fillColor={`${isDark ? primaryColor : primaryDarkColor}`}
                       unFillColor={`${isDark ? '#1a1a1a' : '#fff'}`}
                       textComponent={
                         <Text
@@ -203,7 +208,7 @@ const SignIn = () => {
                           Keep Me Logged In
                         </Text>
                       }
-                      iconStyle={{borderColor: '#3EB9F1', borderRadius: 8}}
+                      iconStyle={{borderColor: primaryColor, borderRadius: 8}}
                       innerIconStyle={{borderWidth: 2, borderRadius: 8}}
                       textStyle={{
                         fontFamily: 'JosefinSans-Regular',
@@ -227,11 +232,12 @@ const SignIn = () => {
                     className={`${
                       isDark ? 'bg-[#1a9cd8]' : 'bg-[#3EB9F1]'
                     }  px-[14%] py-[4%] rounded-2xl w-full`}>
-                    <Text className="text-white text-center text-[5vw] font-bold">
+                    {
+                      isSubmitting ? <ButtonLoader/> :<Text className="text-white text-center text-[5vw] font-bold">
                       Sign In
                     </Text>
+                    }
                   </TouchableOpacity>
-
                   <View className="w-full">
                     <Text
                       className={`w-full font-semibold text-[3.5vw]  ${
