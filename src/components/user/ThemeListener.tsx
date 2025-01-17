@@ -1,6 +1,5 @@
 import React, {useEffect} from 'react';
 import {Appearance, ColorSchemeName} from 'react-native';
-import {useDispatch} from 'react-redux';
 import {changeThemeColor} from '../../reducers/User';
 import {useTypedDispatch} from '../../hooks/useTypedDispatch';
 import {useTypedSelector} from '../../hooks/useTypedSelector';
