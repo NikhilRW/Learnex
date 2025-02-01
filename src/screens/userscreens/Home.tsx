@@ -1,15 +1,12 @@
-import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, SafeAreaView, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import React, { useEffect, useState } from 'react';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
 import { useTypedDispatch } from '../../hooks/useTypedDispatch';
 import { changeIsLoggedIn } from '../../reducers/User';
-import { Avatar } from 'react-native-elements';
-import { getUsernameForLogo } from '../../helpers/stringHelpers';
 import SkeletonPlaceholder from 'react-native-skeleton-placeholder';
-import { primaryColor } from '../../res/strings/eng';
-import Icon from 'react-native-vector-icons/Feather';
 import Post from '../../components/user/UserScreens/Home/Post';
-
+import { PostType } from '../../types/post';
+import { styles } from '../../styles/screens/userscreens/Home.styles';
 
 const Home = () => {
   const firebase = useTypedSelector(state => state.firebase.firebase);
@@ -51,19 +48,59 @@ const Home = () => {
 
   const tags = ['#ElonMusk', '#Fifa2026', '#Olympics', '#Paris'];
 
-  const posts = [
+  const posts: PostType[] = [
     {
-      id: 1,
-      user: 'ellyse.perry',
-      userImage: require('../../res/pngs/testing/logo.png'),
-      postImage: require('../../res/pngs/testing/logo.png'),
+      id: "1",
+      user: {
+        id: 'ellyse123',
+        username: 'ellyse.perry',
+        image: require('../../res/pngs/testing/logo.png')
+      },
+      postImages: [
+        require('../../res/pngs/testing/logo.png'),
+        require('../../res/pngs/testing/logo.png'),
+        require('../../res/pngs/testing/logo.png')
+      ],
+      description: "Multiple images in this post!",
+      likes: 1234,
+      comments: 56,
+      timestamp: "2h ago"
     },
     {
-      id: 2,
-      user: 'Elon Musk',
-      userImage: require('../../res/pngs/testing/elonProfile.jpg'),
-      postImage: require('../../res/pngs/testing/elon.jpg'),
+      id: "2",
+      user: {
+        id: 'elon123',
+        username: 'Elon Musk',
+        image: require('../../res/pngs/testing/elonProfile.jpg')
+      },
+      postVideo: require('../../res/mp4s/example.mp4'),
+      isVideo: true,
+      postImages: [
+        require('../../res/pngs/testing/elon.jpg'),
+        require('../../res/pngs/testing/logo.png')
+      ],
+      description: "Check out my video and some photos! 🎥📸",
+      likes: 5678,
+      comments: 90,
+      timestamp: "4h ago"
     },
+    {
+      id: "3",
+      user: {
+        id: 'ellyse123',
+        username: 'ellyse.perry',
+        image: require('../../res/pngs/testing/logo.png')
+      },
+      postImages: [
+        require('../../res/pngs/testing/logo.png'),
+        require('../../res/pngs/testing/logo.png'),
+        require('../../res/pngs/testing/logo.png')
+      ],
+      description: "Multiple images in this post! 📸",
+      likes: 2468,
+      comments: 123,
+      timestamp: "5h ago"
+    }
   ];
   const HomeSkeleton = ({ width, height }: { width: number, height: number }): JSX.Element => {
     //TODO : Add the skeleton for the home screen
@@ -115,77 +152,9 @@ const Home = () => {
       ) : (
         <HomeSkeleton width={100} height={100} />
       )}
+
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    flex: 1,
-  },
-  title: {
-    color: 'black',
-    fontSize: 20,
-  },
-  skeletonContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  profileLogoContainer: {
-    gap: 10,
-    paddingHorizontal: 10,
-    height: 100,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 10,
-    justifyContent: 'space-between',
-  },
-  storiesContainer: {
-    padding: 10,
-  },
-  storyItem: {
-    marginRight: 15,
-    borderWidth: 2,
-    borderColor: '#0095f6',
-    borderRadius: 50,
-    padding: 2.6,
-    justifyContent: "center",
-  },
-  storyImage: {
-    width: 65,
-    height: 65,
-    borderRadius: 32.5,
-    resizeMode: 'cover',
-  },
-  tagsContainer: {
-    padding: 10,
-  },
-  tagButton: {
-    backgroundColor: '#f0f0f0',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginRight: 10,
-  },
-  tagText: {
-    color: '#000',
-  },
-  postsContainer: {
-    width: "100%",
-    height: "80%",
-  },
-  mainContainer: {
-    width: "100%",
-    height: "100%",
-  },
-  postContainer: {
-    marginBottom: 15,
-    paddingHorizontal: 7,
-  },
-});
 
 export default Home;

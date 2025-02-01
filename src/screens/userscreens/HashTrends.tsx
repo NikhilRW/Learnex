@@ -1,14 +1,13 @@
-import { StyleSheet, Text, View } from 'react-native'
+import { Text, View } from 'react-native'
 import React from 'react'
+import { styles } from '../../styles/screens/userscreens/HashTrends.styles';
 
 const HashTrends = () => {
   return (
-    <View>
+    <View style={styles.container}>
       <Text>HashTrends</Text>
     </View>
   )
 }
 
 export default HashTrends
-
-const styles = StyleSheet.create({})

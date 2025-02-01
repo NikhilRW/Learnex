@@ -21,7 +21,7 @@ const GettingStarted = () => {
         size={225}
         style={StyleSheets.circle2}
       />
-      <View className="flex flex-col pt-[20%] justify-between items-center gap-14 w-full">
+      <View className="flex flex-col justify-between items-center gap-14 w-full">
         <View className="w-full flex justify-center items-center">
           <Image
             source={require('../../res/pngs/gettingStarted01.png')}

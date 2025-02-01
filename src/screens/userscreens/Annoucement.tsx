@@ -1,14 +1,13 @@
-import { StyleSheet, Text, View } from 'react-native'
+import { Text, View } from 'react-native'
 import React from 'react'
+import { styles } from '../../styles/screens/userscreens/Announcement.styles';
 
-const Annoucement = () => {
+const Announcement = () => {
   return (
-    <View>
-      <Text>Annoucements</Text>
+    <View style={styles.container}>
+      <Text>Announcement</Text>
     </View>
   )
 }
 
-export default Annoucement
-
-const styles = StyleSheet.create({})
+export default Announcement

@@ -6,10 +6,17 @@ import { useTypedSelector } from '../hooks/useTypedSelector';
 import { useTypedDispatch } from '../hooks/useTypedDispatch';
 import { changeIsLoggedIn } from '../reducers/User';
 
+/**
+ * Root navigation component that handles authentication flow
+ * Switches between AuthStack and UserStack based on login state
+ */
 const Route = () => {
+  // Get current authentication state from Redux store
   let isLoggedIn = useTypedSelector((state) => state.user.isLoggedIn);
   const firebase = useTypedSelector((state) => state.firebase.firebase);
   const dispatch = useTypedDispatch();
+
+  // Check authentication state on mount
   useEffect(() => {
     if (firebase.isUserLoggedIn()) {
       dispatch(changeIsLoggedIn(true))
@@ -17,9 +24,11 @@ const Route = () => {
     else {
       dispatch(changeIsLoggedIn(false));
     }
-  }, []);//jagiv87998@operades.com
+  }, []); // Empty dependency array means this runs once on mount
+
   return (
     <NavigationContainer>
+      {/* Conditional rendering based on auth state */}
       {isLoggedIn ? <UserStack /> : <AuthStack />}
     </NavigationContainer>
   );
