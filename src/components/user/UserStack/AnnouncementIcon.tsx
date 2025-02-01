@@ -1,9 +1,7 @@
-import { StyleSheet, Text, View } from 'react-native'
+import { View } from 'react-native'
 import React from 'react'
-import Ionicons from 'react-native-vector-icons/Ionicons';
 import { Image } from 'react-native-elements';
-import { primaryColor, primaryDarkColor, primaryFocusedColor } from '../../../res/strings/eng';
-import AntDesign from 'react-native-vector-icons/AntDesign';
+import { styles } from '../../../styles/components/user/UserStack/AnnouncementIcon.styles';
 
 const AnnouncementIcon = ({
   focused,
@@ -15,17 +13,8 @@ const AnnouncementIcon = ({
   color: string;
 }) => {
   return (
-    <AntDesign name="notification" size={size} color={color} style={{transform: [{rotateY: '180deg'}]}} />
+    focused ? <Image source={require('../../../res/pngs/megaphone_filled.png')} style={{ width: size, height: size }} /> : <Image source={require('../../../res/pngs/megaphone_unfilled.png')} style={{ width: size, height: size }} />
   );
 };
 
-export default AnnouncementIcon
-
-const styles = StyleSheet.create({
-  iconContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'column',
-
-  }
-});
+export default AnnouncementIcon;

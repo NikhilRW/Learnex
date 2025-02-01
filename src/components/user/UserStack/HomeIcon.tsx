@@ -1,6 +1,7 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { View } from 'react-native';
 import React from 'react';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { styles } from '../../../styles/components/HomeIcon.styles';
 
 const HomeIcon = ({
     focused,
@@ -26,11 +27,3 @@ const HomeIcon = ({
 };
 
 export default HomeIcon;
-
-const styles = StyleSheet.create({
-    iconContainer:{
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexDirection: 'column',
-    }
-});

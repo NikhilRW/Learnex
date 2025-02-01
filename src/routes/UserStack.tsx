@@ -11,10 +11,14 @@ import CreatePost from '../screens/userscreens/CreatePost';
 import Annoucement from '../screens/userscreens/Annoucement';
 import AnnouncementIcon from '../components/user/UserStack/AnnouncementIcon';
 import HashTrends from '../screens/userscreens/HashTrends';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useTypedSelector } from '../hooks/useTypedSelector';
+import NavigationIconHelper from '../helpers/NavigationIconHelper';
 
+/**
+ * Type definitions for navigation parameters
+ * Defines the shape of navigation props for each screen
+ */
 export type UserStackParamList = {
   Search: { searchText?: string };
   Home: undefined;
@@ -22,11 +26,22 @@ export type UserStackParamList = {
   HashTrends: undefined;
   Announcements: undefined;
 };
+
 export type UserNavigationProps = BottomTabNavigationProp<UserStackParamList>;
+
+/**
+ * Main navigation stack for authenticated users
+ * Combines drawer navigation with bottom tab navigation
+ */
 const UserStack = () => {
   const Drawer = createDrawerNavigator();
   const Tab = createBottomTabNavigator<UserStackParamList>();
   const isDark = useTypedSelector((state) => state.user.theme) === "dark";
+
+  /**
+   * Bottom tab navigator configuration
+   * Includes Home, Search, Create Post, Trends, and Announcements
+   */
   const TabNavigator = () => {
     return (
       <Tab.Navigator
@@ -35,27 +50,15 @@ const UserStack = () => {
           header: () => <></>,
           tabBarShowLabel: false,
           tabBarStyle: {
-            backgroundColor: isDark ? '#1a1a1a' : 'white', // Customize colors based on theme
-            borderTopWidth: 1, // Optional: removes the top border
-            borderTopColor: isDark?"#2a2a2a":"#e0e0e0",
+            backgroundColor: isDark ? '#1a1a1a' : 'white', // Theme-aware styling
+            borderTopWidth: 1,
+            borderTopColor: isDark ? "#2a2a2a" : "#e0e0e0",
+            height: 55, // Reduced height
+            paddingBottom: 5, // Add some padding at bottom
           },
+          // Custom tab bar icons with theme-aware colors
           tabBarIcon: ({ focused, color, size }) => {
-            let iconName = '';
-            if (route.name === 'Home') {
-              return <HomeIcon focused={focused} size={size} color={color} />;
-            } else if (route.name === 'Search') {
-              return <Ionicons name="search" size={size} color={focused?color:isDark?"white":color} />;
-            }
-            else if (route.name === 'CreatePost') {
-              return <Ionicons name="create" size={size} color={focused?color:isDark?"white":color} />;
-            }
-            else if (route.name === 'HashTrends') {
-              iconName = focused ? 'hashtag' : 'hashtag';
-              return <FontAwesome5 name={iconName} size={size} color={color} />;
-            }
-            else if (route.name === 'Announcements') {
-              return <AnnouncementIcon focused={focused} size={size} color={color} />;
-            }
+            return NavigationIconHelper(route, focused, size + 5, color, isDark); // Slightly reduce icon size
           },
         })}>
         <Tab.Screen name="Home" component={Home} />
@@ -66,13 +69,14 @@ const UserStack = () => {
       </Tab.Navigator>
     );
   };
+
   return (
     <Drawer.Navigator
       initialRouteName="Tabs"
       drawerContent={NavigationDrawer}
       screenOptions={{
         header: ({ navigation }) => (
-          <NavigationDrawerButton navigation={navigation} tintColor={'red'} />
+          <NavigationDrawerButton navigation={navigation} tintColor={isDark ? 'white' : 'black'} />
         ),
       }}>
       <Drawer.Screen name="Tabs" component={TabNavigator} />

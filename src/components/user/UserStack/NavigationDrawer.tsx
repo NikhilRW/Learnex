@@ -1,5 +1,5 @@
 import { ScrollView } from 'react-native-gesture-handler';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 import React, { useEffect, useState } from 'react';
 import { useTypedSelector } from '../../../hooks/useTypedSelector';
 import { useTypedDispatch } from '../../../hooks/useTypedDispatch';
@@ -10,6 +10,7 @@ import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { navigationDrawerOptions } from '../../../constants/navigation';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { styles } from '../../../styles/components/user/UserStack/NavigationDrawer.styles';
 
 const NavigationDrawer = () => {
   const firebase = useTypedSelector(state => state.firebase.firebase);
@@ -100,19 +101,3 @@ const NavigationDrawer = () => {
 };
 
 export default NavigationDrawer;
-const styles = StyleSheet.create({
-  container: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    flex: 1,
-  },
-  title: {
-    color: 'black',
-    fontSize: 20,
-  },
-  avatar: {
-    borderRadius: 50,
-    width: 60,
-    height: 60,
-  },
-});

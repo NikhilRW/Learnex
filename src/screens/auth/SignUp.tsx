@@ -3,11 +3,11 @@ import {
   Linking,
   Platform,
   ScrollView,
-  StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { styles } from '../../styles/screens/auth/SignUp.styles';
 import React, { useCallback, useEffect, useState } from 'react';
 import FeatherIcon from 'react-native-vector-icons/Feather';
 import BouncyCheckbox from 'react-native-bouncy-checkbox';
@@ -143,7 +143,10 @@ const SignUp = () => {
       <ScrollView
         contentContainerStyle={styles.scrollView}
         className={`${isDark ? 'bg-[#1a1a1a]' : 'bg-white'}`}
-        keyboardShouldPersistTaps="handled">
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        keyboardDismissMode="interactive"
+        >
         {!isKeyboardVisible && (
           <>
             <MaterialsIcon
@@ -167,6 +170,7 @@ const SignUp = () => {
           {({ handleChange, handleSubmit, values, errors, isSubmitting }) => (
             <KeyboardAvoidingView
               behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+
               className="w-full h-full justify-center flex items-center gap-y-5">
               {isSubmitting && <Loader />}
               <View className="mb-[10%] w-screen items-center">
@@ -336,26 +340,3 @@ const SignUp = () => {
 };
 
 export default SignUp;
-
-const styles = StyleSheet.create({
-  cricle1: {
-    top: '-4%',
-    left: '-34%',
-    position: 'absolute',
-    opacity: 0.8,
-  },
-  circle2: {
-    top: '-15%',
-    left: '-12%',
-    position: 'absolute',
-    opacity: 0.8,
-  },
-  scrollView: {
-    flexGrow: 1,
-    width: 'auto',
-    justifyContent: 'center',
-    paddingHorizontal: '5%',
-    paddingTop: '28%',
-    paddingBottom: '11%',
-  },
-});

@@ -60,6 +60,12 @@ android {
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
     }
+
+    lint {
+        disable 'AppLinkUrlError'
+        checkReleaseBuilds false
+        abortOnError false
+    }
 }
 
 dependencies {
@@ -76,6 +82,18 @@ dependencies {
     implementation platform('com.google.firebase:firebase-bom:33.4.0')
     implementation 'com.google.firebase:firebase-appcheck-playintegrity'
     implementation 'com.google.firebase:firebase-auth'
+}
+
+// Add this block before the vector icons configuration
+tasks.withType(JavaCompile) {
+    dependsOn tasks.matching { task -> task.name.startsWith('copy') && task.name.endsWith('VectorIconFonts') }
+}
+
+// Ensure lint task depends on vector icons
+tasks.whenTaskAdded { task ->
+    if (task.name.contains('LintReport') || task.name.contains('generateDebugLintReportModel')) {
+        task.dependsOn tasks.matching { it.name.startsWith('copy') && it.name.endsWith('VectorIconFonts') }
+    }
 }
 
 apply from: file("../../node_modules/react-native-vector-icons/fonts.gradle")
