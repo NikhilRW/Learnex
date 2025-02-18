@@ -72,10 +72,10 @@ const SignUp = () => {
       });
       return;
     }
-    const { success, error } = await firebase.signUpWithEmailAndPassword(values);
+    const { success, error } = await firebase.auth.signUpWithEmailAndPassword(values);
     if (success) {
       Snackbar.show({
-        text: 'Sign Up Successfull',
+        text: 'Sign Up Successful',
         duration: Snackbar.LENGTH_LONG,
         textColor: 'white',
         backgroundColor: '#007cb5',
@@ -115,7 +115,7 @@ const SignUp = () => {
     };
   }, []);
   const checkUsernameAvailability = async (username: string) => {
-    const { success } = await firebase.checkUsernameIsAvailable(username);
+    const { success } = await firebase.user.checkUsernameIsAvailable(username);
     if (success) {
       setIsUsernameError(false);
     } else {
@@ -127,7 +127,7 @@ const SignUp = () => {
     [],
   );
   const checkEmailAvailability = async (email: string) => {
-    const { success } = await firebase.checkEmailIsAvailable(email);
+    const { success } = await firebase.user.checkEmailIsAvailable(email);
     if (success) {
       setIsEmailError(false);
     } else {
@@ -146,7 +146,7 @@ const SignUp = () => {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         keyboardDismissMode="interactive"
-        >
+      >
         {!isKeyboardVisible && (
           <>
             <MaterialsIcon
@@ -317,16 +317,15 @@ const SignUp = () => {
               <View className="flex flex-row gap-[3%] justify-center items-center">
                 <Image
                   source={require('../../res/pngs/google.png')}
-                  className="w-50 h-50"
                   onPress={async () => {
-                    await firebase.googleSignIn();
+                    await firebase.auth.googleSignIn();
                   }}
                   style={{ width: 55, height: 55 }}
                 />
                 <Image
                   source={require('../../res/jpgs/github.jpg')}
                   onPress={() => {
-                    firebase.githubSignIn();
+                    firebase.auth.githubSignIn();
                   }}
                   style={{ width: 40, height: 40, borderRadius: 30 }}
                 />

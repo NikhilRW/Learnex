@@ -12,22 +12,43 @@ const NavigationDrawerButton = memo(({ tintColor, navigation }: { tintColor: str
   const theme = useTypedSelector((state) => state.user.theme);
   const isDark = theme === "dark";
   const firebase = useTypedSelector(state => state.firebase.firebase);
-  const [username, setUsername] = useState<string>('');
+  const [userData, setUserData] = useState<{ fullName: string; username: string } | null>(null);
   const [photoURL, setPhotoURL] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
   const [searchText, setSearchText] = useState('');
 
   useEffect(() => {
     const fetchUserData = async () => {
-      const currentUser = firebase.currentUser();
-      const { fullName } = await firebase.getNameUsernamestring();
-      if (currentUser?.photoURL) {
-        setPhotoURL(currentUser.photoURL);
+      try {
+        const currentUser = firebase.currentUser();
+        if (!currentUser) {
+          console.log('No current user');
+          return;
+        }
+        if (currentUser.photoURL) {
+          setPhotoURL(currentUser.photoURL);
+        }
+        const data = await firebase.user.getNameUsernamestring();
+        if (data && data.fullName) {
+          setUserData(data);
+        } else {
+          console.log('No user data found');
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+        setUserData(null);
       }
-      setUsername(fullName);
     };
+
     fetchUserData();
   }, [firebase]);
+
+  // Get first name safely
+  const getFirstName = useCallback(() => {
+    if (!userData?.fullName) return "There";
+    const nameParts = userData.fullName.trim().split(' ');
+    return nameParts[0] || null;
+  }, [userData]);
 
   useEffect(() => {
     if (searchText.length > 0) {
@@ -95,7 +116,7 @@ const NavigationDrawerButton = memo(({ tintColor, navigation }: { tintColor: str
             className="absolute left-[35%] top-[40%]"
             onPress={handleSearchPress}>
             <Text className={`${isTyping ? 'opacity-0' : 'opacity-100'} ${isDark ? "text-white" : "text-black"}`}>
-              {`👋 Hey ${username.split(' ')[0]}`}
+              {`👋 Hey ${getFirstName()}`}
             </Text>
           </TouchableOpacity>
         </View>

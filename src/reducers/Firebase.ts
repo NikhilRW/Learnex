@@ -1,12 +1,12 @@
-import { createSlice } from "@reduxjs/toolkit";
-import Firebase from "../service/FirebaseService";
+import {createSlice} from '@reduxjs/toolkit';
+import Firebase from '../service/firebase';
 
 export const appwriteSlice = createSlice({
-    name: "user",
+    name: 'firebase',
     initialState: {
-        firebase : new Firebase(),
+        firebase: new Firebase(),
     },
-    reducers:{
-    }
+    reducers: {},
 });
+
 export default appwriteSlice.reducer;

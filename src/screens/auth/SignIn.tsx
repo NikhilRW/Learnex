@@ -45,15 +45,14 @@ const SignIn = () => {
     password: '',
   };
   const signInUser = async ({ usernameOrEmail, password }: signInData) => {
-    const response = await firebase.checkUsernameOrEmailRegistered(
+    const response = await firebase.user.checkUsernameOrEmailRegistered(
       usernameOrEmail,
     );
     if (response.success) {
-      const { success, error } = await firebase.loginWithEmailAndPassword(
-        response.email,
+      const { success, error } = await firebase.auth.loginWithEmailAndPassword(
+        response.email!,
         password,
       );
-      console.log(error);
       if (success) {
         dispatch(changeProfileColor(getRandomColors()));
         dispatch(changeIsLoggedIn(true));
@@ -75,10 +74,11 @@ const SignIn = () => {
     }
   };
   const handleForgotPassword = async (usernameOrEmail: string) => {
-    const { success, email } =
-      await firebase.checkUsernameOrEmailRegistered(usernameOrEmail);
+    const { success, email } = await firebase.user.checkUsernameOrEmailRegistered(
+      usernameOrEmail,
+    );
     if (success) {
-      if ((await firebase.sendPasswordResetEmail(email)).success) {
+      if ((await firebase.auth.sendPasswordResetEmail(email!)).success) {
         Snackbar.show({
           text: 'Email Sent Successfully',
           duration: Snackbar.LENGTH_LONG,
@@ -115,20 +115,20 @@ const SignIn = () => {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         keyboardDismissMode="interactive">
-          <>
-            <MaterialsIcon
-              name="circle"
-              color={'#37B6F0'}
-              size={225}
-              style={styles.cricle1}
-            />
-            <MaterialsIcon
-              name="circle"
-              color={'#37B6F0'}
-              size={225}
-              style={styles.circle2}
-            />
-          </>
+        <>
+          <MaterialsIcon
+            name="circle"
+            color={'#37B6F0'}
+            size={225}
+            style={styles.cricle1}
+          />
+          <MaterialsIcon
+            name="circle"
+            color={'#37B6F0'}
+            size={225}
+            style={styles.circle2}
+          />
+        </>
         <TouchableOpacity
           activeOpacity={1}
           onPress={Keyboard.dismiss}
@@ -273,14 +273,14 @@ const SignIn = () => {
                         className="w-50 h-50"
                         style={{ width: 55, height: 55 }}
                         onPress={() => {
-                          firebase.googleSignIn();
+                          firebase.auth.googleSignIn();
                         }}
                       />
                       <Image
                         source={require('../../res/jpgs/github.jpg')}
                         style={{ width: 40, height: 40, borderRadius: 30 }}
                         onPress={() => {
-                          firebase.githubSignIn();
+                          firebase.auth.githubSignIn();
                         }}
                       />
                     </View>

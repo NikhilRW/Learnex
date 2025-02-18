@@ -25,7 +25,8 @@ DerivedData
 **/.xcode.env.local
 
 #other
-plan.md
+scripts/
+personal/
 
 # Android/IntelliJ
 #
