@@ -18,7 +18,7 @@ const Route = () => {
 
   // Check authentication state on mount
   useEffect(() => {
-    if (firebase.isUserLoggedIn()) {
+    if (firebase.auth.isUserLoggedIn()) {
       dispatch(changeIsLoggedIn(true))
     }
     else {

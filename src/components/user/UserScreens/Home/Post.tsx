@@ -1,12 +1,14 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { View, Image, TouchableOpacity, Modal, TouchableWithoutFeedback, Dimensions, Animated, StyleSheet, ScrollView, Text } from 'react-native';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { View, Image, TouchableOpacity, Modal, TouchableWithoutFeedback, Dimensions, Animated, StyleSheet, FlatList, Text, ScrollView, ImageURISource, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
+import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import AntDesign from 'react-native-vector-icons/AntDesign';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Video from 'react-native-video';
 import { PostType } from '../../../../types/post';
 import { useTypedSelector } from '../../../../hooks/useTypedSelector';
 import { primaryColor } from '../../../../res/strings/eng';
+import CommentModal from './CommentModal';
 
 /**
  * Post component that displays a social media post with images
@@ -15,20 +17,86 @@ import { primaryColor } from '../../../../res/strings/eng';
 
 interface PostProps {
     post: PostType;
+    isVisible?: boolean;
 }
 
-const Post: React.FC<PostProps> = ({ post }) => {
+interface VideoProgress {
+    currentTime: number;
+    playableDuration: number;
+    seekableDuration: number;
+}
+
+const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
     const isDark = useTypedSelector((state) => state.user.theme) === "dark";
     const screenWidth = Dimensions.get('window').width;
-    const [isLiked, setIsLiked] = useState(false);
+    const [isLiked, setIsLiked] = useState<boolean>(post.isLiked || false);
+    const [likesCount, setLikesCount] = useState<number>(post.likes);
+    const [isLiking, setIsLiking] = useState<boolean>(false);
     const [imageHeight, setImageHeight] = useState(300);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
-    const [isVisible, setIsVisible] = useState(false);
     const [showOptions, setShowOptions] = useState(false);
-    const [isPaused, setIsPaused] = useState(true);
-    const scrollViewRef = useRef<ScrollView>(null);
+    const [isPaused, setIsPaused] = useState(!isVisible);
+    const [showDots, setShowDots] = useState(true);
+    const [showComments, setShowComments] = useState(false);
+    const [isSaved, setIsSaved] = useState<boolean>(post.isSaved || false);
+    const [isSaving, setIsSaving] = useState<boolean>(false);
+    const [newComment, setNewComment] = useState<string>('');
+    const [isAddingComment, setIsAddingComment] = useState<boolean>(false);
+    const videoRef = useRef<Video>(null);
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const dotsAnim = useRef(new Animated.Value(0)).current;
+    const controlsTimeout = useRef<NodeJS.Timeout>();
+    const dotsTimeout = useRef<NodeJS.Timeout>();
+    const firebase = useTypedSelector((state) => state.firebase.firebase);
+    const lastPosition = useRef(0);
+
+    useEffect(() => {
+        // Handle video visibility changes
+        if (post.isVideo) {
+            setIsPaused(!isVisible);
+        }
+    }, [isVisible, post.isVideo]);
+
+    useEffect(() => {
+        // Initialize saved state from cache
+        setIsSaved(post.isSaved || false);
+        setIsLiked(post.isLiked || false);
+        setLikesCount(post.likes);
+
+        // Subscribe to saved posts changes
+        const unsubscribeSaved = firebase.subscribeToSavedPosts(() => {
+            setIsSaved(firebase.posts.isPostSaved(post.id));
+        });
+
+        // Subscribe to likes changes
+        const unsubscribeLikes = firebase.posts.subscribeToLikes(post.id, () => {
+            const isLiked = firebase.posts.isPostLiked(post.id);
+            if (isLiked !== null) {
+                setIsLiked(isLiked);
+            }
+        });
+
+        return () => {
+            unsubscribeSaved();
+            unsubscribeLikes();
+        };
+    }, [post.id, firebase.subscribeToSavedPosts, firebase.posts]);
+
+    const handleIsLiked = async () => {
+        if (isLiking) return;
+        setIsLiking(true);
+
+        try {
+            const result = await firebase.posts.likePost(post.id);
+            if (!result.success) {
+                console.error('Failed to like post:', result.error);
+            }
+        } catch (error) {
+            console.error('Error handling like:', error);
+        } finally {
+            setIsLiking(false);
+        }
+    };
 
     useEffect(() => {
         // Fade in animation for post
@@ -38,120 +106,150 @@ const Post: React.FC<PostProps> = ({ post }) => {
             useNativeDriver: true,
         }).start();
 
-        // Calculate image height based on first image
-        const firstImage = post.postImages?.[0] || post.postImage;
-        if (firstImage) {
-            const imageSource = Image.resolveAssetSource(firstImage);
-            if (imageSource) {
-                const { width, height } = imageSource;
-                const screenWidth = Dimensions.get('window').width - 14;
-                const scaledHeight = (height / width) * screenWidth;
-                setImageHeight(scaledHeight);
-            }
-        }
-    }, [post.postImages, post.postImage]);
-
-    const handleScroll = (event: { nativeEvent: { contentOffset: { x: number } } }) => {
-        const contentOffset = event.nativeEvent.contentOffset.x;
-        const index = Math.round(contentOffset / (screenWidth - 14));
-        setCurrentImageIndex(index);
-    };
-
-    const handleLayout = () => {
-        setIsVisible(true);
+        // Start dots animation
         Animated.spring(dotsAnim, {
             toValue: 1,
             tension: 50,
             friction: 7,
             useNativeDriver: true
         }).start();
+
+        // Calculate image height based on first image
+        const firstImage = post.postImages?.[0];
+        if (firstImage) {
+            Image.getSize(firstImage, (width, height) => {
+                const screenWidth = Dimensions.get('window').width - 24;
+                const scaledHeight = (height / width) * screenWidth;
+                setImageHeight(scaledHeight || 300);
+            }, (error) => {
+                console.error('Error getting image size:', error);
+                setImageHeight(300); // Fallback height
+            });
+        }
+
+        return () => {
+            if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
+            if (dotsTimeout.current) clearTimeout(dotsTimeout.current);
+        };
+    }, [post.postImages, fadeAnim]);
+
+    useEffect(() => {
+        setIsLiked(post.isLiked || false);
+        setLikesCount(post.likes);
+    }, [post.isLiked, post.likes]);
+
+    const handleVideoProgress = useCallback((progress: VideoProgress) => {
+        lastPosition.current = progress.currentTime;
+    }, []);
+
+    const handleVideoPress = () => {
+        setIsPaused(prevState => !prevState);
+        handleMediaTouch();
     };
 
-    const animateDot = (index: number) => {
-        const isActive = index === currentImageIndex;
-        return {
-            width: 8,
-            height: 8,
-            backgroundColor: isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.3)',
-            transform: [
-                { scale: isActive ? 1 : 0.8 },
-                {
-                    translateY: dotsAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [10, 0]
-                    })
-                }
-            ],
-            opacity: dotsAnim,
-            margin: 4,
-        };
+    const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+        const contentOffset = event.nativeEvent.contentOffset.x;
+        const index = Math.round(contentOffset / (screenWidth - 14));
+        setCurrentImageIndex(index);
+    }, [screenWidth]);
+
+    const handleMediaTouch = () => {
+        setShowDots(true);
+        if (dotsTimeout.current) {
+            clearTimeout(dotsTimeout.current);
+        }
+        dotsTimeout.current = setTimeout(() => {
+            setShowDots(false);
+        }, 3000);
+    };
+
+    const handleSavePost = async () => {
+        if (isSaving) return;
+        setIsSaving(true);
+
+        try {
+            const result = await firebase.posts.savePost(post.id);
+            if (!result.success) {
+                // Show error toast or notification
+                console.error('Failed to save post:', result.error);
+            }
+        } catch (error) {
+            console.error('Error saving post:', error);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleAddComment = async () => {
+        if (!newComment.trim() || isAddingComment) return;
+
+        setIsAddingComment(true);
+        try {
+            const result = await firebase.posts.addComment(post.id, newComment.trim());
+            if (result.success && result.comment) {
+                setNewComment('');
+                // The real-time listener will update the comments list
+            }
+        } catch (error) {
+            console.error('Error adding comment:', error);
+        } finally {
+            setIsAddingComment(false);
+        }
     };
 
     const renderMedia = () => {
-        const mediaItems = [];
-
-        // Add video if present
         if (post.isVideo && post.postVideo) {
-            mediaItems.push(
-                <View key="video" style={styles.mediaContainer}>
-                    <TouchableOpacity onPress={() => setIsPaused(!isPaused)}>
-                        <Video
-                            source={post.postVideo}
-                            style={[styles.postImage, { width: screenWidth - 14, height: imageHeight }]}
-                            resizeMode="cover"
-                            paused={isPaused}
-                            repeat
-                        />
-                        {isPaused && (
-                            <View style={styles.playButton}>
-                                <Icon name="play-circle" size={60} color="white" />
-                            </View>
-                        )}
-                    </TouchableOpacity>
+            return (
+                <View style={styles.mediaContainer}>
+                    <TouchableWithoutFeedback onPress={handleVideoPress}>
+                        <View style={{ width: screenWidth - 24, height: imageHeight }}>
+                            <Video
+                                ref={videoRef}
+                                source={typeof post.postVideo === 'number' ? post.postVideo : { uri: post.postVideo as string }}
+                                style={[styles.postImage, { width: '100%', height: '100%' }]}
+                                resizeMode="cover"
+                                paused={isPaused}
+                                repeat
+                                onProgress={handleVideoProgress}
+                            />
+                            {isPaused && (
+                                <View style={styles.pausedOverlay} />
+                            )}
+                        </View>
+                    </TouchableWithoutFeedback>
                 </View>
-            );
-        }
-
-        // Add images if present
-        if (post.postImages) {
-            post.postImages.forEach((image, index) => {
-                mediaItems.push(
-                    <Image
-                        key={`image-${index}`}
-                        source={image}
-                        style={[styles.postImage, { width: screenWidth - 14, height: imageHeight }]}
-                        resizeMode="cover"
-                    />
-                );
-            });
-        } else if (post.postImage) {
-            mediaItems.push(
-                <Image
-                    key="single-image"
-                    source={post.postImage}
-                    style={[styles.postImage, { width: screenWidth - 14, height: imageHeight }]}
-                    resizeMode="cover"
-                />
             );
         }
 
         return (
             <View style={styles.carouselContainer}>
                 <ScrollView
-                    ref={scrollViewRef}
                     horizontal
                     pagingEnabled
                     showsHorizontalScrollIndicator={false}
                     onMomentumScrollEnd={handleScroll}
-                    decelerationRate="fast"
-                    snapToInterval={screenWidth - 14}
+                    onScrollBeginDrag={handleMediaTouch}
                 >
-                    {mediaItems}
+                    {post.postImages?.map((image, index) => {
+                        const source = typeof image === 'number' ? image : { uri: (image as ImageURISource).uri };
+                        return (
+                            <TouchableWithoutFeedback
+                                key={index}
+                                onPress={handleMediaTouch}
+                            >
+                                <Image
+                                    source={source}
+                                    style={[styles.postImage, { width: screenWidth - 24, height: imageHeight || 300 }]}
+                                    resizeMode="cover"
+                                    onError={(error) => console.error('Image loading error:', error.nativeEvent.error)}
+                                />
+                            </TouchableWithoutFeedback>
+                        );
+                    })}
                 </ScrollView>
-
-                {mediaItems.length > 1 && isVisible && (
+                {showDots && post.postImages && post.postImages.length > 1 && (
                     <View style={styles.paginationDots}>
-                        {mediaItems.map((_, index) => (
+                        {post.postImages.map((_, index) => (
                             <Animated.View
                                 key={index}
                                 style={[
@@ -240,6 +338,32 @@ const Post: React.FC<PostProps> = ({ post }) => {
         </Modal>
     );
 
+    const animateDot = (index: number) => {
+        const isActive = index === currentImageIndex;
+        return {
+            width: 8,
+            height: 8,
+            backgroundColor: isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.3)',
+            transform: [
+                { scale: isActive ? 1 : 0.8 },
+                {
+                    translateY: dotsAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [10, 0]
+                    })
+                }
+            ],
+            opacity: dotsAnim,
+            margin: 4,
+        };
+    };
+
+    useEffect(() => {
+        if (post.commentsList?.length) {
+            // console.log('Comments for post', post.id, ':', post.commentsList);
+        }
+    }, [post.id, post.commentsList]);
+
     return (
         <Animated.View
             key={post.id}
@@ -248,47 +372,75 @@ const Post: React.FC<PostProps> = ({ post }) => {
                 { opacity: fadeAnim },
                 { backgroundColor: isDark ? '#1a1a1a' : 'white' }
             ]}
-            onLayout={handleLayout}
         >
             <View style={styles.header}>
                 <View style={styles.userInfo}>
-                    <Image source={post.user.image} style={styles.avatar} />
-                    <Text style={[styles.username, { color: isDark ? "white" : "black" }]}>{post.user.username}</Text>
+                    <Image
+                        source={{ uri: post.user.image }}
+                        style={styles.avatar}
+                    />
+                    <Text style={[styles.username, { color: isDark ? "white" : "black" }]}>
+                        {post.user.username}
+                    </Text>
                 </View>
                 <TouchableOpacity onPress={() => setShowOptions(true)}>
                     <Icon name="more-horizontal" size={24} color={isDark ? "white" : "black"} />
                 </TouchableOpacity>
             </View>
-
             {renderMedia()}
-
             <View style={styles.postActions}>
                 <View style={styles.leftActions}>
-                    <TouchableOpacity onPress={() => setIsLiked(!isLiked)} style={styles.actionButton}>
+                    <TouchableOpacity onPress={handleIsLiked} style={styles.actionButton} disabled={isLiking}>
                         <AntDesign name={isLiked ? "heart" : "hearto"} size={24} color={isLiked ? "red" : (isDark ? "white" : "black")} />
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.actionButton}>
-                        <MaterialIcons name="comment" size={24} color={isDark ? "white" : "black"} />
+                    <TouchableOpacity style={styles.actionButton} onPress={() => setShowComments(true)}>
+                        <Icon name="message-circle" size={24} color={isDark ? "white" : "black"} />
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.actionButton}>
                         <Icon name="send" size={24} color={isDark ? "white" : "black"} />
                     </TouchableOpacity>
                 </View>
-                <TouchableOpacity>
-                    <Icon name="bookmark" size={24} color={isDark ? "white" : "black"} />
+                <TouchableOpacity onPress={handleSavePost} disabled={isSaving}>
+                    <FontAwesome name={isSaved ? "bookmark" : "bookmark-o"} size={24} color={isDark ? "white" : "black"} />
                 </TouchableOpacity>
             </View>
 
             <View style={styles.postFooter}>
-                <Text style={[styles.likes, { color: isDark ? "white" : "black" }]}>{post.likes} likes</Text>
+                <Text style={[styles.likes, { color: isDark ? "white" : "black" }]}>{likesCount} likes</Text>
                 <View style={styles.captionContainer}>
                     <Text style={[styles.caption, { color: isDark ? "#e0e0e0" : "#2c2c2c" }]} numberOfLines={3} ellipsizeMode="tail">
                         <Text style={[styles.username, { color: isDark ? "white" : "black" }]} numberOfLines={1}>{post.user.username + " ".repeat(2)}</Text>
                         {post.description}
                     </Text>
                 </View>
-                <Text style={styles.timestamp}>{post.timestamp}</Text>
+
+                {post.comments > 0 && (
+                    <TouchableOpacity
+                        style={styles.viewCommentsButton}
+                        onPress={() => setShowComments(true)}
+                    >
+                        <Text style={[
+                            styles.viewAllComments,
+                            { color: isDark ? "#8e8e8e" : "#666666" }
+                        ]}>
+                            View all {post.comments} comments
+                        </Text>
+                    </TouchableOpacity>
+                )}
+
+                <Text style={[styles.timestamp, { color: isDark ? "#8e8e8e" : "#666666" }]}>{post.timestamp}</Text>
             </View>
+
+            <CommentModal
+                visible={showComments}
+                onClose={() => setShowComments(false)}
+                comments={post.commentsList || []}
+                isDark={isDark}
+                onAddComment={handleAddComment}
+                newComment={newComment}
+                setNewComment={setNewComment}
+                isAddingComment={isAddingComment}
+            />
 
             <PostOptionsModal />
         </Animated.View>
@@ -342,11 +494,33 @@ const styles = StyleSheet.create({
         width: '100%',
         height: 300,
     },
-    playButton: {
+    videoOverlay: {
         position: 'absolute',
-        top: '50%',
-        left: '50%',
-        transform: [{ translateX: -30 }, { translateY: -30 }],
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'transparent',
+    },
+    pausedOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    },
+    playButton: {
+        opacity: 0.9,
+        shadowColor: "#000",
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.5,
+        shadowRadius: 3.84,
     },
     paginationDots: {
         position: 'absolute',
@@ -391,7 +565,8 @@ const styles = StyleSheet.create({
     },
     timestamp: {
         fontSize: 12,
-        color: '#8e8e8e',
+        marginTop: 4,
+        fontWeight: '400',
     },
     modalOverlay: {
         flex: 1,
@@ -403,7 +578,8 @@ const styles = StyleSheet.create({
         width: '80%',
         backgroundColor: 'white',
         borderRadius: 12,
-        padding: 20,
+        paddingHorizontal: 20,
+        paddingVertical: 10,
     },
     optionItem: {
         flexDirection: 'row',
@@ -415,5 +591,50 @@ const styles = StyleSheet.create({
     optionText: {
         marginLeft: 15,
         fontSize: 16,
+    },
+    commentsContainer: {
+        marginTop: 8,
+        paddingHorizontal: 12,
+    },
+    commentItem: {
+        flexDirection: 'row',
+        marginBottom: 8,
+        alignItems: 'flex-start',
+    },
+    commentAvatar: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        marginRight: 8,
+    },
+    commentContent: {
+        flex: 1,
+    },
+    commentText: {
+        fontSize: 13,
+        lineHeight: 18,
+    },
+    commentUsername: {
+        fontWeight: '600',
+        fontSize: 13,
+    },
+    commentMeta: {
+        flexDirection: 'row',
+        marginTop: 4,
+        alignItems: 'center',
+    },
+    commentTimestamp: {
+        fontSize: 12,
+        marginRight: 12,
+    },
+    commentLikes: {
+        fontSize: 12,
+    },
+    viewCommentsButton: {
+        paddingVertical: 8,
+    },
+    viewAllComments: {
+        fontSize: 14,
+        color: '#8e8e8e',
     },
 });

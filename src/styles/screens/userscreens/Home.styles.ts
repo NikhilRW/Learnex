@@ -3,7 +3,7 @@ import {StyleSheet} from 'react-native';
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: 'white',
   },
   mainContainer: {
     width: '100%',
@@ -13,40 +13,55 @@ export const styles = StyleSheet.create({
     padding: 10,
   },
   storyItem: {
-    marginRight: 15,
+    marginRight: 10,
     borderWidth: 2,
     borderColor: '#0095f6',
     borderRadius: 50,
-    padding: 2.6,
+    padding: 2,
     justifyContent: 'center',
   },
   storyImage: {
-    width: 65,
-    height: 65,
-    borderRadius: 32.5,
-    resizeMode: 'cover',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
   },
   tagsContainer: {
     padding: 10,
+    marginBottom: 10,
   },
   tagButton: {
-    backgroundColor: '#f0f0f0',
-    paddingHorizontal: 15,
+    paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    marginRight: 10,
+    marginRight: 8,
   },
   tagText: {
-    color: '#000',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  filterInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginBottom: 8,
+  },
+  filterText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  clearFilterButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
   },
   postsContainer: {
-    width: '100%',
-    height: '80%',
+    paddingBottom: 20,
   },
   postContainer: {
     marginBottom: 15,
     paddingHorizontal: 12,
-    gap: 10,
   },
   skeletonContainer: {
     justifyContent: 'center',
@@ -64,7 +79,8 @@ export const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   title: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 'bold',
+    marginBottom: 16,
   },
 });

@@ -38,9 +38,8 @@ android {
     packagingOptions {
         jniLibs {
             useLegacyPackaging true
+            pickFirsts += ['**/libhermes-executor-debug.so', '**/libhermes-executor-release.so']
         }
-        pickFirst '**/libhermes-executor-debug.so'
-        pickFirst '**/libhermes-executor-release.so'
     }
     signingConfigs {
         debug {

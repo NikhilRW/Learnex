@@ -11,32 +11,63 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { navigationDrawerOptions } from '../../../constants/navigation';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { styles } from '../../../styles/components/user/UserStack/NavigationDrawer.styles';
+import Snackbar from 'react-native-snackbar';
 
 const NavigationDrawer = () => {
   const firebase = useTypedSelector(state => state.firebase.firebase);
   const insets = useSafeAreaInsets();
-  const user = firebase.currentUser();
+  const currentUser = firebase.auth.currentUser();
   const isDark = useTypedSelector((state) => state.user.theme) === "dark";
   const [fullName, setFullName] = useState<string>('');
   const [username, setUsername] = useState<string>('');
   const [photoURL, setPhotoURL] = useState<string | null>(null);
   const dispatch = useTypedDispatch();
   const profileColor = useTypedSelector(state => state.user.userProfileColor);
+
   const handleLogOutPress = async () => {
-    await firebase.signOut();
-    dispatch(changeIsLoggedIn(false));
+    try {
+      const { success, error } = await firebase.auth.signOut();
+      if (success) {
+        dispatch(changeIsLoggedIn(false));
+      } else {
+        Snackbar.show({
+          text: 'Failed to sign out: ' + error,
+          duration: Snackbar.LENGTH_LONG,
+          textColor: 'white',
+          backgroundColor: '#007cb5',
+        });
+      }
+    } catch (err) {
+      console.error('Sign out error:', err);
+      Snackbar.show({
+        text: 'An error occurred while signing out',
+        duration: Snackbar.LENGTH_LONG,
+        textColor: 'white',
+        backgroundColor: '#007cb5',
+      });
+    }
   };
+
   useEffect(() => {
     const fetchUserData = async () => {
-      if (user?.photoURL) {
-        setPhotoURL(user.photoURL);
+      try {
+        if (currentUser?.photoURL) {
+          setPhotoURL(currentUser.photoURL);
+        }
+        const { fullName, username } = await firebase.user.getNameUsernamestring();
+        setUsername(username);
+        setFullName(fullName);
+      } catch (err) {
+        console.error('Error fetching user data:', err);
+        // Set default values in case of error
+        setUsername('User');
+        setFullName('User');
+        setPhotoURL(null);
       }
-      const { fullName, username } = await firebase.getNameUsernamestring();
-      setUsername(username);
-      setFullName(fullName);
     };
     fetchUserData();
-  }, []);
+  }, [currentUser]);
+
   const renderAvatar = () => {
     if (photoURL?.length! > 0) {
       return (
@@ -58,6 +89,7 @@ const NavigationDrawer = () => {
       />
     );
   };
+
   return (
     <ScrollView style={{
       paddingBottom: `${insets.bottom}%`,
