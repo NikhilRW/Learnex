@@ -1,6 +1,7 @@
 import { Text, TouchableOpacity, View } from 'react-native';
 import React, { useEffect, useState, useCallback, memo } from 'react';
 import { Image } from 'react-native';
+import IonIcons from 'react-native-vector-icons/Ionicons';
 import { ParamListBase } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { useTypedSelector } from '../../../hooks/useTypedSelector';

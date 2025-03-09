@@ -123,4 +123,34 @@ export class PostService {
     this.queryService.cleanup();
     this.savedPostService.cleanup();
   }
+
+  async likeComment(
+    postId: string,
+    commentId: string,
+  ): Promise<{success: boolean; error?: string}> {
+    return this.commentService.likeComment(postId, commentId);
+  }
+
+  async editComment(
+    postId: string,
+    commentId: string,
+    text: string,
+  ): Promise<{success: boolean; error?: string}> {
+    return this.commentService.editComment(postId, commentId, text);
+  }
+
+  async deleteComment(
+    postId: string,
+    commentId: string,
+  ): Promise<{success: boolean; error?: string}> {
+    return this.commentService.deleteComment(postId, commentId);
+  }
+
+  async addReply(
+    postId: string,
+    parentCommentId: string,
+    text: string,
+  ): Promise<{success: boolean; reply?: any; error?: string}> {
+    return this.commentService.addReply(postId, parentCommentId, text);
+  }
 }

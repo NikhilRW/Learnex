@@ -1,4 +1,4 @@
-import { Image, SafeAreaView, ScrollView, Text, TouchableOpacity, View, FlatList, ViewToken, ImageSourcePropType } from 'react-native';
+import { Image, SafeAreaView, ScrollView, Text, TouchableOpacity, View, FlatList, ViewToken, ImageSourcePropType, RefreshControl } from 'react-native';
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
 import { useTypedDispatch } from '../../hooks/useTypedDispatch';
@@ -8,17 +8,20 @@ import Post from '../../components/user/UserScreens/Home/Post';
 import { PostType } from '../../types/post';
 import { styles } from '../../styles/screens/userscreens/Home.styles';
 import { FirestorePost } from '../../types/post';
+import { primaryColor } from '../../res/strings/eng';
 
-// Type for Firestore post data
-
+// Fallback trending tags to use when API returns empty results
+const FALLBACK_TRENDING_TAGS = ['travel', 'fitness', 'food', 'dance', 'movies', 'vacation', 'beach', 'workout', 'cooking', 'tutorial'];
 
 const Home = () => {
   const firebase = useTypedSelector(state => state.firebase.firebase);
   const theme = useTypedSelector(state => state.user.theme);
   const isDark = theme === 'dark';
+  console.log("isDark", isDark);
+
   const [isLoaded, setIsLoaded] = useState(false);
-  const [posts, setPosts] = useState<PostType[]>([]);
-  const [filteredPosts, setFilteredPosts] = useState<PostType[]>([]);
+  const [posts, setPosts] = useState<(PostType & { isLiked: boolean; likes: number; isSaved: boolean })[]>([]);
+  const [filteredPosts, setFilteredPosts] = useState<(PostType & { isLiked: boolean; likes: number; isSaved: boolean })[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [username, setUsername] = useState<string>('');
@@ -28,6 +31,7 @@ const Home = () => {
   const profileColor = useTypedSelector(state => state.user.userProfileColor);
   const [visibleVideoId, setVisibleVideoId] = useState<string | null>(null);
   const [trendingTags, setTrendingTags] = useState<string[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Handle sign out
   const handleSignOut = async () => {
@@ -132,15 +136,84 @@ const Home = () => {
     },
   ]);
 
-  const renderPost = ({ item }: { item: PostType }) => (
+  const renderPost = ({ item }: { item: PostType & { isLiked: boolean; likes: number; isSaved: boolean } }) => (
     <View style={styles.postContainer}>
       <Post
+        isDark={isDark}
         key={item.id}
         post={item}
         isVisible={item.id === visibleVideoId}
       />
     </View>
   );
+
+  // Add refresh function
+  const onRefresh = useCallback(async () => {
+    try {
+      setRefreshing(true);
+      console.log('Refreshing home feed...');
+
+      // Refresh posts
+      const postsResponse = await firebase.posts.getPosts();
+      if (postsResponse.success && postsResponse.posts) {
+        // Ensure posts have the required properties
+        const formattedPosts = postsResponse.posts.map((post: PostType) => ({
+          ...post,
+          isLiked: post.isLiked || false,
+          likes: post.likes || 0,
+          isSaved: post.isSaved || false
+        }));
+
+        setPosts(formattedPosts);
+
+        // Update filtered posts if a tag is selected
+        if (selectedTag) {
+          const filtered = formattedPosts.filter((post: PostType & { isLiked: boolean; likes: number; isSaved: boolean }) =>
+            post.hashtags?.includes(selectedTag)
+          );
+          setFilteredPosts(filtered);
+        }
+      }
+
+      // Refresh trending tags
+      const trendingResponse = await firebase.trending.getTrendingPosts('day', 20);
+      if (trendingResponse.success && trendingResponse.posts) {
+        const hashtagStats = new Map<string, number>();
+
+        trendingResponse.posts.forEach((post: PostType & { likes: number, comments: number }) => {
+          if (post.hashtags && Array.isArray(post.hashtags)) {
+            const engagement = post.likes + post.comments;
+            post.hashtags.forEach(tag => {
+              const currentEngagement = hashtagStats.get(tag) || 0;
+              hashtagStats.set(tag, currentEngagement + engagement);
+            });
+          }
+        });
+
+        const hashtagEntries = Array.from(hashtagStats.entries());
+        const topTags = hashtagEntries
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 10)
+          .map(([tag]) => tag);
+
+        // Use fallback tags if no trending tags are found
+        setTrendingTags(topTags.length > 0 ? topTags : FALLBACK_TRENDING_TAGS);
+      } else {
+        // Use fallback tags if API call fails
+        setTrendingTags(FALLBACK_TRENDING_TAGS);
+      }
+
+      // Refresh user data
+      await fetchUserData();
+
+    } catch (error) {
+      console.error('Error refreshing home feed:', error);
+      // Use fallback tags if there's an error
+      setTrendingTags(FALLBACK_TRENDING_TAGS);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [firebase.posts, firebase.trending, selectedTag, fetchUserData]);
 
   // Optimize trending tags fetch with cleanup
   useEffect(() => {
@@ -158,18 +231,18 @@ const Home = () => {
         console.log('Got trending posts response:', {
           success: response.success,
           postsCount: response.posts?.length,
-          posts: response.posts?.map(post => ({
+          posts: response.posts?.map((post: PostType) => ({
             id: post.id,
             hashtags: post.hashtags,
             engagement: post.likes + post.comments
           }))
         });
 
-        if (response.success && response.posts) {
+        if (response.success && response.posts && response.posts.length > 0) {
           console.log('Processing posts for hashtags...');
           const hashtagStats = new Map<string, number>();
 
-          response.posts.forEach((post: PostType) => {
+          response.posts.forEach((post: PostType & { likes: number, comments: number }) => {
             console.log('Processing post:', {
               id: post.id,
               hashtags: post.hashtags,
@@ -197,12 +270,17 @@ const Home = () => {
             .map(([tag]) => tag);
 
           console.log('Setting trending tags:', topTags);
-          setTrendingTags(topTags);
+          setTrendingTags(topTags.length > 0 ? topTags : FALLBACK_TRENDING_TAGS);
         } else {
-          console.log('Failed to get trending posts:', response.error);
+          console.log('No trending posts found or API call failed, using fallback tags');
+          setTrendingTags(FALLBACK_TRENDING_TAGS);
         }
       } catch (error) {
         console.error('Error in fetchTrendingTags:', error);
+        // Use fallback tags if there's an error
+        if (mounted) {
+          setTrendingTags(FALLBACK_TRENDING_TAGS);
+        }
       }
     };
 
@@ -212,7 +290,7 @@ const Home = () => {
 
   // Optimize tag filtering
   const handleTagPress = useCallback((tag: string) => {
-    if (selectedTag === tag) {
+    if (selectedTag === tag){
       setSelectedTag(null);
       setFilteredPosts([]);
     } else {
@@ -240,10 +318,19 @@ const Home = () => {
             maxToRenderPerBatch={2}
             windowSize={5}
             removeClippedSubviews={true}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={isDark ? '#ffffff' : '#000000'}
+                colors={[primaryColor]}
+                progressBackgroundColor={isDark ? '#1a1a1a' : '#ffffff'}
+              />
+            }
             ListHeaderComponent={() => (
               <>
                 {/* Stories */}
-                <ScrollView
+                {/* <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   style={styles.storiesContainer}
@@ -253,7 +340,7 @@ const Home = () => {
                       <Image source={story.image} style={styles.storyImage} />
                     </View>
                   ))}
-                </ScrollView>
+                </ScrollView> */}
                 {/* Tags */}
                 <ScrollView
                   horizontal

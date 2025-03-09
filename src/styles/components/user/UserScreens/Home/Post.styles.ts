@@ -1,111 +1,232 @@
-import {StyleSheet} from 'react-native';
+import {Dimensions, StyleSheet} from 'react-native';
 
-export const styles = StyleSheet.create({
-  postContainer: {
-    marginBottom: 8,
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 12,
-  },
-  userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 10,
-  },
-  username: {
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  mediaContainer: {
-    position: 'relative',
-  },
-  carouselContainer: {
-    position: 'relative',
-  },
-  postImage: {
-    width: '100%',
-    height: 300,
-  },
-  playButton: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    transform: [{translateX: -30}, {translateY: -30}],
-  },
-  paginationDots: {
-    position: 'absolute',
-    bottom: 16,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  dot: {
-    borderRadius: 4,
-  },
-  postActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  leftActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  actionButton: {
-    marginRight: 16,
-  },
-  postFooter: {
-    paddingHorizontal: 12,
-    paddingBottom: 12,
-  },
-  likes: {
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  captionContainer: {
-    marginBottom: 4,
-  },
-  caption: {
-    fontSize: 14,
-    lineHeight: 18,
-  },
-  timestamp: {
-    fontSize: 12,
-    color: '#8e8e8e',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-  },
-  optionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 15,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#CCCCCC',
-  },
-  optionText: {
-    marginLeft: 15,
-    fontSize: 16,
-  },
-});
+export const createStyles = (isDark: boolean) =>
+  StyleSheet.create({
+    postContainer: {
+      marginBottom: 8,
+      padding: 0,
+      borderRadius: 8,
+      overflow: 'hidden',
+      backgroundColor: isDark ? '#1a1a1a' : 'white',
+      borderWidth: 1,
+      borderColor: isDark ? '#333' : '#e0e0e0',
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: 12,
+      backgroundColor: isDark ? '#1a1a1a' : 'white',
+      borderBottomWidth: 1,
+      borderBottomColor: isDark ? '#333' : '#e0e0e0',
+    },
+    userInfo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    avatar: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      marginRight: 10,
+      borderWidth: 1,
+      borderColor: isDark ? '#333' : '#e0e0e0',
+    },
+    username: {
+      fontWeight: '600',
+      fontSize: 14,
+      color: isDark ? 'white' : 'black',
+    },
+    mediaContainer: {
+      position: 'relative',
+      backgroundColor: isDark ? '#1a1a1a' : 'white',
+      width: '100%',
+      overflow: 'hidden',
+    },
+    carouselContainer: {
+      position: 'relative',
+      backgroundColor: isDark ? '#1a1a1a' : 'white',
+      width: '100%',
+      overflow: 'hidden',
+    },
+    postImage: {
+      width: '100%',
+      height: 300,
+      backgroundColor: isDark ? '#1a1a1a' : 'white',
+    },
+    videoOverlay: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: 'transparent',
+    },
+    pausedOverlay: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    },
+    playButton: {
+      opacity: 0.9,
+    },
+    paginationDots: {
+      position: 'absolute',
+      bottom: 16,
+      left: 0,
+      right: 0,
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    dot: {
+      borderRadius: 4,
+    },
+    postActions: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      backgroundColor: isDark ? '#1a1a1a' : 'white',
+      borderTopWidth: 1,
+      borderTopColor: isDark ? '#333' : '#e0e0e0',
+    },
+    leftActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    actionButton: {
+      marginRight: 16,
+    },
+    postFooter: {
+      paddingHorizontal: 12,
+      paddingBottom: 12,
+      backgroundColor: isDark ? '#1a1a1a' : 'white',
+    },
+    likes: {
+      fontWeight: '600',
+      marginBottom: 4,
+      color: isDark ? 'white' : 'black',
+    },
+    captionContainer: {
+      marginBottom: 4,
+    },
+    caption: {
+      fontSize: 14,
+      lineHeight: 18,
+      color: isDark ? '#e0e0e0' : '#2c2c2c',
+    },
+    timestamp: {
+      fontSize: 12,
+      marginTop: 4,
+      fontWeight: '400',
+      color: isDark ? '#8e8e8e' : '#666666',
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: isDark ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    modalContent: {
+      width: '80%',
+      backgroundColor: isDark ? '#2a2a2a' : 'white',
+      borderRadius: 12,
+      paddingHorizontal: 20,
+      paddingVertical: 10,
+      borderWidth: 1,
+      borderColor: isDark ? '#404040' : '#e0e0e0',
+    },
+    optionItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 15,
+      borderBottomWidth: 0.5,
+      borderBottomColor: isDark ? '#404040' : '#CCCCCC',
+      backgroundColor: isDark ? '#2a2a2a' : 'white',
+    },
+    optionText: {
+      marginLeft: 15,
+      fontSize: 16,
+      color: isDark ? 'white' : 'black',
+    },
+    commentsContainer: {
+      marginTop: 8,
+      paddingHorizontal: 12,
+      backgroundColor: isDark ? '#1a1a1a' : 'white',
+    },
+    commentItem: {
+      flexDirection: 'row',
+      marginBottom: 8,
+      alignItems: 'flex-start',
+      backgroundColor: isDark ? '#1a1a1a' : 'white',
+      borderRadius: 8,
+      padding: 8,
+    },
+    commentAvatar: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      marginRight: 8,
+      borderWidth: 1,
+      borderColor: isDark ? '#333' : '#e0e0e0',
+    },
+    commentContent: {
+      flex: 1,
+    },
+    commentText: {
+      fontSize: 13,
+      lineHeight: 18,
+      color: isDark ? '#e0e0e0' : '#2c2c2c',
+    },
+    commentUsername: {
+      fontWeight: '600',
+      fontSize: 13,
+      color: isDark ? 'white' : 'black',
+    },
+    commentMeta: {
+      flexDirection: 'row',
+      marginTop: 4,
+      alignItems: 'center',
+    },
+    commentTimestamp: {
+      fontSize: 12,
+      marginRight: 12,
+      color: isDark ? '#8e8e8e' : '#666666',
+    },
+    commentLikes: {
+      fontSize: 12,
+      color: isDark ? '#8e8e8e' : '#666666',
+    },
+    viewCommentsButton: {
+      paddingVertical: 8,
+    },
+    viewAllComments: {
+      fontSize: 14,
+      color: isDark ? '#8e8e8e' : '#666666',
+    },
+    verticalMediaContainer: {
+      height: Dimensions.get('window').height * 0.8,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: isDark ? '#1a1a1a' : '#000',
+    },
+    verticalCarouselContainer: {
+      height: Dimensions.get('window').height * 0.8,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: isDark ? '#1a1a1a' : '#000',
+    },
+    verticalVideo: {
+      resizeMode: 'contain',
+    },
+    verticalImage: {
+      resizeMode: 'contain',
+    },
+  });

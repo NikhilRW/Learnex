@@ -15,8 +15,11 @@ export interface Comment {
   likes: number;
   likedBy: string[];
   timestamp: any;
+  editedAt?: any;
   replies?: Comment[];
   isLiked?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }
 
 export interface PostType {
@@ -30,6 +33,7 @@ export interface PostType {
   postImages?: string[];
   postVideo?: string;
   isVideo?: boolean;
+  isVertical?: boolean;
   likes: number;
   comments: number;
   timestamp: any;
@@ -47,8 +51,10 @@ export interface FirestoreComment {
   userImage: string;
   text: string;
   likes: number;
-  timestamp: any;
   likedBy: string[];
+  timestamp: any;
+  editedAt: any | null;
+  replies: FirestoreComment[];
 }
 
 export interface FirestorePost {
@@ -59,13 +65,12 @@ export interface FirestorePost {
     image: string;
   };
   description: string;
-  postImages?: string[];
-  postVideo?: string;
-  isVideo?: boolean;
+  postImages: string[];
   likes: number;
+  likedBy: string[];
   comments: number;
   timestamp: any;
-  commentsList?: FirestoreComment[];
-  likedBy: string[];
+  commentsList: FirestoreComment[];
   hashtags: string[];
+  isSaved?: boolean;
 }

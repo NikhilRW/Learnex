@@ -20,5 +20,3 @@ const ButtonLoader = () => {
 }
 
 export default ButtonLoader
-
-const styles = StyleSheet.create({})

@@ -1,25 +1,47 @@
-import {PostType, Comment} from './post';
-
-export interface GetPostsResponse {
+// Firebase response types
+export interface AuthResponse {
   success: boolean;
-  posts?: PostType[];
-  error?: string;
+  error?: any;
 }
 
-export interface LikeResponse {
+export interface TaskResponse {
   success: boolean;
-  liked?: boolean;
   error?: string;
+  data?: any;
 }
 
-export interface SavePostResponse {
-  success: boolean;
-  saved?: boolean;
-  error?: string;
+// User related types
+export interface FirebaseUser {
+  uid: string;
+  email: string;
+  username: string;
+  fullName: string;
+  isLoggedIn: boolean;
+  savedPosts: string[];
+  createdAt: any; // firestore.FieldValue.serverTimestamp()
+  image: string;
 }
 
-export interface AddCommentResponse {
-  success: boolean;
-  comment?: Comment;
-  error?: string;
+// Task related types
+export interface Task {
+  id?: string;
+  title: string;
+  description: string;
+  dueDate: string;
+  priority: 'low' | 'medium' | 'high';
+  completed: boolean;
+  category: string;
+  userId: string;
+  createdAt: any; // firestore.FieldValue.serverTimestamp()
+  updatedAt: any; // firestore.FieldValue.serverTimestamp()
+}
+
+// Post related types
+export interface Post {
+  id?: string;
+  userId: string;
+  content: string;
+  likes: string[];
+  createdAt: any; // firestore.FieldValue.serverTimestamp()
+  updatedAt: any; // firestore.FieldValue.serverTimestamp()
 }
