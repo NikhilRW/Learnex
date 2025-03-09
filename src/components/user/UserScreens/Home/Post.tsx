@@ -7,17 +7,21 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Video from 'react-native-video';
 import { PostType } from '../../../../types/post';
 import { useTypedSelector } from '../../../../hooks/useTypedSelector';
-import { primaryColor } from '../../../../res/strings/eng';
 import CommentModal from './CommentModal';
-
+import { createStyles } from '../../../../styles/components/user/UserScreens/Home/Post.styles';
 /**
  * Post component that displays a social media post with images
  * Features a beautiful carousel with spring-animated pagination dots
  */
 
 interface PostProps {
-    post: PostType;
+    post: PostType & {
+        isLiked: boolean;
+        likes: number;
+        isSaved: boolean;
+    };
     isVisible?: boolean;
+    isDark?: boolean;
 }
 
 interface VideoProgress {
@@ -26,19 +30,19 @@ interface VideoProgress {
     seekableDuration: number;
 }
 
-const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
-    const isDark = useTypedSelector((state) => state.user.theme) === "dark";
+const Post: React.FC<PostProps> = ({ post, isVisible = false, isDark = false }) => {
     const screenWidth = Dimensions.get('window').width;
-    const [isLiked, setIsLiked] = useState<boolean>(post.isLiked || false);
+    const styles = createStyles(isDark);
+    const [isLiked, setIsLiked] = useState<boolean>(post.isLiked);
     const [likesCount, setLikesCount] = useState<number>(post.likes);
     const [isLiking, setIsLiking] = useState<boolean>(false);
     const [imageHeight, setImageHeight] = useState(300);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
-    const [showOptions, setShowOptions] = useState(false);
-    const [isPaused, setIsPaused] = useState(!isVisible);
-    const [showDots, setShowDots] = useState(true);
-    const [showComments, setShowComments] = useState(false);
-    const [isSaved, setIsSaved] = useState<boolean>(post.isSaved || false);
+    const [showOptions, setShowOptions] = useState<boolean>(false);
+    const [isPaused, setIsPaused] = useState<boolean>(!isVisible);
+    const [showDots, setShowDots] = useState<boolean>(true);
+    const [showComments, setShowComments] = useState<boolean>(false);
+    const [isSaved, setIsSaved] = useState<boolean>(post.isSaved);
     const [isSaving, setIsSaving] = useState<boolean>(false);
     const [newComment, setNewComment] = useState<string>('');
     const [isAddingComment, setIsAddingComment] = useState<boolean>(false);
@@ -60,7 +64,7 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
     useEffect(() => {
         // Initialize saved state from cache
         setIsSaved(post.isSaved || false);
-        setIsLiked(post.isLiked || false);
+        setIsLiked(post.isLiked);
         setLikesCount(post.likes);
 
         // Subscribe to saved posts changes
@@ -113,13 +117,21 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
             friction: 7,
             useNativeDriver: true
         }).start();
-
         // Calculate image height based on first image
         const firstImage = post.postImages?.[0];
         if (firstImage) {
             Image.getSize(firstImage, (width, height) => {
                 const screenWidth = Dimensions.get('window').width - 24;
-                const scaledHeight = (height / width) * screenWidth;
+                let scaledHeight;
+
+                if (post.isVertical) {
+                    // For vertical images, limit height to 80% of screen height
+                    const maxHeight = Dimensions.get('window').height * 0.8;
+                    scaledHeight = Math.min((height / width) * screenWidth, maxHeight);
+                } else {
+                    scaledHeight = (height / width) * screenWidth;
+                }
+
                 setImageHeight(scaledHeight || 300);
             }, (error) => {
                 console.error('Error getting image size:', error);
@@ -131,10 +143,10 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
             if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
             if (dotsTimeout.current) clearTimeout(dotsTimeout.current);
         };
-    }, [post.postImages, fadeAnim]);
+    }, [post.postImages, post.isVertical]);
 
     useEffect(() => {
-        setIsLiked(post.isLiked || false);
+        setIsLiked(post.isLiked);
         setLikesCount(post.likes);
     }, [post.isLiked, post.likes]);
 
@@ -149,7 +161,7 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
 
     const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
         const contentOffset = event.nativeEvent.contentOffset.x;
-        const index = Math.round(contentOffset / (screenWidth - 14));
+        const index = Math.round(contentOffset / screenWidth);
         setCurrentImageIndex(index);
     }, [screenWidth]);
 
@@ -197,19 +209,34 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
         }
     };
 
+    const videoStyles = StyleSheet.create({
+        container: {
+            width: '100%',
+            height: '100%',
+        },
+        video: {
+            flex: 1,
+            width: '100%',
+            height: '100%',
+        }
+    });
+
     const renderMedia = () => {
         if (post.isVideo && post.postVideo) {
             return (
-                <View style={styles.mediaContainer}>
+                <View style={[styles.mediaContainer, post.isVertical && styles.verticalMediaContainer]}>
                     <TouchableWithoutFeedback onPress={handleVideoPress}>
-                        <View style={{ width: screenWidth - 24, height: imageHeight }}>
+                        <View style={{
+                            width: screenWidth,
+                            height: post.isVertical ? Dimensions.get('window').height * 0.8 : imageHeight
+                        }}>
                             <Video
                                 ref={videoRef}
-                                source={typeof post.postVideo === 'number' ? post.postVideo : { uri: post.postVideo as string }}
-                                style={[styles.postImage, { width: '100%', height: '100%' }]}
-                                resizeMode="cover"
+                                source={{ uri: post.postVideo }}
+                                style={videoStyles.video}
+                                resizeMode={post.isVertical ? "contain" : "cover"}
                                 paused={isPaused}
-                                repeat
+                                repeat={true}
                                 onProgress={handleVideoProgress}
                             />
                             {isPaused && (
@@ -222,30 +249,36 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
         }
 
         return (
-            <View style={styles.carouselContainer}>
+            <View style={[styles.carouselContainer, post.isVertical && styles.verticalCarouselContainer]}>
                 <ScrollView
                     horizontal
                     pagingEnabled
                     showsHorizontalScrollIndicator={false}
                     onMomentumScrollEnd={handleScroll}
                     onScrollBeginDrag={handleMediaTouch}
+                    snapToInterval={screenWidth}
+                    decelerationRate="fast"
+                    contentContainerStyle={{ flexGrow: 0 }}
                 >
-                    {post.postImages?.map((image, index) => {
-                        const source = typeof image === 'number' ? image : { uri: (image as ImageURISource).uri };
-                        return (
-                            <TouchableWithoutFeedback
-                                key={index}
-                                onPress={handleMediaTouch}
-                            >
-                                <Image
-                                    source={source}
-                                    style={[styles.postImage, { width: screenWidth - 24, height: imageHeight || 300 }]}
-                                    resizeMode="cover"
-                                    onError={(error) => console.error('Image loading error:', error.nativeEvent.error)}
-                                />
-                            </TouchableWithoutFeedback>
-                        );
-                    })}
+                    {post.postImages?.map((image, index) => (
+                        <TouchableWithoutFeedback
+                            key={index}
+                            onPress={handleMediaTouch}
+                        >
+                            <Image
+                                source={{ uri: image }}
+                                style={[
+                                    styles.postImage,
+                                    {
+                                        width: screenWidth,
+                                        height: post.isVertical ? Dimensions.get('window').height * 0.8 : imageHeight
+                                    },
+                                    post.isVertical && styles.verticalImage
+                                ]}
+                                resizeMode={post.isVertical ? "contain" : "cover"}
+                            />
+                        </TouchableWithoutFeedback>
+                    ))}
                 </ScrollView>
                 {showDots && post.postImages && post.postImages.length > 1 && (
                     <View style={styles.paginationDots}>
@@ -430,7 +463,6 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
 
                 <Text style={[styles.timestamp, { color: isDark ? "#8e8e8e" : "#666666" }]}>{post.timestamp}</Text>
             </View>
-
             <CommentModal
                 visible={showComments}
                 onClose={() => setShowComments(false)}
@@ -440,6 +472,7 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
                 newComment={newComment}
                 setNewComment={setNewComment}
                 isAddingComment={isAddingComment}
+                postId={post.id}
             />
 
             <PostOptionsModal />
@@ -448,193 +481,209 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
 };
 
 export default Post;
-
-const styles = StyleSheet.create({
-    postContainer: {
-        marginBottom: 8,
-        borderRadius: 8,
-        overflow: 'hidden',
-        backgroundColor: 'white',
-        shadowColor: "#000",
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 4,
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: 12,
-    },
-    userInfo: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    avatar: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        marginRight: 10,
-    },
-    username: {
-        fontWeight: '600',
-        fontSize: 14,
-    },
-    mediaContainer: {
-        position: 'relative',
-    },
-    carouselContainer: {
-        position: 'relative',
-    },
-    postImage: {
-        width: '100%',
-        height: 300,
-    },
-    videoOverlay: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: 'transparent',
-    },
-    pausedOverlay: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    },
-    playButton: {
-        opacity: 0.9,
-        shadowColor: "#000",
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.5,
-        shadowRadius: 3.84,
-    },
-    paginationDots: {
-        position: 'absolute',
-        bottom: 16,
-        left: 0,
-        right: 0,
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    dot: {
-        borderRadius: 4,
-    },
-    postActions: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-    },
-    leftActions: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    actionButton: {
-        marginRight: 16,
-    },
-    postFooter: {
-        paddingHorizontal: 12,
-        paddingBottom: 12,
-    },
-    likes: {
-        fontWeight: '600',
-        marginBottom: 4,
-    },
-    captionContainer: {
-        marginBottom: 4,
-    },
-    caption: {
-        fontSize: 14,
-        lineHeight: 18,
-    },
-    timestamp: {
-        fontSize: 12,
-        marginTop: 4,
-        fontWeight: '400',
-    },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    modalContent: {
-        width: '80%',
-        backgroundColor: 'white',
-        borderRadius: 12,
-        paddingHorizontal: 20,
-        paddingVertical: 10,
-    },
-    optionItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 15,
-        borderBottomWidth: 0.5,
-        borderBottomColor: '#CCCCCC',
-    },
-    optionText: {
-        marginLeft: 15,
-        fontSize: 16,
-    },
-    commentsContainer: {
-        marginTop: 8,
-        paddingHorizontal: 12,
-    },
-    commentItem: {
-        flexDirection: 'row',
-        marginBottom: 8,
-        alignItems: 'flex-start',
-    },
-    commentAvatar: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        marginRight: 8,
-    },
-    commentContent: {
-        flex: 1,
-    },
-    commentText: {
-        fontSize: 13,
-        lineHeight: 18,
-    },
-    commentUsername: {
-        fontWeight: '600',
-        fontSize: 13,
-    },
-    commentMeta: {
-        flexDirection: 'row',
-        marginTop: 4,
-        alignItems: 'center',
-    },
-    commentTimestamp: {
-        fontSize: 12,
-        marginRight: 12,
-    },
-    commentLikes: {
-        fontSize: 12,
-    },
-    viewCommentsButton: {
-        paddingVertical: 8,
-    },
-    viewAllComments: {
-        fontSize: 14,
-        color: '#8e8e8e',
-    },
-});
+//     postContainer: {
+//         marginBottom: 8,
+//         borderRadius: 8,
+//         overflow: 'hidden',
+//         backgroundColor: 'white',
+//         shadowColor: "#000",
+//         shadowOffset: {
+//             width: 0,
+//             height: 2,
+//         },
+//         shadowOpacity: 0.25,
+//         shadowRadius: 3.84,
+//         elevation: 4,
+//     },
+//     header: {
+//         flexDirection: 'row',
+//         alignItems: 'center',
+//         justifyContent: 'space-between',
+//         padding: 12,
+//     },
+//     userInfo: {
+//         flexDirection: 'row',
+//         alignItems: 'center',
+//     },
+//     avatar: {
+//         width: 40,
+//         height: 40,
+//         borderRadius: 20,
+//         marginRight: 10,
+//     },
+//     username: {
+//         fontWeight: '600',
+//         fontSize: 14,
+//     },
+//     mediaContainer: {
+//         position: 'relative',
+//     },
+//     carouselContainer: {
+//         position: 'relative',
+//     },
+//     postImage: {
+//         width: '100%',
+//         height: 300,
+//     },
+//     videoOverlay: {
+//         position: 'absolute',
+//         top: 0,
+//         left: 0,
+//         right: 0,
+//         bottom: 0,
+//         justifyContent: 'center',
+//         alignItems: 'center',
+//         backgroundColor: 'transparent',
+//     },
+//     pausedOverlay: {
+//         position: 'absolute',
+//         top: 0,
+//         left: 0,
+//         right: 0,
+//         bottom: 0,
+//         backgroundColor: 'rgba(0, 0, 0, 0.5)',
+//     },
+//     playButton: {
+//         opacity: 0.9,
+//         shadowColor: "#000",
+//         shadowOffset: {
+//             width: 0,
+//             height: 2,
+//         },
+//         shadowOpacity: 0.5,
+//         shadowRadius: 3.84,
+//     },
+//     paginationDots: {
+//         position: 'absolute',
+//         bottom: 16,
+//         left: 0,
+//         right: 0,
+//         flexDirection: 'row',
+//         justifyContent: 'center',
+//         alignItems: 'center',
+//     },
+//     dot: {
+//         borderRadius: 4,
+//     },
+//     postActions: {
+//         flexDirection: 'row',
+//         justifyContent: 'space-between',
+//         alignItems: 'center',
+//         paddingHorizontal: 12,
+//         paddingVertical: 8,
+//     },
+//     leftActions: {
+//         flexDirection: 'row',
+//         alignItems: 'center',
+//     },
+//     actionButton: {
+//         marginRight: 16,
+//     },
+//     postFooter: {
+//         paddingHorizontal: 12,
+//         paddingBottom: 12,
+//     },
+//     likes: {
+//         fontWeight: '600',
+//         marginBottom: 4,
+//     },
+//     captionContainer: {
+//         marginBottom: 4,
+//     },
+//     caption: {
+//         fontSize: 14,
+//         lineHeight: 18,
+//     },
+//     timestamp: {
+//         fontSize: 12,
+//         marginTop: 4,
+//         fontWeight: '400',
+//     },
+//     modalOverlay: {
+//         flex: 1,
+//         backgroundColor: 'rgba(0, 0, 0, 0.5)',
+//         justifyContent: 'center',
+//         alignItems: 'center',
+//     },
+//     modalContent: {
+//         width: '80%',
+//         backgroundColor: 'white',
+//         borderRadius: 12,
+//         paddingHorizontal: 20,
+//         paddingVertical: 10,
+//     },
+//     optionItem: {
+//         flexDirection: 'row',
+//         alignItems: 'center',
+//         paddingVertical: 15,
+//         borderBottomWidth: 0.5,
+//         borderBottomColor: '#CCCCCC',
+//     },
+//     optionText: {
+//         marginLeft: 15,
+//         fontSize: 16,
+//     },
+//     commentsContainer: {
+//         marginTop: 8,
+//         paddingHorizontal: 12,
+//     },
+//     commentItem: {
+//         flexDirection: 'row',
+//         marginBottom: 8,
+//         alignItems: 'flex-start',
+//     },
+//     commentAvatar: {
+//         width: 24,
+//         height: 24,
+//         borderRadius: 12,
+//         marginRight: 8,
+//     },
+//     commentContent: {
+//         flex: 1,
+//     },
+//     commentText: {
+//         fontSize: 13,
+//         lineHeight: 18,
+//     },
+//     commentUsername: {
+//         fontWeight: '600',
+//         fontSize: 13,
+//     },
+//     commentMeta: {
+//         flexDirection: 'row',
+//         marginTop: 4,
+//         alignItems: 'center',
+//     },
+//     commentTimestamp: {
+//         fontSize: 12,
+//         marginRight: 12,
+//     },
+//     commentLikes: {
+//         fontSize: 12,
+//     },
+//     viewCommentsButton: {
+//         paddingVertical: 8,
+//     },
+//     viewAllComments: {
+//         fontSize: 14,
+//         color: '#8e8e8e',
+//     },
+//     verticalMediaContainer: {
+//         height: Dimensions.get('window').height * 0.8,
+//         justifyContent: 'center',
+//         alignItems: 'center',
+//         backgroundColor: '#000',
+//     },
+//     verticalCarouselContainer: {
+//         height: Dimensions.get('window').height * 0.8,
+//         justifyContent: 'center',
+//         alignItems: 'center',
+//         backgroundColor: '#000',
+//     },
+//     verticalVideo: {
+//         resizeMode: 'contain',
+//     },
+//     verticalImage: {
+//         resizeMode: 'contain',
+//     },
+// });

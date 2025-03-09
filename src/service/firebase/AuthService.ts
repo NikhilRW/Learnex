@@ -15,6 +15,7 @@ export class AuthService {
       webClientId:
         '378245937295-p9lvf9tenrtchg6d2t5g6tamlhm5a168.apps.googleusercontent.com',
     });
+    console.log("UserID "+auth().currentUser?.uid);
   }
 
   currentUser() {

@@ -1,12 +1,4 @@
-import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
-  Keyboard,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View, Keyboard } from 'react-native';
 import React, { useState } from 'react';
 import FeatherIcon from 'react-native-vector-icons/Feather';
 import BouncyCheckbox from 'react-native-bouncy-checkbox';
@@ -21,10 +13,7 @@ import useIsKeyboardVisible from '../../hooks/useKeyBoardVisible';
 import { signInSchema } from '../../service/yupSchemas';
 import ErrorMessage from '../../components/auth/ErrorMessage';
 import Snackbar from 'react-native-snackbar';
-import {
-  changeIsLoggedIn,
-  changeProfileColor,
-} from '../../reducers/User';
+import { changeIsLoggedIn, changeProfileColor } from '../../reducers/User';
 import { useTypedDispatch } from '../../hooks/useTypedDispatch';
 import { getRandomColors } from '../../helpers/stringHelpers';
 import Loader from '../../components/auth/Loader';

@@ -6,6 +6,7 @@ import {CommentService} from './CommentService';
 import {SavedPostService} from './SavedPostService';
 import {PostQueryService} from './PostQueryService';
 import {LikeCache} from './LikeCache';
+import {TaskService} from './TaskService';
 import {FirebaseAuthTypes} from '@react-native-firebase/auth';
 
 /**
@@ -20,6 +21,7 @@ import {FirebaseAuthTypes} from '@react-native-firebase/auth';
  * - SavedPostService: Saved posts management
  * - TrendingService: Trending and hashtag features
  * - LikeCache: Caching for post likes
+ * - TaskService: Task management operations
  */
 class Firebase {
   // Core services
@@ -27,6 +29,7 @@ class Firebase {
   user: UserService;
   posts: PostService;
   trending: TrendingService;
+  tasks: TaskService;
 
   // Supporting services
   private commentService: CommentService;
@@ -61,6 +64,7 @@ class Firebase {
       this.postQueryService,
     );
     this.trending = new TrendingService();
+    this.tasks = new TaskService();
   }
 
   /**

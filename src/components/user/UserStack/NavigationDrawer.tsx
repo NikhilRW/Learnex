@@ -12,8 +12,9 @@ import { navigationDrawerOptions } from '../../../constants/navigation';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { styles } from '../../../styles/components/user/UserStack/NavigationDrawer.styles';
 import Snackbar from 'react-native-snackbar';
+import { DrawerContentComponentProps } from '@react-navigation/drawer';
 
-const NavigationDrawer = () => {
+const NavigationDrawer = (props: DrawerContentComponentProps) => {
   const firebase = useTypedSelector(state => state.firebase.firebase);
   const insets = useSafeAreaInsets();
   const currentUser = firebase.auth.currentUser();
@@ -23,6 +24,7 @@ const NavigationDrawer = () => {
   const [photoURL, setPhotoURL] = useState<string | null>(null);
   const dispatch = useTypedDispatch();
   const profileColor = useTypedSelector(state => state.user.userProfileColor);
+  const navigation = props.navigation;
 
   const handleLogOutPress = async () => {
     try {
@@ -45,6 +47,34 @@ const NavigationDrawer = () => {
         textColor: 'white',
         backgroundColor: '#007cb5',
       });
+    }
+  };
+
+  const handleOptionPress = (option: string) => {
+    // Close the drawer
+    navigation.closeDrawer();
+    console.log("navigation", navigation);
+
+    // Navigate based on the selected option
+    switch (option) {
+      case 'Room':
+        navigation.navigate('Room');
+        console.log("Room");
+        break;
+      case 'Tasks':
+        navigation.navigate('Tasks');
+        console.log("Tasks");
+        break;
+      // Add other cases for other menu options as needed
+      default:
+        // For options not yet implemented
+        Snackbar.show({
+          text: `${option} feature coming soon!`,
+          duration: Snackbar.LENGTH_SHORT,
+          textColor: 'white',
+          backgroundColor: '#007cb5',
+        });
+        break;
     }
   };
 
@@ -110,12 +140,12 @@ const NavigationDrawer = () => {
         <View className="flex-col justify-between items-start w-[56%] py-[5%] gap-5">
           <View className="space-y-[10%]">
             {navigationDrawerOptions.map((ele, index) => (
-              <View key={index} className="flex-row items-center ">
+              <TouchableOpacity key={index} className="flex-row items-center " onPress={() => handleOptionPress(ele)}>
                 <FontAwesome name="user-circle-o" color={isDark ? '#e0e0e0' : 'black'} size={30} />
                 <Text className={`${isDark ? "text-white" : "text-black"} font-semibold text-[4vw] ml-[7%]`}>
                   {ele}
                 </Text>
-              </View>
+              </TouchableOpacity>
             ))}
           </View>
           <View className="h-[7vh]">

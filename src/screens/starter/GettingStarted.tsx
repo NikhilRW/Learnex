@@ -4,6 +4,7 @@ import MaterialsIcon from 'react-native-vector-icons/MaterialIcons';
 import {gettingStartedHeaderQuote} from '../../res/strings/eng';
 import {useNavigation} from '@react-navigation/native';
 import {AuthNavigationProps} from '../../routes/AuthStack';
+import { styles } from '../../styles/screens/starter/GettingStarted';
 
 const GettingStarted = () => {
   const navigate = useNavigation<AuthNavigationProps>();
@@ -13,13 +14,13 @@ const GettingStarted = () => {
         name="circle"
         color={'#37B6F0'}
         size={225}
-        style={StyleSheets.cricle1}
+        style={styles.cricle1}
       />
       <MaterialsIcon
         name="circle"
         color={'#37B6F0'}
         size={225}
-        style={StyleSheets.circle2}
+        style={styles.circle2}
       />
       <View className="flex flex-col justify-between items-center gap-14 w-full">
         <View className="w-full flex justify-center items-center">
@@ -51,17 +52,3 @@ const GettingStarted = () => {
 };
 export default GettingStarted;
 
-const StyleSheets = StyleSheet.create({
-  cricle1: {
-    top: '-4%',
-    left: '-36%',
-    position: 'absolute',
-    opacity: 0.8,
-  },
-  circle2: {
-    top: '-15%',
-    left: '-13%',
-    position: 'absolute',
-    opacity: 0.8,
-  },
-});

@@ -22,14 +22,28 @@ export class SavedPostService {
     firestore()
       .collection('users')
       .doc(user.uid)
-      .onSnapshot(doc => {
-        if (doc.exists) {
-          // Update our list of saved posts
-          this.savedPosts = doc.data()?.savedPosts || [];
-          // Tell everyone who's listening that saved posts changed
-          this.notifyListeners();
+      .onSnapshot(
+        doc => {
+          try {
+            if (!doc) {
+              console.warn('SavedPostService: Received null snapshot in saved posts listener');
+              return;
+            }
+            
+            if (doc.exists) {
+              // Update our list of saved posts
+              this.savedPosts = doc.data()?.savedPosts || [];
+              // Tell everyone who's listening that saved posts changed
+              this.notifyListeners();
+            }
+          } catch (error) {
+            console.error('SavedPostService: Error processing saved posts snapshot:', error);
+          }
+        },
+        error => {
+          console.error('SavedPostService: Error in saved posts listener:', error);
         }
-      });
+      );
   }
 
   // Add a new listener

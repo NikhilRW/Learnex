@@ -11,6 +11,9 @@ import CreatePost from '../screens/userscreens/CreatePost';
 import Annoucement from '../screens/userscreens/Annoucement';
 import AnnouncementIcon from '../components/user/UserStack/AnnouncementIcon';
 import HashTrends from '../screens/userscreens/HashTrends';
+import Room from '../screens/userscreens/Room';
+import RoomScreen from '../screens/userscreens/RoomScreen';
+import Tasks from '../screens/userscreens/Tasks';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useTypedSelector } from '../hooks/useTypedSelector';
 import NavigationIconHelper from '../helpers/NavigationIconHelper';
@@ -25,6 +28,12 @@ export type UserStackParamList = {
   CreatePost: undefined;
   HashTrends: undefined;
   Announcements: undefined;
+  Room: undefined;
+  RoomScreen: {
+    meeting: any;
+    isHost: boolean;
+  };
+  Tasks: undefined;
 };
 
 export type UserNavigationProps = BottomTabNavigationProp<UserStackParamList>;
@@ -73,13 +82,51 @@ const UserStack = () => {
   return (
     <Drawer.Navigator
       initialRouteName="Tabs"
-      drawerContent={NavigationDrawer}
+      drawerContent={(props) => <NavigationDrawer {...props} />}
       screenOptions={{
-        header: ({ navigation }) => (
-          <NavigationDrawerButton navigation={navigation} tintColor={isDark ? 'white' : 'black'} />
-        ),
+        headerShown: false, // Hide header for all screens by default
+        drawerStyle: {
+          backgroundColor: isDark ? '#1a1a1a' : 'white',
+          width: '70%',
+        },
       }}>
-      <Drawer.Screen name="Tabs" component={TabNavigator} />
+      <Drawer.Screen
+        name="Tabs"
+        component={TabNavigator}
+        options={{
+          headerShown: true, // Show header only for the main tabs
+          header: ({ navigation }) => (
+            <NavigationDrawerButton navigation={navigation} tintColor={isDark ? 'white' : 'black'} />
+          ),
+        }}
+      />
+      <Drawer.Screen
+        name="Room"
+        component={Room}
+        options={{
+          headerShown: false, // Hide header for Room screen
+          swipeEnabled: false, // Disable drawer swipe for this screen
+          drawerItemStyle: { display: 'none' }, // Hide from drawer if needed
+        }}
+      />
+      <Drawer.Screen
+        name="RoomScreen"
+        component={RoomScreen}
+        options={{
+          headerShown: false, // Hide header for RoomScreen
+          swipeEnabled: false, // Disable drawer swipe for this screen
+          drawerItemStyle: { display: 'none' }, // Hide from drawer
+        }}
+      />
+      <Drawer.Screen
+        name="Tasks"
+        component={Tasks}
+        options={{
+          headerShown: false, // Hide header for Tasks screen
+          swipeEnabled: false, // Disable drawer swipe for this screen
+          drawerItemStyle: { display: 'none' }, // Hide from drawer if needed
+        }}
+      />
     </Drawer.Navigator>
   );
 };

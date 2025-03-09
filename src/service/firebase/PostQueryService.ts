@@ -1,5 +1,7 @@
 import auth from '@react-native-firebase/auth';
-import firestore, { FirebaseFirestoreTypes } from '@react-native-firebase/firestore';
+import firestore, {
+  FirebaseFirestoreTypes,
+} from '@react-native-firebase/firestore';
 import {GetPostsResponse} from '../../types/firebase';
 import {FirestorePost} from '../../types/post';
 import {convertFirestorePost} from './utils';
@@ -35,26 +37,47 @@ export class PostQueryService {
     const unsubscribe = firestore()
       .collection('posts')
       .orderBy('timestamp', 'desc')
-      .onSnapshot(async snapshot => {
-        const posts = await Promise.all(
-          snapshot.docs.map(async doc => {
-            const postData = {id: doc.id, ...doc.data()} as FirestorePost;
-            const likedBy = postData.likedBy || [];
+      .onSnapshot(
+        async snapshot => {
+          try {
+            if (!snapshot) {
+              console.warn(
+                'PostQueryService: Received null snapshot in posts listener',
+              );
+              return;
+            }
 
-            // Get comments using CommentService
-            const comments = await this.commentService.getPostComments(doc.ref);
-            postData.commentsList = comments;
-            postData.comments = comments.length;
+            const posts = await Promise.all(
+              snapshot.docs.map(async doc => {
+                const postData = {id: doc.id, ...doc.data()} as FirestorePost;
+                const likedBy = postData.likedBy || [];
 
-            this.likeCache.setPostLikes(doc.id, likedBy);
-            const post = convertFirestorePost(postData, currentUser.uid);
-            post.isSaved = this.savedPostService.isPostSaved(doc.id);
-            return post;
-          }),
-        );
+                // Get comments using CommentService
+                const comments = await this.commentService.getPostComments(
+                  doc.ref,
+                );
+                postData.commentsList = comments;
+                postData.comments = comments.length;
 
-        callback(posts);
-      });
+                this.likeCache.setPostLikes(doc.id, likedBy);
+                const post = convertFirestorePost(postData, currentUser.uid);
+                post.isSaved = this.savedPostService.isPostSaved(doc.id);
+                return post;
+              }),
+            );
+
+            callback(posts);
+          } catch (error) {
+            console.error(
+              'PostQueryService: Error processing posts snapshot:',
+              error,
+            );
+          }
+        },
+        error => {
+          console.error('PostQueryService: Error in posts listener:', error);
+        },
+      );
 
     this.activeListeners.set('posts', unsubscribe);
     return () => {
@@ -102,7 +125,8 @@ export class PostQueryService {
         }
       }
 
-      let query:FirebaseFirestoreTypes.Query<FirebaseFirestoreTypes.DocumentData> = firestore().collection('posts');
+      let query: FirebaseFirestoreTypes.Query<FirebaseFirestoreTypes.DocumentData> =
+        firestore().collection('posts');
 
       if (userId) {
         query = query.where('user.id', '==', userId);
