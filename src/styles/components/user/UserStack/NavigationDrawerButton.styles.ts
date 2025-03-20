@@ -27,4 +27,11 @@ export const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 20,
   },
+  container: {
+    width: 45,
+    height: 45,
+    paddingBottom: 4,
+    borderRadius: 30,
+    borderWidth: 2,
+  },
 });
