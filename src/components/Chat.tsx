@@ -24,7 +24,7 @@ interface Message {
     text: string;
     senderId: string;
     senderName: string;
-    timestamp: firestore.Timestamp;
+    timestamp: any; // Using any instead of firestore.Timestamp to avoid namespace error
 }
 
 interface ChatProps {
@@ -45,7 +45,10 @@ const Chat: React.FC<ChatProps> = ({ meetingId, isVisible, onClose }) => {
     useEffect(() => {
         let unsubscribe: (() => void) | null = null;
         const userId = auth().currentUser?.uid;
-
+        const firebase = useTypedSelector(state => state.firebase.firebase);
+        firebase.user.getUserInfoById(userId!).then((userInfo) => {
+            setUserName(userInfo.username || 'Anonymous');
+        });
         const initializeChat = async () => {
             if (!userId || !meetingId) {
                 setError('User not authenticated or invalid meeting');
@@ -54,16 +57,6 @@ const Chat: React.FC<ChatProps> = ({ meetingId, isVisible, onClose }) => {
             }
 
             try {
-                // Get user's display name
-                const userDoc = await firestore()
-                    .collection('users')
-                    .doc(userId)
-                    .get();
-
-                if (userDoc.exists) {
-                    setUserName(userDoc.data()?.displayName || 'Anonymous');
-                }
-
                 // Ensure messages subcollection exists
                 const meetingRef = firestore().collection('meetings').doc(meetingId);
                 const messagesRef = meetingRef.collection('messages');
@@ -114,7 +107,7 @@ const Chat: React.FC<ChatProps> = ({ meetingId, isVisible, onClose }) => {
                                                 uniqueMessages.push(newMsg);
                                             }
                                         });
-                                        return uniqueMessages.sort((a, b) => 
+                                        return uniqueMessages.sort((a, b) =>
                                             a.timestamp.seconds - b.timestamp.seconds
                                         );
                                     });
@@ -232,10 +225,10 @@ const Chat: React.FC<ChatProps> = ({ meetingId, isVisible, onClose }) => {
                                 style={[
                                     styles.messageContainer,
                                     isSystemMessage ? styles.systemMessage :
-                                    isOwnMessage ? styles.ownMessage : styles.otherMessage,
+                                        isOwnMessage ? styles.ownMessage : styles.otherMessage,
                                     isDark && (
                                         isSystemMessage ? styles.darkSystemMessage :
-                                        isOwnMessage ? styles.darkOwnMessage : styles.darkOtherMessage
+                                            isOwnMessage ? styles.darkOwnMessage : styles.darkOtherMessage
                                     ),
                                 ]}
                             >
@@ -457,3 +450,5 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
 });
+
+export { Chat };

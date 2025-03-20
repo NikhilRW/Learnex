@@ -9,6 +9,8 @@ import {
     Alert,
     Platform,
     KeyboardAvoidingView,
+    Dimensions,
+    useWindowDimensions,
 } from 'react-native';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
@@ -42,6 +44,8 @@ const Room = () => {
     const [showEndPicker, setShowEndPicker] = useState(false);
     const [roomCode, setRoomCode] = useState('');
     const [loading, setLoading] = useState(false);
+    const { width, height } = useWindowDimensions();
+    const isSmallScreen = width < 380;
 
     const [meetingRoom, setMeetingRoom] = useState<MeetingRoom>({
         title: '',
@@ -103,7 +107,16 @@ const Room = () => {
 
         try {
             setLoading(true);
-
+            if (meetingRoom.capacity < 2) {
+                Alert.alert('Error', 'Capacity must be at least 2');
+                setLoading(false);
+                return;
+            }
+            if (meetingRoom.capacity > 50) {
+                Alert.alert('Error', 'Capacity must be less than 50');
+                setLoading(false);
+                return;
+            }
             // Create meeting using MeetingService
             const meetingData = {
                 title: meetingRoom.title,
@@ -351,9 +364,16 @@ const Room = () => {
         <KeyboardAvoidingView
             style={[styles.container, isDark && styles.darkContainer]}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-            <ScrollView contentContainerStyle={styles.scrollContent}>
+            <ScrollView contentContainerStyle={[
+                styles.scrollContent,
+                { padding: isSmallScreen ? 12 : 20 }
+            ]}>
                 <View style={styles.header}>
-                    <Text style={[styles.title, isDark && styles.darkText]}>
+                    <Text style={[
+                        styles.title,
+                        isDark && styles.darkText,
+                        isSmallScreen && styles.smallTitle
+                    ]}>
                         Video Meeting
                     </Text>
                 </View>
@@ -375,6 +395,7 @@ const Room = () => {
                                 activeTab === 'create' &&
                                 isDark &&
                                 styles.darkActiveTabText,
+                                isSmallScreen && styles.smallTabText
                             ]}>
                             Create
                         </Text>
@@ -393,6 +414,7 @@ const Room = () => {
                                 activeTab === 'join' && styles.activeTabText,
                                 isDark && styles.darkTabText,
                                 activeTab === 'join' && isDark && styles.darkActiveTabText,
+                                isSmallScreen && styles.smallTabText
                             ]}>
                             Join
                         </Text>
@@ -404,6 +426,9 @@ const Room = () => {
     );
 };
 
+const { width } = Dimensions.get('window');
+const isSmallDevice = width < 380;
+
 const styles = StyleSheet.create({
     container: {
         flex: 1,
@@ -414,6 +439,7 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         padding: 20,
+        paddingBottom: Platform.OS === 'ios' ? 40 : 20,
     },
     header: {
         marginBottom: 20,
@@ -423,6 +449,9 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: '#333',
         textAlign: 'center',
+    },
+    smallTitle: {
+        fontSize: 20,
     },
     darkText: {
         color: '#f5f5f5',
@@ -436,7 +465,7 @@ const styles = StyleSheet.create({
     },
     tab: {
         flex: 1,
-        paddingVertical: 12,
+        paddingVertical: isSmallDevice ? 8 : 12,
         alignItems: 'center',
         backgroundColor: '#e0e0e0',
     },
@@ -450,9 +479,12 @@ const styles = StyleSheet.create({
         backgroundColor: '#0055CC',
     },
     tabText: {
-        fontSize: 16,
+        fontSize: isSmallDevice ? 14 : 16,
         fontWeight: '600',
         color: '#555',
+    },
+    smallTabText: {
+        fontSize: 14,
     },
     activeTabText: {
         color: 'white',
@@ -467,20 +499,20 @@ const styles = StyleSheet.create({
         marginBottom: 20,
     },
     inputGroup: {
-        marginBottom: 16,
+        marginBottom: isSmallDevice ? 12 : 16,
     },
     label: {
-        fontSize: 16,
-        marginBottom: 8,
+        fontSize: isSmallDevice ? 14 : 16,
+        marginBottom: isSmallDevice ? 6 : 8,
         color: '#333',
     },
     input: {
         backgroundColor: 'white',
         borderRadius: 8,
-        padding: 12,
+        padding: isSmallDevice ? 10 : 12,
         borderWidth: 1,
         borderColor: '#ddd',
-        fontSize: 16,
+        fontSize: isSmallDevice ? 14 : 16,
         color: '#333',
     },
     darkInput: {
@@ -488,18 +520,18 @@ const styles = StyleSheet.create({
         borderColor: '#444',
     },
     textArea: {
-        height: 100,
+        height: isSmallDevice ? 80 : 100,
         textAlignVertical: 'top',
     },
     dateButton: {
         backgroundColor: 'white',
         borderRadius: 8,
-        padding: 12,
+        padding: isSmallDevice ? 10 : 12,
         borderWidth: 1,
         borderColor: '#ddd',
     },
     dateButtonText: {
-        fontSize: 16,
+        fontSize: isSmallDevice ? 14 : 16,
         color: '#333',
     },
     privacyContainer: {
@@ -511,9 +543,9 @@ const styles = StyleSheet.create({
         padding: 4,
     },
     toggleSwitch: {
-        width: 50,
-        height: 28,
-        borderRadius: 14,
+        width: isSmallDevice ? 44 : 50,
+        height: isSmallDevice ? 24 : 28,
+        borderRadius: isSmallDevice ? 12 : 14,
         backgroundColor: '#ccc',
         padding: 2,
     },
@@ -521,27 +553,27 @@ const styles = StyleSheet.create({
         backgroundColor: '#007AFF',
     },
     toggleCircle: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
+        width: isSmallDevice ? 20 : 24,
+        height: isSmallDevice ? 20 : 24,
+        borderRadius: isSmallDevice ? 10 : 12,
         backgroundColor: 'white',
     },
     toggleCircleActive: {
-        transform: [{ translateX: 22 }],
+        transform: [{ translateX: isSmallDevice ? 20 : 22 }],
     },
     button: {
         backgroundColor: '#007AFF',
         borderRadius: 8,
-        padding: 16,
+        padding: isSmallDevice ? 14 : 16,
         alignItems: 'center',
-        marginTop: 20,
+        marginTop: isSmallDevice ? 16 : 20,
     },
     buttonDisabled: {
         backgroundColor: '#999',
     },
     buttonText: {
         color: 'white',
-        fontSize: 18,
+        fontSize: isSmallDevice ? 16 : 18,
         fontWeight: '600',
     },
 });
