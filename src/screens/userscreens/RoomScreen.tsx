@@ -10,6 +10,7 @@ import { useTypedSelector } from '../../hooks/useTypedSelector';
 import { UserStackParamList } from '../../routes/UserStack';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 
 type RoomScreenRouteProp = RouteProp<UserStackParamList, 'RoomScreen'>;
 type RoomScreenNavigationProp = DrawerNavigationProp<UserStackParamList>;
@@ -77,6 +78,7 @@ const RoomScreen: React.FC = () => {
                 setConnectionAttempts(prev => prev + 1);
 
                 console.log('Setting up meeting:', meeting.id);
+                console.log('Participants in meeting:', meeting.participants);
 
                 // Join the meeting
                 await meetingService.joinMeeting(meeting.id);
@@ -85,6 +87,7 @@ const RoomScreen: React.FC = () => {
                 try {
                     const stream = await webRTCService.initLocalStream();
                     console.log('Local stream initialized:', stream.id);
+                    stream.participantId = currentUser?.uid; // Ensure local stream has participantId
                     setLocalStream(stream);
 
                     // Set up audio level detection for local stream
@@ -102,6 +105,17 @@ const RoomScreen: React.FC = () => {
                     meeting.id,
                     updatedMeeting => {
                         console.log('Meeting updated:', updatedMeeting.status);
+                        console.log('Updated participants:', updatedMeeting.participants);
+
+                        // Check for new participants to connect to
+                        if (updatedMeeting.participants && updatedMeeting.participants.length > 0) {
+                            // Connect to any new participants
+                            webRTCService.connectToParticipants(meeting.id, updatedMeeting.participants)
+                                .catch(error => {
+                                    console.error('Error connecting to participants:', error);
+                                });
+                        }
+
                         if (updatedMeeting.status === 'completed') {
                             handleMeetingEnded();
                         }
@@ -123,6 +137,11 @@ const RoomScreen: React.FC = () => {
                             return;
                         }
 
+                        // Log before updating participant tracking
+                        console.log('Before update - StreamsByParticipant map:',
+                            Array.from(streamsByParticipant.entries()).map(([id, s]) =>
+                                `${id}: ${s.id || 'unknown'}`));
+
                         // Update streams by participant
                         setStreamsByParticipant(prev => {
                             const newMap = new Map(prev);
@@ -141,6 +160,25 @@ const RoomScreen: React.FC = () => {
                         // Setup audio level detection for the new stream
                         setupAudioLevelDetection(stream, participantId);
                         setConnectionState('connected');
+
+                        // Initialize participant state if not already present
+                        if (!participantStates.has(participantId)) {
+                            const newState = new Map(participantStates);
+                            newState.set(participantId, {
+                                isAudioEnabled: true,
+                                isVideoEnabled: true,
+                                isHandRaised: false,
+                                isScreenSharing: false,
+                                isThumbsUp: false,
+                                isThumbsDown: false,
+                                isClapping: false,
+                                isWaving: false,
+                                isSpeaking: false,
+                                reactionTimestamp: null,
+                                lastUpdated: new Date()
+                            });
+                            setParticipantStates(newState);
+                        }
                     } catch (error) {
                         console.error('Error handling remote stream:', error);
                     }
@@ -161,6 +199,9 @@ const RoomScreen: React.FC = () => {
                         setRemoteStreams(prev => {
                             return prev.filter(stream => stream.participantId !== participantId);
                         });
+
+                        // Don't remove from participantStates yet, 
+                        // as the participant might rejoin with a new stream
                     } catch (error) {
                         console.error('Error removing remote stream:', error);
                     }
@@ -175,6 +216,16 @@ const RoomScreen: React.FC = () => {
                     isVideoEnabled,
                     isHandRaised: false,
                     isScreenSharing: false
+                });
+
+                // Listen for participant state changes
+                webRTCService.onParticipantStateChanged((participantId, state) => {
+                    console.log(`Participant state changed: ${participantId}`, state);
+                    setParticipantStates(prev => {
+                        const newMap = new Map(prev);
+                        newMap.set(participantId, state);
+                        return newMap;
+                    });
                 });
 
                 // Listen for signaling messages with improved error handling
@@ -199,6 +250,7 @@ const RoomScreen: React.FC = () => {
 
                 // Connect to existing participants
                 if (meeting.participants && meeting.participants.length > 0) {
+                    console.log('Connecting to existing participants:', meeting.participants);
                     await webRTCService.connectToParticipants(meeting.id, meeting.participants);
                 }
 
@@ -238,6 +290,8 @@ const RoomScreen: React.FC = () => {
     // Enhanced debug logging for remote streams
     useEffect(() => {
         console.log(`Remote streams updated: ${remoteStreams.length} streams`);
+        console.log(`Participant states: ${participantStates.size} participants`);
+
         remoteStreams.forEach((stream, index) => {
             console.log(`Stream ${index}: ID=${stream.id}, ParticipantID=${stream.participantId || 'none'}`);
         });
@@ -247,7 +301,18 @@ const RoomScreen: React.FC = () => {
         streamsByParticipant.forEach((stream, participantId) => {
             console.log(`Participant ${participantId} has stream ID ${stream.id}`);
         });
-    }, [remoteStreams, streamsByParticipant]);
+
+        // Log participants with state but no stream
+        const participantsWithoutStreams = Array.from(participantStates.keys())
+            .filter(id => !streamsByParticipant.has(id) && id !== currentUser?.uid);
+
+        if (participantsWithoutStreams.length > 0) {
+            console.log(`${participantsWithoutStreams.length} participants without streams:`);
+            participantsWithoutStreams.forEach(id => {
+                console.log(`- Participant ${id} (no stream)`);
+            });
+        }
+    }, [remoteStreams, streamsByParticipant, participantStates]);
 
     const subscribeToMessages = () => {
         if (!currentUser) return;
@@ -583,25 +648,44 @@ const RoomScreen: React.FC = () => {
     }
 
     return (
-        <Room
-            meeting={meeting}
-            localStream={localStream}
-            remoteStreams={remoteStreams}
-            onToggleAudio={handleToggleAudio}
-            onToggleVideo={handleToggleVideo}
-            onEndCall={handleEndCall}
-            onSendMessage={sendMessage}
-            onMessageReaction={handleMessageReaction}
-            messages={messages}
-            isAudioEnabled={isAudioEnabled}
-            isVideoEnabled={isVideoEnabled}
-            isDark={isDark}
-            currentUserId={currentUser?.uid || ''}
-            currentUserName={username}
-            onRaiseHand={handleRaiseHand}
-            onReaction={handleReaction}
-            participantStates={participantStates}
-        />
+        <View style={{ flex: 1 }}>
+            {connectionState === 'failed' ? (
+                <View style={styles.errorContainer}>
+                    <Icon name="error" size={64} color="#EA4335" />
+                    <Text style={styles.errorTitle}>Connection Failed</Text>
+                    <Text style={styles.errorMessage}>
+                        {connectionError || 'Could not connect to the meeting. Please try again.'}
+                    </Text>
+                    <TouchableOpacity
+                        style={styles.retryButton}
+                        onPress={() => navigation.goBack()}
+                    >
+                        <Text style={styles.retryButtonText}>Go Back</Text>
+                    </TouchableOpacity>
+                </View>
+            ) : (
+                <Room
+                    meeting={meeting}
+                    localStream={localStream}
+                    remoteStreams={remoteStreams}
+                    onToggleAudio={handleToggleAudio}
+                    onToggleVideo={handleToggleVideo}
+                    onEndCall={handleEndCall}
+                    onSendMessage={sendMessage}
+                    onMessageReaction={handleMessageReaction}
+                    messages={messages}
+                    isAudioEnabled={isAudioEnabled}
+                    isVideoEnabled={isVideoEnabled}
+                    isDark={isDark}
+                    currentUserId={currentUser?.uid || ''}
+                    currentUserName={fullName || username || currentUser?.email || 'You'}
+                    onRaiseHand={handleRaiseHand}
+                    onReaction={handleReaction}
+                    participantStates={participantStates}
+                    isConnecting={isConnecting}
+                />
+            )}
+        </View>
     );
 };
 
@@ -639,6 +723,36 @@ const styles = StyleSheet.create({
         marginTop: 20,
     },
     exitButtonText: {
+        color: 'white',
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+    errorContainer: {
+        flex: 1,
+        backgroundColor: '#202124',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    errorTitle: {
+        color: 'white',
+        fontSize: 24,
+        fontWeight: 'bold',
+        marginBottom: 16,
+    },
+    errorMessage: {
+        color: 'white',
+        fontSize: 16,
+        textAlign: 'center',
+        marginBottom: 20,
+    },
+    retryButton: {
+        backgroundColor: '#ea4335',
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        borderRadius: 8,
+    },
+    retryButtonText: {
         color: 'white',
         fontSize: 16,
         fontWeight: 'bold',

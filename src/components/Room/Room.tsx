@@ -16,6 +16,8 @@ import {
     Keyboard,
     Animated,
     Dimensions,
+    ScrollView,
+    ActivityIndicator,
 } from 'react-native';
 import { RTCView } from 'react-native-webrtc';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -55,6 +57,7 @@ interface RoomProps {
     onRaiseHand: (raised: boolean) => void;
     onReaction: (reaction: 'thumbsUp' | 'thumbsDown' | 'clapping' | 'waving') => void;
     participantStates: Map<string, ParticipantState>;
+    isConnecting: boolean;
 }
 
 const Room: React.FC<RoomProps> = ({
@@ -75,6 +78,7 @@ const Room: React.FC<RoomProps> = ({
     onRaiseHand,
     onReaction,
     participantStates,
+    isConnecting,
 }) => {
     const [isControlsVisible, setIsControlsVisible] = useState(true);
     const [isHandRaised, setIsHandRaised] = useState(false);
@@ -226,10 +230,26 @@ const Room: React.FC<RoomProps> = ({
 
     const handleShareInvite = async () => {
         try {
-            await Share.share({
-                message: `Join my meeting with code: ${meeting.roomCode}`,
-                title: meeting.title,
+            // Create a shareable link that can be used for deep linking
+            // Format: learnex://meeting?roomCode=XXXXX
+            const deepLink = `learnex://meeting?roomCode=${meeting.roomCode}`;
+
+            // Create a fallback web URL (for users who don't have the app)
+            const webFallbackUrl = `https://learnex-241f1.web.app/join?code=${meeting.roomCode}`;
+
+            const shareMessage = Platform.select({
+                ios: `Join my Learnex meeting: ${deepLink}\n\nOr use meeting code: ${meeting.roomCode}`,
+                android: `Join my Learnex meeting.\n\nMeeting code: ${meeting.roomCode}\n\nTap link to join: ${deepLink}\n\nDon't have the app? ${webFallbackUrl}`,
+                default: `Join my Learnex meeting with code: ${meeting.roomCode}\n\n${deepLink}`
             });
+
+            await Share.share({
+                message: shareMessage,
+                title: meeting.title || 'Join my Learnex meeting',
+                url: Platform.OS === 'ios' ? deepLink : undefined,
+            });
+
+            console.log('Successfully shared invite link');
         } catch (error) {
             console.error('Error sharing invite:', error);
         }
@@ -436,8 +456,41 @@ const Room: React.FC<RoomProps> = ({
             }
         });
 
+        // Log participant info for debugging purposes
+        console.log(`renderParticipantGrid: Local user ID: ${currentUserId}`);
+        console.log(`renderParticipantGrid: Remote streams count: ${remoteStreams.length}`);
+        console.log(`renderParticipantGrid: Participant states count: ${participantStates.size}`);
+        console.log('renderParticipantGrid: Participant states:', [...participantStates.keys()]);
+        console.log(`renderParticipantGrid: streamMap size: ${streamMap.size}`);
+
+        // Add participants from participantStates who might not have streams yet
+        participantStates.forEach((state, participantId) => {
+            // Skip current user as they're already added
+            if (participantId === currentUserId) return;
+
+            // Skip if already added through streams
+            if (streamMap.has(participantId)) return;
+
+            // Get user info from cache
+            const userInfo = userInfoCache.get(participantId);
+
+            // Add the participant even without a stream
+            streamMap.set(participantId, {
+                stream: null, // No stream yet
+                isLocal: false,
+                name: userInfo?.fullName || userInfo?.username || `User ${participantId.substring(0, 5)}`,
+                email: userInfo?.email || null,
+                id: participantId,
+                participantId
+            });
+        });
+
         // Convert map to array
         let streams = Array.from(streamMap.values());
+
+        // Extra logging to debug participation issues
+        console.log(`renderParticipantGrid: Final participants count: ${streams.length}`);
+        streams.forEach(p => console.log(`renderParticipantGrid: Participant: ${p.id}, isLocal: ${p.isLocal}, name: ${p.name}`));
 
         // If a participant is pinned, move them to the front
         if (pinnedParticipantId && streamMap.has(pinnedParticipantId)) {
@@ -486,13 +539,6 @@ const Room: React.FC<RoomProps> = ({
             }
         }
 
-        console.log(`Rendering grid with ${streams.length} participants`);
-        console.log('Streams:', streams.map(s => ({
-            id: s.id,
-            participantId: s.participantId,
-            isLocal: s.isLocal
-        })));
-
         return (
             <FlatList
                 ref={participantsListRef}
@@ -528,6 +574,9 @@ const Room: React.FC<RoomProps> = ({
     }) => {
         // Get participant state from the map
         const participantState = participantStates.get(item.participantId || item.id);
+
+        // Log individual participant render for debugging
+        console.log(`Rendering participant: ${item.id}, hasStream: ${!!item.stream}, participantState: ${!!participantState}`);
 
         // Determine if video is enabled based on participant state or fallback to default
         const isVideoOn = item.isLocal
@@ -780,25 +829,38 @@ const Room: React.FC<RoomProps> = ({
                         <View style={styles.participantsGrid}>
                             {localStream && renderParticipantGrid()}
 
-                            {remoteStreams.length === 0 && (
+                            {/* Modified empty state logic to be more robust */}
+                            {(!localStream || (remoteStreams.length === 0 && participantStates.size <= 1)) && (
                                 <View style={styles.emptyStateContainer}>
-                                    <Text style={styles.emptyStateTitle}>You're the only one here</Text>
-                                    <Text style={styles.emptyStateSubtitle}>
-                                        Share this meeting link with others you want in the meeting
-                                    </Text>
-                                    <View style={styles.meetingLinkContainer}>
-                                        <Text style={styles.meetingLink}>{meeting.roomCode}</Text>
-                                        <TouchableOpacity style={styles.copyButton} onPress={copyToClipboard}>
-                                            <Icon name="content-copy" size={24} color="#fff" />
-                                        </TouchableOpacity>
-                                    </View>
-                                    <TouchableOpacity
-                                        style={styles.shareInviteButton}
-                                        onPress={handleShareInvite}
-                                    >
-                                        <Icon name="share" size={20} color="#fff" style={styles.shareIcon} />
-                                        <Text style={styles.shareButtonText}>Share invite</Text>
-                                    </TouchableOpacity>
+                                    {isConnecting ? (
+                                        <>
+                                            <ActivityIndicator size="large" color="#4285F4" />
+                                            <Text style={styles.emptyStateTitle}>Connecting to meeting...</Text>
+                                            <Text style={styles.emptyStateSubtitle}>
+                                                Please wait while we connect to the meeting
+                                            </Text>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Text style={styles.emptyStateTitle}>You're the only one here</Text>
+                                            <Text style={styles.emptyStateSubtitle}>
+                                                Share this meeting link with others you want in the meeting
+                                            </Text>
+                                            <View style={styles.meetingLinkContainer}>
+                                                <Text style={styles.meetingLink}>{meeting.roomCode}</Text>
+                                                <TouchableOpacity style={styles.copyButton} onPress={copyToClipboard}>
+                                                    <Icon name="content-copy" size={24} color="#fff" />
+                                                </TouchableOpacity>
+                                            </View>
+                                            <TouchableOpacity
+                                                style={styles.shareInviteButton}
+                                                onPress={handleShareInvite}
+                                            >
+                                                <Icon name="share" size={20} color="#fff" style={styles.shareIcon} />
+                                                <Text style={styles.shareButtonText}>Share invite</Text>
+                                            </TouchableOpacity>
+                                        </>
+                                    )}
                                 </View>
                             )}
                         </View>
@@ -812,7 +874,13 @@ const Room: React.FC<RoomProps> = ({
                                 <Text style={styles.roomCode}>{meeting.roomCode}</Text>
                             </View>
 
-                            <View style={styles.controls}>
+                            <ScrollView
+                                horizontal
+                                showsHorizontalScrollIndicator={true}
+                                indicatorStyle="white"
+                                contentContainerStyle={styles.controls}
+                                style={styles.controlsScrollView}
+                            >
                                 <TouchableOpacity
                                     style={[
                                         styles.controlButton,
@@ -903,7 +971,7 @@ const Room: React.FC<RoomProps> = ({
                                 >
                                     <Icon name="call-end" size={24} color="white" />
                                 </TouchableOpacity>
-                            </View>
+                            </ScrollView>
                         </View>
                     </TouchableOpacity>
 
@@ -1377,9 +1445,11 @@ const styles = StyleSheet.create({
     },
     controls: {
         flexDirection: 'row',
-        justifyContent: 'center',
+        justifyContent: 'space-evenly',
         alignItems: 'center',
-        gap: 16,
+        flexWrap: 'nowrap',
+        paddingVertical: 8,
+        paddingHorizontal: 4,
     },
     controlButton: {
         width: 48,
@@ -1388,6 +1458,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#3c4043',
         justifyContent: 'center',
         alignItems: 'center',
+        marginHorizontal: 8,
     },
     controlButtonDisabled: {
         backgroundColor: '#ea4335',
@@ -1860,6 +1931,9 @@ const styles = StyleSheet.create({
     },
     panelTitleDark: {
         color: '#ffffff',
+    },
+    controlsScrollView: {
+        paddingBottom: 8,
     },
 });
 

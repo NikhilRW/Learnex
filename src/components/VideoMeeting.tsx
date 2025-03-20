@@ -15,6 +15,8 @@ import {
     mediaDevices,
     RTCIceCandidate,
     RTCSessionDescription,
+    MediaStream,
+    MediaStreamTrack,
 } from 'react-native-webrtc';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import InCallManager from 'react-native-incall-manager';
@@ -23,7 +25,28 @@ import { useTypedSelector } from '../hooks/useTypedSelector';
 import { MeetingService } from '../service/firebase/MeetingService';
 import { WebRTCService } from '../service/firebase/WebRTCService';
 import auth from '@react-native-firebase/auth';
-import Chat from './Chat';
+import { Chat } from './Chat';
+
+// Define WebRTC related interfaces for TypeScript
+interface RTCTrackEvent {
+    streams: MediaStream[];
+}
+
+interface RTCPeerConnectionIceEvent {
+    candidate: RTCIceCandidate | null;
+}
+
+// Get browser-compatible types by extending the RTCPeerConnection
+interface RTCConfiguration {
+    iceServers: {
+        urls: string | string[];
+        username?: string;
+        credential?: string;
+    }[];
+    iceTransportPolicy?: 'all' | 'relay';
+    bundlePolicy?: 'balanced' | 'max-bundle' | 'max-compat';
+    rtcpMuxPolicy?: 'negotiate' | 'require';
+}
 
 const { width, height } = Dimensions.get('window');
 
@@ -34,7 +57,8 @@ interface VideoMeetingProps {
     onEndMeeting: () => void;
 }
 
-const configuration = {
+// Define the configuration with proper types
+const configuration: RTCConfiguration = {
     iceServers: [
         {
             urls: [
@@ -43,6 +67,9 @@ const configuration = {
             ],
         },
     ],
+    iceTransportPolicy: 'all',
+    bundlePolicy: 'max-bundle',
+    rtcpMuxPolicy: 'require',
 };
 
 const VideoMeeting: React.FC<VideoMeetingProps> = ({
@@ -73,10 +100,19 @@ const VideoMeeting: React.FC<VideoMeetingProps> = ({
     useEffect(() => {
         // Initialize WebRTC
         setupWebRTC();
+
         // Setup call management
         InCallManager.start({ media: 'video' });
         InCallManager.setKeepScreenOn(true);
         InCallManager.setForceSpeakerphoneOn(true);
+
+        // Setup connection timeout - important for reliability
+        connectionTimeoutRef.current = setTimeout(() => {
+            if (connectionStatus === 'connecting') {
+                console.log('Connection timeout - retrying');
+                retryConnection();
+            }
+        }, connectionTimeoutDuration);
 
         // Listen for signaling messages
         listenForSignalingMessages();
@@ -93,10 +129,30 @@ const VideoMeeting: React.FC<VideoMeetingProps> = ({
         };
     }, []);
 
+    const retryConnection = () => {
+        if (connectionAttempts < maxConnectionAttempts) {
+            setConnectionAttempts(prev => prev + 1);
+            cleanup();
+            setupWebRTC();
+
+            // Set a new timeout for the next retry
+            if (connectionTimeoutRef.current) {
+                clearTimeout(connectionTimeoutRef.current);
+            }
+            connectionTimeoutRef.current = setTimeout(() => {
+                if (connectionStatus === 'connecting') {
+                    retryConnection();
+                }
+            }, connectionTimeoutDuration);
+        } else {
+            setConnectionStatus('failed');
+        }
+    };
+
     const cleanup = () => {
         // Cleanup streams
         if (localStream) {
-            localStream.getTracks().forEach((track: any) => track.stop());
+            localStream.getTracks().forEach((track) => track.stop());
         }
         if (peerConnections.current) {
             Object.values(peerConnections.current).forEach((peerConnection) => {
@@ -109,7 +165,6 @@ const VideoMeeting: React.FC<VideoMeetingProps> = ({
 
         // Cleanup services
         webRTCService.cleanup();
-        meetingService.unsubscribeMeeting();
         InCallManager.stop();
     };
 
@@ -161,7 +216,7 @@ const VideoMeeting: React.FC<VideoMeetingProps> = ({
         });
     };
 
-    const handleOffer = async (offer: RTCSessionDescription) => {
+    const handleOffer = async (offer: RTCSessionDescription & { sender?: string }) => {
         if (!peerConnections.current[currentUserId]) return;
 
         try {
@@ -170,7 +225,12 @@ const VideoMeeting: React.FC<VideoMeetingProps> = ({
             await peerConnections.current[currentUserId].setLocalDescription(answer);
 
             // Send answer to the peer who sent the offer
-            await webRTCService.createAnswer(peerConnections.current[currentUserId], meetingId, offer.sender);
+            const senderId = offer.sender || '';
+            if (senderId) {
+                await webRTCService.createAnswer(peerConnections.current[currentUserId], meetingId, senderId);
+            } else {
+                console.error('No sender ID found in offer');
+            }
         } catch (error) {
             console.error('Error handling offer:', error);
         }
@@ -198,7 +258,7 @@ const VideoMeeting: React.FC<VideoMeetingProps> = ({
 
     const setupWebRTC = async () => {
         try {
-            // Get user media with improved constraints
+            // Get user media with improved constraints for better quality
             const stream = await mediaDevices.getUserMedia({
                 audio: true,
                 video: {
@@ -212,32 +272,21 @@ const VideoMeeting: React.FC<VideoMeetingProps> = ({
             setLocalStream(stream);
 
             // Create peer connection with proper configuration
-            const peerConnection = new RTCPeerConnection({
-                iceServers: [
-                    {
-                        urls: [
-                            'stun:stun1.l.google.com:19302',
-                            'stun:stun2.l.google.com:19302',
-                        ],
-                    },
-                ],
-                iceTransportPolicy: 'all',
-                bundlePolicy: 'max-bundle',
-                rtcpMuxPolicy: 'require',
-            });
+            const peerConnection = new RTCPeerConnection(configuration);
 
             peerConnections.current[currentUserId] = peerConnection;
 
             // Add local stream tracks to peer connection
-            stream.getTracks().forEach((track: MediaStreamTrack) => {
+            stream.getTracks().forEach((track) => {
                 if (peerConnections.current[currentUserId]) {
                     peerConnections.current[currentUserId].addTrack(track, stream);
                 }
             });
 
-            // Handle remote stream with improved error handling
+            // Handle remote stream
             if (peerConnections.current[currentUserId]) {
-                peerConnections.current[currentUserId].ontrack = (event: RTCTrackEvent) => {
+                // Define event handlers with proper type assertion
+                (peerConnections.current[currentUserId] as any).ontrack = (event: RTCTrackEvent) => {
                     if (event.streams && event.streams[0]) {
                         const remoteStream = event.streams[0];
                         console.log('Received remote stream:', remoteStream.id);
@@ -253,7 +302,8 @@ const VideoMeeting: React.FC<VideoMeetingProps> = ({
 
             // Handle ICE candidates
             if (peerConnections.current[currentUserId]) {
-                peerConnections.current[currentUserId].onicecandidate = async (event: RTCPeerConnectionIceEvent) => {
+                // Use type assertion for event handlers
+                (peerConnections.current[currentUserId] as any).onicecandidate = async (event: RTCPeerConnectionIceEvent) => {
                     if (event.candidate) {
                         try {
                             const otherParticipants = participants.filter(
@@ -276,18 +326,37 @@ const VideoMeeting: React.FC<VideoMeetingProps> = ({
 
             // Handle connection state changes
             if (peerConnections.current[currentUserId]) {
-                peerConnections.current[currentUserId].onconnectionstatechange = () => {
+                // Use type assertion for event handlers
+                (peerConnections.current[currentUserId] as any).oniceconnectionstatechange = () => {
                     if (peerConnections.current[currentUserId]) {
-                        const state = peerConnections.current[currentUserId].connectionState;
-                        console.log('Connection state changed:', state);
+                        const state = peerConnections.current[currentUserId].iceConnectionState;
+                        console.log('ICE Connection state changed:', state);
 
                         switch (state) {
                             case 'connected':
+                            case 'completed':
                                 setConnectionStatus('connected');
+                                // Clear any connection timeout
+                                if (connectionTimeoutRef.current) {
+                                    clearTimeout(connectionTimeoutRef.current);
+                                    connectionTimeoutRef.current = null;
+                                }
                                 break;
                             case 'disconnected':
+                                // Handle temporary disconnection - wait before changing status
+                                console.log('ICE temporarily disconnected, waiting to see if it reconnects');
+                                setTimeout(() => {
+                                    if (peerConnections.current[currentUserId]?.iceConnectionState === 'disconnected') {
+                                        console.log('ICE still disconnected after timeout, attempting recovery');
+                                        // Consider retry logic here
+                                    }
+                                }, 5000); // Give it 5 seconds to auto-reconnect
+                                break;
                             case 'failed':
+                                console.log('ICE connection failed, attempting recovery');
                                 setConnectionStatus('failed');
+                                // Implement reconnection logic
+                                retryConnection();
                                 break;
                             case 'closed':
                                 console.log('Connection closed');
@@ -336,7 +405,7 @@ const VideoMeeting: React.FC<VideoMeetingProps> = ({
 
     const toggleMute = () => {
         if (localStream) {
-            localStream.getAudioTracks().forEach((track: any) => {
+            localStream.getAudioTracks().forEach((track) => {
                 track.enabled = !track.enabled;
             });
             setIsMuted(!isMuted);
@@ -345,7 +414,7 @@ const VideoMeeting: React.FC<VideoMeetingProps> = ({
 
     const toggleCamera = () => {
         if (localStream) {
-            localStream.getVideoTracks().forEach((track: any) => {
+            localStream.getVideoTracks().forEach((track) => {
                 track.enabled = !track.enabled;
             });
             setIsCameraOff(!isCameraOff);
@@ -357,7 +426,7 @@ const VideoMeeting: React.FC<VideoMeetingProps> = ({
             if (isScreenSharing) {
                 // Stop screen sharing
                 if (localStream) {
-                    localStream.getTracks().forEach((track: any) => track.stop());
+                    localStream.getTracks().forEach((track) => track.stop());
                 }
                 // Get back to camera
                 const cameraStream = await mediaDevices.getUserMedia({
@@ -374,6 +443,9 @@ const VideoMeeting: React.FC<VideoMeetingProps> = ({
                 }
                 // Implementation for screen sharing
                 setIsScreenSharing(true);
+
+                // Here you would normally call a method to get the screen sharing stream
+                // This is platform specific and may require additional permissions
             }
         } catch (err) {
             console.error('Error toggling screen share:', err);
@@ -383,7 +455,7 @@ const VideoMeeting: React.FC<VideoMeetingProps> = ({
 
     const handleEndMeeting = async () => {
         try {
-            if (isHost && !connectionStatus === 'connected') {
+            if (isHost && connectionStatus === 'connected') {
                 await meetingService.endMeeting(meetingId);
             }
             cleanup();

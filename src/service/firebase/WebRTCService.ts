@@ -7,6 +7,7 @@ import {
   mediaDevices,
   MediaStream as RNMediaStream,
 } from 'react-native-webrtc';
+import {Platform, Alert, Linking} from 'react-native';
 
 // Extend MediaStream type to include participantId
 interface MediaStream extends RNMediaStream {
@@ -70,25 +71,61 @@ export class WebRTCService {
   private connectionMonitorInterval: NodeJS.Timeout | null = null;
 
   /**
-   * Initialize local media stream
+   * Initialize local stream with enhanced video bitrate and audio quality settings
    */
   async initLocalStream(
     videoEnabled = true,
     audioEnabled = true,
   ): Promise<MediaStream> {
     try {
-      const stream = await mediaDevices.getUserMedia({
-        audio: audioEnabled,
+      // Enhanced constraints for better quality while optimizing bandwidth
+      const constraints: any = {
+        audio: audioEnabled
+          ? {
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true,
+            }
+          : false,
         video: videoEnabled
           ? {
-              width: {min: 640, ideal: 1280, max: 1920},
-              height: {min: 480, ideal: 720, max: 1080},
+              width: {min: 320, ideal: 640, max: 1280},
+              height: {min: 240, ideal: 480, max: 720},
+              frameRate: {min: 15, ideal: 24, max: 30},
               facingMode: 'user',
             }
           : false,
-      });
+      };
+
+      console.log(
+        'Getting user media with constraints:',
+        JSON.stringify(constraints),
+      );
+      const stream = await mediaDevices.getUserMedia(constraints);
+
+      console.log(
+        'Local stream initialized with tracks:',
+        stream
+          .getTracks()
+          .map(t => `${t.kind}:${t.id} (enabled:${t.enabled})`)
+          .join(', '),
+      );
 
       this.localStream = stream;
+
+      // Configure each track for optimal performance
+      stream.getTracks().forEach(track => {
+        if (track.kind === 'video' && track.getSettings) {
+          const settings = track.getSettings();
+          console.log('Video track settings:', settings);
+        }
+
+        // Make sure audio tracks are enabled
+        if (track.kind === 'audio') {
+          track.enabled = true;
+        }
+      });
+
       return stream;
     } catch (error) {
       console.error('WebRTCService :: initLocalStream() ::', error);
@@ -127,26 +164,56 @@ export class WebRTCService {
       // Close any existing connection with this participant
       this.cleanupExistingPeerConnection(participantId);
 
-      // Create new peer connection with improved configuration
+      // Create new peer connection with improved configuration for media performance
       const peerConnection = new RTCPeerConnection({
         iceServers: this.iceServers,
         iceTransportPolicy: 'all',
         bundlePolicy: 'max-bundle',
         rtcpMuxPolicy: 'require',
-        sdpSemantics: 'unified-plan', // Add this for better compatibility
+        // Add advanced options for better performance
+        // @ts-ignore - TypeScript doesn't know about these properties
+        sdpSemantics: 'unified-plan',
+        // @ts-ignore
+        iceCandidatePoolSize: 10,
       });
+
+      // Enable video bandwidth optimization
+      this.setMediaBitrates(peerConnection);
 
       // Add local tracks to the peer connection with proper track handling
       if (this.localStream) {
-        this.localStream.getTracks().forEach(track => {
+        const audioTracks = this.localStream.getAudioTracks();
+        const videoTracks = this.localStream.getVideoTracks();
+
+        console.log(
+          `Adding ${audioTracks.length} audio and ${videoTracks.length} video tracks to peer connection`,
+        );
+
+        // First add audio tracks (higher priority than video)
+        audioTracks.forEach(track => {
           if (this.localStream) {
-            // Add track with proper stream association
+            console.log(
+              `Adding audio track: ${track.id} (enabled: ${track.enabled})`,
+            );
             peerConnection.addTrack(track, this.localStream);
           }
         });
+
+        // Then add video tracks
+        videoTracks.forEach(track => {
+          if (this.localStream) {
+            console.log(
+              `Adding video track: ${track.id} (enabled: ${track.enabled})`,
+            );
+            peerConnection.addTrack(track, this.localStream);
+          }
+        });
+      } else {
+        console.warn('No local stream available when creating peer connection');
       }
 
       // Handle ICE candidates with improved error handling
+      // @ts-ignore - TypeScript doesn't recognize these event handlers
       peerConnection.onicecandidate = event => {
         if (event.candidate) {
           this.sendIceCandidate(
@@ -160,12 +227,23 @@ export class WebRTCService {
       };
 
       // Handle remote tracks with improved stream handling
+      // @ts-ignore - TypeScript doesn't recognize these event handlers
       peerConnection.ontrack = event => {
         if (event.streams && event.streams[0]) {
           const remoteStream = event.streams[0];
 
           // Ensure stream has proper participant identification
           remoteStream.participantId = participantId;
+
+          // Log track information
+          console.log(
+            `Received remote track: ${event.track.kind} (enabled: ${event.track.enabled})`,
+          );
+
+          // Fix for Safari: explicitly enable audio tracks
+          if (event.track.kind === 'audio') {
+            event.track.enabled = true;
+          }
 
           // Get participant information
           this.getUserInfo(participantId)
@@ -184,12 +262,18 @@ export class WebRTCService {
 
           // Notify about new remote stream
           if (this.onRemoteStreamCallback) {
+            console.log(
+              `Sending remote stream to UI, track count: ${
+                remoteStream.getTracks().length
+              }`,
+            );
             this.onRemoteStreamCallback(remoteStream);
           }
         }
       };
 
       // Handle connection state changes with improved logging
+      // @ts-ignore - TypeScript doesn't recognize these event handlers
       peerConnection.onconnectionstatechange = () => {
         console.log(
           `Connection state changed to ${peerConnection.connectionState} for participant ${participantId}`,
@@ -197,18 +281,23 @@ export class WebRTCService {
 
         if (peerConnection.connectionState === 'connected') {
           console.log(`Successfully connected to ${participantId}`);
-          // Ensure tracks are properly added after connection
-          if (this.localStream) {
-            this.localStream.getTracks().forEach(track => {
-              if (
-                !peerConnection
-                  .getSenders()
-                  .some(sender => sender.track === track)
-              ) {
-                peerConnection.addTrack(track, this.localStream!);
-              }
-            });
-          }
+          // Re-check that all tracks are added after connection is established
+          this.ensureTracksAreAdded(peerConnection);
+        }
+      };
+
+      // Monitor ICE connection state more closely
+      // @ts-ignore
+      peerConnection.oniceconnectionstatechange = () => {
+        console.log(
+          `ICE connection state changed to ${peerConnection.iceConnectionState} for ${participantId}`,
+        );
+
+        // If connection becomes unstable, try to recover
+        if (peerConnection.iceConnectionState === 'disconnected') {
+          console.log('ICE disconnected, attempting recovery...');
+          // Check if ICE restart is needed
+          this.restartIceIfNeeded(peerConnection, participantId);
         }
       };
 
@@ -278,58 +367,112 @@ export class WebRTCService {
   }
 
   /**
-   * Connect to participants with improved state handling
+   * Connect to multiple participants
    */
   async connectToParticipants(
     meetingId: string,
     participantIds: string[],
   ): Promise<void> {
     try {
-      const userId = auth().currentUser?.uid;
-      if (!userId) {
+      this.currentMeetingId = meetingId;
+
+      // Filter out current user from list of participants to connect to
+      const currentUserId = auth().currentUser?.uid;
+      if (!currentUserId) {
         throw new Error('User not authenticated');
       }
 
-      // Store meeting ID for reference
-      this.currentMeetingId = meetingId;
+      // Log connection attempt for debugging
+      console.log(
+        `Connecting to ${participantIds.length} participants in meeting ${meetingId}`,
+      );
+      console.log('Participant IDs:', participantIds);
 
-      // Subscribe to participant states if not already subscribed
-      if (!this.unsubscribeParticipantStates) {
-        this.subscribeToParticipantStates(meetingId);
+      // Filter out current user and already connected peers
+      const filteredParticipantIds = participantIds.filter(
+        id => id !== currentUserId && !this.peerConnections.has(id),
+      );
+
+      console.log(
+        `After filtering, connecting to ${filteredParticipantIds.length} participants`,
+      );
+
+      // Check if we have participants to connect to
+      if (filteredParticipantIds.length === 0) {
+        console.log('No new participants to connect to');
+        return;
       }
 
-      // Initialize local participant state if not already done
-      await this.updateLocalParticipantState(meetingId, {
-        isAudioEnabled: true,
-        isVideoEnabled: true,
-        isHandRaised: false,
-        isScreenSharing: false,
-      });
+      // Update connection state
+      this.updateConnectionState('connecting');
 
-      console.log(`Connecting to ${participantIds.length} participants`);
-
-      // Filter out our own ID and connect to each participant
-      const filteredParticipantIds = participantIds.filter(id => id !== userId);
-
-      for (const participantId of filteredParticipantIds) {
-        if (!this.peerConnections.has(participantId)) {
-          console.log(`Creating new connection to ${participantId}`);
-          // Create peer connection
-          const peerConnection = this.createPeerConnection(participantId);
-
-          // Create offer if we're supposed to initiate (if our ID is "greater than" theirs)
-          if (userId > participantId) {
-            await this.createOffer(peerConnection, meetingId, participantId);
-          }
-        } else {
-          console.log(`Connection to ${participantId} already exists`);
-        }
-      }
-
-      // Start connection monitoring if not already running
+      // Start connection monitoring
       this.startConnectionMonitoring();
+
+      // Create offers for each participant (in parallel)
+      const connectionPromises = filteredParticipantIds.map(
+        async participantId => {
+          try {
+            // Create peer connection
+            const peerConnection = this.createPeerConnection(participantId);
+
+            // Create and send offer
+            await this.createOffer(peerConnection, meetingId, participantId);
+
+            // Add to participant states if not already there
+            if (!this.participantStates.has(participantId)) {
+              // Initialize with default state
+              this.participantStates.set(participantId, {
+                isAudioEnabled: true,
+                isVideoEnabled: true,
+                isHandRaised: false,
+                isScreenSharing: false,
+                isThumbsUp: false,
+                isThumbsDown: false,
+                isClapping: false,
+                isWaving: false,
+                isSpeaking: false,
+                reactionTimestamp: null,
+                lastUpdated: new Date(),
+              });
+
+              // Notify any listeners about the new participant
+              if (this.onParticipantStateChangedCallback) {
+                this.onParticipantStateChangedCallback(
+                  participantId,
+                  this.participantStates.get(participantId)!,
+                );
+              }
+            }
+
+            console.log(
+              `Successfully initiated connection to ${participantId}`,
+            );
+            return true;
+          } catch (error) {
+            console.error(
+              `Failed to connect to participant ${participantId}:`,
+              error,
+            );
+            // Don't throw here, allow other connections to proceed
+            return false;
+          }
+        },
+      );
+
+      // Wait for all connection attempts to complete
+      await Promise.all(connectionPromises);
+
+      // Update state based on connection results
+      if (this.peerConnections.size > 0) {
+        this.updateConnectionState('connected');
+      } else if (filteredParticipantIds.length > 0) {
+        console.warn('Failed to connect to any participants');
+        this.updateConnectionState('failed');
+      }
     } catch (error) {
       console.error('WebRTCService :: connectToParticipants() ::', error);
+      this.updateConnectionState('failed');
       throw error;
     }
   }
@@ -466,80 +609,151 @@ export class WebRTCService {
   }
 
   /**
-   * Listen for signaling messages
+   * Listen for signaling messages with improved error handling and logging
    */
   listenForSignalingMessages(
     meetingId: string,
     onSignalingMessage: (message: SignalingMessage) => void,
   ): void {
-    const userId = auth().currentUser?.uid;
-    if (!userId) throw new Error('User not authenticated');
+    try {
+      const userId = auth().currentUser?.uid;
+      if (!userId) {
+        console.error('Cannot listen for messages: User not authenticated');
+        return;
+      }
 
-    if (this.unsubscribeSignaling) {
-      this.unsubscribeSignaling();
-    }
+      // Store meeting ID
+      this.currentMeetingId = meetingId;
+      console.log(
+        `Setting up signaling listener for meeting ${meetingId}, user ${userId}`,
+      );
 
-    this.unsubscribeSignaling = this.signalingCollection
-      .where('receiver', 'in', [userId, 'all'])
-      .orderBy('timestamp', 'asc')
-      .onSnapshot(
-        snapshot => {
-          if (!snapshot) {
-            console.warn(
-              'WebRTCService: Received null snapshot in signaling listener',
-            );
-            return;
-          }
+      // Subscribe to participant states if not already
+      if (!this.unsubscribeParticipantStates) {
+        this.subscribeToParticipantStates(meetingId);
+      }
 
-          try {
-            snapshot.docChanges().forEach(async change => {
-              if (change.type === 'added') {
-                const message = change.doc.data() as SignalingMessage;
+      // Clear any existing subscription
+      if (this.unsubscribeSignaling) {
+        this.unsubscribeSignaling();
+        this.unsubscribeSignaling = null;
+      }
 
-                if (message.type === 'reconnect' && message.sender !== userId) {
-                  // Handle reconnection request from other participant
-                  const peerConnection = this.peerConnections.get(
-                    message.sender,
+      // Create new subscription with error handling
+      // TEMPORARY FIX: Remove orderBy to avoid composite index requirement
+      this.unsubscribeSignaling = this.signalingCollection
+        .where('meetingId', '==', meetingId)
+        .where('receiver', '==', userId)
+        // Removed: .orderBy('timestamp', 'asc')
+        .onSnapshot(
+          snapshot => {
+            try {
+              // Get new messages
+              const changes = snapshot.docChanges();
+              console.log(`Received ${changes.length} signaling messages`);
+
+              // Process new messages
+              const processedMessages: SignalingMessage[] = [];
+              for (const change of changes) {
+                if (change.type === 'added') {
+                  const message = change.doc.data() as SignalingMessage;
+                  console.log(
+                    `Processing signaling message: ${message.type} from ${message.sender}`,
                   );
-                  if (peerConnection) {
-                    peerConnection.close();
-                    this.peerConnections.delete(message.sender);
+
+                  // Add message to list of processed messages
+                  processedMessages.push(message);
+
+                  // Add sender to participant states if not already present
+                  const senderId = message.sender;
+                  if (
+                    senderId !== userId &&
+                    !this.participantStates.has(senderId)
+                  ) {
+                    // Initialize with default state
+                    this.participantStates.set(senderId, {
+                      isAudioEnabled: true,
+                      isVideoEnabled: true,
+                      isHandRaised: false,
+                      isScreenSharing: false,
+                      isThumbsUp: false,
+                      isThumbsDown: false,
+                      isClapping: false,
+                      isWaving: false,
+                      isSpeaking: false,
+                      reactionTimestamp: null,
+                      lastUpdated: new Date(),
+                    });
+
+                    // Notify listeners
+                    if (this.onParticipantStateChangedCallback) {
+                      this.onParticipantStateChangedCallback(
+                        senderId,
+                        this.participantStates.get(senderId)!,
+                      );
+                    }
+
+                    console.log(`Added new participant: ${senderId}`);
                   }
 
-                  // Create new peer connection
-                  const newPeerConnection = this.createPeerConnection(
-                    message.sender,
-                  );
-                  await this.createOffer(
-                    newPeerConnection,
-                    meetingId,
-                    message.sender,
-                  );
-                } else {
-                  onSignalingMessage(message);
+                  // Delete the message after processing to avoid processing it again
+                  change.doc.ref.delete().catch(error => {
+                    console.error(`Error deleting signaling message: ${error}`);
+                  });
                 }
+              }
 
-                // Delete the message after processing
-                await change.doc.ref.delete().catch(error => {
-                  console.error(
-                    'Error deleting processed signaling message:',
-                    error,
-                  );
+              // Process messages - sort manually since we removed orderBy
+              if (processedMessages.length > 0) {
+                // Sort by timestamp
+                processedMessages.sort((a, b) => {
+                  const aTime =
+                    a.timestamp?.toDate?.() ||
+                    new Date(a.timestamp) ||
+                    new Date(0);
+                  const bTime =
+                    b.timestamp?.toDate?.() ||
+                    new Date(b.timestamp) ||
+                    new Date(0);
+                  return aTime.getTime() - bTime.getTime();
+                });
+
+                // Process each message
+                processedMessages.forEach(message => {
+                  onSignalingMessage(message);
                 });
               }
-            });
-          } catch (error) {
-            console.error(
-              'WebRTCService: Error processing signaling messages:',
-              error,
-            );
-          }
-        },
-        error => {
-          console.error('WebRTCService: Error in signaling listener:', error);
-          this.updateConnectionState('failed');
-        },
-      );
+            } catch (error) {
+              console.error('Error processing signaling messages:', error);
+            }
+          },
+          error => {
+            console.error('Error in signaling listener:', error);
+
+            // Check if this is a Firestore index error
+            if (
+              error.code === 'failed-precondition' &&
+              error.message &&
+              error.message.includes('index')
+            ) {
+              // Handle the Firestore index error using our new helper
+              this.handleFirebaseIndexError(error);
+            } else {
+              console.log('ERROR DETAILS:', JSON.stringify(error));
+            }
+
+            // Attempt to reestablish the listener with a simplified query after a delay
+            setTimeout(() => {
+              if (this.currentMeetingId === meetingId) {
+                console.log('Attempting to reestablish signaling listener...');
+                this.listenForSignalingMessages(meetingId, onSignalingMessage);
+              }
+            }, 5000);
+          },
+        );
+    } catch (error) {
+      console.error('WebRTCService :: listenForSignalingMessages() ::', error);
+    }
   }
 
   /**
@@ -584,9 +798,30 @@ export class WebRTCService {
             }
 
             // Now safe to set remote description
-            await peerConnection.setRemoteDescription(
-              new RTCSessionDescription(payload),
-            );
+            // Ensure audio and video tracks are properly processed
+            if (payload.sdp) {
+              let sdp = payload.sdp;
+
+              // Ensure audio tracks are enabled
+              sdp = sdp.replace(
+                /(m=audio[\s\S]*?)(a=inactive)/g,
+                '$1a=sendrecv',
+              );
+              sdp = sdp.replace(
+                /(m=audio[\s\S]*?)(a=recvonly)/g,
+                '$1a=sendrecv',
+              );
+
+              const enhancedPayload = {...payload, sdp};
+              await peerConnection.setRemoteDescription(
+                new RTCSessionDescription(enhancedPayload),
+              );
+            } else {
+              await peerConnection.setRemoteDescription(
+                new RTCSessionDescription(payload),
+              );
+            }
+
             await this.createAnswer(peerConnection, meetingId, sender);
           } catch (error) {
             console.error('Error handling offer:', error);
@@ -606,9 +841,29 @@ export class WebRTCService {
         case 'answer':
           try {
             if (peerConnection.signalingState === 'have-local-offer') {
-              await peerConnection.setRemoteDescription(
-                new RTCSessionDescription(payload),
-              );
+              // Process answer SDP to ensure audio is enabled
+              if (payload.sdp) {
+                let sdp = payload.sdp;
+
+                // Ensure audio tracks are enabled
+                sdp = sdp.replace(
+                  /(m=audio[\s\S]*?)(a=inactive)/g,
+                  '$1a=sendrecv',
+                );
+                sdp = sdp.replace(
+                  /(m=audio[\s\S]*?)(a=recvonly)/g,
+                  '$1a=sendrecv',
+                );
+
+                const enhancedPayload = {...payload, sdp};
+                await peerConnection.setRemoteDescription(
+                  new RTCSessionDescription(enhancedPayload),
+                );
+              } else {
+                await peerConnection.setRemoteDescription(
+                  new RTCSessionDescription(payload),
+                );
+              }
             } else {
               console.log(
                 `Cannot set remote answer in state: ${peerConnection.signalingState}`,
@@ -876,17 +1131,40 @@ export class WebRTCService {
     retryCount = 0,
   ): Promise<void> {
     try {
+      // Ensure timestamp is present (fixes the missing timestamp in reconnect messages)
+      if (!message.timestamp) {
+        message.timestamp = Date.now();
+      }
+
+      console.log(
+        `Sending signaling message: ${message.type} to ${message.receiver}`,
+      );
+
       await this.signalingCollection.add({
         ...message,
         retryCount,
+        meetingId: this.currentMeetingId, // Ensure meetingId is always included
         timestamp: firestore.FieldValue.serverTimestamp(),
       });
+
+      console.log(
+        `Successfully sent ${message.type} message to ${message.receiver}`,
+      );
     } catch (error) {
       console.error(
         `Failed to send signaling message (attempt ${retryCount + 1}):`,
         error,
       );
+
+      // Log detailed error information
+      if (error instanceof Error) {
+        console.error(
+          `Error code: ${(error as any).code}, message: ${error.message}`,
+        );
+      }
+
       if (retryCount < this.MAX_SIGNALING_RETRIES) {
+        console.log(`Retrying in ${this.RETRY_DELAY}ms...`);
         await new Promise(resolve => setTimeout(resolve, this.RETRY_DELAY));
         await this.sendSignalingMessage(message, retryCount + 1);
       } else {
@@ -951,6 +1229,7 @@ export class WebRTCService {
         sender: userId,
         receiver: 'all',
         payload: {meetingId: this.currentMeetingId},
+        timestamp: Date.now(),
       });
 
       // Recreate peer connections
@@ -1036,6 +1315,165 @@ export class WebRTCService {
       console.error('WebRTCService :: sendReconnectMessage() ::', error);
       throw error;
     }
+  }
+
+  // Create a helper function to check if a URL is a Firebase index creation URL
+  private isFirebaseIndexUrl(url: string): boolean {
+    return (
+      url.includes('console.firebase.google.com') &&
+      url.includes('firestore/indexes') &&
+      url.includes('create_composite')
+    );
+  }
+
+  // Extract Firebase index URL from an error message
+  private extractFirebaseIndexUrl(errorMessage: string): string | null {
+    const matches = errorMessage.match(
+      /https:\/\/console\.firebase\.google\.com[^\s"']+/,
+    );
+    return matches ? matches[0] : null;
+  }
+
+  // Handle Firebase index error by displaying a more user-friendly message
+  private handleFirebaseIndexError(error: any): void {
+    console.error('Firebase index error:', error);
+
+    // Try to extract the index creation URL if it exists
+    const indexUrl = this.extractFirebaseIndexUrl(error.message || '');
+
+    if (indexUrl) {
+      console.warn(
+        'Firestore query requires an index. Please create it at:',
+        indexUrl,
+      );
+
+      // On Android, we can open the URL
+      if (Platform.OS === 'android') {
+        Linking.canOpenURL(indexUrl).then(supported => {
+          if (supported) {
+            Alert.alert(
+              'Firestore Index Required',
+              'This app needs a database index to be created. Would you like to open the Firebase Console to create it?',
+              [
+                {text: 'Cancel', style: 'cancel'},
+                {
+                  text: 'Open Firebase Console',
+                  onPress: () => Linking.openURL(indexUrl),
+                },
+              ],
+            );
+          }
+        });
+      } else {
+        // On iOS, we can just show the alert with the URL
+        Alert.alert(
+          'Firestore Index Required',
+          `This app needs a database index to be created. Please go to:\n\n${indexUrl}`,
+        );
+      }
+    }
+  }
+
+  /**
+   * Apply bandwidth limitations to optimize video quality vs performance
+   */
+  private setMediaBitrates(peerConnection: RTCPeerConnection): void {
+    // @ts-ignore - This is a workaround to modify SDP for bandwidth management
+    const oldSetLocalDescription =
+      peerConnection.setLocalDescription.bind(peerConnection);
+
+    // @ts-ignore
+    peerConnection.setLocalDescription = async function (description) {
+      // Modify the SDP to set bandwidth limitations and ensure audio is active
+      if (description && description.sdp) {
+        let sdp = description.sdp;
+
+        // Set bandwidth limits
+        sdp = sdp.replace(/a=mid:video\r\n/g, 'a=mid:video\r\nb=AS:800\r\n');
+        sdp = sdp.replace(/a=mid:audio\r\n/g, 'a=mid:audio\r\nb=AS:64\r\n');
+
+        // Prioritize audio
+        sdp = sdp.replace(
+          /(m=audio[\s\S]*?)(m=video)/g,
+          '$1a=priority:1.0\r\n$2',
+        );
+
+        // Ensure audio is not muted or inactive
+        sdp = sdp.replace(/(m=audio[\s\S]*?)(a=inactive)/g, '$1a=sendrecv');
+        sdp = sdp.replace(/(m=audio[\s\S]*?)(a=recvonly)/g, '$1a=sendrecv');
+
+        // Create new description with modified SDP
+        const newDesc = {...description, sdp};
+        return oldSetLocalDescription(newDesc);
+      }
+      return oldSetLocalDescription(description);
+    };
+  }
+
+  /**
+   * Restart ICE if the connection becomes unstable
+   */
+  private async restartIceIfNeeded(
+    peerConnection: RTCPeerConnection,
+    participantId: string,
+  ): Promise<void> {
+    if (
+      !this.currentMeetingId ||
+      peerConnection.iceConnectionState === 'closed'
+    ) {
+      return;
+    }
+
+    try {
+      const userId = auth().currentUser?.uid;
+      if (!userId) return;
+
+      // Only the peer with the lower ID initiates the restart to avoid conflicts
+      if (userId < participantId) {
+        console.log(`Initiating ICE restart with ${participantId}`);
+
+        // Create a new offer with ICE restart flag
+        const offer = await peerConnection.createOffer({
+          offerToReceiveAudio: true,
+          offerToReceiveVideo: true,
+          // @ts-ignore - Not recognized by TypeScript
+          iceRestart: true,
+        });
+
+        await peerConnection.setLocalDescription(offer);
+
+        // Send the offer through signaling
+        await this.sendSignalingMessage({
+          type: 'offer',
+          sender: userId,
+          receiver: participantId,
+          payload: offer,
+          timestamp: Date.now(),
+        });
+      }
+    } catch (error) {
+      console.error('Error during ICE restart:', error);
+    }
+  }
+
+  /**
+   * Ensure all tracks are properly added to the peer connection
+   */
+  private ensureTracksAreAdded(peerConnection: RTCPeerConnection): void {
+    if (!this.localStream) return;
+
+    // Check each local track
+    this.localStream.getTracks().forEach(track => {
+      // See if this track is already added to the connection
+      const senders = peerConnection.getSenders();
+      const isTrackAdded = senders.some(sender => sender.track === track);
+
+      // If not added, add it now
+      if (!isTrackAdded) {
+        console.log(`Re-adding track that was missing: ${track.kind}`);
+        peerConnection.addTrack(track, this.localStream!);
+      }
+    });
   }
 }
 

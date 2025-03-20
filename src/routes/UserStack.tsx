@@ -17,7 +17,12 @@ import Tasks from '../screens/userscreens/Tasks';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useTypedSelector } from '../hooks/useTypedSelector';
 import NavigationIconHelper from '../helpers/NavigationIconHelper';
-import { Dimensions } from 'react-native';
+import { Dimensions, Alert } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { useNavigation, CommonActions } from '@react-navigation/native';
+import { useTypedDispatch } from '../hooks/useTypedDispatch';
+import { clearDeepLink, markDeepLinkProcessed } from '../reducers/DeepLink';
+import { MeetingService } from '../service/firebase/MeetingService';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -42,6 +47,31 @@ export type UserStackParamList = {
 export type UserNavigationProps = BottomTabNavigationProp<UserStackParamList>;
 
 /**
+ * Parse room code from a deep link URL
+ */
+const extractRoomCodeFromUrl = (url: string): string | null => {
+  try {
+    // Handle both formats: learnex://meeting?roomCode=ABC123 or https://learnex-241f1.web.app/join?code=ABC123
+    const urlObj = new URL(url);
+
+    if (urlObj.protocol === 'learnex:') {
+      // Mobile deep link format
+      const params = new URLSearchParams(urlObj.search);
+      return params.get('roomCode');
+    } else if (urlObj.hostname.includes('learnex-241f1.web.app')) {
+      // Web URL format
+      const params = new URLSearchParams(urlObj.search);
+      return params.get('code');
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error parsing deep link URL:', error);
+    return null;
+  }
+};
+
+/**
  * Main navigation stack for authenticated users
  * Combines drawer navigation with bottom tab navigation
  */
@@ -49,6 +79,61 @@ const UserStack = () => {
   const Drawer = createDrawerNavigator();
   const Tab = createBottomTabNavigator<UserStackParamList>();
   const isDark = useTypedSelector((state) => state.user.theme) === "dark";
+  const deepLinkUrl = useTypedSelector(state => state.deepLink.url);
+  const deepLinkProcessed = useTypedSelector(state => state.deepLink.processed);
+  const navigation = useNavigation();
+  const dispatch = useTypedDispatch();
+  const meetingService = useRef(new MeetingService()).current;
+
+  // Handle deep link navigation
+  useEffect(() => {
+    const handleDeepLink = async () => {
+      if (deepLinkUrl && !deepLinkProcessed) {
+        console.log('Processing deep link in UserStack:', deepLinkUrl);
+
+        const roomCode = extractRoomCodeFromUrl(deepLinkUrl);
+        if (roomCode) {
+          try {
+            // Mark as processed to prevent multiple attempts
+            dispatch(markDeepLinkProcessed());
+
+            console.log('Joining meeting with room code:', roomCode);
+
+            // Get meeting by room code
+            const meeting = await meetingService.getMeetingByRoomCode(roomCode);
+
+            // Navigate to RoomScreen
+            navigation.dispatch(
+              CommonActions.navigate({
+                name: 'RoomScreen',
+                params: {
+                  meeting,
+                  isHost: false,
+                },
+              })
+            );
+
+            // Clear the deep link after successful navigation
+            setTimeout(() => {
+              dispatch(clearDeepLink());
+            }, 2000);
+          } catch (error) {
+            console.error('Error processing deep link:', error);
+            Alert.alert(
+              'Error',
+              error instanceof Error ? error.message : 'Unable to join meeting'
+            );
+            dispatch(clearDeepLink());
+          }
+        } else {
+          console.log('No valid room code found in deep link');
+          dispatch(clearDeepLink());
+        }
+      }
+    };
+
+    handleDeepLink();
+  }, [deepLinkUrl, deepLinkProcessed, dispatch, navigation]);
 
   /**
    * Bottom tab navigator configuration
