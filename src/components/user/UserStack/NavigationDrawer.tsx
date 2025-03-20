@@ -1,5 +1,5 @@
 import { ScrollView } from 'react-native-gesture-handler';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View, Dimensions } from 'react-native';
 import React, { useEffect, useState } from 'react';
 import { useTypedSelector } from '../../../hooks/useTypedSelector';
 import { useTypedDispatch } from '../../../hooks/useTypedDispatch';
@@ -8,11 +8,14 @@ import { Avatar } from 'react-native-elements';
 import { getUsernameForLogo } from '../../../helpers/stringHelpers';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { navigationDrawerOptions } from '../../../constants/navigation';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { styles } from '../../../styles/components/user/UserStack/NavigationDrawer.styles';
+import { createStyles } from '../../../styles/components/user/UserStack/NavigationDrawer.styles';
 import Snackbar from 'react-native-snackbar';
 import { DrawerContentComponentProps } from '@react-navigation/drawer';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const NavigationDrawer = (props: DrawerContentComponentProps) => {
   const firebase = useTypedSelector(state => state.firebase.firebase);
@@ -25,6 +28,32 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
   const dispatch = useTypedDispatch();
   const profileColor = useTypedSelector(state => state.user.userProfileColor);
   const navigation = props.navigation;
+  const styles = createStyles(isDark);
+
+  // Group navigation options by category
+  const navigationCategories = {
+    main: ['Room', 'Tasks', 'Insights'],
+    tools: ['Scan or Generate QR', 'Feed News', 'Events & Hackathons'],
+    account: ['Rewards', 'Saved', 'Invite'],
+    support: ['Help and FAQs', 'Contact us', 'Setting', 'About']
+  };
+
+  // Map of navigation options to their respective icons
+  const optionIcons = {
+    'Room': 'video-camera',
+    'Tasks': 'tasks',
+    'Insights': 'bar-chart',
+    'Scan or Generate QR': 'qrcode',
+    'Feed News': 'newspaper-o',
+    'Events & Hackathons': 'calendar',
+    'Rewards': 'trophy',
+    'Saved': 'bookmark',
+    'Help and FAQs': 'question-circle',
+    'Contact us': 'envelope',
+    'Invite': 'user-plus',
+    'Setting': 'cog',
+    'About': 'info-circle'
+  };
 
   const handleLogOutPress = async () => {
     try {
@@ -53,17 +82,14 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
   const handleOptionPress = (option: string) => {
     // Close the drawer
     navigation.closeDrawer();
-    console.log("navigation", navigation);
 
     // Navigate based on the selected option
     switch (option) {
       case 'Room':
         navigation.navigate('Room');
-        console.log("Room");
         break;
       case 'Tasks':
         navigation.navigate('Tasks');
-        console.log("Tasks");
         break;
       // Add other cases for other menu options as needed
       default:
@@ -102,7 +128,7 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
     if (photoURL?.length! > 0) {
       return (
         <Avatar
-          size={20}
+          size={60}
           source={{ uri: photoURL! }}
           containerStyle={styles.avatar}
           rounded
@@ -112,7 +138,7 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
     }
     return (
       <Avatar
-        size={40}
+        size={60}
         title={getUsernameForLogo(username)}
         containerStyle={[styles.avatar, { backgroundColor: profileColor! }]}
         activeOpacity={0.7}
@@ -120,45 +146,70 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
     );
   };
 
-  return (
-    <ScrollView style={{
-      paddingBottom: `${insets.bottom}%`,
-      paddingTop: `${insets.top}%`,
-      flexGrow: 1,
-      backgroundColor: isDark ? "#1a1a1a" : "white"
-    }}>
-      <View
-        className={`w-screen  px-[10%] pt-[10%] flex-col gap-y-[4vw] ${isDark ? "bg-[#1a1a1a]" : "bg-white"}`}>
-        <View className="border-[1.5px]  flex-col justify-center items-start border-gray-300 rounded-xl w-[56%] h-[18vh] px-[3%] py-[6%]  ">
-          {renderAvatar()}
-          <View className="flex-col mt-[3%] justify-center">
-            <Text className={`font-semibold text-[3.8vw] ${isDark ? 'white' : 'text-gray-700'}`}>
-              {username}
-            </Text>
-          </View>
-        </View>
-        <View className="flex-col justify-between items-start w-[56%] py-[5%] gap-5">
-          <View className="space-y-[10%]">
-            {navigationDrawerOptions.map((ele, index) => (
-              <TouchableOpacity key={index} className="flex-row items-center " onPress={() => handleOptionPress(ele)}>
-                <FontAwesome name="user-circle-o" color={isDark ? '#e0e0e0' : 'black'} size={30} />
-                <Text className={`${isDark ? "text-white" : "text-black"} font-semibold text-[4vw] ml-[7%]`}>
-                  {ele}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <View className="h-[7vh]">
-            <TouchableOpacity
-              onPress={handleLogOutPress}
-              className="bg-[#2379C2] h-full px-[7%] py-[5%] rounded-xl justify-center items-center flex-row ">
-              <Ionicons name="exit-outline" color={`white`} size={30} />
-              <Text className="text-white ml-[8%]">SignOut</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+  const renderOptionIcon = (option: string) => {
+    const iconName = optionIcons[option as keyof typeof optionIcons] || 'circle';
+    return (
+      <View style={styles.iconContainer}>
+        <FontAwesome name={iconName} color={isDark ? '#2379C2' : '#2379C2'} size={Math.min(SCREEN_WIDTH * 0.045, 18)} />
       </View>
-    </ScrollView>
+    );
+  };
+
+  const renderNavigationSection = (title: string, options: string[]) => {
+    return (
+      <View>
+        <Text style={styles.sectionTitle}>{title}</Text>
+        {options.map((option, index) => (
+          <TouchableOpacity
+            key={index}
+            style={styles.optionItem}
+            onPress={() => handleOptionPress(option)}
+          >
+            {renderOptionIcon(option)}
+            <Text style={styles.optionText} numberOfLines={2} ellipsizeMode="tail">
+              {option}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    );
+  };
+
+  return (
+    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        <View style={styles.contentContainer}>
+          <View style={styles.profileContainer}>
+            {renderAvatar()}
+            <View style={styles.usernameContainer}>
+              <Text style={styles.username} numberOfLines={1} ellipsizeMode="tail">
+                {username}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.optionsContainer}>
+            {renderNavigationSection('Main', navigationCategories.main)}
+            <View style={styles.divider} />
+            {renderNavigationSection('Tools', navigationCategories.tools)}
+            <View style={styles.divider} />
+            {renderNavigationSection('Account', navigationCategories.account)}
+            <View style={styles.divider} />
+            {renderNavigationSection('Support', navigationCategories.support)}
+
+            <View style={styles.signOutButtonContainer}>
+              <TouchableOpacity
+                onPress={handleLogOutPress}
+                style={styles.signOutButton}
+              >
+                <Ionicons name="exit-outline" color="white" size={Math.min(SCREEN_WIDTH * 0.055, 22)} />
+                <Text style={styles.signOutText}>Sign Out</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </ScrollView>
+    </View>
   );
 };
 

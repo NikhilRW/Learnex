@@ -34,6 +34,7 @@ export interface MeetingError extends Error {
 export class MeetingService {
   private meetingsCollection = firestore().collection('meetings');
   private unsubscribeMeeting: (() => void) | null = null;
+  private endTimeCheckInterval: NodeJS.Timeout | null = null;
   private retryAttempts = 3;
   private retryDelay = 1000; // 1 second
 
@@ -262,7 +263,63 @@ export class MeetingService {
   }
 
   /**
-   * Subscribe to meeting updates
+   * Check if meeting should end based on end time
+   */
+  private async checkMeetingEndTime(meetingId: string): Promise<boolean> {
+    try {
+      const meetingDoc = await this.meetingsCollection.doc(meetingId).get();
+      if (!meetingDoc.exists) return false;
+
+      const meetingData = meetingDoc.data() as Meeting;
+      const now = new Date();
+      const endTime =
+        meetingData.endTime instanceof Date
+          ? meetingData.endTime
+          : new Date(meetingData.endTime);
+
+      return endTime <= now;
+    } catch (error) {
+      console.error('Error checking meeting end time:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Start monitoring meeting end time
+   */
+  startEndTimeMonitoring(meetingId: string, onMeetingEnd: () => void): void {
+    // Clear any existing interval
+    if (this.endTimeCheckInterval) {
+      clearInterval(this.endTimeCheckInterval);
+    }
+
+    // Check every minute if meeting should end
+    this.endTimeCheckInterval = setInterval(async () => {
+      try {
+        const shouldEnd = await this.checkMeetingEndTime(meetingId);
+        if (shouldEnd) {
+          await this.endMeeting(meetingId);
+          onMeetingEnd();
+          this.stopEndTimeMonitoring();
+        }
+      } catch (error) {
+        console.error('Error in end time monitoring:', error);
+      }
+    }, 60000); // Check every minute
+  }
+
+  /**
+   * Stop monitoring meeting end time
+   */
+  stopEndTimeMonitoring(): void {
+    if (this.endTimeCheckInterval) {
+      clearInterval(this.endTimeCheckInterval);
+      this.endTimeCheckInterval = null;
+    }
+  }
+
+  /**
+   * Subscribe to meeting updates with end time monitoring
    */
   subscribeMeeting(
     meetingId: string,
@@ -293,7 +350,26 @@ export class MeetingService {
                   id: snapshot.id,
                   ...snapshot.data(),
                 } as Meeting;
-                onUpdate(meeting);
+
+                // Check if meeting has ended
+                const now = new Date();
+                const endTime =
+                  meeting.endTime instanceof Date
+                    ? meeting.endTime
+                    : new Date(meeting.endTime);
+
+                if (endTime <= now && meeting.status !== 'completed') {
+                  this.endMeeting(meetingId)
+                    .then(() => {
+                      meeting.status = 'completed';
+                      onUpdate(meeting);
+                    })
+                    .catch(error => {
+                      console.error('Error ending expired meeting:', error);
+                    });
+                } else {
+                  onUpdate(meeting);
+                }
               } else {
                 onError(this.createError('Meeting not found'));
               }
@@ -385,6 +461,7 @@ export class MeetingService {
    * Cleanup resources
    */
   cleanup(): void {
+    this.stopEndTimeMonitoring();
     if (this.unsubscribeMeeting) {
       this.unsubscribeMeeting();
       this.unsubscribeMeeting = null;

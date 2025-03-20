@@ -17,6 +17,9 @@ import Tasks from '../screens/userscreens/Tasks';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useTypedSelector } from '../hooks/useTypedSelector';
 import NavigationIconHelper from '../helpers/NavigationIconHelper';
+import { Dimensions } from 'react-native';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 /**
  * Type definitions for navigation parameters
@@ -59,11 +62,11 @@ const UserStack = () => {
           header: () => <></>,
           tabBarShowLabel: false,
           tabBarStyle: {
-            backgroundColor: isDark ? '#1a1a1a' : 'white', // Theme-aware styling
+            backgroundColor: isDark ? '#1a1a1a' : 'white',
             borderTopWidth: 1,
             borderTopColor: isDark ? "#2a2a2a" : "#e0e0e0",
-            height: 55, // Reduced height
-            paddingBottom: 5, // Add some padding at bottom
+            height: Math.min(SCREEN_WIDTH * 0.1375, 55),
+            paddingBottom: Math.min(SCREEN_WIDTH * 0.0125, 5),
           },
           // Custom tab bar icons with theme-aware colors
           tabBarIcon: ({ focused, color, size }) => {
@@ -87,7 +90,7 @@ const UserStack = () => {
         headerShown: false, // Hide header for all screens by default
         drawerStyle: {
           backgroundColor: isDark ? '#1a1a1a' : 'white',
-          width: '70%',
+          width: Math.min(SCREEN_WIDTH * 0.85, 400),
         },
       }}>
       <Drawer.Screen

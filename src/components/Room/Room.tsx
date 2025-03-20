@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import {
     View,
     StyleSheet,
@@ -15,11 +15,15 @@ import {
     KeyboardAvoidingView,
     Keyboard,
     Animated,
+    Dimensions,
 } from 'react-native';
 import { RTCView } from 'react-native-webrtc';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Meeting } from '../../service/firebase/MeetingService';
+import { ParticipantState } from '../../service/firebase/WebRTCService';
+import { useTypedSelector } from '../../hooks/useTypedSelector';
+import { UserService } from '../../service/firebase/UserService';
 
 interface Message {
     id: string;
@@ -28,6 +32,9 @@ interface Message {
     text: string;
     timestamp: Date;
     isMe: boolean;
+    reactions?: {
+        [userId: string]: string; // userId: reactionType
+    };
 }
 
 interface RoomProps {
@@ -38,12 +45,16 @@ interface RoomProps {
     onToggleVideo: () => void;
     onEndCall: () => void;
     onSendMessage: (text: string) => void;
+    onMessageReaction: (messageId: string, reactionType: string) => void;
     messages: Message[];
     isAudioEnabled: boolean;
     isVideoEnabled: boolean;
     isDark?: boolean;
     currentUserId: string;
     currentUserName: string;
+    onRaiseHand: (raised: boolean) => void;
+    onReaction: (reaction: 'thumbsUp' | 'thumbsDown' | 'clapping' | 'waving') => void;
+    participantStates: Map<string, ParticipantState>;
 }
 
 const Room: React.FC<RoomProps> = ({
@@ -54,21 +65,53 @@ const Room: React.FC<RoomProps> = ({
     onToggleVideo,
     onEndCall,
     onSendMessage,
+    onMessageReaction,
     messages,
     isAudioEnabled,
     isVideoEnabled,
     isDark = false,
     currentUserId,
     currentUserName,
+    onRaiseHand,
+    onReaction,
+    participantStates,
 }) => {
     const [isControlsVisible, setIsControlsVisible] = useState(true);
     const [isHandRaised, setIsHandRaised] = useState(false);
     const [showMoreOptions, setShowMoreOptions] = useState(false);
     const [showChat, setShowChat] = useState(false);
+    const [showReactions, setShowReactions] = useState(false);
+    const [showQuickMessages, setShowQuickMessages] = useState(false);
+    const [showParticipants, setShowParticipants] = useState(false);
     const [messageText, setMessageText] = useState('');
     const [keyboardVisible, setKeyboardVisible] = useState(false);
-    const chatPanelWidth = useRef(new Animated.Value(0)).current;
+    const chatPanelOpacity = useRef(new Animated.Value(0)).current;
+    const reactionsMenuOpacity = useRef(new Animated.Value(0)).current;
+    const quickMessagesMenuOpacity = useRef(new Animated.Value(0)).current;
+    const participantsPanelOpacity = useRef(new Animated.Value(0)).current;
+    const [selectedMessage, setSelectedMessage] = useState<string | null>(null);
+    const [showMessageReactions, setShowMessageReactions] = useState(false);
     const flatListRef = useRef<FlatList>(null);
+    const participantsListRef = useRef<FlatList>(null);
+    const { width, height } = Dimensions.get('window');
+    const [pinnedParticipantId, setPinnedParticipantId] = useState<string | null>(null);
+    const firebase = useTypedSelector(state => state.firebase.firebase);
+    const [userInfoCache, setUserInfoCache] = useState<Map<string, { email: string | null, fullName: string | null, username: string | null }>>(new Map());
+    const userService = useMemo(() => new UserService(), []);
+
+    // Quick message templates
+    const quickMessages = [
+        "I'll be right back",
+        "Can you hear me?",
+        "I can't hear you",
+        "Please speak louder",
+        "Let's discuss this later",
+        "I agree",
+        "I disagree",
+        "Great idea!",
+        "Could you repeat that?",
+        "Thanks everyone"
+    ];
 
     useEffect(() => {
         let timeout: NodeJS.Timeout;
@@ -107,12 +150,79 @@ const Room: React.FC<RoomProps> = ({
 
     useEffect(() => {
         // Animate chat panel
-        Animated.timing(chatPanelWidth, {
-            toValue: showChat ? 300 : 0,
-            duration: 300,
-            useNativeDriver: false,
+        Animated.timing(chatPanelOpacity, {
+            toValue: showChat ? 1 : 0,
+            duration: 250,
+            useNativeDriver: true,
         }).start();
-    }, [showChat, chatPanelWidth]);
+    }, [showChat, chatPanelOpacity]);
+
+    useEffect(() => {
+        // Animate reactions menu
+        Animated.timing(reactionsMenuOpacity, {
+            toValue: showReactions ? 1 : 0,
+            duration: 200,
+            useNativeDriver: true,
+        }).start();
+    }, [showReactions, reactionsMenuOpacity]);
+
+    useEffect(() => {
+        // Animate quick messages menu
+        Animated.timing(quickMessagesMenuOpacity, {
+            toValue: showQuickMessages ? 1 : 0,
+            duration: 200,
+            useNativeDriver: true,
+        }).start();
+    }, [showQuickMessages, quickMessagesMenuOpacity]);
+
+    // Update local state when participant states change
+    useEffect(() => {
+        // Check if our own state is in the participant states
+        const myState = participantStates.get(currentUserId);
+        if (myState) {
+            // Update local UI state to match the shared state
+            setIsHandRaised(myState.isHandRaised);
+        }
+    }, [participantStates, currentUserId]);
+
+    useEffect(() => {
+        // Animate participants panel
+        Animated.timing(participantsPanelOpacity, {
+            toValue: showParticipants ? 1 : 0,
+            duration: 250,
+            useNativeDriver: true,
+        }).start();
+    }, [showParticipants, participantsPanelOpacity]);
+
+    // Helper function to get user info by ID
+    const getUserInfo = useCallback(async (userId: string) => {
+        // Check if we already have this user's info in the cache
+        if (userInfoCache.has(userId)) {
+            return userInfoCache.get(userId);
+        }
+
+        // Fetch user info
+        const userInfo = await userService.getUserInfoById(userId);
+
+        // Update cache
+        setUserInfoCache(prev => {
+            const newCache = new Map(prev);
+            newCache.set(userId, userInfo);
+            return newCache;
+        });
+
+        return userInfo;
+    }, [userInfoCache, userService]);
+
+    // When a new remote stream is received, fetch user info
+    useEffect(() => {
+        remoteStreams.forEach(async (stream) => {
+            const participantId = stream.participantId || stream.id;
+            if (participantId && !userInfoCache.has(participantId)) {
+                await getUserInfo(participantId);
+            }
+        });
+    }, [remoteStreams, getUserInfo]);
 
     const handleShareInvite = async () => {
         try {
@@ -150,58 +260,510 @@ const Room: React.FC<RoomProps> = ({
         setIsControlsVisible(true);
     };
 
-    const renderParticipantGrid = () => {
-        const streams = [localStream, ...remoteStreams].filter(Boolean);
-        const gridStyle = getGridStyle(streams.length);
-
-        return streams.map((stream, index) => (
-            <View key={index} style={[styles.participantContainer, gridStyle]}>
-                {stream && (
-                    <RTCView
-                        streamURL={stream.toURL()}
-                        style={styles.participantVideo}
-                        objectFit="cover"
-                        mirror={index === 0}
-                    />
-                )}
-                {index === 0 && (
-                    <View style={styles.nameTag}>
-                        <Text style={styles.nameText}>You</Text>
-                    </View>
-                )}
-            </View>
-        ));
+    const handleRaiseHand = () => {
+        const newRaisedState = !isHandRaised;
+        setIsHandRaised(newRaisedState);
+        onRaiseHand(newRaisedState);
     };
 
-    const getGridStyle = (count: number) => {
-        switch (count) {
-            case 1:
-                return { width: '100%', height: '100%' };
-            case 2:
-                return { width: '100%', height: '50%' };
-            case 3:
-            case 4:
-                return { width: '50%', height: '50%' };
-            default:
-                return { width: '33.33%', height: '33.33%' };
+    const toggleReactionsMenu = () => {
+        setShowReactions(!showReactions);
+        setIsControlsVisible(true);
+    };
+
+    const handleReaction = (reaction: 'thumbsUp' | 'thumbsDown' | 'clapping' | 'waving') => {
+        onReaction(reaction);
+        setShowReactions(false);
+    };
+
+    const handleLongPressMessage = (messageId: string) => {
+        setSelectedMessage(messageId);
+        setShowMessageReactions(true);
+    };
+
+    const handleMessageReaction = (reactionType: string) => {
+        if (selectedMessage) {
+            onMessageReaction(selectedMessage, reactionType);
+            setShowMessageReactions(false);
+            setSelectedMessage(null);
         }
     };
 
-    const renderMessageItem = ({ item }: { item: Message }) => (
-        <View style={[styles.messageContainer, item.isMe && styles.myMessageContainer]}>
-            {!item.isMe && (
-                <Text style={styles.messageSender}>{item.senderName}</Text>
-            )}
-            <View style={[styles.messageBubble, item.isMe && styles.myMessageBubble]}>
-                <Text style={[styles.messageText, item.isMe && styles.myMessageText]}>
-                    {item.text}
-                </Text>
-            </View>
-            <Text style={styles.messageTime}>
-                {item.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </Text>
-        </View>
-    );
+    const closeMessageReactions = () => {
+        setShowMessageReactions(false);
+        setSelectedMessage(null);
+    };
+
+    const toggleQuickMessagesMenu = () => {
+        setShowQuickMessages(!showQuickMessages);
+        setIsControlsVisible(true);
+    };
+
+    const sendQuickMessage = (text: string) => {
+        onSendMessage(text);
+        setShowQuickMessages(false);
+    };
+
+    const toggleParticipantsPanel = () => {
+        setShowParticipants(!showParticipants);
+        setIsControlsVisible(true);
+    };
+
+    const getAllParticipants = () => {
+        const participants = [
+            { id: currentUserId, name: currentUserName, isLocal: true }
+        ];
+
+        // Add remote participants from the participant states
+        participantStates.forEach((state, id) => {
+            if (id !== currentUserId) {
+                // Find the name from remoteStreams if available
+                const stream = remoteStreams.find(s => s.participantId === id || s.id === id);
+                const name = stream?.participantName || `User ${id.substring(0, 5)}`;
+                participants.push({ id, name, isLocal: false });
+            }
+        });
+
+        return participants;
+    };
+
+    const handlePinParticipant = (participantId: string) => {
+        // Toggle pin: if already pinned, unpin it
+        if (pinnedParticipantId === participantId) {
+            setPinnedParticipantId(null);
+        } else {
+            setPinnedParticipantId(participantId);
+        }
+
+        // Close participants panel
+        setShowParticipants(false);
+    };
+
+    const renderParticipantListItem = ({ item }: { item: { id: string, name: string, isLocal: boolean } }) => {
+        const participantState = participantStates.get(item.id);
+        const isAudioOn = item.isLocal ? isAudioEnabled : (participantState?.isAudioEnabled ?? true);
+        const isVideoOn = item.isLocal ? isVideoEnabled : (participantState?.isVideoEnabled ?? true);
+        const isHandRaised = participantState?.isHandRaised ?? false;
+        const isSpeaking = participantState?.isSpeaking ?? false;
+        const isPinned = item.id === pinnedParticipantId;
+
+        return (
+            <TouchableOpacity
+                onPress={() => handlePinParticipant(item.id)}
+                style={[
+                    styles.participantListItem,
+                    isDark && styles.participantListItemDark,
+                    isPinned && styles.participantListItemPinned
+                ]}
+            >
+                <View style={styles.participantListItemLeft}>
+                    <View style={[
+                        styles.participantListAvatar,
+                        isSpeaking && styles.participantListAvatarSpeaking
+                    ]}>
+                        <Text style={styles.participantListAvatarText}>
+                            {item.name.charAt(0).toUpperCase()}
+                        </Text>
+                    </View>
+                    <View>
+                        <Text style={[
+                            styles.participantListName,
+                            isDark && styles.participantListNameDark
+                        ]}>
+                            {item.name}
+                        </Text>
+                        {isPinned && (
+                            <Text style={styles.participantListPinnedText}>
+                                Pinned
+                            </Text>
+                        )}
+                    </View>
+                </View>
+                <View style={styles.participantListItemRight}>
+                    {isPinned && (
+                        <Icon name="push-pin" size={20} color="#4285f4" style={styles.participantListIcon} />
+                    )}
+                    {!isAudioOn && (
+                        <Icon name="mic-off" size={20} color="#ea4335" style={styles.participantListIcon} />
+                    )}
+                    {!isVideoOn && (
+                        <Icon name="videocam-off" size={20} color="#ea4335" style={styles.participantListIcon} />
+                    )}
+                    {isHandRaised && (
+                        <MaterialCommunityIcons name="hand-wave" size={20} color="#fbbc05" style={styles.participantListIcon} />
+                    )}
+                    {isSpeaking && isAudioOn && (
+                        <Icon name="volume-up" size={20} color="#4285f4" style={styles.participantListIcon} />
+                    )}
+                </View>
+            </TouchableOpacity>
+        );
+    };
+
+    const renderParticipantGrid = () => {
+        // Create a map to ensure we only have one stream per participant
+        const streamMap = new Map();
+
+        // Add local stream with proper identification
+        if (localStream) {
+            streamMap.set(currentUserId, {
+                stream: localStream,
+                isLocal: true,
+                name: currentUserName,
+                id: currentUserId,
+                participantId: currentUserId // Ensure participantId is set
+            });
+        }
+
+        // Add remote streams, ensuring no duplicates and proper identification
+        remoteStreams.forEach((stream, idx) => {
+            // Get participant ID, preferring the explicitly set participantId
+            const participantId = stream.participantId || stream.id || `remote-${idx}`;
+
+            // Only add if we don't already have this participant's stream
+            if (!streamMap.has(participantId)) {
+                // Get user info from cache
+                const userInfo = userInfoCache.get(participantId);
+
+                streamMap.set(participantId, {
+                    stream,
+                    isLocal: false,
+                    name: stream.participantName || userInfo?.fullName || userInfo?.username || `User ${participantId.substring(0, 5)}`,
+                    email: stream.participantEmail || userInfo?.email || null,
+                    id: participantId,
+                    participantId // Ensure participantId is set
+                });
+            }
+        });
+
+        // Convert map to array
+        let streams = Array.from(streamMap.values());
+
+        // If a participant is pinned, move them to the front
+        if (pinnedParticipantId && streamMap.has(pinnedParticipantId)) {
+            const pinnedStream = streamMap.get(pinnedParticipantId);
+            streams = [
+                pinnedStream,
+                ...streams.filter(s => s.id !== pinnedParticipantId)
+            ];
+        }
+
+        // Determine grid layout based on number of participants
+        const totalParticipants = streams.length;
+        let numColumns = 1;
+
+        // If a participant is pinned, use a different layout
+        if (pinnedParticipantId && totalParticipants > 1) {
+            numColumns = 1; // Stack the pinned participant on top
+        } else {
+            if (totalParticipants === 4) {
+                numColumns = 2; // 2x2 grid for 4 people
+            } else if (totalParticipants >= 5) {
+                numColumns = 2; // 2x3 grid for 5+ people
+            }
+        }
+
+        // Calculate item height based on number of participants and pinned state
+        let itemHeight = height * 0.8; // Default for 1 participant
+
+        if (pinnedParticipantId && totalParticipants > 1) {
+            // Pinned layout: large on top, small at bottom
+            if (streams[0].id === pinnedParticipantId) {
+                itemHeight = height * 0.7; // Pinned participant gets 70% of height
+            } else {
+                itemHeight = height * 0.2; // Other participants share 30% of height
+            }
+        } else {
+            // Regular grid layout
+            if (totalParticipants === 2) {
+                itemHeight = height * 0.4; // 1x2 grid
+            } else if (totalParticipants === 3) {
+                itemHeight = height * 0.26; // 1x3 grid
+            } else if (totalParticipants === 4) {
+                itemHeight = height * 0.4; // 2x2 grid
+            } else if (totalParticipants >= 5) {
+                itemHeight = height * 0.26; // 2x3 grid with scrolling
+            }
+        }
+
+        console.log(`Rendering grid with ${streams.length} participants`);
+        console.log('Streams:', streams.map(s => ({
+            id: s.id,
+            participantId: s.participantId,
+            isLocal: s.isLocal
+        })));
+
+        return (
+            <FlatList
+                ref={participantsListRef}
+                data={streams}
+                renderItem={({ item, index }) => renderParticipantItem({
+                    item,
+                    index,
+                    height: itemHeight,
+                    isPinned: item.id === pinnedParticipantId
+                })}
+                keyExtractor={(item) => item.id}
+                style={styles.participantsList}
+                contentContainerStyle={styles.participantsListContent}
+                showsVerticalScrollIndicator={true}
+                numColumns={numColumns}
+                key={numColumns} // Force re-render when columns change
+                initialNumToRender={6}
+                maxToRenderPerBatch={6}
+            />
+        );
+    };
+
+    const renderParticipantItem = ({
+        item,
+        index,
+        height,
+        isPinned = false
+    }: {
+        item: any,
+        index: number,
+        height: number,
+        isPinned?: boolean
+    }) => {
+        // Get participant state from the map
+        const participantState = participantStates.get(item.participantId || item.id);
+
+        // Determine if video is enabled based on participant state or fallback to default
+        const isVideoOn = item.isLocal
+            ? isVideoEnabled
+            : (participantState ? participantState.isVideoEnabled : true);
+
+        // Determine if audio is enabled based on participant state
+        const isAudioOn = item.isLocal
+            ? isAudioEnabled
+            : (participantState ? participantState.isAudioEnabled : true);
+
+        // Check if hand is raised
+        const isParticipantHandRaised = participantState ? participantState.isHandRaised : false;
+
+        // Check if participant is speaking
+        const isParticipantSpeaking = participantState ? participantState.isSpeaking : false;
+
+        // Check for reactions
+        const hasThumbsUp = participantState ? participantState.isThumbsUp : false;
+        const hasThumbsDown = participantState ? participantState.isThumbsDown : false;
+        const isClapping = participantState ? participantState.isClapping : false;
+        const isWaving = participantState ? participantState.isWaving : false;
+
+        // Get first and last initials for avatar
+        const nameParts = item.name.split(' ');
+        const firstInitial = nameParts[0] ? nameParts[0].charAt(0).toUpperCase() : '';
+        const lastInitial = nameParts.length > 1 ? nameParts[nameParts.length - 1].charAt(0).toUpperCase() : '';
+        const initials = lastInitial ? `${firstInitial}${lastInitial}` : firstInitial;
+
+        // Determine if this is the current user
+        const isCurrentUser = item.isLocal || item.id === currentUserId;
+
+        // Get display name - use email username if name is not available
+        const displayName = item.name || (item.email ? item.email.split('@')[0] : `User ${item.id.substring(0, 5)}`);
+
+        const colors = [
+            '#4285F4', // Google Blue
+            '#EA4335', // Google Red
+            '#FBBC05', // Google Yellow
+            '#34A853', // Google Green
+            '#8AB4F8', // Light Blue
+            '#F28B82', // Light Red
+            '#FDD663', // Light Yellow
+            '#81C995', // Light Green
+            '#D2E3FC', // Pale Blue
+            '#FADAD7', // Pale Red
+        ];
+        const colorIndex = index % colors.length;
+        const avatarColor = colors[colorIndex];
+        const avatarTextColor = colorIndex >= 6 ? '#202124' : '#FFFFFF'; // Dark text on pale colors
+
+        return (
+            <TouchableOpacity
+                onLongPress={() => handlePinParticipant(item.participantId || item.id)}
+                activeOpacity={0.9}
+            >
+                <View style={[
+                    styles.participantContainer,
+                    { height },
+                    isParticipantSpeaking && styles.participantSpeakingContainer,
+                    isPinned && styles.participantPinnedContainer,
+                    isCurrentUser && styles.currentUserContainer
+                ]}>
+                    {item.stream && isVideoOn ? (
+                        <RTCView
+                            streamURL={item.stream.toURL()}
+                            style={styles.participantVideo}
+                            objectFit="cover"
+                            mirror={item.isLocal}
+                        />
+                    ) : (
+                        <View style={[
+                            styles.videoPlaceholder,
+                            { backgroundColor: '#1f1f1f' } // Darker background for better contrast
+                        ]}>
+                            <View style={[
+                                styles.avatarCircle,
+                                { backgroundColor: avatarColor },
+                                isParticipantSpeaking && styles.avatarCircleSpeaking
+                            ]}>
+                                <Text style={[
+                                    styles.avatarText,
+                                    { color: avatarTextColor }
+                                ]}>{initials}</Text>
+                            </View>
+                        </View>
+                    )}
+
+                    {/* Audio indicator */}
+                    {!isAudioOn && (
+                        <View style={styles.audioOffIndicator}>
+                            <Icon name="mic-off" size={20} color="#fff" />
+                        </View>
+                    )}
+
+                    {/* Speaking indicator */}
+                    {isParticipantSpeaking && isAudioOn && (
+                        <View style={styles.speakingIndicator}>
+                            <Icon name="volume-up" size={20} color="#fff" />
+                        </View>
+                    )}
+
+                    {/* Hand raised indicator */}
+                    {isParticipantHandRaised && (
+                        <View style={styles.handRaisedIndicator}>
+                            <MaterialCommunityIcons name="hand-wave" size={20} color="#fff" />
+                        </View>
+                    )}
+
+                    {/* Reaction indicators */}
+                    {hasThumbsUp && (
+                        <View style={styles.reactionIndicator}>
+                            <MaterialCommunityIcons name="thumb-up" size={20} color="#fff" />
+                        </View>
+                    )}
+
+                    {hasThumbsDown && (
+                        <View style={[styles.reactionIndicator, styles.thumbsDownIndicator]}>
+                            <MaterialCommunityIcons name="thumb-down" size={20} color="#fff" />
+                        </View>
+                    )}
+
+                    {isClapping && (
+                        <View style={[styles.reactionIndicator, styles.clappingIndicator]}>
+                            <MaterialCommunityIcons name="hand-clap" size={20} color="#fff" />
+                        </View>
+                    )}
+
+                    {isWaving && (
+                        <View style={[styles.reactionIndicator, styles.wavingIndicator]}>
+                            <MaterialCommunityIcons name="hand-wave" size={20} color="#fff" />
+                        </View>
+                    )}
+
+                    <View style={[
+                        styles.nameTag,
+                        isCurrentUser && styles.currentUserNameTag,
+                        isParticipantSpeaking && styles.speakingNameTag
+                    ]}>
+                        <View style={styles.nameTagContent}>
+                            {isCurrentUser && (
+                                <View style={styles.youIndicator}>
+                                    <Text style={styles.youIndicatorText}>YOU</Text>
+                                </View>
+                            )}
+                            <Text style={[
+                                styles.nameText,
+                                isCurrentUser && styles.currentUserNameText
+                            ]}>
+                                {displayName}
+                            </Text>
+                            {item.email && (
+                                <Text style={styles.emailText} numberOfLines={1} ellipsizeMode="middle">
+                                    {item.email}
+                                </Text>
+                            )}
+                        </View>
+                    </View>
+
+                    {/* Pin indicator */}
+                    {isPinned && (
+                        <View style={styles.pinnedIndicator}>
+                            <Icon name="push-pin" size={16} color="#fff" />
+                        </View>
+                    )}
+                </View>
+            </TouchableOpacity>
+        );
+    };
+
+    const renderMessageItem = ({ item }: { item: Message }) => {
+        // Count reactions by type
+        const reactionCounts: { [type: string]: number } = {};
+        if (item.reactions) {
+            Object.values(item.reactions).forEach(type => {
+                reactionCounts[type] = (reactionCounts[type] || 0) + 1;
+            });
+        }
+
+        // Check if current user has reacted
+        const myReaction = item.reactions?.[currentUserId];
+
+        return (
+            <TouchableOpacity
+                onLongPress={() => handleLongPressMessage(item.id)}
+                activeOpacity={0.8}
+            >
+                <View style={[styles.messageContainer, item.isMe && styles.myMessageContainer]}>
+                    {!item.isMe && (
+                        <Text style={[styles.messageSender, isDark && styles.messageSenderDark]}>
+                            {item.senderName}
+                        </Text>
+                    )}
+                    <View style={[
+                        styles.messageBubble,
+                        item.isMe && styles.myMessageBubble,
+                        isDark && styles.messageBubbleDark,
+                        item.isMe && isDark && styles.myMessageBubbleDark
+                    ]}>
+                        <Text style={[
+                            styles.messageText,
+                            item.isMe && styles.myMessageText,
+                            isDark && styles.messageTextDark
+                        ]}>
+                            {item.text}
+                        </Text>
+                    </View>
+
+                    {/* Message reactions display */}
+                    {Object.keys(reactionCounts).length > 0 && (
+                        <View style={styles.messageReactionsContainer}>
+                            {Object.entries(reactionCounts).map(([type, count]) => (
+                                <View
+                                    key={type}
+                                    style={[
+                                        styles.messageReactionBadge,
+                                        myReaction === type && styles.myMessageReactionBadge
+                                    ]}
+                                >
+                                    {type === 'thumbsUp' && <MaterialCommunityIcons name="thumb-up" size={14} color="#fff" />}
+                                    {type === 'thumbsDown' && <MaterialCommunityIcons name="thumb-down" size={14} color="#fff" />}
+                                    {type === 'heart' && <MaterialCommunityIcons name="heart" size={14} color="#fff" />}
+                                    {type === 'laugh' && <MaterialCommunityIcons name="emoticon-excited" size={14} color="#fff" />}
+                                    <Text style={styles.messageReactionCount}>{count}</Text>
+                                </View>
+                            ))}
+                        </View>
+                    )}
+
+                    <Text style={[styles.messageTime, isDark && styles.messageTimeDark]}>
+                        {item.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </Text>
+                </View>
+            </TouchableOpacity>
+        );
+    };
 
     return (
         <SafeAreaView style={[styles.container, isDark && styles.darkContainer]}>
@@ -212,7 +774,7 @@ const Room: React.FC<RoomProps> = ({
                 <View style={styles.mainContainer}>
                     <TouchableOpacity
                         activeOpacity={1}
-                        style={[styles.touchableContainer, showChat && styles.shrunkVideoContainer]}
+                        style={styles.touchableContainer}
                         onPress={() => setIsControlsVisible(true)}
                     >
                         <View style={styles.participantsGrid}>
@@ -241,7 +803,10 @@ const Room: React.FC<RoomProps> = ({
                             )}
                         </View>
 
-                        <View style={styles.controlsContainer}>
+                        <View style={[
+                            styles.controlsContainer,
+                            isControlsVisible ? styles.controlsVisible : styles.controlsHidden
+                        ]}>
                             <View style={styles.meetingInfo}>
                                 <Text style={styles.meetingTitle}>{meeting.title || 'Meeting'}</Text>
                                 <Text style={styles.roomCode}>{meeting.roomCode}</Text>
@@ -281,10 +846,38 @@ const Room: React.FC<RoomProps> = ({
                                         styles.controlButton,
                                         isHandRaised && styles.controlButtonActive,
                                     ]}
-                                    onPress={() => setIsHandRaised(!isHandRaised)}
+                                    onPress={handleRaiseHand}
                                 >
                                     <MaterialCommunityIcons
                                         name="hand-wave"
+                                        size={24}
+                                        color="white"
+                                    />
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={[
+                                        styles.controlButton,
+                                        showReactions && styles.controlButtonActive,
+                                    ]}
+                                    onPress={toggleReactionsMenu}
+                                >
+                                    <MaterialCommunityIcons
+                                        name="emoticon-outline"
+                                        size={24}
+                                        color="white"
+                                    />
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={[
+                                        styles.controlButton,
+                                        showParticipants && styles.controlButtonActive,
+                                    ]}
+                                    onPress={toggleParticipantsPanel}
+                                >
+                                    <Icon
+                                        name="people"
                                         size={24}
                                         color="white"
                                     />
@@ -305,16 +898,6 @@ const Room: React.FC<RoomProps> = ({
                                 </TouchableOpacity>
 
                                 <TouchableOpacity
-                                    style={[
-                                        styles.controlButton,
-                                        showMoreOptions && styles.controlButtonActive,
-                                    ]}
-                                    onPress={() => setShowMoreOptions(!showMoreOptions)}
-                                >
-                                    <Icon name="more-vert" size={24} color="white" />
-                                </TouchableOpacity>
-
-                                <TouchableOpacity
                                     style={[styles.controlButton, styles.endCallButton]}
                                     onPress={onEndCall}
                                 >
@@ -324,46 +907,260 @@ const Room: React.FC<RoomProps> = ({
                         </View>
                     </TouchableOpacity>
 
-                    {/* Chat Panel */}
-                    <Animated.View style={[styles.chatPanel, { width: chatPanelWidth }]}>
-                        <View style={styles.chatHeader}>
-                            <Text style={styles.chatTitle}>In-call messages</Text>
-                            <TouchableOpacity onPress={toggleChat} style={styles.closeButton}>
-                                <Icon name="close" size={24} color="#fff" />
-                            </TouchableOpacity>
-                        </View>
-
-                        <FlatList
-                            ref={flatListRef}
-                            data={messages}
-                            renderItem={renderMessageItem}
-                            keyExtractor={(item) => item.id}
-                            style={styles.messagesList}
-                            contentContainerStyle={styles.messagesContent}
-                        />
-
-                        <View style={styles.chatInputContainer}>
-                            <TextInput
-                                style={styles.chatInput}
-                                placeholder="Send a message to everyone..."
-                                placeholderTextColor="#9aa0a6"
-                                value={messageText}
-                                onChangeText={setMessageText}
-                                multiline
-                                maxLength={500}
-                            />
+                    {/* Reactions Menu */}
+                    {showReactions && (
+                        <Animated.View
+                            style={[
+                                styles.reactionsMenu,
+                                { opacity: reactionsMenuOpacity }
+                            ]}
+                        >
                             <TouchableOpacity
-                                style={[
-                                    styles.sendButton,
-                                    !messageText.trim() && styles.sendButtonDisabled
-                                ]}
-                                onPress={handleSendMessage}
-                                disabled={!messageText.trim()}
+                                style={styles.reactionButton}
+                                onPress={() => handleReaction('thumbsUp')}
                             >
-                                <Icon name="send" size={24} color={messageText.trim() ? "#8ab4f8" : "#5f6368"} />
+                                <MaterialCommunityIcons name="thumb-up" size={28} color="#4285F4" />
                             </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={styles.reactionButton}
+                                onPress={() => handleReaction('thumbsDown')}
+                            >
+                                <MaterialCommunityIcons name="thumb-down" size={28} color="#EA4335" />
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={styles.reactionButton}
+                                onPress={() => handleReaction('clapping')}
+                            >
+                                <MaterialCommunityIcons name="hand-clap" size={28} color="#FBBC05" />
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={styles.reactionButton}
+                                onPress={() => handleReaction('waving')}
+                            >
+                                <MaterialCommunityIcons name="hand-wave" size={28} color="#34A853" />
+                            </TouchableOpacity>
+                        </Animated.View>
+                    )}
+
+                    {/* Full Screen Chat Panel */}
+                    {showChat && (
+                        <Animated.View
+                            style={[
+                                styles.fullScreenChatPanel,
+                                isDark ? styles.fullScreenChatPanelDark : styles.fullScreenChatPanelLight,
+                                { opacity: chatPanelOpacity }
+                            ]}
+                        >
+                            <View style={[
+                                styles.chatHeader,
+                                isDark && styles.chatHeaderDark
+                            ]}>
+                                <TouchableOpacity onPress={toggleChat} style={styles.backButton}>
+                                    <Icon
+                                        name="arrow-back"
+                                        size={24}
+                                        color={isDark ? "#fff" : "#000"}
+                                    />
+                                </TouchableOpacity>
+                                <Text style={[
+                                    styles.chatTitle,
+                                    isDark && styles.chatTitleDark
+                                ]}>
+                                    In call messages
+                                </Text>
+                            </View>
+
+                            {messages.length === 0 ? (
+                                <View style={styles.emptyMessagesContainer}>
+                                    <Text style={[
+                                        styles.emptyMessagesText,
+                                        isDark && styles.emptyMessagesTextDark
+                                    ]}>
+                                        No messages yet
+                                    </Text>
+                                </View>
+                            ) : (
+                                <FlatList
+                                    ref={flatListRef}
+                                    data={messages}
+                                    renderItem={renderMessageItem}
+                                    keyExtractor={(item) => item.id}
+                                    style={[
+                                        styles.messagesList,
+                                        isDark && styles.messagesListDark
+                                    ]}
+                                    contentContainerStyle={styles.messagesContent}
+                                />
+                            )}
+
+                            <View style={[
+                                styles.messageInfoBanner,
+                                isDark && styles.messageInfoBannerDark
+                            ]}>
+                                <Text style={[
+                                    styles.messageInfoText,
+                                    isDark && styles.messageInfoTextDark
+                                ]}>
+                                    Messages can be seen only during the call by people in the call
+                                </Text>
+                            </View>
+
+                            <View style={[
+                                styles.chatInputContainer,
+                                isDark && styles.chatInputContainerDark
+                            ]}>
+                                <TouchableOpacity
+                                    style={styles.quickMessagesButton}
+                                    onPress={toggleQuickMessagesMenu}
+                                >
+                                    <MaterialCommunityIcons
+                                        name="lightning-bolt"
+                                        size={24}
+                                        color={isDark ? "#8ab4f8" : "#1a73e8"}
+                                    />
+                                </TouchableOpacity>
+                                <TextInput
+                                    style={[
+                                        styles.chatInput,
+                                        isDark && styles.chatInputDark
+                                    ]}
+                                    placeholder="Send message"
+                                    placeholderTextColor={isDark ? "#9aa0a6" : "#5f6368"}
+                                    value={messageText}
+                                    onChangeText={setMessageText}
+                                    multiline
+                                    maxLength={500}
+                                />
+                                <TouchableOpacity
+                                    style={[
+                                        styles.sendButton,
+                                        !messageText.trim() && styles.sendButtonDisabled
+                                    ]}
+                                    onPress={handleSendMessage}
+                                    disabled={!messageText.trim()}
+                                >
+                                    <Icon
+                                        name="send"
+                                        size={24}
+                                        color={messageText.trim()
+                                            ? (isDark ? "#8ab4f8" : "#1a73e8")
+                                            : (isDark ? "#5f6368" : "#9aa0a6")}
+                                    />
+                                </TouchableOpacity>
+                            </View>
+                        </Animated.View>
+                    )}
+
+                    {/* Quick Messages Menu */}
+                    {showQuickMessages && (
+                        <Animated.View
+                            style={[
+                                styles.quickMessagesMenu,
+                                { opacity: quickMessagesMenuOpacity }
+                            ]}
+                        >
+                            <View style={styles.quickMessagesHeader}>
+                                <Text style={styles.quickMessagesTitle}>Quick messages</Text>
+                                <TouchableOpacity onPress={() => setShowQuickMessages(false)}>
+                                    <Icon name="close" size={24} color="#fff" />
+                                </TouchableOpacity>
+                            </View>
+                            <FlatList
+                                data={quickMessages}
+                                keyExtractor={(item) => item}
+                                renderItem={({ item }) => (
+                                    <TouchableOpacity
+                                        style={styles.quickMessageItem}
+                                        onPress={() => sendQuickMessage(item)}
+                                    >
+                                        <Text style={styles.quickMessageText}>{item}</Text>
+                                    </TouchableOpacity>
+                                )}
+                                style={styles.quickMessagesList}
+                            />
+                        </Animated.View>
+                    )}
+
+                    {/* Message Reactions Menu */}
+                    {showMessageReactions && (
+                        <View style={styles.messageReactionsMenu}>
+                            <View style={styles.messageReactionsHeader}>
+                                <Text style={styles.messageReactionsTitle}>Add reaction</Text>
+                                <TouchableOpacity onPress={closeMessageReactions}>
+                                    <Icon name="close" size={24} color="#fff" />
+                                </TouchableOpacity>
+                            </View>
+                            <View style={styles.messageReactionsButtons}>
+                                <TouchableOpacity
+                                    style={styles.messageReactionButton}
+                                    onPress={() => handleMessageReaction('thumbsUp')}
+                                >
+                                    <MaterialCommunityIcons name="thumb-up" size={24} color="#4285F4" />
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={styles.messageReactionButton}
+                                    onPress={() => handleMessageReaction('thumbsDown')}
+                                >
+                                    <MaterialCommunityIcons name="thumb-down" size={24} color="#EA4335" />
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={styles.messageReactionButton}
+                                    onPress={() => handleMessageReaction('heart')}
+                                >
+                                    <MaterialCommunityIcons name="heart" size={24} color="#EA4335" />
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={styles.messageReactionButton}
+                                    onPress={() => handleMessageReaction('laugh')}
+                                >
+                                    <MaterialCommunityIcons name="emoticon-excited" size={24} color="#FBBC05" />
+                                </TouchableOpacity>
+                            </View>
                         </View>
-                    </Animated.View>
+                    )}
+
+                    {/* Participants Panel */}
+                    {showParticipants && (
+                        <Animated.View
+                            style={[
+                                styles.fullScreenPanel,
+                                isDark ? styles.fullScreenPanelDark : styles.fullScreenPanelLight,
+                                { opacity: participantsPanelOpacity }
+                            ]}
+                        >
+                            <View style={[
+                                styles.panelHeader,
+                                isDark && styles.panelHeaderDark
+                            ]}>
+                                <TouchableOpacity onPress={toggleParticipantsPanel} style={styles.backButton}>
+                                    <Icon
+                                        name="arrow-back"
+                                        size={24}
+                                        color={isDark ? "#fff" : "#000"}
+                                    />
+                                </TouchableOpacity>
+                                <Text style={[
+                                    styles.panelTitle,
+                                    isDark && styles.panelTitleDark
+                                ]}>
+                                    Participants ({getAllParticipants().length})
+                                </Text>
+                            </View>
+
+                            <FlatList
+                                data={getAllParticipants()}
+                                renderItem={renderParticipantListItem}
+                                keyExtractor={(item) => item.id}
+                                style={[
+                                    styles.participantsList,
+                                    isDark && styles.participantsListDark
+                                ]}
+                            />
+                        </Animated.View>
+                    )}
                 </View>
             </KeyboardAvoidingView>
         </SafeAreaView>
@@ -383,39 +1180,115 @@ const styles = StyleSheet.create({
     },
     mainContainer: {
         flex: 1,
-        flexDirection: 'row',
     },
     touchableContainer: {
         flex: 1,
         position: 'relative',
     },
-    shrunkVideoContainer: {
-        flex: 0.7, // Shrink video area when chat is open
-    },
     participantsGrid: {
         flex: 1,
-        flexDirection: 'row',
-        flexWrap: 'wrap',
+    },
+    participantsList: {
+        flex: 1,
+    },
+    participantsListContent: {
+        padding: 8,
     },
     participantContainer: {
+        flex: 1,
+        margin: 4,
+        borderRadius: 12,
         overflow: 'hidden',
-        margin: 2,
+        backgroundColor: '#3c4043',
+        position: 'relative',
     },
     participantVideo: {
         flex: 1,
     },
     nameTag: {
         position: 'absolute',
-        bottom: 8,
-        left: 8,
-        backgroundColor: 'rgba(0, 0, 0, 0.6)',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 4,
+        bottom: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderBottomLeftRadius: 8,
+        borderBottomRightRadius: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(255, 255, 255, 0.1)',
+    },
+    nameTagContent: {
+        flex: 1,
+        flexDirection: 'column',
+    },
+    currentUserNameTag: {
+        backgroundColor: 'rgba(66, 133, 244, 0.8)', // Google Blue with opacity
+    },
+    speakingNameTag: {
+        backgroundColor: 'rgba(52, 168, 83, 0.8)', // Google Green with opacity
     },
     nameText: {
-        color: 'white',
-        fontSize: 12,
+        color: '#FFFFFF',
+        fontSize: 14,
+        fontWeight: 'bold',
+        textShadowColor: 'rgba(0, 0, 0, 0.75)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
+    },
+    currentUserNameText: {
+        color: '#FFFFFF',
+    },
+    emailText: {
+        color: 'rgba(255, 255, 255, 0.8)',
+        fontSize: 11,
+        marginTop: 2,
+    },
+    youIndicator: {
+        backgroundColor: '#FFFFFF',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+        marginBottom: 4,
+        alignSelf: 'flex-start',
+    },
+    youIndicatorText: {
+        color: 'rgba(66, 133, 244, 1)', // Google Blue
+        fontSize: 10,
+        fontWeight: 'bold',
+    },
+    avatarCircle: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: 'rgba(255, 255, 255, 0.3)',
+    },
+    avatarCircleSpeaking: {
+        borderColor: '#34A853', // Google Green
+        borderWidth: 3,
+        shadowColor: '#34A853',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.5,
+        shadowRadius: 8,
+        elevation: 5,
+    },
+    avatarText: {
+        fontSize: 32,
+        fontWeight: 'bold',
+    },
+    currentUserContainer: {
+        borderWidth: 2,
+        borderColor: 'rgba(66, 133, 244, 0.8)', // Google Blue with opacity
+    },
+    participantSpeakingContainer: {
+        borderWidth: 2,
+        borderColor: 'rgba(52, 168, 83, 0.8)', // Google Green with opacity
     },
     emptyStateContainer: {
         position: 'absolute',
@@ -481,6 +1354,12 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         paddingBottom: Platform.OS === 'ios' ? 32 : 16,
     },
+    controlsVisible: {
+        opacity: 1,
+    },
+    controlsHidden: {
+        opacity: 0,
+    },
     meetingInfo: {
         marginBottom: 16,
         flexDirection: 'row',
@@ -519,33 +1398,65 @@ const styles = StyleSheet.create({
     endCallButton: {
         backgroundColor: '#ea4335',
     },
-    chatPanel: {
-        backgroundColor: '#282a2d',
-        height: '100%',
-        overflow: 'hidden',
+    fullScreenChatPanel: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 100,
+        flexDirection: 'column',
+    },
+    fullScreenChatPanelLight: {
+        backgroundColor: '#ffffff',
+    },
+    fullScreenChatPanelDark: {
+        backgroundColor: '#202124',
     },
     chatHeader: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
         padding: 16,
         borderBottomWidth: 1,
+        borderBottomColor: '#e0e0e0',
+    },
+    chatHeaderDark: {
         borderBottomColor: '#3c4043',
     },
+    backButton: {
+        marginRight: 16,
+        padding: 4,
+    },
     chatTitle: {
-        color: 'white',
+        color: '#202124',
         fontSize: 18,
         fontWeight: '500',
     },
-    closeButton: {
-        padding: 4,
+    chatTitleDark: {
+        color: '#ffffff',
     },
     messagesList: {
         flex: 1,
+        backgroundColor: '#ffffff',
+    },
+    messagesListDark: {
+        backgroundColor: '#202124',
     },
     messagesContent: {
         padding: 16,
         paddingBottom: 8,
+    },
+    emptyMessagesContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    emptyMessagesText: {
+        color: '#5f6368',
+        fontSize: 16,
+    },
+    emptyMessagesTextDark: {
+        color: '#9aa0a6',
     },
     messageContainer: {
         marginBottom: 16,
@@ -556,48 +1467,87 @@ const styles = StyleSheet.create({
         alignSelf: 'flex-end',
     },
     messageSender: {
-        color: '#9aa0a6',
+        color: '#5f6368',
         fontSize: 12,
         marginBottom: 4,
+        fontWeight: '500',
+    },
+    messageSenderDark: {
+        color: '#9aa0a6',
     },
     messageBubble: {
-        backgroundColor: '#3c4043',
+        backgroundColor: '#f1f3f4',
         borderRadius: 16,
         paddingHorizontal: 12,
         paddingVertical: 8,
     },
+    messageBubbleDark: {
+        backgroundColor: '#3c4043',
+    },
     myMessageBubble: {
+        backgroundColor: '#e8f0fe',
+    },
+    myMessageBubbleDark: {
         backgroundColor: '#174ea6',
     },
     messageText: {
-        color: 'white',
+        color: '#202124',
         fontSize: 14,
     },
+    messageTextDark: {
+        color: '#ffffff',
+    },
     myMessageText: {
-        color: 'white',
+        color: '#202124',
     },
     messageTime: {
-        color: '#9aa0a6',
+        color: '#5f6368',
         fontSize: 10,
         marginTop: 4,
         alignSelf: 'flex-end',
+    },
+    messageTimeDark: {
+        color: '#9aa0a6',
+    },
+    messageInfoBanner: {
+        backgroundColor: '#f1f3f4',
+        padding: 12,
+        alignItems: 'center',
+    },
+    messageInfoBannerDark: {
+        backgroundColor: '#3c4043',
+    },
+    messageInfoText: {
+        color: '#5f6368',
+        fontSize: 12,
+        textAlign: 'center',
+    },
+    messageInfoTextDark: {
+        color: '#9aa0a6',
     },
     chatInputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         padding: 12,
         borderTopWidth: 1,
+        borderTopColor: '#e0e0e0',
+    },
+    chatInputContainerDark: {
         borderTopColor: '#3c4043',
     },
     chatInput: {
         flex: 1,
-        backgroundColor: '#3c4043',
+        backgroundColor: '#f1f3f4',
         borderRadius: 20,
         paddingHorizontal: 16,
         paddingVertical: 8,
-        color: 'white',
+        color: '#202124',
         fontSize: 14,
         maxHeight: 100,
+    },
+    chatInputDark: {
+        backgroundColor: '#3c4043',
+        color: '#ffffff',
     },
     sendButton: {
         marginLeft: 8,
@@ -605,6 +1555,311 @@ const styles = StyleSheet.create({
     },
     sendButtonDisabled: {
         opacity: 0.5,
+    },
+    videoPlaceholder: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderRadius: 12,
+        position: 'relative',
+        overflow: 'hidden',
+        backgroundColor: '#000000', // Solid black background
+    },
+    videoPlaceholderDark: {
+        backgroundColor: '#000000', // Also black in dark mode
+    },
+    videoPlaceholderLight: {
+        backgroundColor: '#000000', // Also black in light mode
+    },
+    audioOffIndicator: {
+        position: 'absolute',
+        top: 16,
+        left: 16,
+        backgroundColor: 'rgba(234, 67, 53, 0.8)',
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 3,
+    },
+    handRaisedIndicator: {
+        position: 'absolute',
+        top: 16,
+        right: 16,
+        backgroundColor: 'rgba(251, 188, 5, 0.8)',
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 3,
+    },
+    reactionIndicator: {
+        position: 'absolute',
+        top: 60,
+        right: 16,
+        backgroundColor: 'rgba(66, 133, 244, 0.8)',
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 3,
+    },
+    thumbsDownIndicator: {
+        backgroundColor: 'rgba(234, 67, 53, 0.8)',
+        top: 104,
+    },
+    clappingIndicator: {
+        backgroundColor: 'rgba(251, 188, 5, 0.8)',
+        top: 148,
+    },
+    wavingIndicator: {
+        backgroundColor: 'rgba(52, 168, 83, 0.8)',
+        top: 192,
+    },
+    reactionsMenu: {
+        position: 'absolute',
+        bottom: 100,
+        left: 0,
+        right: 0,
+        backgroundColor: 'rgba(32, 33, 36, 0.9)',
+        borderRadius: 16,
+        margin: 16,
+        padding: 8,
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        alignItems: 'center',
+        zIndex: 100,
+    },
+    reactionButton: {
+        padding: 12,
+        backgroundColor: 'rgba(60, 64, 67, 0.8)',
+        borderRadius: 30,
+        width: 60,
+        height: 60,
+        justifyContent: 'center',
+        alignItems: 'center',
+        margin: 8,
+    },
+    messageReactionsContainer: {
+        flexDirection: 'row',
+        marginTop: 4,
+        marginBottom: 2,
+    },
+    messageReactionBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(60, 64, 67, 0.8)',
+        borderRadius: 12,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        marginRight: 4,
+    },
+    myMessageReactionBadge: {
+        backgroundColor: 'rgba(66, 133, 244, 0.8)',
+    },
+    messageReactionCount: {
+        color: '#fff',
+        fontSize: 12,
+        marginLeft: 4,
+    },
+    messageReactionsMenu: {
+        position: 'absolute',
+        bottom: 100,
+        left: 0,
+        right: 0,
+        backgroundColor: 'rgba(32, 33, 36, 0.95)',
+        borderRadius: 16,
+        margin: 16,
+        padding: 16,
+        zIndex: 200,
+    },
+    messageReactionsHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    messageReactionsTitle: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '500',
+    },
+    messageReactionsButtons: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+    },
+    messageReactionButton: {
+        padding: 12,
+        backgroundColor: 'rgba(60, 64, 67, 0.8)',
+        borderRadius: 24,
+        width: 48,
+        height: 48,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    quickMessagesButton: {
+        padding: 8,
+        marginRight: 8,
+    },
+    quickMessagesMenu: {
+        position: 'absolute',
+        bottom: 100,
+        left: 0,
+        right: 0,
+        backgroundColor: 'rgba(32, 33, 36, 0.95)',
+        borderRadius: 16,
+        margin: 16,
+        padding: 16,
+        maxHeight: 300,
+        zIndex: 200,
+    },
+    quickMessagesHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    quickMessagesTitle: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '500',
+    },
+    quickMessagesList: {
+        maxHeight: 240,
+    },
+    quickMessageItem: {
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+        marginBottom: 8,
+        backgroundColor: 'rgba(60, 64, 67, 0.8)',
+    },
+    quickMessageText: {
+        color: '#fff',
+        fontSize: 14,
+    },
+    participantListItem: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f1f3f4',
+    },
+    participantListItemDark: {
+        borderBottomColor: '#3c4043',
+    },
+    participantListItemLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    participantListAvatar: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#4285f4',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+    },
+    participantListAvatarSpeaking: {
+        borderWidth: 2,
+        borderColor: '#4285f4',
+    },
+    participantListAvatarText: {
+        color: '#ffffff',
+        fontSize: 18,
+        fontWeight: '600',
+    },
+    participantListName: {
+        fontSize: 16,
+        color: '#202124',
+    },
+    participantListNameDark: {
+        color: '#ffffff',
+    },
+    participantListItemRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    participantListIcon: {
+        marginLeft: 8,
+    },
+    participantsListDark: {
+        backgroundColor: '#202124',
+    },
+    participantPinnedContainer: {
+        borderWidth: 2,
+        borderColor: '#4285f4',
+    },
+    pinnedIndicator: {
+        position: 'absolute',
+        top: 8,
+        left: 8,
+        backgroundColor: 'rgba(66, 133, 244, 0.8)',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        zIndex: 4,
+    },
+    participantListItemPinned: {
+        backgroundColor: 'rgba(66, 133, 244, 0.1)',
+    },
+    participantListPinnedText: {
+        fontSize: 12,
+        color: '#4285f4',
+        marginTop: 2,
+    },
+    speakingIndicator: {
+        position: 'absolute',
+        top: 60, // Position below hand raised indicator
+        left: 16,
+        backgroundColor: 'rgba(66, 133, 244, 0.8)',
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 3,
+    },
+    fullScreenPanel: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 100,
+        flexDirection: 'column',
+    },
+    fullScreenPanelLight: {
+        backgroundColor: '#ffffff',
+    },
+    fullScreenPanelDark: {
+        backgroundColor: '#202124',
+    },
+    panelHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#e0e0e0',
+    },
+    panelHeaderDark: {
+        borderBottomColor: '#3c4043',
+    },
+    panelTitle: {
+        color: '#202124',
+        fontSize: 18,
+        fontWeight: '500',
+    },
+    panelTitleDark: {
+        color: '#ffffff',
     },
 });
 

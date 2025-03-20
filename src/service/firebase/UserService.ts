@@ -11,7 +11,6 @@ export class UserService {
           .where('email', '==', auth().currentUser?.email)
           .get()
       ).docs[0].data();
-
       if (doc.fullName && doc.username) {
         return {fullName: doc.fullName, username: doc.username};
       }
@@ -72,6 +71,43 @@ export class UserService {
     } catch (error: any) {
       console.log('UserService :: checkUsernameOrEmailRegistered() ::', error);
       return {success: false, error};
+    }
+  }
+
+  async getUserEmailById(userId: string): Promise<string | null> {
+    try {
+      const userDoc = await firestore().collection('users').doc(userId).get();
+
+      if (userDoc.exists && userDoc.data()?.email) {
+        return userDoc.data()?.email;
+      }
+      return null;
+    } catch (error) {
+      console.log('UserService :: getUserEmailById() ::', error);
+      return null;
+    }
+  }
+
+  async getUserInfoById(userId: string): Promise<{
+    email: string | null;
+    fullName: string | null;
+    username: string | null;
+  }> {
+    try {
+      const userDoc = await firestore().collection('users').doc(userId).get();
+
+      if (userDoc.exists) {
+        const userData = userDoc.data();
+        return {
+          email: userData?.email || null,
+          fullName: userData?.fullName || null,
+          username: userData?.username || null,
+        };
+      }
+      return {email: null, fullName: null, username: null};
+    } catch (error) {
+      console.log('UserService :: getUserInfoById() ::', error);
+      return {email: null, fullName: null, username: null};
     }
   }
 }

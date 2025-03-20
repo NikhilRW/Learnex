@@ -9,17 +9,13 @@ import {
     Alert,
     Platform,
     KeyboardAvoidingView,
-    Modal,
-    PermissionsAndroid,
 } from 'react-native';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
-import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useNavigation } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { userState } from '../../types/userType';
 import { MeetingService } from '../../service/firebase/MeetingService';
-import { generateRoomCode } from '../../helpers/roomCodeGenerator';
 import { UserStackParamList } from '../../routes/UserStack';
 
 interface MeetingRoom {
@@ -402,7 +398,6 @@ const Room = () => {
                         </Text>
                     </TouchableOpacity>
                 </View>
-
                 {activeTab === 'create' ? renderCreateRoomForm() : renderJoinRoomForm()}
             </ScrollView>
         </KeyboardAvoidingView>

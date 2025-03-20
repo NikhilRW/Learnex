@@ -1,4 +1,4 @@
-import { Text, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View, Dimensions } from 'react-native';
 import React, { useEffect, useState, useCallback, memo } from 'react';
 import { Image } from 'react-native';
 import IonIcons from 'react-native-vector-icons/Ionicons';
@@ -8,6 +8,10 @@ import { useTypedSelector } from '../../../hooks/useTypedSelector';
 import Icon from 'react-native-vector-icons/Feather';
 import { TextInput } from 'react-native-gesture-handler';
 import { styles } from '../../../styles/components/user/UserStack/NavigationDrawerButton.styles';
+import { Avatar } from 'react-native-elements';
+import { getUsernameForLogo } from '../../../helpers/stringHelpers';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const NavigationDrawerButton = memo(({ tintColor, navigation }: { tintColor: string, navigation: DrawerNavigationProp<ParamListBase, string, undefined> }) => {
   const theme = useTypedSelector((state) => state.user.theme);
@@ -17,6 +21,7 @@ const NavigationDrawerButton = memo(({ tintColor, navigation }: { tintColor: str
   const [photoURL, setPhotoURL] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
   const [searchText, setSearchText] = useState('');
+  const profileColor = useTypedSelector(state => state.user.userProfileColor);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -30,7 +35,8 @@ const NavigationDrawerButton = memo(({ tintColor, navigation }: { tintColor: str
           setPhotoURL(currentUser.photoURL);
         }
         const data = await firebase.user.getNameUsernamestring();
-        if (data && data.fullName) {
+        console.log("data : " + data.username);
+        if (data) {
           setUserData(data);
         } else {
           console.log('No user data found');
@@ -84,13 +90,13 @@ const NavigationDrawerButton = memo(({ tintColor, navigation }: { tintColor: str
 
   return (
     <View
-      className={`${isDark ? "bg-[#1a1a1a]" : "bg-white"} flex-row px-2 py-1 items-center`}>
+      className={`${isDark ? "bg-[#1a1a1a]" : "bg-white"} flex-row w-full px-2 py-1 items-center`}>
       <TouchableOpacity onPress={handleOpenDrawer}>
         <Image
           source={require('../../../res/pngs/menu.png')}
           style={{
-            width: 32,
-            height: 32,
+            width: Math.min(SCREEN_WIDTH * 0.08, 32),
+            height: Math.min(SCREEN_WIDTH * 0.08, 32),
             marginVertical: "auto",
             marginLeft: "3%",
             marginTop: "2%",
@@ -100,7 +106,7 @@ const NavigationDrawerButton = memo(({ tintColor, navigation }: { tintColor: str
       </TouchableOpacity>
       <View style={styles.header}>
         <View style={{ ...styles.searchBar, backgroundColor: isDark ? "#2a2a2a" : "#F0F0F0" }}>
-          <Icon name="search" size={20} style={{ marginRight: "2%" }} color="#666" />
+          <Icon name="search" size={Math.min(SCREEN_WIDTH * 0.05, 20)} style={{ marginRight: "2%" }} color="#666" />
           <TextInput
             onFocus={handleSearchFocus}
             style={{
@@ -110,20 +116,33 @@ const NavigationDrawerButton = memo(({ tintColor, navigation }: { tintColor: str
               padding: 1,
               marginRight: "10%",
               width: "100%",
+              fontSize: Math.min(SCREEN_WIDTH * 0.04, 16),
             }}
             onChangeText={handleSearchChange}
           />
           <TouchableOpacity
             className="absolute left-[35%] top-[40%]"
             onPress={handleSearchPress}>
-            <Text className={`${isTyping ? 'opacity-0' : 'opacity-100'} ${isDark ? "text-white" : "text-black"}`}>
+            <Text
+              className={`${isTyping ? 'opacity-0' : 'opacity-100'} ${isDark ? "text-white" : "text-black"}`}
+              style={{ fontSize: Math.min(SCREEN_WIDTH * 0.04, 16) }}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
               {`👋 Hey ${getFirstName()}`}
             </Text>
           </TouchableOpacity>
         </View>
-        <Image
-          source={require('../../../res/pngs/testing/logo.png')}
-          style={styles.profilePic}
+        <Avatar
+          size={Math.min(SCREEN_WIDTH * 0.0625, 25)}
+          titleStyle={{
+            textAlign: 'center',
+            fontSize: Math.min(SCREEN_WIDTH * 0.0625, 25),
+            fontFamily: 'Kufam-Thin'
+          }}
+          title={getUsernameForLogo(userData!?.username || 'Anonymous')}
+          containerStyle={[styles.container, { borderColor: isDark ? '#2379C2' : '#2379C2', backgroundColor: profileColor! }]}
+          activeOpacity={0.7}
         />
       </View>
     </View>

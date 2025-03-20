@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, BackHandler, View, StyleSheet, ActivityIndicator, Text } from 'react-native';
+import { Alert, BackHandler, View, StyleSheet, ActivityIndicator, Text, TouchableOpacity } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { MeetingService, Meeting } from '../../service/firebase/MeetingService';
-import { WebRTCService } from '../../service/firebase/WebRTCService';
+import { WebRTCService, ParticipantState } from '../../service/firebase/WebRTCService';
+import { MediaStream } from 'react-native-webrtc';
 import Room from '../../components/Room/Room';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
 import { UserStackParamList } from '../../routes/UserStack';
@@ -20,6 +21,13 @@ interface Message {
     text: string;
     timestamp: Date;
     isMe: boolean;
+    reactions?: {
+        [userId: string]: string; // userId: reactionType
+    };
+}
+
+interface ExtendedMediaStream extends MediaStream {
+    participantId?: string;
 }
 
 const meetingService = new MeetingService();
@@ -31,10 +39,12 @@ const RoomScreen: React.FC = () => {
     const { meeting, isHost } = route.params;
     const userTheme = useTypedSelector(state => state.user);
     const isDark = userTheme.theme === 'dark';
+    const [username, setUsername] = useState('');
+    const [fullName, setFullName] = useState('');
     const currentUser = auth().currentUser;
-
-    const [localStream, setLocalStream] = useState<any>(null);
-    const [remoteStreams, setRemoteStreams] = useState<any[]>([]);
+    const firebase = useTypedSelector(state => state.firebase);
+    const [localStream, setLocalStream] = useState<ExtendedMediaStream | null>(null);
+    const [remoteStreams, setRemoteStreams] = useState<ExtendedMediaStream[]>([]);
     const [isAudioEnabled, setIsAudioEnabled] = useState(true);
     const [isVideoEnabled, setIsVideoEnabled] = useState(true);
     const [isConnecting, setIsConnecting] = useState(true);
@@ -42,7 +52,12 @@ const RoomScreen: React.FC = () => {
     const [connectionError, setConnectionError] = useState<string | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);
     const [unsubscribeMessages, setUnsubscribeMessages] = useState<(() => void) | null>(null);
+    const [participantStates, setParticipantStates] = useState<Map<string, ParticipantState>>(new Map());
     const MAX_CONNECTION_ATTEMPTS = 3;
+    const [connectionState, setConnectionState] = useState<'connecting' | 'connected' | 'disconnected' | 'failed'>('connecting');
+
+    // Add stream tracking map to help with duplicate detection
+    const [streamsByParticipant, setStreamsByParticipant] = useState<Map<string, ExtendedMediaStream>>(new Map());
 
     useEffect(() => {
         // Handle hardware back button
@@ -69,19 +84,21 @@ const RoomScreen: React.FC = () => {
                 // Initialize WebRTC
                 try {
                     const stream = await webRTCService.initLocalStream();
-                    console.log('Local stream initialized:', stream);
+                    console.log('Local stream initialized:', stream.id);
                     setLocalStream(stream);
+
+                    // Set up audio level detection for local stream
+                    setupAudioLevelDetection(stream, currentUser?.uid || '');
                 } catch (streamError) {
                     console.error('Failed to initialize local stream:', streamError);
-                    // Continue without video if we can't get media permissions
                     Alert.alert(
                         'Camera/Microphone Access',
                         'Could not access camera or microphone. Please check permissions.'
                     );
                 }
 
-                // Subscribe to meeting updates
-                meetingService.subscribeMeeting(
+                // Subscribe to meeting updates with improved error handling
+                const unsubscribeMeeting = meetingService.subscribeMeeting(
                     meeting.id,
                     updatedMeeting => {
                         console.log('Meeting updated:', updatedMeeting.status);
@@ -91,24 +108,93 @@ const RoomScreen: React.FC = () => {
                     },
                     error => {
                         console.error('Meeting subscription error:', error);
+                        setConnectionState('failed');
                         Alert.alert('Error', 'Failed to connect to meeting');
                     },
                 );
 
-                // Subscribe to remote streams
+                // Subscribe to remote streams with improved error handling and stream management
                 webRTCService.onRemoteStream(stream => {
-                    console.log('Remote stream received');
-                    setRemoteStreams(prev => [...prev, stream]);
+                    console.log('Remote stream received with ID:', stream.id);
+                    try {
+                        const participantId = stream.participantId;
+                        if (!participantId) {
+                            console.error('Received stream without participant ID');
+                            return;
+                        }
+
+                        // Update streams by participant
+                        setStreamsByParticipant(prev => {
+                            const newMap = new Map(prev);
+                            newMap.set(participantId, stream);
+                            return newMap;
+                        });
+
+                        // Update remote streams state
+                        setRemoteStreams(prev => {
+                            // Remove any existing stream for this participant
+                            const filteredStreams = prev.filter(s => s.participantId !== participantId);
+                            // Add the new stream
+                            return [...filteredStreams, stream];
+                        });
+
+                        // Setup audio level detection for the new stream
+                        setupAudioLevelDetection(stream, participantId);
+                        setConnectionState('connected');
+                    } catch (error) {
+                        console.error('Error handling remote stream:', error);
+                    }
                 });
 
-                webRTCService.onRemoteStreamRemoved(streamId => {
-                    console.log('Remote stream removed:', streamId);
-                    setRemoteStreams(prev => prev.filter(s => s.id !== streamId));
+                // Improved stream removal that properly removes by participantId
+                webRTCService.onRemoteStreamRemoved(participantId => {
+                    console.log('Remote stream removed for participant:', participantId);
+                    try {
+                        // Update our participant tracking map
+                        setStreamsByParticipant(prev => {
+                            const newMap = new Map(prev);
+                            newMap.delete(participantId);
+                            return newMap;
+                        });
+
+                        // Remove the stream from state
+                        setRemoteStreams(prev => {
+                            return prev.filter(stream => stream.participantId !== participantId);
+                        });
+                    } catch (error) {
+                        console.error('Error removing remote stream:', error);
+                    }
                 });
 
-                // Listen for signaling messages
-                webRTCService.listenForSignalingMessages(meeting.id, message => {
-                    webRTCService.processSignalingMessage(message, meeting.id);
+                // Subscribe to participant states
+                webRTCService.subscribeToParticipantStates(meeting.id);
+
+                // Initialize local participant state
+                await webRTCService.updateLocalParticipantState(meeting.id, {
+                    isAudioEnabled,
+                    isVideoEnabled,
+                    isHandRaised: false,
+                    isScreenSharing: false
+                });
+
+                // Listen for signaling messages with improved error handling
+                webRTCService.listenForSignalingMessages(meeting.id, async message => {
+                    try {
+                        await webRTCService.processSignalingMessage(message, meeting.id);
+                    } catch (error) {
+                        console.error('Error processing signaling message:', error);
+                        if (connectionAttempts < MAX_CONNECTION_ATTEMPTS) {
+                            console.log('Retrying connection...');
+                            setConnectionAttempts(prev => prev + 1);
+                            await setupMeeting();
+                        } else {
+                            setConnectionState('failed');
+                            Alert.alert(
+                                'Connection Error',
+                                'Failed to establish connection after multiple attempts'
+                            );
+                        }
+                    }
                 });
 
                 // Connect to existing participants
@@ -116,16 +202,19 @@ const RoomScreen: React.FC = () => {
                     await webRTCService.connectToParticipants(meeting.id, meeting.participants);
                 }
 
+                setIsConnecting(false);
+                setConnectionState('connected');
+
                 // Subscribe to chat messages
                 subscribeToMessages();
 
-                setIsConnecting(false);
             } catch (error) {
                 console.error('Failed to setup meeting:', error);
                 setConnectionError((error as Error).message || 'Connection failed');
+                setConnectionState('failed');
 
                 if (connectionAttempts < MAX_CONNECTION_ATTEMPTS) {
-                    // Retry connection
+                    console.log(`Retrying setup (attempt ${connectionAttempts + 1})`);
                     setTimeout(() => {
                         setupMeeting();
                     }, 2000);
@@ -145,6 +234,20 @@ const RoomScreen: React.FC = () => {
             cleanup();
         };
     }, [meeting.id]);
+
+    // Enhanced debug logging for remote streams
+    useEffect(() => {
+        console.log(`Remote streams updated: ${remoteStreams.length} streams`);
+        remoteStreams.forEach((stream, index) => {
+            console.log(`Stream ${index}: ID=${stream.id}, ParticipantID=${stream.participantId || 'none'}`);
+        });
+
+        // Log the streamsByParticipant map
+        console.log(`StreamsByParticipant map has ${streamsByParticipant.size} entries`);
+        streamsByParticipant.forEach((stream, participantId) => {
+            console.log(`Participant ${participantId} has stream ID ${stream.id}`);
+        });
+    }, [remoteStreams, streamsByParticipant]);
 
     const subscribeToMessages = () => {
         if (!currentUser) return;
@@ -170,7 +273,30 @@ const RoomScreen: React.FC = () => {
                             text: data.text,
                             timestamp: data.timestamp?.toDate() || new Date(),
                             isMe: data.senderId === currentUser.uid,
+                            reactions: data.reactions || {},
                         });
+                    } else if (change.type === 'modified') {
+                        // Handle message modifications (e.g., reactions)
+                        const data = change.doc.data();
+                        const updatedMessage = {
+                            id: change.doc.id,
+                            senderId: data.senderId,
+                            senderName: data.senderName,
+                            text: data.text,
+                            timestamp: data.timestamp?.toDate() || new Date(),
+                            isMe: data.senderId === currentUser.uid,
+                            reactions: data.reactions || {},
+                        };
+
+                        // Update the message in the state
+                        setMessages(prevMessages =>
+                            prevMessages.map(msg =>
+                                msg.id === updatedMessage.id ? updatedMessage : msg
+                            )
+                        );
+
+                        // Don't add to newMessages since we're updating in place
+                        return;
                     }
                 });
 
@@ -187,18 +313,18 @@ const RoomScreen: React.FC = () => {
     };
 
     const sendMessage = async (text: string) => {
-        if (!currentUser || !text.trim()) return;
-
+        let name = "";
         try {
             await firestore()
                 .collection('meetings')
                 .doc(meeting.id)
                 .collection('messages')
                 .add({
-                    senderId: currentUser.uid,
-                    senderName: currentUser.displayName || 'Anonymous',
+                    senderId: currentUser!.uid,
+                    senderName: currentUser?.displayName || 'Anonymous',
                     text: text.trim(),
                     timestamp: firestore.FieldValue.serverTimestamp(),
+                    reactions: {}, // Initialize empty reactions object
                 });
         } catch (error) {
             console.error('Error sending message:', error);
@@ -227,84 +353,255 @@ const RoomScreen: React.FC = () => {
     };
 
     const handleMeetingEnded = () => {
-        Alert.alert('Meeting Ended', 'The meeting has been ended by the host');
-        cleanup();
-        navigation.goBack();
+        Alert.alert('Meeting Ended', 'The meeting has been ended by the host', [
+            {
+                text: 'OK',
+                onPress: () => {
+                    cleanup();
+                    navigation.navigate('Home');
+                }
+            }
+        ]);
     };
 
-    const handleToggleAudio = () => {
+    const handleToggleAudio = async () => {
         if (localStream) {
             const audioTracks = localStream.getAudioTracks();
             if (audioTracks.length > 0) {
                 const audioTrack = audioTracks[0];
                 audioTrack.enabled = !audioTrack.enabled;
                 setIsAudioEnabled(audioTrack.enabled);
+
+                // Update participant state in Firestore
+                await webRTCService.updateLocalParticipantState(meeting.id, {
+                    isAudioEnabled: audioTrack.enabled
+                });
             }
         }
     };
 
-    const handleToggleVideo = () => {
+    const handleToggleVideo = async () => {
         if (localStream) {
             const videoTracks = localStream.getVideoTracks();
             if (videoTracks.length > 0) {
                 const videoTrack = videoTracks[0];
                 videoTrack.enabled = !videoTrack.enabled;
                 setIsVideoEnabled(videoTrack.enabled);
+
+                // Update participant state in Firestore
+                await webRTCService.updateLocalParticipantState(meeting.id, {
+                    isVideoEnabled: videoTrack.enabled
+                });
             }
+        }
+    };
+
+    const handleRaiseHand = async (raised: boolean) => {
+        // Update participant state in Firestore
+        await webRTCService.updateLocalParticipantState(meeting.id, {
+            isHandRaised: raised
+        });
+    };
+
+    const handleReaction = async (reaction: 'thumbsUp' | 'thumbsDown' | 'clapping' | 'waving') => {
+        // Create update object with all reactions set to false
+        const update: Partial<ParticipantState> = {
+            isThumbsUp: false,
+            isThumbsDown: false,
+            isClapping: false,
+            isWaving: false,
+        };
+
+        // Set the selected reaction to true
+        switch (reaction) {
+            case 'thumbsUp':
+                update.isThumbsUp = true;
+                break;
+            case 'thumbsDown':
+                update.isThumbsDown = true;
+                break;
+            case 'clapping':
+                update.isClapping = true;
+                break;
+            case 'waving':
+                update.isWaving = true;
+                break;
+        }
+
+        // Update participant state in Firestore
+        await webRTCService.updateLocalParticipantState(meeting.id, update);
+    };
+
+    useEffect(() => {
+        const fetchUserData = async () => {
+            try {
+                const { fullName, username } = await firebase.firebase.user.getNameUsernamestring();
+                console.log(fullName, username);
+                setUsername(username);
+                setFullName(fullName);
+            } catch (err) {
+                console.error('Error fetching user data:', err);
+                setUsername('Anonymous');
+                setFullName('Anonymous');
+            }
+        };
+        fetchUserData();
+    }, [currentUser]);
+    const handleMessageReaction = async (messageId: string, reactionType: string) => {
+        if (!currentUser) return;
+
+        try {
+            const messageRef = firestore()
+                .collection('meetings')
+                .doc(meeting.id)
+                .collection('messages')
+                .doc(messageId);
+
+            // Get current message data
+            const messageDoc = await messageRef.get();
+            if (!messageDoc.exists) return;
+
+            const messageData = messageDoc.data();
+            const reactions = messageData?.reactions || {};
+
+            // Toggle reaction: remove if same reaction exists, otherwise add/update
+            if (reactions[currentUser.uid] === reactionType) {
+                // Remove reaction
+                delete reactions[currentUser.uid];
+            } else {
+                // Add or update reaction
+                reactions[currentUser.uid] = reactionType;
+            }
+
+            // Update message with new reactions
+            await messageRef.update({ reactions });
+        } catch (error) {
+            console.error('Error adding reaction to message:', error);
         }
     };
 
     const handleEndCall = async () => {
-        if (isHost) {
-            try {
+        try {
+            if (isHost) {
                 await meetingService.endMeeting(meeting.id);
-            } catch (error) {
-                console.error('Failed to end meeting:', error);
-            }
-        } else {
-            try {
+            } else {
                 await meetingService.leaveMeeting(meeting.id);
-            } catch (error) {
-                console.error('Failed to leave meeting:', error);
             }
-        }
 
-        cleanup();
-        navigation.goBack();
+            cleanup();
+            // Use the correct screen name 'Home'
+            navigation.navigate('Home');
+        } catch (error) {
+            console.error('Failed to end/leave meeting:', error);
+            // Even if there's an error, try to navigate away
+            navigation.navigate('Home');
+        }
+    };
+
+    // Function to detect audio levels and update speaking status
+    const setupAudioLevelDetection = (stream: any, participantId: string) => {
+        if (!stream) return;
+
+        try {
+            // For React Native, we'll use a simpler approach
+            // Set up interval to check if audio track is enabled and has audio level
+            const checkInterval = setInterval(() => {
+                if (!stream.active) {
+                    clearInterval(checkInterval);
+                    return;
+                }
+
+                const audioTracks = stream.getAudioTracks();
+                if (audioTracks.length === 0) return;
+
+                const audioTrack = audioTracks[0];
+
+                // In React Native, we can't directly measure audio levels
+                // So we'll use a simpler approach: if audio is enabled and not muted, 
+                // we'll simulate speaking detection with random intervals
+                if (audioTrack.enabled && !audioTrack.muted) {
+                    // Simulate speaking detection with random intervals
+                    // This is just a placeholder - in a real app, you'd use native modules
+                    // to detect actual audio levels
+                    const isSpeaking = Math.random() > 0.7; // 30% chance of "speaking"
+
+                    // Get current state
+                    const currentState = participantStates.get(participantId);
+                    if (currentState && currentState.isSpeaking !== isSpeaking) {
+                        // Only update if speaking state has changed
+                        webRTCService.updateLocalParticipantState(meeting.id, {
+                            isSpeaking
+                        });
+                    }
+                } else {
+                    // If audio is disabled or muted, definitely not speaking
+                    const currentState = participantStates.get(participantId);
+                    if (currentState && currentState.isSpeaking) {
+                        webRTCService.updateLocalParticipantState(meeting.id, {
+                            isSpeaking: false
+                        });
+                    }
+                }
+            }, 1000); // Check every second
+
+            // Clean up on component unmount
+            return () => {
+                clearInterval(checkInterval);
+            };
+        } catch (error) {
+            console.error('Error setting up audio level detection:', error);
+        }
     };
 
     if (isConnecting) {
         return (
-            <View style={[styles.loadingContainer, isDark && styles.darkContainer]}>
-                <ActivityIndicator size="large" color="#8ab4f8" />
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#4285F4" />
                 <Text style={styles.loadingText}>
-                    {connectionError ? `Retrying... (${connectionAttempts}/${MAX_CONNECTION_ATTEMPTS})` : 'Connecting to meeting...'}
+                    {connectionState === 'connecting' ? 'Connecting to meeting...' :
+                        connectionState === 'failed' ? 'Connection failed' :
+                            'Setting up connection...'}
                 </Text>
                 {connectionError && (
-                    <Text style={styles.errorText}>{connectionError}</Text>
+                    <Text style={styles.errorText}>
+                        Error: {connectionError}. {connectionAttempts < MAX_CONNECTION_ATTEMPTS ?
+                            `Retrying (${connectionAttempts}/${MAX_CONNECTION_ATTEMPTS})...` :
+                            'Max retries reached.'}
+                    </Text>
                 )}
+                <TouchableOpacity
+                    style={styles.exitButton}
+                    onPress={() => {
+                        cleanup();
+                        navigation.navigate('Home');
+                    }}
+                >
+                    <Text style={styles.exitButtonText}>Exit Meeting</Text>
+                </TouchableOpacity>
             </View>
         );
     }
 
     return (
-        <View style={[styles.container, isDark && styles.darkContainer]}>
-            <Room
-                meeting={meeting}
-                localStream={localStream}
-                remoteStreams={remoteStreams}
-                onToggleAudio={handleToggleAudio}
-                onToggleVideo={handleToggleVideo}
-                onEndCall={handleEndCall}
-                onSendMessage={sendMessage}
-                messages={messages}
-                isAudioEnabled={isAudioEnabled}
-                isVideoEnabled={isVideoEnabled}
-                isDark={isDark}
-                currentUserId={currentUser?.uid || ''}
-                currentUserName={currentUser?.displayName || 'Anonymous'}
-            />
-        </View>
+        <Room
+            meeting={meeting}
+            localStream={localStream}
+            remoteStreams={remoteStreams}
+            onToggleAudio={handleToggleAudio}
+            onToggleVideo={handleToggleVideo}
+            onEndCall={handleEndCall}
+            onSendMessage={sendMessage}
+            onMessageReaction={handleMessageReaction}
+            messages={messages}
+            isAudioEnabled={isAudioEnabled}
+            isVideoEnabled={isVideoEnabled}
+            isDark={isDark}
+            currentUserId={currentUser?.uid || ''}
+            currentUserName={username}
+            onRaiseHand={handleRaiseHand}
+            onReaction={handleReaction}
+            participantStates={participantStates}
+        />
     );
 };
 
@@ -333,6 +630,18 @@ const styles = StyleSheet.create({
         fontSize: 14,
         marginTop: 8,
         textAlign: 'center',
+    },
+    exitButton: {
+        backgroundColor: '#ea4335',
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        borderRadius: 8,
+        marginTop: 20,
+    },
+    exitButtonText: {
+        color: 'white',
+        fontSize: 16,
+        fontWeight: 'bold',
     },
 });
 
