@@ -58,6 +58,8 @@ interface RoomProps {
     onReaction: (reaction: 'thumbsUp' | 'thumbsDown' | 'clapping' | 'waving') => void;
     participantStates: Map<string, ParticipantState>;
     isConnecting: boolean;
+    onFlipCamera?: () => void;
+    isFrontCamera?: boolean;
 }
 
 const Room: React.FC<RoomProps> = ({
@@ -79,10 +81,11 @@ const Room: React.FC<RoomProps> = ({
     onReaction,
     participantStates,
     isConnecting,
+    onFlipCamera,
+    isFrontCamera: propIsFrontCamera,
 }) => {
     const [isControlsVisible, setIsControlsVisible] = useState(true);
     const [isHandRaised, setIsHandRaised] = useState(false);
-    const [showMoreOptions, setShowMoreOptions] = useState(false);
     const [showChat, setShowChat] = useState(false);
     const [showReactions, setShowReactions] = useState(false);
     const [showQuickMessages, setShowQuickMessages] = useState(false);
@@ -102,6 +105,10 @@ const Room: React.FC<RoomProps> = ({
     const firebase = useTypedSelector(state => state.firebase.firebase);
     const [userInfoCache, setUserInfoCache] = useState<Map<string, { email: string | null, fullName: string | null, username: string | null }>>(new Map());
     const userService = useMemo(() => new UserService(), []);
+    const [localIsFrontCamera, setLocalIsFrontCamera] = useState(true); // Local state as fallback
+
+    // Use provided prop value if available, otherwise use local state
+    const currentIsFrontCamera = propIsFrontCamera !== undefined ? propIsFrontCamera : localIsFrontCamera;
 
     // Quick message templates
     const quickMessages = [
@@ -814,6 +821,45 @@ const Room: React.FC<RoomProps> = ({
         );
     };
 
+    const handleFlipCamera = () => {
+        if (localStream && onFlipCamera) {
+            // Add vibration feedback if available
+            if (Platform.OS === 'android' || Platform.OS === 'ios') {
+                // @ts-ignore - react-native has Vibration
+                const Vibration = require('react-native').Vibration;
+                Vibration.vibrate(50); // Short vibration for tactile feedback
+            }
+
+            // Create a small animation for button press
+            const animateButtonPress = Animated.sequence([
+                Animated.timing(new Animated.Value(1), {
+                    toValue: 0.8,
+                    duration: 100,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(new Animated.Value(0.8), {
+                    toValue: 1,
+                    duration: 100,
+                    useNativeDriver: true,
+                })
+            ]);
+            animateButtonPress.start();
+
+            // Call the parent component's handler to flip camera
+            onFlipCamera();
+            // Toggle the local state to update UI
+            setLocalIsFrontCamera(!currentIsFrontCamera);
+        } else if (localStream) {
+            // Direct implementation if onFlipCamera prop is not provided
+            localStream.getVideoTracks().forEach((track: any) => {
+                if (typeof track._switchCamera === 'function') {
+                    track._switchCamera();
+                    setLocalIsFrontCamera(!currentIsFrontCamera);
+                }
+            });
+        }
+    };
+
     return (
         <SafeAreaView style={[styles.container, isDark && styles.darkContainer]}>
             <KeyboardAvoidingView
@@ -908,6 +954,19 @@ const Room: React.FC<RoomProps> = ({
                                         color="white"
                                     />
                                 </TouchableOpacity>
+
+                                {isVideoEnabled && (
+                                    <TouchableOpacity
+                                        style={styles.controlButton}
+                                        onPress={handleFlipCamera}
+                                    >
+                                        <MaterialCommunityIcons
+                                            name={currentIsFrontCamera ? "camera-front" : "camera-rear"}
+                                            size={24}
+                                            color="white"
+                                        />
+                                    </TouchableOpacity>
+                                )}
 
                                 <TouchableOpacity
                                     style={[

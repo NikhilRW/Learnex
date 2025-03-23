@@ -56,6 +56,8 @@ const RoomScreen: React.FC = () => {
     const [participantStates, setParticipantStates] = useState<Map<string, ParticipantState>>(new Map());
     const MAX_CONNECTION_ATTEMPTS = 3;
     const [connectionState, setConnectionState] = useState<'connecting' | 'connected' | 'disconnected' | 'failed'>('connecting');
+    // Track camera facing mode for persistence across component re-renders
+    const [isFrontCamera, setIsFrontCamera] = useState(true);
 
     // Add stream tracking map to help with duplicate detection
     const [streamsByParticipant, setStreamsByParticipant] = useState<Map<string, ExtendedMediaStream>>(new Map());
@@ -461,6 +463,42 @@ const RoomScreen: React.FC = () => {
         }
     };
 
+    // Handle camera flip between front and back
+    const handleFlipCamera = async () => {
+        if (localStream) {
+            const videoTracks = localStream.getVideoTracks();
+            if (videoTracks.length > 0) {
+                try {
+                    console.log(`Flipping camera from ${isFrontCamera ? 'front' : 'back'} to ${isFrontCamera ? 'back' : 'front'}`);
+
+                    // Use the native _switchCamera method available in react-native-webrtc
+                    videoTracks.forEach(track => {
+                        if (typeof track._switchCamera === 'function') {
+                            track._switchCamera();
+                            // Update camera facing mode state
+                            setIsFrontCamera(!isFrontCamera);
+                            console.log(`Camera flipped successfully to ${!isFrontCamera ? 'front' : 'back'}`);
+                        } else {
+                            console.warn("_switchCamera method not available on this track");
+
+                            // Fallback approach for browsers or platforms without _switchCamera
+                            // This would require reinitializing the camera with opposite facing mode
+                            // but is not implemented in this example as it requires renegotiation
+                        }
+                    });
+                } catch (error) {
+                    console.error('Error flipping camera:', error);
+                }
+            } else {
+                console.warn("No video tracks available to flip camera");
+                Alert.alert('Camera Error', 'No video available to switch cameras');
+            }
+        } else {
+            console.warn("No local stream available to flip camera");
+            Alert.alert('Camera Error', 'Camera not initialized');
+        }
+    };
+
     const handleRaiseHand = async (raised: boolean) => {
         // Update participant state in Firestore
         await webRTCService.updateLocalParticipantState(meeting.id, {
@@ -683,6 +721,8 @@ const RoomScreen: React.FC = () => {
                     onReaction={handleReaction}
                     participantStates={participantStates}
                     isConnecting={isConnecting}
+                    onFlipCamera={handleFlipCamera}
+                    isFrontCamera={isFrontCamera}
                 />
             )}
         </View>
