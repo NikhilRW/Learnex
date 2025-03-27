@@ -91,6 +91,9 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
       case 'Tasks':
         navigation.navigate('Tasks');
         break;
+      case 'Events & Hackathons':
+        navigation.navigate('EventsAndHackathons');
+        break;
       // Add other cases for other menu options as needed
       default:
         // For options not yet implemented
