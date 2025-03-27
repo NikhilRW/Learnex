@@ -55,6 +55,12 @@ export class WebRTCService {
       username: 'webrtc@live.com',
       credential: 'muazkh',
     },
+    {
+      urls: 'turn:global.turn.twilio.com:3478?transport=udp',
+      username:
+        'f4b4035eaa76f4a55de5f4351567653ee4ff6fa97b50b6b334fcc1be9c27212d',
+      credential: 'w1uxM55V9yYoqyVFjt+KhTGz6wVFhehVk1nmtB8L3Fo=',
+    },
   ];
 
   // Add interface for participant state
@@ -69,6 +75,12 @@ export class WebRTCService {
     | 'failed' = 'disconnected';
   private reconnectionTimeout: NodeJS.Timeout | null = null;
   private connectionMonitorInterval: NodeJS.Timeout | null = null;
+  // Add ICE connection timing variables
+  private ICE_CONNECTION_TIMEOUT = 8000; // 8 seconds timeout for ICE connectivity
+  private iceConnectionTimers: Map<string, NodeJS.Timeout> = new Map();
+
+  // Add a buffer for pending ICE candidates
+  private pendingIceCandidates: Map<string, RTCIceCandidate[]> = new Map();
 
   /**
    * Initialize local stream with enhanced video bitrate and audio quality settings
@@ -223,7 +235,18 @@ export class WebRTCService {
           ).catch(error => {
             console.error('Error sending ICE candidate:', error);
           });
+        } else {
+          // Null candidate means ICE gathering is complete
+          console.log('ICE gathering complete for peer:', participantId);
         }
+      };
+
+      // Add handler for ICE gathering state changes
+      // @ts-ignore
+      peerConnection.onicegatheringstatechange = () => {
+        console.log(
+          `ICE gathering state changed to ${peerConnection.iceGatheringState} for ${participantId}`,
+        );
       };
 
       // Handle remote tracks with improved stream handling
@@ -283,6 +306,9 @@ export class WebRTCService {
           console.log(`Successfully connected to ${participantId}`);
           // Re-check that all tracks are added after connection is established
           this.ensureTracksAreAdded(peerConnection);
+
+          // Clear any ICE connection timeout when successfully connected
+          this.clearIceConnectionTimer(participantId);
         }
       };
 
@@ -293,11 +319,24 @@ export class WebRTCService {
           `ICE connection state changed to ${peerConnection.iceConnectionState} for ${participantId}`,
         );
 
-        // If connection becomes unstable, try to recover
-        if (peerConnection.iceConnectionState === 'disconnected') {
+        if (peerConnection.iceConnectionState === 'checking') {
+          // Start a timer when ICE connection checking begins
+          this.startIceConnectionTimer(peerConnection, participantId);
+        } else if (
+          peerConnection.iceConnectionState === 'connected' ||
+          peerConnection.iceConnectionState === 'completed'
+        ) {
+          // Clear timer when connection is established
+          this.clearIceConnectionTimer(participantId);
+        } else if (peerConnection.iceConnectionState === 'disconnected') {
           console.log('ICE disconnected, attempting recovery...');
           // Check if ICE restart is needed
           this.restartIceIfNeeded(peerConnection, participantId);
+        } else if (peerConnection.iceConnectionState === 'failed') {
+          console.error(
+            `ICE connection failed for ${participantId}, attempting full reconnection`,
+          );
+          this.handleIceConnectionFailure(peerConnection, participantId);
         }
       };
 
@@ -306,6 +345,117 @@ export class WebRTCService {
     } catch (error) {
       console.error('WebRTCService :: createPeerConnection() ::', error);
       throw error;
+    }
+  }
+
+  /**
+   * Start a timer to monitor ICE connection progress
+   */
+  private startIceConnectionTimer(
+    peerConnection: RTCPeerConnection,
+    participantId: string,
+  ): void {
+    // Clear any existing timer first
+    this.clearIceConnectionTimer(participantId);
+
+    console.log(`Starting ICE connection timer for ${participantId}`);
+
+    // Set a new timer
+    const timer = setTimeout(() => {
+      // Check if the connection is still in 'checking' state after timeout
+      if (peerConnection.iceConnectionState === 'checking') {
+        console.warn(
+          `ICE connection timeout for ${participantId}, trying to improve connection`,
+        );
+
+        // Try to improve the connection
+        this.handleIceConnectionTimeout(peerConnection, participantId);
+      }
+    }, this.ICE_CONNECTION_TIMEOUT);
+
+    // Store the timer
+    this.iceConnectionTimers.set(participantId, timer);
+  }
+
+  /**
+   * Clear ICE connection timer
+   */
+  private clearIceConnectionTimer(participantId: string): void {
+    const timer = this.iceConnectionTimers.get(participantId);
+    if (timer) {
+      clearTimeout(timer);
+      this.iceConnectionTimers.delete(participantId);
+    }
+  }
+
+  /**
+   * Handle ICE connection timeout
+   */
+  private async handleIceConnectionTimeout(
+    peerConnection: RTCPeerConnection,
+    participantId: string,
+  ): Promise<void> {
+    if (!this.currentMeetingId) return;
+
+    try {
+      // First approach: Try ICE restart
+      await this.restartIceIfNeeded(peerConnection, participantId);
+
+      // Set another timer to check if the restart helped
+      setTimeout(() => {
+        if (
+          peerConnection.iceConnectionState !== 'connected' &&
+          peerConnection.iceConnectionState !== 'completed'
+        ) {
+          // ICE restart didn't help, try full connection reset
+          console.warn(
+            `ICE restart didn't resolve connection issues with ${participantId}, performing full reset`,
+          );
+          this.handleIceConnectionFailure(peerConnection, participantId);
+        }
+      }, 5000); // Give 5 seconds for the ICE restart to take effect
+    } catch (error) {
+      console.error('Error handling ICE connection timeout:', error);
+    }
+  }
+
+  /**
+   * Handle ICE connection failure with more aggressive recovery
+   */
+  private async handleIceConnectionFailure(
+    peerConnection: RTCPeerConnection,
+    participantId: string,
+  ): Promise<void> {
+    if (!this.currentMeetingId) return;
+
+    try {
+      const userId = auth().currentUser?.uid;
+      if (!userId) return;
+
+      console.log(
+        `Recreating connection with ${participantId} due to ICE failure`,
+      );
+
+      // Clean up the existing connection
+      this.cleanupExistingPeerConnection(participantId);
+
+      // Create a new peer connection
+      const newPeerConnection = this.createPeerConnection(participantId);
+
+      // Only the peer with the lower ID initiates the connection to avoid conflicts
+      if (userId < participantId) {
+        // Create and send a new offer
+        await this.createOffer(
+          newPeerConnection,
+          this.currentMeetingId,
+          participantId,
+        );
+      } else {
+        // For the peer with the higher ID, send a reconnect message to prompt the other peer to create an offer
+        await this.sendReconnectMessage(this.currentMeetingId, participantId);
+      }
+    } catch (error) {
+      console.error('Error handling ICE connection failure:', error);
     }
   }
 
@@ -322,6 +472,8 @@ export class WebRTCService {
         console.error('Error closing existing peer connection:', e);
       }
       this.peerConnections.delete(participantId);
+      // Clear any pending ICE candidates for this participant
+      this.pendingIceCandidates.delete(participantId);
     }
   }
 
@@ -822,6 +974,9 @@ export class WebRTCService {
               );
             }
 
+            // Process any pending ICE candidates
+            await this.processPendingIceCandidates(sender, peerConnection);
+
             await this.createAnswer(peerConnection, meetingId, sender);
           } catch (error) {
             console.error('Error handling offer:', error);
@@ -834,6 +989,9 @@ export class WebRTCService {
             await peerConnection.setRemoteDescription(
               new RTCSessionDescription(payload),
             );
+            // Process any pending ICE candidates
+            await this.processPendingIceCandidates(sender, peerConnection);
+
             await this.createAnswer(peerConnection, meetingId, sender);
           }
           break;
@@ -864,6 +1022,9 @@ export class WebRTCService {
                   new RTCSessionDescription(payload),
                 );
               }
+
+              // Process any pending ICE candidates after setting remote description
+              await this.processPendingIceCandidates(sender, peerConnection);
             } else {
               console.log(
                 `Cannot set remote answer in state: ${peerConnection.signalingState}`,
@@ -883,9 +1044,10 @@ export class WebRTCService {
               );
             } else {
               console.log(
-                'Received ICE candidate but no remote description set, caching candidate',
+                'Received ICE candidate but no remote description set, buffering candidate',
               );
-              // In a more complex implementation, you could cache candidates and apply them later
+              // Buffer this candidate for later
+              this.bufferIceCandidate(sender, new RTCIceCandidate(payload));
             }
           } catch (error) {
             console.error('Error handling ICE candidate:', error);
@@ -894,6 +1056,45 @@ export class WebRTCService {
       }
     } catch (error) {
       console.error('WebRTCService :: processSignalingMessage() ::', error);
+    }
+  }
+
+  /**
+   * Buffer ICE candidate for later processing
+   */
+  private bufferIceCandidate(
+    participantId: string,
+    candidate: RTCIceCandidate,
+  ): void {
+    if (!this.pendingIceCandidates.has(participantId)) {
+      this.pendingIceCandidates.set(participantId, []);
+    }
+
+    console.log(`Buffering ICE candidate for ${participantId}`);
+    this.pendingIceCandidates.get(participantId)?.push(candidate);
+  }
+
+  /**
+   * Process any pending ICE candidates
+   */
+  private async processPendingIceCandidates(
+    participantId: string,
+    peerConnection: RTCPeerConnection,
+  ): Promise<void> {
+    const candidates = this.pendingIceCandidates.get(participantId);
+    if (candidates && candidates.length > 0) {
+      console.log(
+        `Processing ${candidates.length} buffered ICE candidates for ${participantId}`,
+      );
+
+      const promises = candidates.map(candidate =>
+        this.addIceCandidate(peerConnection, candidate).catch(err =>
+          console.error('Error adding buffered ICE candidate:', err),
+        ),
+      );
+
+      await Promise.all(promises);
+      this.pendingIceCandidates.delete(participantId); // Clear buffer after processing
     }
   }
 
@@ -1074,6 +1275,10 @@ export class WebRTCService {
   cleanup(): void {
     console.log('WebRTCService :: cleanup()');
 
+    // Get current user ID and meeting ID for cleanup
+    const userId = auth().currentUser?.uid;
+    const meetingId = this.currentMeetingId;
+
     // Clear connection monitoring
     if (this.connectionMonitorInterval) {
       clearInterval(this.connectionMonitorInterval);
@@ -1086,6 +1291,12 @@ export class WebRTCService {
       this.reconnectionTimeout = null;
     }
 
+    // Clear all ICE connection timers
+    this.iceConnectionTimers.forEach((timer, participantId) => {
+      clearTimeout(timer);
+    });
+    this.iceConnectionTimers.clear();
+
     // Close and clean up all peer connections
     this.peerConnections.forEach((connection, participantId) => {
       try {
@@ -1097,6 +1308,9 @@ export class WebRTCService {
     });
     this.peerConnections.clear();
     this.activeRemoteStreams.clear();
+
+    // Clear the pending ICE candidates
+    this.pendingIceCandidates.clear();
 
     // Clean up local stream
     if (this.localStream) {
@@ -1121,6 +1335,24 @@ export class WebRTCService {
       this.unsubscribeParticipantStates();
       this.unsubscribeParticipantStates = null;
     }
+
+    // Delete the current user's participant state in Firestore
+    if (userId && meetingId) {
+      console.log(
+        `Deleting participant state for ${userId} in meeting ${meetingId}`,
+      );
+      this.meetingsCollection
+        .doc(meetingId)
+        .collection('participantStates')
+        .doc(userId)
+        .delete()
+        .catch(error => {
+          console.error('Error deleting participant state:', error);
+        });
+    }
+
+    // Clear local participant states
+    this.participantStates.clear();
 
     this.currentMeetingId = null;
     this.connectionState = 'disconnected';
@@ -1217,11 +1449,22 @@ export class WebRTCService {
       const userId = auth().currentUser?.uid;
       if (!userId) throw new Error('User not authenticated');
 
-      // Clean up existing connections
+      console.log('Beginning reconnection process...');
+
+      // Clean up existing connections completely
       this.peerConnections.forEach(connection => {
         connection.close();
       });
       this.peerConnections.clear();
+
+      // Clear all pending ICE candidates
+      this.pendingIceCandidates.clear();
+
+      // Clear all ICE connection timers
+      this.iceConnectionTimers.forEach(timer => {
+        clearTimeout(timer);
+      });
+      this.iceConnectionTimers.clear();
 
       // Send reconnect signal
       await this.sendSignalingMessage({
@@ -1232,17 +1475,40 @@ export class WebRTCService {
         timestamp: Date.now(),
       });
 
-      // Recreate peer connections
+      // Get fresh list of participants
       const meetingDoc = await this.meetingsCollection
         .doc(this.currentMeetingId)
         .get();
       const meetingData = meetingDoc.data();
 
       if (meetingData?.participants) {
+        console.log(
+          `Reconnecting to ${meetingData.participants.length} participants`,
+        );
+
+        // Ensure local media stream is still valid
+        if (
+          !this.localStream ||
+          this.localStream.getTracks().some(track => !track.enabled)
+        ) {
+          console.log('Reinitializing local stream for reconnection');
+          try {
+            await this.initLocalStream();
+          } catch (error) {
+            console.error(
+              'Failed to reinitialize local stream during reconnection:',
+              error,
+            );
+          }
+        }
+
+        // Reconnect to participants
         await this.connectToParticipants(
           this.currentMeetingId,
           meetingData.participants,
         );
+      } else {
+        console.warn('No participants found in meeting for reconnection');
       }
 
       this.updateConnectionState('connected');

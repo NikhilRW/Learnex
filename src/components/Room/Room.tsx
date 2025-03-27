@@ -987,15 +987,13 @@ const Room: React.FC<RoomProps> = ({
                                         styles.controlButton,
                                         showReactions && styles.controlButtonActive,
                                     ]}
-                                    onPress={toggleReactionsMenu}
-                                >
+                                    onPress={toggleReactionsMenu}>
                                     <MaterialCommunityIcons
                                         name="emoticon-outline"
                                         size={24}
                                         color="white"
                                     />
                                 </TouchableOpacity>
-
                                 <TouchableOpacity
                                     style={[
                                         styles.controlButton,

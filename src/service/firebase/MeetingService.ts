@@ -194,6 +194,21 @@ export class MeetingService {
         return;
       }
 
+      // Clean up participant state data from Firestore
+      try {
+        await this.meetingsCollection
+          .doc(meetingId)
+          .collection('participantStates')
+          .doc(userId)
+          .delete();
+        console.log(
+          `Deleted participant state for ${userId} in meeting ${meetingId}`,
+        );
+      } catch (error) {
+        console.error('Error deleting participant state:', error);
+        // Continue with removal from participants list even if state deletion fails
+      }
+
       await meetingRef.update({
         participants: firestore.FieldValue.arrayRemove(userId),
         updatedAt: firestore.FieldValue.serverTimestamp(),
@@ -221,6 +236,28 @@ export class MeetingService {
       const meetingData = meetingDoc.data() as Meeting;
       if (meetingData.host !== userId) {
         throw this.createError('Only the host can end the meeting');
+      }
+
+      // Delete all participant states for this meeting
+      try {
+        // Get all participant state documents
+        const participantStatesSnapshot = await this.meetingsCollection
+          .doc(meetingId)
+          .collection('participantStates')
+          .get();
+
+        // Delete each document
+        const deletionPromises = participantStatesSnapshot.docs.map(doc =>
+          doc.ref.delete(),
+        );
+        await Promise.all(deletionPromises);
+
+        console.log(
+          `Deleted ${participantStatesSnapshot.size} participant states for meeting ${meetingId}`,
+        );
+      } catch (error) {
+        console.error('Error deleting participant states:', error);
+        // Continue with meeting end even if state deletion fails
       }
 
       await meetingRef.update({

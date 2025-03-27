@@ -29,11 +29,11 @@ interface CommentModalProps {
     onClose: () => void;
     comments: Comment[];
     isDark: boolean;
-    onAddComment: () => Promise<void>;
-    newComment: string;
-    setNewComment: (text: string) => void;
-    isAddingComment: boolean;
-    postId: string;
+    onAddComment?: () => Promise<void>;
+    newComment?: string;
+    setNewComment?: (text: string) => void;
+    isAddingComment?: boolean;
+    postId?: string;
 }
 
 const CommentModal: React.FC<CommentModalProps> = ({
@@ -41,11 +41,11 @@ const CommentModal: React.FC<CommentModalProps> = ({
     onClose,
     comments,
     isDark,
-    onAddComment,
-    newComment,
-    setNewComment,
-    isAddingComment,
-    postId,
+    onAddComment = async () => { },
+    newComment = '',
+    setNewComment = () => { },
+    isAddingComment = false,
+    postId = '',
 }) => {
     const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
     const [editedText, setEditedText] = useState('');

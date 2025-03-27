@@ -106,12 +106,30 @@ const SignUp = () => {
   };
   useEffect(() => {
     const handleDeepLink = (event: { url: string }) => { };
-    Linking.addEventListener('url', handleDeepLink);
+
+    // Set up listeners for deep links - handle API differences in React Native versions
+    let subscription;
+    if (Linking.addEventListener) {
+      // Modern React Native (>=0.65)
+      subscription = Linking.addEventListener('url', handleDeepLink);
+    } else {
+      // Older React Native with deprecated API
+      Linking.addEventListener('url', handleDeepLink);
+    }
+
     Linking.getInitialURL().then(url => {
       if (url) handleDeepLink({ url });
     });
+
     return () => {
-      Linking.removeAllListeners('url');
+      // Clean up the event listener - handle API differences
+      if (subscription) {
+        // Modern React Native with subscription object
+        subscription.remove();
+      } else if (Linking.removeEventListener) {
+        // Older React Native with deprecated API
+        Linking.removeEventListener('url', handleDeepLink);
+      }
     };
   }, []);
   const checkUsernameAvailability = async (username: string) => {
