@@ -14,6 +14,8 @@ import HashTrends from '../screens/userscreens/HashTrends';
 import Room from '../screens/userscreens/Room';
 import RoomScreen from '../screens/userscreens/RoomScreen';
 import Tasks from '../screens/userscreens/Tasks';
+import EventsAndHackathons from '../screens/userscreens/EventsAndHackathons';
+import EventDetails from '../screens/userscreens/EventDetails';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useTypedSelector } from '../hooks/useTypedSelector';
 import NavigationIconHelper from '../helpers/NavigationIconHelper';
@@ -42,6 +44,11 @@ export type UserStackParamList = {
     isHost: boolean;
   };
   Tasks: undefined;
+  EventsAndHackathons: undefined;
+  EventDetails: {
+    id: string;
+    source: string;
+  };
 };
 
 export type UserNavigationProps = BottomTabNavigationProp<UserStackParamList>;
@@ -211,6 +218,24 @@ const UserStack = () => {
         component={Tasks}
         options={{
           headerShown: false, // Hide header for Tasks screen
+          swipeEnabled: false, // Disable drawer swipe for this screen
+          drawerItemStyle: { display: 'none' }, // Hide from drawer if needed
+        }}
+      />
+      <Drawer.Screen
+        name="EventsAndHackathons"
+        component={EventsAndHackathons}
+        options={{
+          headerShown: false, // Hide header for Events and Hackathons screen
+          swipeEnabled: false, // Disable drawer swipe for this screen
+          drawerItemStyle: { display: 'none' }, // Hide from drawer if needed
+        }}
+      />
+      <Drawer.Screen
+        name="EventDetails"
+        component={EventDetails}
+        options={{
+          headerShown: false, // Hide header for Event Details screen
           swipeEnabled: false, // Disable drawer swipe for this screen
           drawerItemStyle: { display: 'none' }, // Hide from drawer if needed
         }}
