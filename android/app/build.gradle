@@ -78,7 +78,6 @@ dependencies {
     } else {
         implementation jscFlavor
     }
-    implementation platform('com.google.firebase:firebase-bom:33.4.0')
     implementation 'com.google.firebase:firebase-appcheck-playintegrity'
     implementation 'com.google.firebase:firebase-auth'
 }

@@ -4,7 +4,6 @@ import {Task} from '../../types/taskTypes';
 
 export class TaskService {
   private tasksCollection = firestore().collection('tasks');
-
   /**
    * Get all tasks for the current user
    */

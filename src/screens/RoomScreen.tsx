@@ -3,7 +3,7 @@ import { Alert } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { MeetingService, Meeting } from '../service/firebase/MeetingService';
 import Room from '../components/Room/Room';
-import { WebRTCService } from '../service/WebRTCService';
+import { WebRTCService } from '../service/firebase/WebRTCService';
 
 interface RouteParams {
     meeting: Meeting;
