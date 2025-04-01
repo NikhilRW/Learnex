@@ -16,10 +16,9 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { UserStackParamList } from '../../routes/UserStack';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
 import { createStyles } from '../../styles/screens/EventDetails.styles';
-import { HackathonService } from '../../services/hackathonService';
+import { HackathonService } from '../../service/hackathonService';
 import { HackathonDetails } from '../../types/hackathon';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { format, formatDistance, parseISO, isPast } from 'date-fns';
 import EventLogo from '../../components/hackathons/EventLogo';
@@ -216,11 +215,8 @@ const EventDetails: React.FC = () => {
                         {event.imageUrl && event.imageUrl.startsWith('http') ? (
                             <Image
                                 source={{ uri: event.imageUrl }}
-                                style={{
-                                    width: SCREEN_WIDTH * 0.4,
-                                    height: SCREEN_WIDTH * 0.4,
-                                    borderRadius: 16
-                                }}
+                                className='w-[90vw] h-[30vh] object-center '
+                                style={{borderRadius: 20,width: SCREEN_WIDTH * 0.9, height: SCREEN_WIDTH * 0.4}}
                                 resizeMode="contain"
                             />
                         ) : (

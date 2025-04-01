@@ -32,6 +32,7 @@ const NavigationDrawerButton = memo(({ tintColor, navigation }: { tintColor: str
           return;
         }
         if (currentUser.photoURL) {
+          
           setPhotoURL(currentUser.photoURL);
         }
         const data = await firebase.user.getNameUsernamestring();
@@ -133,17 +134,25 @@ const NavigationDrawerButton = memo(({ tintColor, navigation }: { tintColor: str
             </Text>
           </TouchableOpacity>
         </View>
-        <Avatar
-          size={Math.min(SCREEN_WIDTH * 0.0625, 25)}
-          titleStyle={{
-            textAlign: 'center',
-            fontSize: Math.min(SCREEN_WIDTH * 0.0625, 25),
-            fontFamily: 'Kufam-Thin'
-          }}
-          title={getUsernameForLogo(userData!?.username || 'Anonymous')}
-          containerStyle={[styles.container, { borderColor: isDark ? '#2379C2' : '#2379C2', backgroundColor: profileColor! }]}
-          activeOpacity={0.7}
-        />
+        {
+          photoURL ?
+            <Image
+              source={{ uri: photoURL }}
+              style={[styles.container, { borderColor: isDark ? `#2379C2` : `#2379C2` }]}
+            />
+            :
+            <Avatar
+              size={Math.min(SCREEN_WIDTH * 0.0625, 25)}
+              titleStyle={{
+                textAlign: 'center',
+                fontSize: Math.min(SCREEN_WIDTH * 0.0625, 25),
+                fontFamily: 'Kufam-Thin'
+              }}
+              title={getUsernameForLogo(userData!?.username || 'Anonymous')}
+              containerStyle={[styles.container, { borderColor: isDark ? '#2379C2' : '#2379C2', backgroundColor: profileColor! }]}
+              activeOpacity={0.7}
+            />
+        }
       </View>
     </View>
   );

@@ -7,7 +7,6 @@ import SkeletonPlaceholder from 'react-native-skeleton-placeholder';
 import Post from '../../components/user/UserScreens/Home/Post';
 import { PostType } from '../../types/post';
 import { styles } from '../../styles/screens/userscreens/Home.styles';
-import { FirestorePost } from '../../types/post';
 import { primaryColor } from '../../res/strings/eng';
 
 // Fallback trending tags to use when API returns empty results
@@ -33,20 +32,6 @@ const Home = () => {
   const [trendingTags, setTrendingTags] = useState<string[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Handle sign out
-  const handleSignOut = async () => {
-    try {
-      const { success, error } = await firebase.auth.signOut();
-      if (success) {
-        dispatch(changeIsLoggedIn(false));
-      } else {
-        console.error('Sign out failed:', error);
-      }
-    } catch (err) {
-      console.error('Sign out error:', err);
-    }
-  };
-
   // Fetch user data
   const fetchUserData = async () => {
     try {
@@ -64,7 +49,6 @@ const Home = () => {
   // Optimize post updates subscription
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
-
     const setupRealTimeUpdates = async () => {
       try {
         unsubscribe = firebase.posts.subscribeToPostUpdates((updatedPosts) => {
@@ -98,15 +82,6 @@ const Home = () => {
       setIsLoaded(true);
     }, 2500);
   }, []);
-
-  const stories = [
-    { id: 1, image: require('../../res/pngs/testing/logo.png') },
-    { id: 2, image: require('../../res/pngs/testing/logo.png') },
-    { id: 3, image: require('../../res/pngs/testing/logo.png') },
-    { id: 4, image: require('../../res/pngs/testing/logo.png') },
-    { id: 5, image: require('../../res/pngs/testing/logo.png') },
-    { id: 6, image: require('../../res/pngs/testing/logo.png') },
-  ];
   const HomeSkeleton = ({ width, height }: { width: number, height: number }): JSX.Element => {
     //TODO : Add the skeleton for the home screen
     return (
@@ -139,7 +114,6 @@ const Home = () => {
   const renderPost = ({ item }: { item: PostType & { isLiked: boolean; likes: number; isSaved: boolean } }) => (
     <View style={styles.postContainer}>
       <Post
-        isDark={isDark}
         key={item.id}
         post={item}
         isVisible={item.id === visibleVideoId}

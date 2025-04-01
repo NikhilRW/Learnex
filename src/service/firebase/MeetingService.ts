@@ -8,8 +8,7 @@ export interface Meeting {
   id: string;
   title: string;
   description: string;
-  startTime: Date;
-  endTime: Date;
+  duration: number; // in minutes
   status: 'scheduled' | 'active' | 'completed' | 'cancelled';
   host: string;
   participants: string[];
@@ -74,17 +73,19 @@ export class MeetingService {
     if (!meetingData.title?.trim()) {
       throw this.createError('Meeting title is required');
     }
-    if (!meetingData.startTime || !meetingData.endTime) {
-      throw this.createError('Meeting start and end times are required');
+    if (!meetingData.duration && meetingData.duration !== 0) {
+      throw this.createError('Meeting duration is required');
     }
-    if (meetingData.startTime >= meetingData.endTime) {
-      throw this.createError('Meeting end time must be after start time');
+    if (meetingData.duration < 1) {
+      throw this.createError('Meeting duration must be at least 1 minute');
+    }
+    if (meetingData.duration > 100) {
+      throw this.createError('Meeting duration cannot exceed 100 minutes');
     }
     if (meetingData.maxParticipants && meetingData.maxParticipants < 2) {
       throw this.createError('Maximum participants must be at least 2');
     }
   }
-
   /**
    * Create a new meeting
    */
@@ -309,11 +310,8 @@ export class MeetingService {
 
       const meetingData = meetingDoc.data() as Meeting;
       const now = new Date();
-      const endTime =
-        meetingData.endTime instanceof Date
-          ? meetingData.endTime
-          : new Date(meetingData.endTime);
-
+      const endTime = new Date(meetingData.duration * 60000 + meetingData.createdAt.toMillis());
+      
       return endTime <= now;
     } catch (error) {
       console.error('Error checking meeting end time:', error);
@@ -390,10 +388,17 @@ export class MeetingService {
 
                 // Check if meeting has ended
                 const now = new Date();
-                const endTime =
-                  meeting.endTime instanceof Date
-                    ? meeting.endTime
-                    : new Date(meeting.endTime);
+                const endTime = new Date(
+                  meeting.duration * 60000 + meeting.createdAt.toMillis(),
+                );
+                if (this.endTimeCheckInterval) {
+                  clearInterval(this.endTimeCheckInterval);
+                  this.endTimeCheckInterval = null;
+                }
+                this.startEndTimeMonitoring(meetingId, () => {
+                  meeting.status = 'completed';
+                  onUpdate(meeting);
+                });
 
                 if (endTime <= now && meeting.status !== 'completed') {
                   this.endMeeting(meetingId)

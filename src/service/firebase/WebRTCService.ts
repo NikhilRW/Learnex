@@ -1741,6 +1741,119 @@ export class WebRTCService {
       }
     });
   }
+
+  /**
+   * Update the local stream and renegotiate all peer connections
+   */
+  async updateLocalStream(
+    newStream: MediaStream,
+    meetingId: string,
+  ): Promise<void> {
+    try {
+      if (!newStream) {
+        console.error(
+          'WebRTCService :: updateLocalStream() :: No new stream provided',
+        );
+        return;
+      }
+
+      console.log(
+        'WebRTCService :: updateLocalStream() :: Updating local stream',
+      );
+
+      // Save the new local stream
+      this.localStream = newStream as MediaStream;
+
+      // Get current user ID
+      const userId = auth().currentUser?.uid;
+      if (!userId) {
+        console.error(
+          'WebRTCService :: updateLocalStream() :: User not authenticated',
+        );
+        return;
+      }
+
+      // For each peer connection, replace the tracks
+      for (const [
+        participantId,
+        peerConnection,
+      ] of this.peerConnections.entries()) {
+        if (peerConnection.connectionState === 'closed') continue;
+
+        try {
+          console.log(
+            `Replacing tracks for peer connection with ${participantId}`,
+          );
+
+          // Get all senders from this peer connection
+          const senders = peerConnection.getSenders();
+
+          // For each track in the new stream, find a sender of the same type and replace
+          newStream.getTracks().forEach(track => {
+            const sender = senders.find(
+              s => s.track && s.track.kind === track.kind,
+            );
+
+            if (sender) {
+              console.log(`Replacing ${track.kind} track for ${participantId}`);
+              sender
+                .replaceTrack(track)
+                .then(() =>
+                  console.log(`Successfully replaced ${track.kind} track`),
+                )
+                .catch(err => console.error(`Error replacing track: ${err}`));
+            } else {
+              console.log(
+                `Adding new ${track.kind} track for ${participantId}`,
+              );
+              peerConnection.addTrack(track, newStream);
+            }
+          });
+
+          // If it's a screen share, we may need to renegotiate
+          const isScreenShare = newStream
+            .getVideoTracks()
+            .some(
+              track =>
+                track.label && track.label.toLowerCase().includes('screen'),
+            );
+
+          if (isScreenShare) {
+            console.log(
+              `Initiating renegotiation for screen share with ${participantId}`,
+            );
+            // Create a new offer and send it
+            await this.createOffer(peerConnection, meetingId, participantId);
+          }
+        } catch (err) {
+          console.error(
+            `Error updating stream for peer ${participantId}:`,
+            err,
+          );
+        }
+      }
+
+      // Update local participant state to reflect new stream type
+      const isScreenShare = newStream
+        .getVideoTracks()
+        .some(
+          track => track.label && track.label.toLowerCase().includes('screen'),
+        );
+
+      await this.updateLocalParticipantState(meetingId, {
+        isScreenSharing: isScreenShare,
+        isVideoEnabled: newStream.getVideoTracks().some(track => track.enabled),
+        isAudioEnabled: newStream.getAudioTracks().some(track => track.enabled),
+      });
+
+      console.log(
+        'WebRTCService :: updateLocalStream() :: Successfully updated local stream',
+      );
+    } catch (error) {
+      console.error('WebRTCService :: updateLocalStream() ::', error);
+      throw error;
+    }
+  }
 }
 
 // Add interface for participant state

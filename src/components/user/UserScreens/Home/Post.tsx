@@ -28,9 +28,7 @@ interface VideoProgress {
 const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
     const isDark = useTypedSelector((state) => state.user.theme) === "dark";
     const screenWidth = Dimensions.get('window').width;
-    const [isLiked, setIsLiked] = useState<boolean>(post.isLiked);
-    const [likesCount, setLikesCount] = useState<number>(post.likes);
-    const [isLiking, setIsLiking] = useState<boolean>(false);
+    const [isLiked, setIsLiked] = useState(false);
     const [imageHeight, setImageHeight] = useState(300);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [showOptions, setShowOptions] = useState(false);
@@ -42,7 +40,6 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
     const dotsAnim = useRef(new Animated.Value(0)).current;
     const controlsTimeout = useRef<NodeJS.Timeout>();
     const dotsTimeout = useRef<NodeJS.Timeout>();
-    const firebase = useTypedSelector((state) => state.firebase.firebase);
     const lastPosition = useRef(0);
 
     useEffect(() => {
@@ -51,32 +48,6 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
             setIsPaused(!isVisible);
         }
     }, [isVisible, post.isVideo]);
-
-    const handleIsLiked = async () => {
-        if (isLiking) return;
-        setIsLiking(true);
-        const prevLiked = isLiked;
-        setIsLiked(!prevLiked);
-        setLikesCount(prev => (prevLiked ? prev - 1 : prev + 1));
-
-        try {
-            const result = await firebase.posts.likePost(post.id);
-            if (!result.success) {
-                // Revert on failure
-                setIsLiked(prevLiked);
-                setLikesCount(prev => (prevLiked ? prev + 1 : prev - 1));
-            } else {
-                // Update state with result from Firestore
-                setIsLiked(result.liked);
-            }
-        } catch (error) {
-            console.error('Error handling like:', error);
-            setIsLiked(prevLiked);
-            setLikesCount(prev => (prevLiked ? prev + 1 : prev - 1));
-        } finally {
-            setIsLiking(false);
-        }
-    };
 
     useEffect(() => {
         // Fade in animation for post
@@ -93,6 +64,7 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
             friction: 7,
             useNativeDriver: true
         }).start();
+
         // Calculate image height based on first image
         const firstImage = post.postImages?.[0] || post.postImage;
         if (firstImage) {
@@ -126,11 +98,6 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
             if (dotsTimeout.current) clearTimeout(dotsTimeout.current);
         };
     }, [post.postImages, post.postImage, fadeAnim]);
-
-    useEffect(() => {
-        setIsLiked(post.isLiked);
-        setLikesCount(post.likes);
-    }, [post.isLiked, post.likes]);
 
     const handleVideoProgress = useCallback((progress: VideoProgress) => {
         lastPosition.current = progress.currentTime;
@@ -326,6 +293,7 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
             console.log('Comments available:', post.commentsList.length);
         }
     }, [post.commentsList]);
+
     return (
         <Animated.View
             key={post.id}
@@ -347,8 +315,11 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
             {renderMedia()}
             <View style={styles.postActions}>
                 <View style={styles.leftActions}>
-                    <TouchableOpacity onPress={handleIsLiked} style={styles.actionButton} disabled={isLiking}>
+                    <TouchableOpacity onPress={() => setIsLiked(!isLiked)} style={styles.actionButton}>
                         <AntDesign name={isLiked ? "heart" : "hearto"} size={24} color={isLiked ? "red" : (isDark ? "white" : "black")} />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.actionButton}>
+                        <MaterialIcons name="comment" size={24} color={isDark ? "white" : "black"} />
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.actionButton}>
                         <Icon name="send" size={24} color={isDark ? "white" : "black"} />
@@ -360,7 +331,7 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
             </View>
 
             <View style={styles.postFooter}>
-                <Text style={[styles.likes, { color: isDark ? "white" : "black" }]}>{likesCount} likes</Text>
+                <Text style={[styles.likes, { color: isDark ? "white" : "black" }]}>{post.likes} likes</Text>
                 <View style={styles.captionContainer}>
                     <Text style={[styles.caption, { color: isDark ? "#e0e0e0" : "#2c2c2c" }]} numberOfLines={3} ellipsizeMode="tail">
                         <Text style={[styles.username, { color: isDark ? "white" : "black" }]} numberOfLines={1}>{post.user.username + " ".repeat(2)}</Text>

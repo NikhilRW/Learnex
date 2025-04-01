@@ -11,7 +11,7 @@ export const createStyles = (isDark: boolean) =>
     headerContainer: {
       backgroundColor: isDark ? '#1a1a1a' : 'white',
       paddingVertical: 16,
-      paddingHorizontal: 20,
+      paddingHorizontal: 16,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
@@ -37,7 +37,7 @@ export const createStyles = (isDark: boolean) =>
       flexDirection: 'row',
       marginBottom: 16,
       marginTop: 16,
-      paddingHorizontal: 8,
+      paddingHorizontal: 16,
     },
     filterButton: {
       marginRight: 12,

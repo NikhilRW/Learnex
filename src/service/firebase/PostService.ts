@@ -6,7 +6,7 @@ import {
   LikeResponse,
   SavePostResponse,
   AddCommentResponse,
-} from '../../types/firebase';
+} from '../../types/authTypes';
 import {CommentService} from './CommentService';
 import {SavedPostService} from './SavedPostService';
 import {PostQueryService} from './PostQueryService';
@@ -103,7 +103,9 @@ export class PostService {
   getPosts(options = {}): Promise<GetPostsResponse> {
     return this.queryService.getPosts(options);
   }
-
+  getPostsBySearch(searchText:string): Promise<GetPostsResponse> {
+    return this.queryService.getPostsBySearch(searchText);
+  }
   subscribeToPostUpdates(callback: (posts: any[]) => void): () => void {
     return this.queryService.subscribeToPostUpdates(callback);
   }
@@ -152,5 +154,17 @@ export class PostService {
     text: string,
   ): Promise<{success: boolean; reply?: any; error?: string}> {
     return this.commentService.addReply(postId, parentCommentId, text);
+  }
+
+  private prepareSearchKeywords(text: string): string[] {
+    return [
+      ...new Set(
+        text
+          .toLowerCase()
+          .split(/\s+/)
+          .map(word => word.replace(/[^\w\s]/g, ''))
+          .filter(word => word.length > 0),
+      ),
+    ];
   }
 }

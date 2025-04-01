@@ -195,6 +195,66 @@ export class PostQueryService {
     }
   }
 
+  async getPostsBySearch(searchText: string): Promise<GetPostsResponse> {
+    try {
+      const currentUser = auth().currentUser;
+      if (!currentUser) throw new Error('User not authenticated');
+
+      const cacheKey = this.getCacheKey({
+        type: 'search',
+        searchText: searchText.toLowerCase(),
+      });
+
+      if (this.isQueryCacheValid(cacheKey)) {
+        const cachedPosts = this.queryCache.get(cacheKey);
+        if (cachedPosts) {
+          return {success: true, posts: cachedPosts, lastVisible: null};
+        }
+      }
+
+      const searchWords = searchText
+        .toLowerCase()
+        .split(/\s+/)
+        .filter(word => word.length > 0);
+
+      let query:any = firestore().collection('posts');
+
+      if (searchWords.length > 0) {
+        // Use array-contains-any to match any of the search words
+        query = query.where(
+          'searchKeywords',
+          'array-contains-any',
+          searchWords,
+        );
+      }
+
+      query = query.orderBy('timestamp', 'desc').limit(20);
+
+      const postsSnapshot = await query.get();
+      const lastVisibleDoc = postsSnapshot.docs[postsSnapshot.docs.length - 1];
+
+      const posts = await Promise.all(
+        postsSnapshot.docs.map(async doc  => {
+          const postData = {id: doc.id, ...doc.data()} as FirestorePost;
+          const likedBy = postData.likedBy || [];
+          const comments = await this.commentService.getPostComments(doc.ref);
+          postData.commentsList = comments;
+          postData.comments = comments.length;
+          this.likeCache.setPostLikes(doc.id, likedBy);
+          return convertFirestorePost(postData, currentUser.uid);
+        }),
+      );
+
+      this.queryCache.set(cacheKey, posts);
+      this.queryCacheTimestamps.set(cacheKey, Date.now());
+
+      return {success: true, posts, lastVisible: lastVisibleDoc};
+    } catch (error) {
+      console.error('PostQueryService :: getPostsBySearch ::', error);
+      return {success: false, error: 'Failed to fetch posts'};
+    }
+  }
+
   cleanup() {
     this.queryCache.clear();
     this.queryCacheTimestamps.clear();

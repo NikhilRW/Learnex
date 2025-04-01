@@ -33,6 +33,37 @@ const SignIn = () => {
     usernameOrEmail: '',
     password: '',
   };
+  const handleGoogleSignIn = async () => {
+    const response = await firebase.auth.googleSignIn();
+    console.log(response);
+    if(response.success){
+      dispatch(changeProfileColor(getRandomColors()));
+      dispatch(changeIsLoggedIn(true));
+    }
+    else{
+      Snackbar.show({
+        text: 'Login Unsuccessful Due To : ' + response.error,
+        duration: Snackbar.LENGTH_LONG,
+        textColor: 'white',
+        backgroundColor: '#007cb5',
+      });
+    }
+  }
+  const handleGithubSignIn = async () => {
+    const response = await firebase.auth.githubSignIn();
+    if(response.success){
+      dispatch(changeProfileColor(getRandomColors()));
+      dispatch(changeIsLoggedIn(true));
+    }
+    else{
+      Snackbar.show({
+        text: 'Login Unsuccessful Due To : ' + response.error,
+        duration: Snackbar.LENGTH_LONG,
+        textColor: 'white',
+        backgroundColor: '#007cb5',
+      });
+    }
+  };
   const signInUser = async ({ usernameOrEmail, password }: signInData) => {
     const response = await firebase.user.checkUsernameOrEmailRegistered(
       usernameOrEmail,
@@ -261,16 +292,12 @@ const SignIn = () => {
                         source={require('../../res/pngs/google.png')}
                         className="w-50 h-50"
                         style={{ width: 55, height: 55 }}
-                        onPress={() => {
-                          firebase.auth.googleSignIn();
-                        }}
+                        onPress={handleGoogleSignIn}
                       />
                       <Image
                         source={require('../../res/jpgs/github.jpg')}
                         style={{ width: 40, height: 40, borderRadius: 30 }}
-                        onPress={() => {
-                          firebase.auth.githubSignIn();
-                        }}
+                        onPress={handleGithubSignIn}
                       />
                     </View>
                   </View>

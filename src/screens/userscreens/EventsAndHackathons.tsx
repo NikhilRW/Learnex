@@ -17,13 +17,14 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
 import { createStyles } from '../../styles/screens/EventsAndHackathons.styles';
-import { HackathonService } from '../../services/hackathonService';
+import { HackathonService } from '../../service/hackathonService';
 import { HackathonSummary, EventMode } from '../../types/hackathon';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { format, parseISO } from 'date-fns';
 import EventLogo from '../../components/hackathons/EventLogo';
+import FontAwesome5Icon from 'react-native-vector-icons/FontAwesome5';
 
 // Event locations for filter
 const LOCATIONS = [
@@ -262,13 +263,13 @@ const EventsAndHackathons: React.FC = () => {
                         Loading events...
                     </Text>
                 </View>
+                
             );
-        }
-
+        };
         if (error) {
+            
             return renderErrorContent();
         }
-
         if (filteredEvents.length === 0) {
             return (
                 <View style={styles.noEventsContainer}>
@@ -311,7 +312,7 @@ const EventsAndHackathons: React.FC = () => {
                 >
                     <Ionicons name="arrow-back" size={24} color={isDark ? 'white' : 'black'} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Events & Hackathons</Text>
+                <FontAwesome5Icon name='calendar-alt'size={24} color={isDark ? 'white' : 'black'} />
             </View>
 
             {/* Location selector */}
