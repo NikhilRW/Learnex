@@ -15,7 +15,7 @@ import {
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
-import { useTypedSelector } from '../hooks/useTypedSelector';
+import { useTypedSelector } from '../../hooks/useTypedSelector';
 
 const { width } = Dimensions.get('window');
 

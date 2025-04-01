@@ -13,7 +13,6 @@ import {
     useWindowDimensions,
 } from 'react-native';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
-import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useNavigation } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { userState } from '../../types/userType';
@@ -24,8 +23,7 @@ interface MeetingRoom {
     id?: string;
     title: string;
     description: string;
-    startTime: Date;
-    endTime: Date;
+    duration: number;
     capacity: number;
     isPrivate: boolean;
     meetingLink?: string;
@@ -50,61 +48,21 @@ const Room = () => {
     const [meetingRoom, setMeetingRoom] = useState<MeetingRoom>({
         title: '',
         description: '',
-        startTime: new Date(),
-        endTime: new Date(Date.now() + 3600000), // Default 1 hour duration
+        duration: 60,
         capacity: 10,
         isPrivate: false,
         host: 'Current User', // Will be replaced with actual user data
     });
-
-    const handleDateChange = (
-        event: DateTimePickerEvent,
-        selectedDate: Date | undefined,
-        isStartTime: boolean,
-    ) => {
-        if (Platform.OS === 'android') {
-            setShowStartPicker(false);
-            setShowEndPicker(false);
-        }
-
-        if (selectedDate) {
-            if (isStartTime) {
-                // Ensure end time is after start time
-                const newEndTime =
-                    selectedDate > meetingRoom.endTime
-                        ? new Date(selectedDate.getTime() + 3600000)
-                        : meetingRoom.endTime;
-
-                setMeetingRoom(prev => ({
-                    ...prev,
-                    startTime: selectedDate,
-                    endTime: newEndTime,
-                }));
-            } else {
-                if (selectedDate <= meetingRoom.startTime) {
-                    Alert.alert('Invalid Time', 'End time must be after start time');
-                    return;
-                }
-                setMeetingRoom(prev => ({
-                    ...prev,
-                    endTime: selectedDate,
-                }));
-            }
-        }
-    };
-
     const handleCreateRoom = async () => {
         // Validate form
         if (!meetingRoom.title.trim()) {
             Alert.alert('Error', 'Please enter a meeting title');
             return;
         }
-
-        if (meetingRoom.endTime <= meetingRoom.startTime) {
-            Alert.alert('Error', 'End time must be after start time');
+        if(meetingRoom.duration < 1) {
+            Alert.alert('Error', 'Duration must be at least 1 minute');
             return;
         }
-
         try {
             setLoading(true);
             if (meetingRoom.capacity < 2) {
@@ -121,8 +79,7 @@ const Room = () => {
             const meetingData = {
                 title: meetingRoom.title,
                 description: meetingRoom.description,
-                startTime: meetingRoom.startTime,
-                endTime: meetingRoom.endTime,
+                duration: meetingRoom.duration,
                 isPrivate: meetingRoom.isPrivate,
                 maxParticipants: meetingRoom.capacity,
                 host: meetingRoom.host, // Include host field
@@ -223,49 +180,28 @@ const Room = () => {
                     }
                 />
             </View>
-
             <View style={styles.inputGroup}>
                 <Text style={[styles.label, isDark && styles.darkText]}>
-                    Start Time
+                    Duration (minutes)
                 </Text>
-                <TouchableOpacity
-                    style={[styles.dateButton, isDark && styles.darkInput]}
-                    onPress={() => setShowStartPicker(true)}>
-                    <Text style={[styles.dateButtonText, isDark && styles.darkText]}>
-                        {meetingRoom.startTime.toLocaleString()}
-                    </Text>
-                </TouchableOpacity>
-                {showStartPicker && (
-                    <DateTimePicker
-                        value={meetingRoom.startTime}
-                        mode="datetime"
-                        display="default"
-                        onChange={(event, date) => handleDateChange(event, date, true)}
-                    />
-                )}
+                <TextInput
+                    style={[
+                        styles.input,
+                        isDark && styles.darkInput,
+                        isDark && styles.darkText,
+                    ]}
+                    placeholder="Enter meeting duration"
+                    placeholderTextColor={isDark ? '#888888' : '#666666'}
+                    keyboardType="number-pad"
+                    value={meetingRoom.duration.toString()}
+                    onChangeText={text =>
+                        setMeetingRoom(prev => ({
+                            ...prev,
+                            duration: parseInt(text) || 0,
+                        }))
+                    }
+                />
             </View>
-
-            <View style={styles.inputGroup}>
-                <Text style={[styles.label, isDark && styles.darkText]}>
-                    End Time
-                </Text>
-                <TouchableOpacity
-                    style={[styles.dateButton, isDark && styles.darkInput]}
-                    onPress={() => setShowEndPicker(true)}>
-                    <Text style={[styles.dateButtonText, isDark && styles.darkText]}>
-                        {meetingRoom.endTime.toLocaleString()}
-                    </Text>
-                </TouchableOpacity>
-                {showEndPicker && (
-                    <DateTimePicker
-                        value={meetingRoom.endTime}
-                        mode="datetime"
-                        display="default"
-                        onChange={(event, date) => handleDateChange(event, date, false)}
-                    />
-                )}
-            </View>
-
             <View style={styles.inputGroup}>
                 <Text style={[styles.label, isDark && styles.darkText]}>
                     Capacity
@@ -288,36 +224,6 @@ const Room = () => {
                     }
                 />
             </View>
-
-            <View style={styles.inputGroup}>
-                <View style={styles.privacyContainer}>
-                    <Text style={[styles.label, isDark && styles.darkText]}>
-                        Private Meeting
-                    </Text>
-                    <TouchableOpacity
-                        style={styles.toggleContainer}
-                        onPress={() =>
-                            setMeetingRoom(prev => ({
-                                ...prev,
-                                isPrivate: !prev.isPrivate,
-                            }))
-                        }>
-                        <View
-                            style={[
-                                styles.toggleSwitch,
-                                meetingRoom.isPrivate && styles.toggleActive,
-                            ]}>
-                            <View
-                                style={[
-                                    styles.toggleCircle,
-                                    meetingRoom.isPrivate && styles.toggleCircleActive,
-                                ]}
-                            />
-                        </View>
-                    </TouchableOpacity>
-                </View>
-            </View>
-
             <TouchableOpacity
                 style={[styles.button, loading && styles.buttonDisabled]}
                 onPress={handleCreateRoom}

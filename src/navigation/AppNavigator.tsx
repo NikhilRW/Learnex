@@ -2,7 +2,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import CreateMeetingScreen from '../screens/CreateMeetingScreen';
-import RoomScreen from '../screens/RoomScreen';
+import RoomScreen from '../screens/RoomScreen.tsx';
 
 export type RootStackParamList = {
     CreateMeeting: undefined;

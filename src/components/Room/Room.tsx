@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
+import { createAndSendNotification, stopNotification } from "../../service/NotificationService";
 import {
     View,
     StyleSheet,
@@ -19,13 +20,14 @@ import {
     ScrollView,
     ActivityIndicator,
 } from 'react-native';
-import { RTCView } from 'react-native-webrtc';
+import { mediaDevices, MediaStream, RTCView, MediaStreamTrack } from 'react-native-webrtc';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Meeting } from '../../service/firebase/MeetingService';
 import { ParticipantState } from '../../service/firebase/WebRTCService';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
 import { UserService } from '../../service/firebase/UserService';
+import FontAwesome6 from 'react-native-vector-icons/FontAwesome6';
 
 interface Message {
     id: string;
@@ -38,11 +40,20 @@ interface Message {
         [userId: string]: string; // userId: reactionType
     };
 }
+interface ExtendedMediaStream extends MediaStream {
+    participantId?: string; // Add any additional properties you need
+}
+
+// Add custom type declaration for MediaStreamTrack with onended
+interface EnhancedMediaStreamTrack extends MediaStreamTrack {
+    onended?: () => void;
+}
 
 interface RoomProps {
     meeting: Meeting;
     localStream?: any;
     remoteStreams: any[];
+    updateLocalStream: (stream: ExtendedMediaStream | null) => void;
     onToggleAudio: () => void;
     onToggleVideo: () => void;
     onEndCall: () => void;
@@ -60,11 +71,13 @@ interface RoomProps {
     isConnecting: boolean;
     onFlipCamera?: () => void;
     isFrontCamera?: boolean;
+    onScreenShare?: (isSharing: boolean) => void;
 }
 
 const Room: React.FC<RoomProps> = ({
     meeting,
     localStream,
+    updateLocalStream,
     remoteStreams,
     onToggleAudio,
     onToggleVideo,
@@ -83,6 +96,7 @@ const Room: React.FC<RoomProps> = ({
     isConnecting,
     onFlipCamera,
     isFrontCamera: propIsFrontCamera,
+    onScreenShare
 }) => {
     const [isControlsVisible, setIsControlsVisible] = useState(true);
     const [isHandRaised, setIsHandRaised] = useState(false);
@@ -90,6 +104,7 @@ const Room: React.FC<RoomProps> = ({
     const [showReactions, setShowReactions] = useState(false);
     const [showQuickMessages, setShowQuickMessages] = useState(false);
     const [showParticipants, setShowParticipants] = useState(false);
+    const [isScreenSharing, setIsScreenSharing] = useState(false);
     const [messageText, setMessageText] = useState('');
     const [keyboardVisible, setKeyboardVisible] = useState(false);
     const chatPanelOpacity = useRef(new Animated.Value(0)).current;
@@ -106,6 +121,7 @@ const Room: React.FC<RoomProps> = ({
     const [userInfoCache, setUserInfoCache] = useState<Map<string, { email: string | null, fullName: string | null, username: string | null }>>(new Map());
     const userService = useMemo(() => new UserService(), []);
     const [localIsFrontCamera, setLocalIsFrontCamera] = useState(true); // Local state as fallback
+    const [showMoreControls, setShowMoreControls] = useState(false); // State to manage controls view
 
     // Use provided prop value if available, otherwise use local state
     const currentIsFrontCamera = propIsFrontCamera !== undefined ? propIsFrontCamera : localIsFrontCamera;
@@ -361,11 +377,114 @@ const Room: React.FC<RoomProps> = ({
         } else {
             setPinnedParticipantId(participantId);
         }
-
         // Close participants panel
         setShowParticipants(false);
     };
+    const handleScreenShare = async () => {
+        try {
+            if (!isScreenSharing) {
+                // Request screen sharing permission
+                const screenStream = await mediaDevices.getDisplayMedia() as ExtendedMediaStream;
 
+                if (screenStream) {
+                    // Create a notification for Android
+                    const success = await createAndSendNotification();
+
+                    // Ensure the screen share stream has the participant ID
+                    screenStream.participantId = currentUserId;
+
+                    // Mark tracks as screen share
+                    const tracks = screenStream.getTracks();
+                    for (const track of tracks) {
+                        // Cast to our enhanced type
+                        const enhancedTrack = track as EnhancedMediaStreamTrack;
+                        // Set the onended callback
+                        enhancedTrack.onended = () => {
+                            console.log('Screen sharing ended by system');
+                            setIsScreenSharing(false);
+                            stopNotification().catch(console.error);
+
+                            // Get back to camera stream (restore camera)
+                            mediaDevices.getUserMedia({
+                                audio: true,
+                                video: true
+                            }).then((cameraStream) => {
+                                // Make sure the camera stream has the participant ID
+                                const extendedCameraStream = cameraStream as ExtendedMediaStream;
+                                extendedCameraStream.participantId = currentUserId;
+
+                                // Replace the stream in all peer connections
+                                const oldTracks = localStream?.getTracks() || [];
+                                // Stop all old tracks
+                                oldTracks.forEach((t: MediaStreamTrack) => t.stop());
+
+                                // Update local stream for UI rendering
+                                updateLocalStream(extendedCameraStream);
+
+                                // Update state for participants
+                                if (onScreenShare) {
+                                    onScreenShare(false);
+                                }
+                            }).catch(console.error);
+                        };
+                    }
+
+                    // Replace tracks in all existing peer connections
+                    if (localStream) {
+                        const oldTracks = localStream.getTracks();
+                        // Stop all old tracks from camera
+                        oldTracks.forEach((t: MediaStreamTrack) => t.stop());
+                    }
+
+                    // Send this stream to other participants
+                    updateLocalStream(screenStream);
+                    setIsScreenSharing(true);
+
+                    // Update state for participants
+                    if (onScreenShare) {
+                        onScreenShare(true);
+                    }
+                }
+            } else {
+                // Stop screen sharing
+                if (localStream) {
+                    // Stop all tracks in the screen sharing stream
+                    const tracks = localStream.getTracks();
+                    for (const track of tracks) {
+                        track.stop();
+                    }
+                }
+
+                // Stop notification
+                await stopNotification();
+
+                // Get back to camera stream
+                const cameraStream = await mediaDevices.getUserMedia({
+                    audio: true,
+                    video: true
+                }) as ExtendedMediaStream;
+
+                // Make sure the camera stream has the participant ID
+                cameraStream.participantId = currentUserId;
+
+                // Replace the stream in all peer connections
+                updateLocalStream(cameraStream);
+                setIsScreenSharing(false);
+
+                // Update state for participants
+                if (onScreenShare) {
+                    onScreenShare(false);
+                }
+            }
+        } catch (error) {
+            console.error('Error toggling screen share:', error);
+            // If the user cancels the screen sharing dialog, this catches that error
+            setIsScreenSharing(false);
+            if (onScreenShare) {
+                onScreenShare(false);
+            }
+        }
+    };
     const renderParticipantListItem = ({ item }: { item: { id: string, name: string, isLocal: boolean } }) => {
         const participantState = participantStates.get(item.id);
         const isAudioOn = item.isLocal ? isAudioEnabled : (participantState?.isAudioEnabled ?? true);
@@ -601,6 +720,9 @@ const Room: React.FC<RoomProps> = ({
         // Check if participant is speaking
         const isParticipantSpeaking = participantState ? participantState.isSpeaking : false;
 
+        // Check if participant is screen sharing
+        const isParticipantScreenSharing = participantState ? participantState.isScreenSharing : false;
+
         // Check for reactions
         const hasThumbsUp = participantState ? participantState.isThumbsUp : false;
         const hasThumbsDown = participantState ? participantState.isThumbsDown : false;
@@ -614,26 +736,16 @@ const Room: React.FC<RoomProps> = ({
         const initials = lastInitial ? `${firstInitial}${lastInitial}` : firstInitial;
 
         // Determine if this is the current user
-        const isCurrentUser = item.isLocal || item.id === currentUserId;
+        const isCurrentUser = item.id === currentUserId;
 
-        // Get display name - use email username if name is not available
-        const displayName = item.name || (item.email ? item.email.split('@')[0] : `User ${item.id.substring(0, 5)}`);
+        // Get display name - prioritize name from the item, fall back to initials
+        const displayName = item.name || initials;
 
-        const colors = [
-            '#4285F4', // Google Blue
-            '#EA4335', // Google Red
-            '#FBBC05', // Google Yellow
-            '#34A853', // Google Green
-            '#8AB4F8', // Light Blue
-            '#F28B82', // Light Red
-            '#FDD663', // Light Yellow
-            '#81C995', // Light Green
-            '#D2E3FC', // Pale Blue
-            '#FADAD7', // Pale Red
-        ];
-        const colorIndex = index % colors.length;
-        const avatarColor = colors[colorIndex];
-        const avatarTextColor = colorIndex >= 6 ? '#202124' : '#FFFFFF'; // Dark text on pale colors
+        // Determine avatar color based on participant ID for consistency
+        const avatarColor = getAvatarColor(item.id);
+        // Determine text color - dark text on pale colors, light text on dark colors
+        const avatarHue = Number(item.id.charCodeAt(0)) % 360;
+        const avatarTextColor = avatarHue > 30 && avatarHue < 190 ? '#202124' : '#ffffff';
 
         return (
             <TouchableOpacity
@@ -683,6 +795,13 @@ const Room: React.FC<RoomProps> = ({
                     {isParticipantSpeaking && isAudioOn && (
                         <View style={styles.speakingIndicator}>
                             <Icon name="volume-up" size={20} color="#fff" />
+                        </View>
+                    )}
+
+                    {/* Screen sharing indicator */}
+                    {isParticipantScreenSharing && (
+                        <View style={styles.screenSharingIndicator}>
+                            <MaterialCommunityIcons name="projector-screen" size={20} color="#fff" />
                         </View>
                     )}
 
@@ -860,6 +979,24 @@ const Room: React.FC<RoomProps> = ({
         }
     };
 
+    // Function to generate consistent avatar color based on participant ID
+    const getAvatarColor = (id: string) => {
+        const colors = [
+            '#4285F4', // Google Blue
+            '#EA4335', // Google Red
+            '#FBBC05', // Google Yellow
+            '#34A853', // Google Green
+            '#8AB4F8', // Light Blue
+            '#F28B82', // Light Red
+            '#FDD663', // Light Yellow
+            '#81C995', // Light Green
+        ];
+
+        // Use the sum of character codes to determine color index
+        const charSum = id.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
+        return colors[charSum % colors.length];
+    };
+
     return (
         <SafeAreaView style={[styles.container, isDark && styles.darkContainer]}>
             <KeyboardAvoidingView
@@ -869,7 +1006,7 @@ const Room: React.FC<RoomProps> = ({
                 <View style={styles.mainContainer}>
                     <TouchableOpacity
                         activeOpacity={1}
-                        style={styles.touchableContainer}
+                        style={[styles.touchableContainer, isDark && styles.darkTouchableContainer]}
                         onPress={() => setIsControlsVisible(true)}
                     >
                         <View style={styles.participantsGrid}>
@@ -927,107 +1064,166 @@ const Room: React.FC<RoomProps> = ({
                                 contentContainerStyle={styles.controls}
                                 style={styles.controlsScrollView}
                             >
-                                <TouchableOpacity
-                                    style={[
-                                        styles.controlButton,
-                                        !isAudioEnabled && styles.controlButtonDisabled,
-                                    ]}
-                                    onPress={onToggleAudio}
-                                >
-                                    <Icon
-                                        name={isAudioEnabled ? 'mic' : 'mic-off'}
-                                        size={24}
-                                        color="white"
-                                    />
-                                </TouchableOpacity>
+                                {!showMoreControls ? (
+                                    <>
+                                        {/* Primary Controls (Page 1) */}
+                                        <TouchableOpacity
+                                            style={[
+                                                styles.controlButton,
+                                                !isAudioEnabled && styles.controlButtonDisabled,
+                                            ]}
+                                            onPress={onToggleAudio}
+                                        >
+                                            <Icon
+                                                name={isAudioEnabled ? 'mic' : 'mic-off'}
+                                                size={24}
+                                                color="white"
+                                            />
+                                        </TouchableOpacity>
 
-                                <TouchableOpacity
-                                    style={[
-                                        styles.controlButton,
-                                        !isVideoEnabled && styles.controlButtonDisabled,
-                                    ]}
-                                    onPress={onToggleVideo}
-                                >
-                                    <Icon
-                                        name={isVideoEnabled ? 'videocam' : 'videocam-off'}
-                                        size={24}
-                                        color="white"
-                                    />
-                                </TouchableOpacity>
+                                        <TouchableOpacity
+                                            style={[
+                                                styles.controlButton,
+                                                !isVideoEnabled && styles.controlButtonDisabled,
+                                            ]}
+                                            onPress={onToggleVideo}
+                                        >
+                                            <Icon
+                                                name={isVideoEnabled ? 'videocam' : 'videocam-off'}
+                                                size={24}
+                                                color="white"
+                                            />
+                                        </TouchableOpacity>
 
-                                {isVideoEnabled && (
-                                    <TouchableOpacity
-                                        style={styles.controlButton}
-                                        onPress={handleFlipCamera}
-                                    >
-                                        <MaterialCommunityIcons
-                                            name={currentIsFrontCamera ? "camera-front" : "camera-rear"}
-                                            size={24}
-                                            color="white"
-                                        />
-                                    </TouchableOpacity>
+                                        {isVideoEnabled && (
+                                            <TouchableOpacity
+                                                style={styles.controlButton}
+                                                onPress={handleFlipCamera}
+                                            >
+                                                <MaterialCommunityIcons
+                                                    name={currentIsFrontCamera ? "camera-front" : "camera-rear"}
+                                                    size={24}
+                                                    color="white"
+                                                />
+                                            </TouchableOpacity>
+                                        )}
+
+                                        <TouchableOpacity
+                                            style={[
+                                                styles.controlButton,
+                                                isHandRaised && styles.controlButtonActive,
+                                            ]}
+                                            onPress={handleRaiseHand}
+                                        >
+                                            <MaterialCommunityIcons
+                                                name="hand-wave"
+                                                size={24}
+                                                color="white"
+                                            />
+                                        </TouchableOpacity>
+
+                                        {/* More Controls Button */}
+                                        <TouchableOpacity
+                                            style={[
+                                                styles.controlButton,
+                                                styles.moreControlsButton
+                                            ]}
+                                            onPress={() => setShowMoreControls(true)}
+                                        >
+                                            <Icon
+                                                name="more-horiz"
+                                                size={24}
+                                                color="white"
+                                            />
+                                        </TouchableOpacity>
+
+                                        <TouchableOpacity
+                                            style={[styles.controlButton, styles.endCallButton]}
+                                            onPress={onEndCall}
+                                        >
+                                            <Icon name="call-end" size={24} color="white" />
+                                        </TouchableOpacity>
+                                    </>
+                                ) : (
+                                    <>
+                                        {/* Secondary Controls (Page 2) */}
+                                        <TouchableOpacity
+                                            style={[
+                                                styles.controlButton,
+                                                showReactions && styles.controlButtonActive,
+                                            ]}
+                                            onPress={toggleReactionsMenu}
+                                        >
+                                            <MaterialCommunityIcons
+                                                name="emoticon-outline"
+                                                size={24}
+                                                color="white"
+                                            />
+                                        </TouchableOpacity>
+
+                                        <TouchableOpacity
+                                            style={[
+                                                styles.controlButton,
+                                                showParticipants && styles.controlButtonActive,
+                                            ]}
+                                            onPress={toggleParticipantsPanel}
+                                        >
+                                            <Icon
+                                                name="people"
+                                                size={24}
+                                                color="white"
+                                            />
+                                        </TouchableOpacity>
+
+                                        <TouchableOpacity
+                                            style={[
+                                                styles.controlButton,
+                                                showChat && styles.controlButtonActive,
+                                            ]}
+                                            onPress={toggleChat}
+                                        >
+                                            <Icon
+                                                name="chat"
+                                                size={24}
+                                                color="white"
+                                            />
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            style={[
+                                                styles.controlButton,
+                                                isScreenSharing ? styles.controlButtonActive : null
+                                            ]}
+                                            onPress={handleScreenShare}
+                                        >
+                                            <MaterialCommunityIcons
+                                                name={isScreenSharing ? "projector-screen-outline" : "projector-screen-off-outline"}
+                                                size={24}
+                                                color="white"
+                                            />
+                                        </TouchableOpacity>
+                                        {/* Back Button */}
+                                        <TouchableOpacity
+                                            style={[
+                                                styles.controlButton,
+                                                styles.backControlsButton
+                                            ]}
+                                            onPress={() => setShowMoreControls(false)}
+                                        >
+                                            <Icon
+                                                name="arrow-back"
+                                                size={24}
+                                                color="white"
+                                            />
+                                        </TouchableOpacity>
+
+                                        <TouchableOpacity
+                                            style={[styles.controlButton, styles.endCallButton]}
+                                            onPress={onEndCall}
+                                        >
+                                            <Icon name="call-end" size={24} color="white" />
+                                        </TouchableOpacity>
+                                    </>
                                 )}
-
-                                <TouchableOpacity
-                                    style={[
-                                        styles.controlButton,
-                                        isHandRaised && styles.controlButtonActive,
-                                    ]}
-                                    onPress={handleRaiseHand}
-                                >
-                                    <MaterialCommunityIcons
-                                        name="hand-wave"
-                                        size={24}
-                                        color="white"
-                                    />
-                                </TouchableOpacity>
-
-                                <TouchableOpacity
-                                    style={[
-                                        styles.controlButton,
-                                        showReactions && styles.controlButtonActive,
-                                    ]}
-                                    onPress={toggleReactionsMenu}>
-                                    <MaterialCommunityIcons
-                                        name="emoticon-outline"
-                                        size={24}
-                                        color="white"
-                                    />
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={[
-                                        styles.controlButton,
-                                        showParticipants && styles.controlButtonActive,
-                                    ]}
-                                    onPress={toggleParticipantsPanel}
-                                >
-                                    <Icon
-                                        name="people"
-                                        size={24}
-                                        color="white"
-                                    />
-                                </TouchableOpacity>
-
-                                <TouchableOpacity
-                                    style={[
-                                        styles.controlButton,
-                                        showChat && styles.controlButtonActive,
-                                    ]}
-                                    onPress={toggleChat}
-                                >
-                                    <Icon
-                                        name="chat"
-                                        size={24}
-                                        color="white"
-                                    />
-                                </TouchableOpacity>
-
-                                <TouchableOpacity
-                                    style={[styles.controlButton, styles.endCallButton]}
-                                    onPress={onEndCall}
-                                >
-                                    <Icon name="call-end" size={24} color="white" />
-                                </TouchableOpacity>
                             </ScrollView>
                         </View>
                     </TouchableOpacity>
@@ -1286,6 +1482,20 @@ const Room: React.FC<RoomProps> = ({
                             />
                         </Animated.View>
                     )}
+
+                    {/* Screen Sharing Overlay Banner */}
+                    {isScreenSharing && (
+                        <View style={styles.screenSharingBanner}>
+                            <MaterialCommunityIcons name="projector-screen" size={20} color="#fff" />
+                            <Text style={styles.screenSharingText}>You are sharing your screen</Text>
+                            <TouchableOpacity
+                                style={styles.stopSharingButton}
+                                onPress={handleScreenShare}
+                            >
+                                <Text style={styles.stopSharingText}>Stop</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
                 </View>
             </KeyboardAvoidingView>
         </SafeAreaView>
@@ -1309,6 +1519,9 @@ const styles = StyleSheet.create({
     touchableContainer: {
         flex: 1,
         position: 'relative',
+    },
+    darkTouchableContainer: {
+        backgroundColor: '#202124',
     },
     participantsGrid: {
         flex: 1,
@@ -1991,6 +2204,63 @@ const styles = StyleSheet.create({
     },
     controlsScrollView: {
         paddingBottom: 8,
+    },
+    moreControlsButton: {
+        backgroundColor: '#8ab4f8',
+    },
+    backControlsButton: {
+        backgroundColor: '#8ab4f8',
+    },
+    screenSharingIndicator: {
+        position: 'absolute',
+        top: 60, // Position below hand raised indicator
+        right: 16,
+        backgroundColor: 'rgba(59, 130, 246, 0.8)', // Blue background
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 3,
+    },
+    screenSharingBanner: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: 'rgba(66, 133, 244, 0.9)',
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        zIndex: 10,
+    },
+    screenSharingText: {
+        color: '#ffffff',
+        fontSize: 14,
+        fontWeight: '500',
+        marginLeft: 8,
+        flex: 1,
+    },
+    stopSharingButton: {
+        backgroundColor: 'rgba(234, 67, 53, 0.9)',
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: 4,
+    },
+    stopSharingText: {
+        color: '#ffffff',
+        fontSize: 12,
+        fontWeight: '500',
+    },
+    participantInfoBar: {
+        flex: 1,
+        padding: 8,
+    },
+    participantName: {
+        fontSize: 16,
+        color: '#202124',
     },
 });
 

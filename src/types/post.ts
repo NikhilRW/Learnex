@@ -23,6 +23,8 @@ export interface PostType {
   user: User;
   description: string;
   likes: number;
+  hashtags: string[];
+  isSaved: boolean;
   comments: number;
   timestamp: string;
   postImage?: ImageSourcePropType;

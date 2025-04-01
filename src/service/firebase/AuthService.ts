@@ -84,6 +84,7 @@ export class AuthService {
   async signOut(): Promise<AuthResponse> {
     try {
       await auth().signOut();
+      await GoogleSignin.signOut();
       return {success: true};
     } catch (error: any) {
       console.log('AuthService :: signOut() ::', error);

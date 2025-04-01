@@ -535,6 +535,43 @@ const RoomScreen: React.FC = () => {
         await webRTCService.updateLocalParticipantState(meeting.id, update);
     };
 
+    // Add a function to handle local stream updates and renegotiate connections as needed
+    const handleLocalStreamUpdate = (stream: ExtendedMediaStream | null) => {
+        if (!stream) return;
+
+        try {
+            // Add participant ID if not already set
+            if (!stream.participantId) {
+                stream.participantId = currentUser?.uid;
+            }
+
+            console.log('Updating local stream:', stream.id);
+            console.log('Stream tracks:', stream.getTracks().map(t => `${t.kind}:${t.enabled}`).join(', '));
+
+            // Update the local stream in WebRTCService - this will trigger renegotiation
+            webRTCService.updateLocalStream(stream, meeting.id)
+                .then(() => {
+                    console.log('Local stream updated successfully and connections renegotiated');
+                })
+                .catch((error: Error) => {
+                    console.error('Error updating local stream:', error);
+                });
+
+            // Update local state
+            setLocalStream(stream);
+        } catch (error) {
+            console.error('Error in handleLocalStreamUpdate:', error);
+        }
+    };
+
+    // Handle screen sharing state
+    const handleScreenShare = async (isSharing: boolean) => {
+        // Update participant state in Firestore
+        await webRTCService.updateLocalParticipantState(meeting.id, {
+            isScreenSharing: isSharing
+        });
+    };
+
     useEffect(() => {
         const fetchUserData = async () => {
             try {
@@ -705,6 +742,7 @@ const RoomScreen: React.FC = () => {
                 <Room
                     meeting={meeting}
                     localStream={localStream}
+                    updateLocalStream={handleLocalStreamUpdate}
                     remoteStreams={remoteStreams}
                     onToggleAudio={handleToggleAudio}
                     onToggleVideo={handleToggleVideo}
@@ -723,6 +761,7 @@ const RoomScreen: React.FC = () => {
                     isConnecting={isConnecting}
                     onFlipCamera={handleFlipCamera}
                     isFrontCamera={isFrontCamera}
+                    onScreenShare={handleScreenShare}
                 />
             )}
         </View>
