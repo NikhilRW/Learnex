@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useTypedSelector } from '../../../hooks/useTypedSelector';
 import { useTypedDispatch } from '../../../hooks/useTypedDispatch';
 import { changeIsLoggedIn } from '../../../reducers/User';
-import { Avatar } from 'react-native-elements';
+import { Avatar, Image } from 'react-native-elements';
 import { getUsernameForLogo } from '../../../helpers/stringHelpers';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -20,7 +20,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const NavigationDrawer = (props: DrawerContentComponentProps) => {
   const firebase = useTypedSelector(state => state.firebase.firebase);
   const insets = useSafeAreaInsets();
-  const currentUser = firebase.auth.currentUser();
+  const currentUser = firebase.currentUser();
   const isDark = useTypedSelector((state) => state.user.theme) === "dark";
   const [fullName, setFullName] = useState<string>('');
   const [username, setUsername] = useState<string>('');
@@ -110,9 +110,24 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
+        // Check and log photoURL for debugging
         if (currentUser?.photoURL) {
-          setPhotoURL(currentUser.photoURL);
+          console.log('NavigationDrawer: User photo URL:', currentUser.photoURL);
+          // Validate URL format
+          if (typeof currentUser.photoURL === 'string' &&
+            (currentUser.photoURL.startsWith('http://') ||
+              currentUser.photoURL.startsWith('https://') ||
+              currentUser.photoURL.startsWith('data:'))) {
+            setPhotoURL(currentUser.photoURL);
+          } else {
+            console.log('NavigationDrawer: Invalid photo URL format');
+            setPhotoURL(null);
+          }
+        } else {
+          console.log('NavigationDrawer: No photo URL available');
+          setPhotoURL(null);
         }
+
         const { fullName, username } = await firebase.user.getNameUsernamestring();
         setUsername(username);
         setFullName(fullName);
@@ -128,22 +143,27 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
   }, [currentUser]);
 
   const renderAvatar = () => {
-    if (photoURL?.length! > 0) {
+    if (photoURL && photoURL.length > 0) {
       return (
-        <Avatar
-          size={60}
-          source={{ uri: photoURL! }}
+        <Image
+          source={{ uri: photoURL }}
           containerStyle={styles.avatar}
-          rounded
-          activeOpacity={0.7}
+          onError={() => {
+            console.log('NavigationDrawer: Profile image loading error');
+            setPhotoURL(null); // Fallback to initials avatar
+          }}
         />
       );
     }
     return (
       <Avatar
         size={60}
-        title={getUsernameForLogo(username)}
-        containerStyle={[styles.avatar, { backgroundColor: profileColor! }]}
+        title={getUsernameForLogo(username || 'User')}
+        titleStyle={{
+          fontSize: Math.min(SCREEN_WIDTH * 0.06, 24),
+          fontFamily: 'Kufam-Thin'
+        }}
+        containerStyle={[styles.avatar, { backgroundColor: profileColor || '#2379C2' }]}
         activeOpacity={0.7}
       />
     );

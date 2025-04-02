@@ -219,13 +219,17 @@ const Home = () => {
           response.posts.forEach((post: PostType & { likes: number, comments: number }) => {
             console.log('Processing post:', {
               id: post.id,
-              hashtags: post.hashtags,
+              hashtags: post.hashtags || [],
               engagement: post.likes + post.comments
             });
 
-            if (post.hashtags && Array.isArray(post.hashtags)) {
+            // Ensure hashtags exists and is an array
+            if (post.hashtags && Array.isArray(post.hashtags) && post.hashtags.length > 0) {
               const engagement = post.likes + post.comments;
               post.hashtags.forEach(tag => {
+                // Skip empty tags
+                if (!tag || tag.trim() === '') return;
+
                 const currentEngagement = hashtagStats.get(tag) || 0;
                 hashtagStats.set(tag, currentEngagement + engagement);
                 console.log(`Updated engagement for tag #${tag}:`, currentEngagement + engagement);
@@ -264,14 +268,28 @@ const Home = () => {
 
   // Optimize tag filtering
   const handleTagPress = useCallback((tag: string) => {
-    if (selectedTag === tag){
+    console.log('Tag pressed:', tag);
+    console.log('All posts hashtags:', posts.map(post => ({
+      id: post.id,
+      hashtags: post.hashtags || [],
+      has_hashtags_field: post.hashtags !== undefined
+    })));
+
+    if (selectedTag === tag) {
+      console.log('Clearing tag filter');
       setSelectedTag(null);
       setFilteredPosts([]);
     } else {
+      console.log(`Filtering by tag: ${tag}`);
       setSelectedTag(tag);
-      const filtered = posts.filter(post =>
-        post.hashtags?.includes(tag)
-      );
+      const filtered = posts.filter(post => {
+        // Ensure hashtags exists and is an array
+        const hashtags = post.hashtags || [];
+        const hasTag = Array.isArray(hashtags) && hashtags.includes(tag);
+        console.log(`Post ${post.id} has hashtags:`, hashtags, `includes "${tag}"?`, hasTag);
+        return hasTag;
+      });
+      console.log('Filtered posts:', filtered.length);
       setFilteredPosts(filtered);
     }
   }, [selectedTag, posts]);
