@@ -8,6 +8,8 @@ import { PostType } from '../../../../types/post';
 import { useTypedSelector } from '../../../../hooks/useTypedSelector';
 import { primaryColor } from '../../../../res/strings/eng';
 import CommentModal from './CommentModal';
+import { getUsernameForLogo } from '../../../../helpers/stringHelpers';
+import { Avatar } from 'react-native-elements';
 
 /**
  * Post component that displays a social media post with images
@@ -65,7 +67,16 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
             useNativeDriver: true
         }).start();
 
-        // Calculate image height based on first image
+        // Set default image height based on orientation
+        if (post.isVertical) {
+            // For vertical images, use a taller container
+            setImageHeight(Math.min(480, screenWidth * 1.5));
+        } else {
+            // For horizontal images, use a shorter container
+            setImageHeight(Math.min(300, screenWidth * 0.6));
+        }
+
+        // If we have a specific first image, try to calculate its exact dimensions
         const firstImage = post.postImages?.[0] || post.postImage;
         if (firstImage) {
             if (typeof firstImage === 'number') {
@@ -75,19 +86,21 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
                     const { width, height } = imageSource;
                     const screenWidth = Dimensions.get('window').width - 24;
                     const scaledHeight = (height / width) * screenWidth;
-                    setImageHeight(scaledHeight || 300);
+                    setImageHeight(scaledHeight || (post.isVertical ? 480 : 300));
                 }
             } else {
                 // Remote image
-                const imageUri = (firstImage as ImageURISource).uri;
+                const imageUri = typeof firstImage === 'string' ? firstImage :
+                    (firstImage as ImageURISource).uri;
                 if (imageUri) {
                     Image.getSize(imageUri, (width, height) => {
                         const screenWidth = Dimensions.get('window').width - 24;
                         const scaledHeight = (height / width) * screenWidth;
-                        setImageHeight(scaledHeight || 300);
+                        setImageHeight(scaledHeight || (post.isVertical ? 480 : 300));
                     }, (error) => {
                         console.error('Error getting image size:', error);
-                        setImageHeight(300); // Fallback height
+                        // Fallback to orientation-based height
+                        setImageHeight(post.isVertical ? 480 : 300);
                     });
                 }
             }
@@ -97,7 +110,7 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
             if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
             if (dotsTimeout.current) clearTimeout(dotsTimeout.current);
         };
-    }, [post.postImages, post.postImage, fadeAnim]);
+    }, [post.postImages, post.postImage, post.isVertical, fadeAnim, screenWidth]);
 
     const handleVideoProgress = useCallback((progress: VideoProgress) => {
         lastPosition.current = progress.currentTime;
@@ -125,19 +138,52 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
     };
 
     const renderMedia = () => {
+        console.log('Rendering media for post:', post.id);
+        console.log('isVideo:', post.isVideo, 'postVideo:', post.postVideo);
+        console.log('postImages:', post.postImages);
+        console.log('isVertical:', post.isVertical);
+
         if (post.isVideo && post.postVideo) {
+            let videoSource;
+            if (typeof post.postVideo === 'number') {
+                videoSource = post.postVideo;
+                console.log('Video is a local asset number:', post.postVideo);
+            } else if (typeof post.postVideo === 'string') {
+                videoSource = { uri: post.postVideo };
+                console.log('Video is a string URI:', post.postVideo);
+            } else if (post.postVideo && typeof post.postVideo === 'object' && 'uri' in post.postVideo) {
+                videoSource = { uri: post.postVideo.uri as any };
+                console.log('Video is an object with URI:', post.postVideo.uri);
+            } else {
+                console.error('Video has invalid format:', post.postVideo);
+                return <View style={styles.errorContainer}><Text>Invalid video format</Text></View>;
+            }
+            console.log('Final video source:', videoSource);
+
             return (
                 <View style={styles.mediaContainer}>
                     <TouchableWithoutFeedback onPress={handleVideoPress}>
-                        <View style={{ width: screenWidth - 24, height: imageHeight }}>
+                        <View style={{
+                            width: screenWidth - 24,
+                            height: imageHeight,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            backgroundColor: '#000'
+                        }}>
                             <Video
                                 ref={videoRef}
-                                source={typeof post.postVideo === 'number' ? post.postVideo : { uri: post.postVideo as string }}
-                                style={[styles.postImage, { width: '100%', height: '100%' }]}
-                                resizeMode="cover"
+                                source={videoSource}
+                                style={[
+                                    styles.postImage,
+                                    post.isVertical
+                                        ? { width: '100%', height: '100%' }
+                                        : { width: '100%', height: '100%', }
+                                ]}
+                                resizeMode={post.isVertical ? "cover" : "contain"}
                                 paused={isPaused}
                                 repeat
                                 onProgress={handleVideoProgress}
+                                onError={(error) => console.error('Video loading error:', error)}
                             />
                             {isPaused && (
                                 <View style={styles.pausedOverlay} />
@@ -148,6 +194,7 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
             );
         }
 
+        console.log('Rendering images carousel. Images count:', post.postImages?.length || 0);
         return (
             <View style={styles.carouselContainer}>
                 <ScrollView
@@ -158,7 +205,20 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
                     onScrollBeginDrag={handleMediaTouch}
                 >
                     {post.postImages?.map((image, index) => {
-                        const source = typeof image === 'number' ? image : { uri: (image as ImageURISource).uri };
+                        let source;
+                        if (typeof image === 'number') {
+                            source = image;
+                        } else if (typeof image === 'string') {
+                            source = { uri: image };
+                            console.log(`Image ${index} is a string URI:`, image);
+                        } else if (image && typeof image === 'object' && 'uri' in image) {
+                            source = { uri: image.uri };
+                            console.log(`Image ${index} is an object with URI:`, image.uri);
+                        } else {
+                            console.error(`Image ${index} has invalid format:`, image);
+                            return null; // Skip invalid images
+                        }
+                        console.log(`Image ${index} final source:`, source);
                         return (
                             <TouchableWithoutFeedback
                                 key={index}
@@ -166,9 +226,15 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
                             >
                                 <Image
                                     source={source}
-                                    style={[styles.postImage, { width: screenWidth - 24, height: imageHeight || 300 }]}
-                                    resizeMode="cover"
-                                    onError={(error) => console.error('Image loading error:', error.nativeEvent.error)}
+                                    style={[
+                                        styles.postImage,
+                                        {
+                                            width: screenWidth - 24,
+                                            height: imageHeight || (post.isVertical ? 480 : 300)
+                                        }
+                                    ]}
+                                    resizeMode={post.isVertical ? "cover" : "contain"}
+                                    onError={(error) => console.error('Image loading error for source', source, ':', error.nativeEvent.error)}
                                 />
                             </TouchableWithoutFeedback>
                         );
@@ -304,8 +370,28 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
             ]}
         >
             <View style={styles.header}>
-                <View style={styles.userInfo}>
-                    <Image source={post.user.image} style={styles.avatar} />
+                <View style={styles.userInfo} onLayout={() => console.log("postimg:" + post.user.image)}>
+                    {
+
+                        post.user.image ? (<Image
+                            source={
+                                typeof post.user.image === 'string'
+                                    ? { uri: post.user.image }
+                                    : post.user.image
+                            }
+                            style={styles.avatar}
+                            onError={(e) => console.log('Avatar loading error:', e.nativeEvent.error)}
+                        />) : (
+                            <Avatar
+                                titleStyle={{
+                                    textAlign: 'center',
+                                    fontFamily: 'Kufam-Thin'
+                                }}
+                                title={getUsernameForLogo(post.user.username || 'Anonymous')}
+                                activeOpacity={0.7}
+                            />
+                        )
+                    }
                     <Text style={[styles.username, { color: isDark ? "white" : "black" }]}>{post.user.username}</Text>
                 </View>
                 <TouchableOpacity onPress={() => setShowOptions(true)}>
@@ -338,9 +424,9 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
                         {post.description}
                     </Text>
                 </View>
-                
+
                 {post.commentsList && post.commentsList.length > 0 && (
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={styles.viewCommentsButton}
                         onPress={() => setShowComments(true)}
                     >
@@ -352,7 +438,7 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
                         </Text>
                     </TouchableOpacity>
                 )}
-                
+
                 <Text style={[styles.timestamp, { color: isDark ? "#8e8e8e" : "#666666" }]}>{post.timestamp}</Text>
             </View>
 
@@ -362,7 +448,7 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
                 comments={post.commentsList || []}
                 isDark={isDark}
             />
-            
+
             <PostOptionsModal />
         </Animated.View>
     );
@@ -557,5 +643,13 @@ const styles = StyleSheet.create({
     viewAllComments: {
         fontSize: 14,
         color: '#8e8e8e',
+    },
+    errorContainer: {
+        width: '100%',
+        height: 200,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#f8f8f8',
+        borderRadius: 8,
     },
 });

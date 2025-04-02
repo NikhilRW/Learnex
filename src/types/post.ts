@@ -33,4 +33,5 @@ export interface PostType {
   isVideo?: boolean;
   commentsList?: Comment[];
   isLiked: boolean; // Change from optional to required
+  isVertical?:boolean,
 }
