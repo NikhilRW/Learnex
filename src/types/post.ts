@@ -16,6 +16,7 @@ export interface Comment {
   timestamp: string;
   isLiked: boolean; // Make isLiked required instead of optional
   replies?: Comment[]; // Add optional replies support
+  editedAt?: string; // Add optional editedAt timestamp
 }
 
 export interface PostType {
@@ -33,5 +34,5 @@ export interface PostType {
   isVideo?: boolean;
   commentsList?: Comment[];
   isLiked: boolean; // Change from optional to required
-  isVertical?:boolean,
+  isVertical?: boolean;
 }

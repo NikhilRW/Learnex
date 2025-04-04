@@ -38,3 +38,35 @@ coverage/
 # Temporary files
 tmp/
 temp/ 
+.vercel
+
+# vercel
+.vercel
+.env*.local
+
+# Build artifacts
+dist
+.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Coverage directory used by testing tools
+coverage
+.nyc_output
+
+# Dependency directories
+node_modules/
+
+# Debug files
+.DS_Store
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

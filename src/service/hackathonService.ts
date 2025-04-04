@@ -7,15 +7,9 @@ import {
   EventSource,
   EventMode,
 } from '../types/hackathon';
-import {Platform} from 'react-native';
 
 // Base URL for the API
-// For Android emulator, 10.0.2.2 points to the host machine's localhost
-// For iOS simulator, localhost works
-const API_BASE_URL =
-  Platform.OS === 'android'
-    ? 'http://10.0.2.2:5000/api'
-    : 'http://localhost:5000/api';
+const API_BASE_URL = 'https://learnex-backend.vercel.app/api';
 
 // Fallback mock data in case the API is not available
 const MOCK_EVENTS: HackathonSummary[] = [

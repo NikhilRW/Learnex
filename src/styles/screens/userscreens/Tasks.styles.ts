@@ -3,7 +3,7 @@ import { StyleSheet } from 'react-native';
 export const styles = StyleSheet.create({
     container: {
         flex: 1,
-        paddingHorizontal: 16,
+        paddingHorizontal: 13,
     },
     customHeader: {
         flexDirection: 'row',
@@ -50,7 +50,6 @@ export const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 12,
-        marginHorizontal: 16,
         paddingVertical: 8,
         borderRadius: 20,
         borderWidth: 1,

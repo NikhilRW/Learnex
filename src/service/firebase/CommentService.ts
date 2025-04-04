@@ -72,7 +72,7 @@ export class CommentService {
 
       // Create the comment
       const commentRef = postRef.collection('comments').doc();
-      batch.set(commentRef , commentData);
+      batch.set(commentRef, commentData);
 
       // Update post comment count
       batch.update(postRef, {
@@ -105,38 +105,65 @@ export class CommentService {
     commentRef: FirebaseFirestoreTypes.DocumentReference;
     parentCommentRef?: FirebaseFirestoreTypes.DocumentReference;
   } | null> {
-    const postRef = firestore().collection('posts').doc(postId);
+    try {
+      console.log(
+        `Finding comment location for postId: ${postId}, commentId: ${commentId}`,
+      );
+      const postRef = firestore().collection('posts').doc(postId);
 
-    // First check if it's a main comment
-    const commentRef = postRef.collection('comments').doc(commentId);
-    const commentDoc = await commentRef.get();
+      // Check if post exists
+      const postDoc = await postRef.get();
+      if (!postDoc.exists) {
+        console.error(`Post with ID ${postId} does not exist`);
+        return null;
+      }
 
-    if (commentDoc.exists) {
-      return {
-        type: 'main',
-        commentRef,
-      };
-    }
+      // First check if it's a main comment
+      const commentRef = postRef.collection('comments').doc(commentId);
+      const commentDoc = await commentRef.get();
 
-    // If not found as main comment, search in replies
-    const commentsSnapshot = await postRef.collection('comments').get();
-
-    for (const mainComment of commentsSnapshot.docs) {
-      const repliesSnapshot = await mainComment.ref
-        .collection('replies')
-        .where(firestore.FieldPath.documentId(), '==', commentId)
-        .get();
-
-      if (!repliesSnapshot.empty) {
+      if (commentDoc.exists) {
+        console.log(`Found main comment with ID ${commentId}`);
         return {
-          type: 'reply',
-          commentRef: repliesSnapshot.docs[0].ref,
-          parentCommentRef: mainComment.ref,
+          type: 'main',
+          commentRef,
         };
       }
-    }
 
-    return null;
+      // If not found as main comment, search in replies
+      console.log(
+        `Comment ${commentId} not found as main comment, searching in replies...`,
+      );
+      const commentsSnapshot = await postRef.collection('comments').get();
+      console.log(
+        `Found ${commentsSnapshot.size} main comments to search through`,
+      );
+
+      for (const mainComment of commentsSnapshot.docs) {
+        console.log(`Checking replies for main comment: ${mainComment.id}`);
+        const repliesSnapshot = await mainComment.ref
+          .collection('replies')
+          .where(firestore.FieldPath.documentId(), '==', commentId)
+          .get();
+
+        if (!repliesSnapshot.empty) {
+          console.log(
+            `Found reply with ID ${commentId} under main comment ${mainComment.id}`,
+          );
+          return {
+            type: 'reply',
+            commentRef: repliesSnapshot.docs[0].ref,
+            parentCommentRef: mainComment.ref,
+          };
+        }
+      }
+
+      console.error(`Comment ${commentId} not found as main comment or reply`);
+      return null;
+    } catch (error) {
+      console.error('Error in findCommentLocation:', error);
+      return null;
+    }
   }
 
   async likeComment(
@@ -294,13 +321,24 @@ export class CommentService {
         return {success: false, error: 'User not authenticated'};
       }
 
-      // Find the parent comment using our helper
-      const commentLocation = await this.findCommentLocation(
-        postId,
-        parentCommentId,
-      );
-      if (!commentLocation) {
-        console.log('Parent comment not found:', {postId, parentCommentId});
+      // Verify the post exists
+      const postRef = firestore().collection('posts').doc(postId);
+      const postDoc = await postRef.get();
+      if (!postDoc.exists) {
+        console.error(`Post with ID ${postId} does not exist`);
+        return {success: false, error: 'Post not found'};
+      }
+
+      // Directly verify the parent comment exists instead of using findCommentLocation
+      const parentCommentRef = postRef
+        .collection('comments')
+        .doc(parentCommentId);
+      const parentCommentDoc = await parentCommentRef.get();
+
+      if (!parentCommentDoc.exists) {
+        console.error(
+          `Parent comment with ID ${parentCommentId} does not exist`,
+        );
         return {success: false, error: 'Parent comment not found'};
       }
 
@@ -351,12 +389,11 @@ export class CommentService {
       // Use a batch to ensure atomic operations
       const batch = firestore().batch();
 
-      // Create the reply in the correct location
-      const replyRef = commentLocation.commentRef.collection('replies').doc();
+      // Create the reply directly under the parent comment's replies collection
+      const replyRef = parentCommentRef.collection('replies').doc();
       batch.set(replyRef, replyData);
 
       // Update post comments count
-      const postRef = firestore().collection('posts').doc(postId);
       batch.update(postRef, {
         comments: firestore.FieldValue.increment(1),
       });
@@ -369,6 +406,8 @@ export class CommentService {
       const reply = {
         id: replyRef.id,
         ...replyData,
+        timestamp: new Date().toISOString(), // Format timestamp for UI consumption
+        isLiked: false, // Initialize isLiked for UI consumption
       };
 
       return {success: true, reply};
@@ -394,23 +433,28 @@ export class CommentService {
               .orderBy('timestamp', 'asc')
               .get();
 
+            // Convert replies with proper timestamp formatting
             const replies = repliesSnapshot.docs.map(
-              (replyDoc: FirebaseFirestoreTypes.QueryDocumentSnapshot) => ({
-                id: replyDoc.id,
-                ...replyDoc.data(),
-              }),
+              (replyDoc: FirebaseFirestoreTypes.QueryDocumentSnapshot) => {
+                const replyData = replyDoc.data();
+                return convertFirestoreComment({
+                  id: replyDoc.id,
+                  ...replyData,
+                });
+              },
             );
 
-            return {
+            // Convert main comment with proper timestamp formatting
+            return convertFirestoreComment({
               id: commentDoc.id,
               ...commentData,
               replies,
-            };
+            });
           },
         ),
       );
 
-      return comments as FirestoreComment[];
+      return comments;
     } catch (error) {
       console.error('Error getting comments:', error);
       return [];

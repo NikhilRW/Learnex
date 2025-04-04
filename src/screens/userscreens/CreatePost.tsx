@@ -284,7 +284,7 @@ const CreatePost = () => {
         user: {
           id: currentUser.uid,
           username: currentUser.displayName || fullName || 'Anonymous',
-          image: currentUser.photoURL,
+          image: currentUser.photoURL || `https://avatar.iran.liara.run/username?username=${currentUser.displayName || fullName || 'Anonymous'}`,
         },
         description: formData.description,
         // Use the appropriate field based on media type

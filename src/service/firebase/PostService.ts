@@ -103,7 +103,7 @@ export class PostService {
   getPosts(options = {}): Promise<GetPostsResponse> {
     return this.queryService.getPosts(options);
   }
-  getPostsBySearch(searchText:string): Promise<GetPostsResponse> {
+  getPostsBySearch(searchText: string): Promise<GetPostsResponse> {
     return this.queryService.getPostsBySearch(searchText);
   }
   subscribeToPostUpdates(callback: (posts: any[]) => void): () => void {
@@ -166,5 +166,119 @@ export class PostService {
           .filter(word => word.length > 0),
       ),
     ];
+  }
+
+  /**
+   * Hide a post by adding it to the user's blockedPosts collection
+   * This prevents the post from appearing in the user's feed
+   * @param postId The ID of the post to hide
+   * @returns Success status and optional error message
+   */
+  async hidePost(postId: string): Promise<{success: boolean; error?: string}> {
+    try {
+      const currentUser = auth().currentUser;
+      if (!currentUser) {
+        return {success: false, error: 'User not authenticated'};
+      }
+
+      const userRef = firestore().collection('users').doc(currentUser.uid);
+      const postRef = firestore().collection('posts').doc(postId);
+
+      const [userDoc, postDoc] = await Promise.all([
+        userRef.get(),
+        postRef.get(),
+      ]);
+
+      if (!userDoc.exists) {
+        return {success: false, error: 'User document not found'};
+      }
+
+      if (!postDoc.exists) {
+        return {success: false, error: 'Post not found'};
+      }
+
+      // Create blockedPosts collection if it doesn't exist already
+      const blockedPostsRef = userRef.collection('blockedPosts');
+
+      // Add the post to blockedPosts collection
+      await blockedPostsRef.doc(postId).set({
+        blockedAt: firestore.FieldValue.serverTimestamp(),
+        postId: postId,
+        postCreatorId: postDoc.data()?.user?.id || '',
+      });
+
+      // Also add to blockedPostIds field in user document for efficient querying
+      await userRef.update({
+        blockedPostIds: firestore.FieldValue.arrayUnion(postId),
+      });
+
+      return {success: true};
+    } catch (error) {
+      console.error('Error in hidePost:', error);
+      return {success: false, error: 'Failed to hide post'};
+    }
+  }
+
+  /**
+   * Check if a post is hidden by the current user
+   * @param postId The ID of the post to check
+   * @returns Boolean indicating if the post is hidden
+   */
+  async isPostHidden(postId: string): Promise<boolean> {
+    try {
+      const currentUser = auth().currentUser;
+      if (!currentUser) return false;
+
+      const userRef = firestore().collection('users').doc(currentUser.uid);
+      const userDoc = await userRef.get();
+
+      if (!userDoc.exists) return false;
+
+      const userData = userDoc.data();
+      const blockedPostIds = userData?.blockedPostIds || [];
+
+      return blockedPostIds.includes(postId);
+    } catch (error) {
+      console.error('Error checking if post is hidden:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Unhide a post by removing it from the user's blockedPosts collection
+   * This allows the post to appear in the user's feed again
+   * @param postId The ID of the post to unhide
+   * @returns Success status and optional error message
+   */
+  async unhidePost(
+    postId: string,
+  ): Promise<{success: boolean; error?: string}> {
+    try {
+      const currentUser = auth().currentUser;
+      if (!currentUser) {
+        return {success: false, error: 'User not authenticated'};
+      }
+
+      const userRef = firestore().collection('users').doc(currentUser.uid);
+      const userDoc = await userRef.get();
+
+      if (!userDoc.exists) {
+        return {success: false, error: 'User document not found'};
+      }
+
+      // Remove from blockedPosts collection
+      const blockedPostRef = userRef.collection('blockedPosts').doc(postId);
+      await blockedPostRef.delete();
+
+      // Also remove from blockedPostIds array
+      await userRef.update({
+        blockedPostIds: firestore.FieldValue.arrayRemove(postId),
+      });
+
+      return {success: true};
+    } catch (error) {
+      console.error('Error in unhidePost:', error);
+      return {success: false, error: 'Failed to unhide post'};
+    }
   }
 }

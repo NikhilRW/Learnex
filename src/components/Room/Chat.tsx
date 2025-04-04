@@ -11,8 +11,10 @@ import {
     Platform,
     Alert,
     ActivityIndicator,
+    Modal,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
@@ -25,6 +27,8 @@ interface Message {
     senderId: string;
     senderName: string;
     timestamp: any; // Using any instead of firestore.Timestamp to avoid namespace error
+    edited?: boolean;
+    editedAt?: any;
 }
 
 interface ChatProps {
@@ -41,15 +45,19 @@ const Chat: React.FC<ChatProps> = ({ meetingId, isVisible, onClose }) => {
     const [userName, setUserName] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
+    const [isContextMenuVisible, setIsContextMenuVisible] = useState(false);
+    const [isEditMode, setIsEditMode] = useState(false);
+    const [editText, setEditText] = useState('');
 
     useEffect(() => {
         let unsubscribe: (() => void) | null = null;
-        const userId = auth().currentUser?.uid;
-        const firebase = useTypedSelector(state => state.firebase.firebase);
-        firebase.user.getUserInfoById(userId!).then((userInfo) => {
-            setUserName(userInfo.username || 'Anonymous');
-        });
         const initializeChat = async () => {
+            const userId = auth().currentUser?.uid;
+            const firebase = useTypedSelector(state => state.firebase.firebase);
+            const { username } = await firebase.user.getNameUsernamestring()
+            const fullName = firebase.auth.currentUser()?.displayName;
+            setUserName(username || fullName!);
             if (!userId || !meetingId) {
                 setError('User not authenticated or invalid meeting');
                 setIsLoading(false);
@@ -175,6 +183,85 @@ const Chat: React.FC<ChatProps> = ({ meetingId, isVisible, onClose }) => {
         }
     };
 
+    const handleMessageLongPress = (message: Message) => {
+        // Only allow actions on user's own messages
+        if (message.senderId === auth().currentUser?.uid) {
+            setSelectedMessage(message);
+            setIsContextMenuVisible(true);
+        }
+    };
+
+    const handleEditMessage = () => {
+        if (selectedMessage) {
+            setEditText(selectedMessage.text);
+            setIsEditMode(true);
+            setIsContextMenuVisible(false);
+        }
+    };
+
+    const saveEditedMessage = async () => {
+        if (!selectedMessage || !editText.trim() || !meetingId) return;
+
+        try {
+            const messageRef = firestore()
+                .collection('meetings')
+                .doc(meetingId)
+                .collection('messages')
+                .doc(selectedMessage.id);
+
+            await messageRef.update({
+                text: editText.trim(),
+                edited: true,
+                editedAt: firestore.FieldValue.serverTimestamp(),
+            });
+
+            setIsEditMode(false);
+            setSelectedMessage(null);
+            setEditText('');
+        } catch (err) {
+            console.error('Error editing message:', err);
+            setError('Failed to edit message');
+            Alert.alert('Error', 'Failed to edit message');
+        }
+    };
+
+    const handleDeleteMessage = () => {
+        if (!selectedMessage || !meetingId) return;
+
+        Alert.alert(
+            "Delete Message",
+            "Are you sure you want to delete this message?",
+            [
+                {
+                    text: "Cancel",
+                    style: "cancel",
+                    onPress: () => setIsContextMenuVisible(false)
+                },
+                {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            await firestore()
+                                .collection('meetings')
+                                .doc(meetingId)
+                                .collection('messages')
+                                .doc(selectedMessage.id)
+                                .delete();
+
+                            setIsContextMenuVisible(false);
+                            setSelectedMessage(null);
+                        } catch (err) {
+                            console.error('Error deleting message:', err);
+                            setError('Failed to delete message');
+                            Alert.alert('Error', 'Failed to delete message');
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
     if (!isVisible) return null;
 
     return (
@@ -221,7 +308,10 @@ const Chat: React.FC<ChatProps> = ({ meetingId, isVisible, onClose }) => {
                         const isOwnMessage = item.senderId === auth().currentUser?.uid;
                         const isSystemMessage = item.senderId === 'system';
                         return (
-                            <View
+                            <TouchableOpacity
+                                activeOpacity={0.8}
+                                onLongPress={() => handleMessageLongPress(item)}
+                                disabled={isSystemMessage}
                                 style={[
                                     styles.messageContainer,
                                     isSystemMessage ? styles.systemMessage :
@@ -251,35 +341,127 @@ const Chat: React.FC<ChatProps> = ({ meetingId, isVisible, onClose }) => {
                                             hour: '2-digit',
                                             minute: '2-digit',
                                         })}
+                                        {item.edited && ' • Edited'}
                                     </Text>
                                 )}
-                            </View>
+                            </TouchableOpacity>
                         );
                     }}
                 />
             )}
 
-            <View style={[styles.inputContainer, isDark && styles.darkInputContainer]}>
-                <TextInput
-                    style={[styles.input, isDark && styles.darkInput]}
-                    value={newMessage}
-                    onChangeText={setNewMessage}
-                    placeholder="Type a message..."
-                    placeholderTextColor={isDark ? '#888888' : '#666666'}
-                    multiline
-                />
-                <TouchableOpacity
-                    style={[styles.sendButton, !newMessage.trim() && styles.disabledSendButton]}
-                    onPress={sendMessage}
-                    disabled={!newMessage.trim()}
-                >
-                    <Icon
-                        name="send"
-                        size={24}
-                        color={newMessage.trim() ? '#ffffff' : '#888888'}
+            {isEditMode ? (
+                <View style={[styles.editContainer, isDark && styles.darkEditContainer]}>
+                    <View style={styles.editHeader}>
+                        <Text style={[styles.editHeaderText, isDark && styles.darkText]}>
+                            Edit Message
+                        </Text>
+                        <TouchableOpacity
+                            onPress={() => setIsEditMode(false)}
+                            style={styles.closeEditButton}
+                        >
+                            <Icon name="close" size={24} color={isDark ? '#ffffff' : '#000000'} />
+                        </TouchableOpacity>
+                    </View>
+                    <TextInput
+                        style={[
+                            styles.editInput,
+                            isDark && styles.darkEditInput
+                        ]}
+                        value={editText}
+                        onChangeText={setEditText}
+                        multiline
+                        autoFocus
                     />
+                    <View style={styles.editActions}>
+                        <TouchableOpacity
+                            onPress={() => setIsEditMode(false)}
+                            style={[styles.editButton, styles.cancelButton]}
+                        >
+                            <Text style={styles.editButtonText}>Cancel</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={saveEditedMessage}
+                            style={[styles.editButton, styles.saveButton]}
+                            disabled={!editText.trim()}
+                        >
+                            <Text style={styles.editButtonText}>Save</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            ) : (
+                <View style={styles.inputArea}>
+                    <TextInput
+                        style={[styles.textInput, isDark && styles.darkTextInput]}
+                        placeholder="Type a message..."
+                        placeholderTextColor={isDark ? '#9e9e9e' : '#9e9e9e'}
+                        value={newMessage}
+                        onChangeText={setNewMessage}
+                        multiline
+                    />
+                    <TouchableOpacity
+                        style={[styles.sendButton, !newMessage.trim() && styles.disabledSendButton]}
+                        onPress={sendMessage}
+                        disabled={!newMessage.trim()}
+                    >
+                        <Icon
+                            name="send"
+                            size={24}
+                            color={newMessage.trim() ? (isDark ? '#ffffff' : '#ffffff') : '#9e9e9e'}
+                        />
+                    </TouchableOpacity>
+                </View>
+            )}
+
+            {/* Context Menu Modal */}
+            <Modal
+                visible={isContextMenuVisible}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setIsContextMenuVisible(false)}
+            >
+                <TouchableOpacity
+                    style={styles.modalOverlay}
+                    activeOpacity={1}
+                    onPress={() => setIsContextMenuVisible(false)}
+                >
+                    <View style={[
+                        styles.contextMenu,
+                        isDark && styles.darkContextMenu
+                    ]}>
+                        <TouchableOpacity
+                            style={styles.contextMenuItem}
+                            onPress={handleEditMessage}
+                        >
+                            <MaterialIcons
+                                name="edit"
+                                size={20}
+                                color={isDark ? '#ffffff' : '#333333'}
+                            />
+                            <Text style={[
+                                styles.contextMenuText,
+                                isDark && styles.darkText
+                            ]}>
+                                Edit Message
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={[styles.contextMenuItem, styles.deleteMenuItem]}
+                            onPress={handleDeleteMessage}
+                        >
+                            <MaterialIcons
+                                name="delete"
+                                size={20}
+                                color="#ff3b30"
+                            />
+                            <Text style={styles.deleteText}>
+                                Delete Message
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
                 </TouchableOpacity>
-            </View>
+            </Modal>
         </KeyboardAvoidingView>
     );
 };
@@ -377,17 +559,19 @@ const styles = StyleSheet.create({
     darkTimestamp: {
         color: '#888888',
     },
-    inputContainer: {
+    inputArea: {
         flexDirection: 'row',
         padding: 16,
         borderTopWidth: 1,
         borderTopColor: '#e0e0e0',
         alignItems: 'flex-end',
     },
-    darkInputContainer: {
-        borderTopColor: '#333333',
+    darkTextInput: {
+        borderColor: '#333333',
+        backgroundColor: '#2a2a2a',
+        color: '#ffffff',
     },
-    input: {
+    textInput: {
         flex: 1,
         borderWidth: 1,
         borderColor: '#e0e0e0',
@@ -398,11 +582,6 @@ const styles = StyleSheet.create({
         maxHeight: 100,
         backgroundColor: '#ffffff',
         color: '#000000',
-    },
-    darkInput: {
-        borderColor: '#333333',
-        backgroundColor: '#2a2a2a',
-        color: '#ffffff',
     },
     sendButton: {
         width: 40,
@@ -449,6 +628,108 @@ const styles = StyleSheet.create({
         color: '#666666',
         textAlign: 'center',
     },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
+    contextMenu: {
+        width: 200,
+        backgroundColor: '#ffffff',
+        borderRadius: 8,
+        overflow: 'hidden',
+        elevation: 4,
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84
+    },
+    darkContextMenu: {
+        backgroundColor: '#333333',
+    },
+    contextMenuItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#eeeeee'
+    },
+    deleteMenuItem: {
+        borderBottomWidth: 0
+    },
+    contextMenuText: {
+        marginLeft: 10,
+        fontSize: 16,
+        color: '#333333'
+    },
+    deleteText: {
+        marginLeft: 10,
+        fontSize: 16,
+        color: '#ff3b30'
+    },
+    editContainer: {
+        backgroundColor: '#ffffff',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderTopWidth: 1,
+        borderTopColor: '#e0e0e0'
+    },
+    darkEditContainer: {
+        backgroundColor: '#333333',
+        borderTopColor: '#444444'
+    },
+    editHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8
+    },
+    editHeaderText: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#000000'
+    },
+    closeEditButton: {
+        padding: 4
+    },
+    editInput: {
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
+        borderRadius: 8,
+        padding: 10,
+        fontSize: 14,
+        color: '#000000',
+        minHeight: 60,
+        maxHeight: 120,
+        backgroundColor: '#f9f9f9'
+    },
+    darkEditInput: {
+        backgroundColor: '#222222',
+        color: '#ffffff',
+        borderColor: '#444444'
+    },
+    editActions: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        marginTop: 12
+    },
+    editButton: {
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderRadius: 4,
+        marginLeft: 8
+    },
+    cancelButton: {
+        backgroundColor: '#e0e0e0'
+    },
+    saveButton: {
+        backgroundColor: '#007cb5'
+    },
+    editButtonText: {
+        color: '#ffffff',
+        fontWeight: 'bold'
+    },
 });
 
-export { Chat };
+export default Chat;

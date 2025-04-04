@@ -94,7 +94,7 @@ const Search = ({ route }: { route: SearchScreenRouteProp }) => {
     <View style={[styles.container, { backgroundColor: isDark ? '#1a1a1a' : '#ffffff' }]}>
       {posts.length === 0 ? (
         <View style={[styles.container,{ justifyContent: 'center', alignItems: 'center' }]}>
-          <Text style={{ color: isDark ? '#ffffff' : '#000000' }}>No results found</Text>
+          <Text style={{ color: isDark ? '#ffffff' : '#000000' ,fontSize:20,fontWeight:'bold'}}>No results found</Text>
         </View>
       ) : (
         <FlatList

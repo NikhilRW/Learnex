@@ -1,9 +1,9 @@
 import { ScrollView } from 'react-native-gesture-handler';
-import { Text, TouchableOpacity, View, Dimensions } from 'react-native';
+import { Text, TouchableOpacity, View, Dimensions, Linking } from 'react-native';
 import React, { useEffect, useState } from 'react';
 import { useTypedSelector } from '../../../hooks/useTypedSelector';
 import { useTypedDispatch } from '../../../hooks/useTypedDispatch';
-import { changeIsLoggedIn } from '../../../reducers/User';
+import { changeIsLoggedIn, changeThemeColor } from '../../../reducers/User';
 import { Avatar, Image } from 'react-native-elements';
 import { getUsernameForLogo } from '../../../helpers/stringHelpers';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createStyles } from '../../../styles/components/user/UserStack/NavigationDrawer.styles';
 import Snackbar from 'react-native-snackbar';
 import { DrawerContentComponentProps } from '@react-navigation/drawer';
+import FontAwesome5Icon from 'react-native-vector-icons/FontAwesome5';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -32,10 +33,10 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
 
   // Group navigation options by category
   const navigationCategories = {
-    main: ['Room', 'Tasks', 'Insights'],
-    tools: ['Scan or Generate QR', 'Feed News', 'Events & Hackathons'],
-    account: ['Rewards', 'Saved', 'Invite'],
-    support: ['Help and FAQs', 'Contact us', 'Setting', 'About']
+    main: ['Room', 'Tasks', 'Direct Messages'],
+    tools: ['Scan or Generate QR', 'Events & Hackathons'],
+    account: ['Saved', 'Invite'],
+    support: ['About us', 'Toggle Theme']
   };
 
   // Map of navigation options to their respective icons
@@ -43,6 +44,7 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
     'Room': 'video-camera',
     'Tasks': 'tasks',
     'Insights': 'bar-chart',
+    'Direct Messages': 'comments',
     'Scan or Generate QR': 'qrcode',
     'Feed News': 'newspaper-o',
     'Events & Hackathons': 'calendar',
@@ -52,7 +54,8 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
     'Contact us': 'envelope',
     'Invite': 'user-plus',
     'Setting': 'cog',
-    'About': 'info-circle'
+    'About us': 'info-circle',
+    'Toggle Theme': isDark ? 'moon' : 'sun'
   };
 
   const handleLogOutPress = async () => {
@@ -79,7 +82,7 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
     }
   };
 
-  const handleOptionPress = (option: string) => {
+  const handleOptionPress = async (option: string) => {
     // Close the drawer
     navigation.closeDrawer();
 
@@ -94,9 +97,29 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
       case 'Events & Hackathons':
         navigation.navigate('EventsAndHackathons');
         break;
-      // Add other cases for other menu options as needed
+      case 'Direct Messages':
+        navigation.navigate('Conversations');
+        break;
+      case 'Saved':
+        navigation.navigate('SavedPosts');
+        break;
+      case 'Scan or Generate QR':
+        navigation.navigate('QRCode');
+        break;
+      case 'About us':
+        if (await Linking.canOpenURL('https://learnex-jvn70k72m-nikhil-wankhedes-projects.vercel.app/#about')) {
+          await Linking.openURL('https://learnex-jvn70k72m-nikhil-wankhedes-projects.vercel.app/#about');
+        } else {
+          Snackbar.show({
+            text: 'Cannot open URL',
+            duration: Snackbar.LENGTH_SHORT,
+          });
+        }
+        break;
+      case 'Toggle Theme':
+        dispatch(changeThemeColor(isDark ? 'light' : 'dark'));
+        break;
       default:
-        // For options not yet implemented
         Snackbar.show({
           text: `${option} feature coming soon!`,
           duration: Snackbar.LENGTH_SHORT,
@@ -173,7 +196,11 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
     const iconName = optionIcons[option as keyof typeof optionIcons] || 'circle';
     return (
       <View style={styles.iconContainer}>
-        <FontAwesome name={iconName} color={isDark ? '#2379C2' : '#2379C2'} size={Math.min(SCREEN_WIDTH * 0.045, 18)} />
+        {option === 'Toggle Theme' ? (
+          <FontAwesome5Icon name={iconName} color={isDark ? '#2379C2' : '#2379C2'} size={Math.min(SCREEN_WIDTH * 0.045, 18)} />
+        ) : (
+          <FontAwesome name={iconName} color={isDark ? '#2379C2' : '#2379C2'} size={Math.min(SCREEN_WIDTH * 0.045, 18)} />
+        )}
       </View>
     );
   };

@@ -31,59 +31,76 @@ export class PostQueryService {
   }
 
   subscribeToPostUpdates(callback: (posts: any[]) => void): () => void {
-    const currentUser = auth().currentUser;
-    if (!currentUser) throw new Error('User not authenticated');
+    try {
+      const currentUser = auth().currentUser;
+      if (!currentUser) {
+        console.error('Cannot subscribe to posts: User not authenticated');
+        return () => {};
+      }
 
-    const unsubscribe = firestore()
-      .collection('posts')
-      .orderBy('timestamp', 'desc')
-      .onSnapshot(
-        async snapshot => {
-          try {
-            if (!snapshot) {
-              console.warn(
-                'PostQueryService: Received null snapshot in posts listener',
+      // Get the user ref - we'll need this for blocked posts
+      const userRef = firestore().collection('users').doc(currentUser.uid);
+
+      // Setup the subscription
+      const unsubscribe = firestore()
+        .collection('posts')
+        .orderBy('timestamp', 'desc')
+        .limit(10)
+        .onSnapshot(
+          async snapshot => {
+            try {
+              // Get the latest blocked post IDs on each update
+              const userDoc = await userRef.get();
+              const blockedPostIds = userDoc.exists
+                ? userDoc.data()?.blockedPostIds || []
+                : [];
+
+              const postsPromises = snapshot.docs
+                .filter(doc => !blockedPostIds.includes(doc.id)) // Filter out blocked posts
+                .map(async doc => {
+                  const postData = {id: doc.id, ...doc.data()} as FirestorePost;
+                  const likedBy = postData.likedBy || [];
+                  const comments = await this.commentService.getPostComments(
+                    doc.ref,
+                  );
+                  postData.commentsList = comments;
+                  postData.comments = comments.length;
+                  this.likeCache.setPostLikes(doc.id, likedBy);
+                  const post = convertFirestorePost(postData, currentUser.uid);
+                  post.isSaved = this.savedPostService.isPostSaved(doc.id);
+                  return post;
+                });
+
+              const posts = await Promise.all(postsPromises);
+              callback(posts);
+            } catch (error) {
+              console.error(
+                'PostQueryService: Error processing posts snapshot:',
+                error,
               );
-              return;
             }
-
-            const posts = await Promise.all(
-              snapshot.docs.map(async doc => {
-                const postData = {id: doc.id, ...doc.data()} as FirestorePost;
-                const likedBy = postData.likedBy || [];
-
-                // Get comments using CommentService
-                const comments = await this.commentService.getPostComments(
-                  doc.ref,
-                );
-                postData.commentsList = comments;
-                postData.comments = comments.length;
-
-                this.likeCache.setPostLikes(doc.id, likedBy);
-                const post = convertFirestorePost(postData, currentUser.uid);
-                post.isSaved = this.savedPostService.isPostSaved(doc.id);
-                return post;
-              }),
-            );
-
-            callback(posts);
-          } catch (error) {
+          },
+          error => {
             console.error(
-              'PostQueryService: Error processing posts snapshot:',
+              'PostQueryService: Error in posts subscription:',
               error,
             );
-          }
-        },
-        error => {
-          console.error('PostQueryService: Error in posts listener:', error);
-        },
-      );
+          },
+        );
 
-    this.activeListeners.set('posts', unsubscribe);
-    return () => {
-      unsubscribe();
-      this.activeListeners.delete('posts');
-    };
+      // Store the unsubscribe function
+      this.activeListeners.set('posts', unsubscribe);
+      return () => {
+        unsubscribe();
+        this.activeListeners.delete('posts');
+      };
+    } catch (error) {
+      console.error(
+        'PostQueryService: Error setting up posts subscription:',
+        error,
+      );
+      return () => {};
+    }
   }
 
   async getPosts(
@@ -99,6 +116,13 @@ export class PostQueryService {
     try {
       const currentUser = auth().currentUser;
       if (!currentUser) throw new Error('User not authenticated');
+
+      // Get the user's blocked post IDs
+      const userRef = firestore().collection('users').doc(currentUser.uid);
+      const userDoc = await userRef.get();
+      const blockedPostIds = userDoc.exists
+        ? userDoc.data()?.blockedPostIds || []
+        : [];
 
       const {
         lastVisible,
@@ -121,7 +145,11 @@ export class PostQueryService {
       if (this.isQueryCacheValid(cacheKey)) {
         const cachedPosts = this.queryCache.get(cacheKey);
         if (cachedPosts) {
-          return {success: true, posts: cachedPosts, lastVisible};
+          // Filter out blocked posts from cache
+          const filteredPosts = cachedPosts.filter(
+            post => !blockedPostIds.includes(post.id),
+          );
+          return {success: true, posts: filteredPosts, lastVisible};
         }
       }
 
@@ -172,17 +200,19 @@ export class PostQueryService {
       const lastVisibleDoc = postsSnapshot.docs[postsSnapshot.docs.length - 1];
 
       const posts = await Promise.all(
-        postsSnapshot.docs.map(async doc => {
-          const postData = {id: doc.id, ...doc.data()} as FirestorePost;
-          const likedBy = postData.likedBy || [];
+        postsSnapshot.docs
+          .filter(doc => !blockedPostIds.includes(doc.id)) // Filter out blocked posts
+          .map(async doc => {
+            const postData = {id: doc.id, ...doc.data()} as FirestorePost;
+            const likedBy = postData.likedBy || [];
 
-          const comments = await this.commentService.getPostComments(doc.ref);
-          postData.commentsList = comments;
-          postData.comments = comments.length;
+            const comments = await this.commentService.getPostComments(doc.ref);
+            postData.commentsList = comments;
+            postData.comments = comments.length;
 
-          this.likeCache.setPostLikes(doc.id, likedBy);
-          return convertFirestorePost(postData, currentUser.uid);
-        }),
+            this.likeCache.setPostLikes(doc.id, likedBy);
+            return convertFirestorePost(postData, currentUser.uid);
+          }),
       );
 
       this.queryCache.set(cacheKey, posts);
@@ -200,6 +230,13 @@ export class PostQueryService {
       const currentUser = auth().currentUser;
       if (!currentUser) throw new Error('User not authenticated');
 
+      // Get the user's blocked post IDs
+      const userRef = firestore().collection('users').doc(currentUser.uid);
+      const userDoc = await userRef.get();
+      const blockedPostIds = userDoc.exists
+        ? userDoc.data()?.blockedPostIds || []
+        : [];
+
       const cacheKey = this.getCacheKey({
         type: 'search',
         searchText: searchText.toLowerCase(),
@@ -208,7 +245,11 @@ export class PostQueryService {
       if (this.isQueryCacheValid(cacheKey)) {
         const cachedPosts = this.queryCache.get(cacheKey);
         if (cachedPosts) {
-          return {success: true, posts: cachedPosts, lastVisible: null};
+          // Filter out blocked posts from cache
+          const filteredPosts = cachedPosts.filter(
+            post => !blockedPostIds.includes(post.id),
+          );
+          return {success: true, posts: filteredPosts, lastVisible: null};
         }
       }
 
@@ -217,7 +258,7 @@ export class PostQueryService {
         .split(/\s+/)
         .filter(word => word.length > 0);
 
-      let query:any = firestore().collection('posts');
+      let query: any = firestore().collection('posts');
 
       if (searchWords.length > 0) {
         // Use array-contains-any to match any of the search words
@@ -234,15 +275,17 @@ export class PostQueryService {
       const lastVisibleDoc = postsSnapshot.docs[postsSnapshot.docs.length - 1];
 
       const posts = await Promise.all(
-        postsSnapshot.docs.map(async doc  => {
-          const postData = {id: doc.id, ...doc.data()} as FirestorePost;
-          const likedBy = postData.likedBy || [];
-          const comments = await this.commentService.getPostComments(doc.ref);
-          postData.commentsList = comments;
-          postData.comments = comments.length;
-          this.likeCache.setPostLikes(doc.id, likedBy);
-          return convertFirestorePost(postData, currentUser.uid);
-        }),
+        postsSnapshot.docs
+          .filter(doc => !blockedPostIds.includes(doc.id)) // Filter out blocked posts
+          .map(async doc => {
+            const postData = {id: doc.id, ...doc.data()} as FirestorePost;
+            const likedBy = postData.likedBy || [];
+            const comments = await this.commentService.getPostComments(doc.ref);
+            postData.commentsList = comments;
+            postData.comments = comments.length;
+            this.likeCache.setPostLikes(doc.id, likedBy);
+            return convertFirestorePost(postData, currentUser.uid);
+          }),
       );
 
       this.queryCache.set(cacheKey, posts);

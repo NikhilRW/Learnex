@@ -1,0 +1,37 @@
+# Development files
+README.md
+CONTRIBUTING.md
+.eslintrc
+.prettierrc
+jest.config.js
+*.test.ts
+*.spec.ts
+tests/
+__tests__/
+coverage/
+.git/
+.github/
+
+# Editor directories
+.idea/
+.vscode/
+
+# Local env files
+.env.local
+.env.development.local
+.env.test.local
+
+# Build artifacts from previous builds
+dist/
+.tsbuildinfo
+
+# Documentation
+docs/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Examples
+examples/ 
