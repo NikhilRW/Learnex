@@ -54,6 +54,8 @@ local.properties
 *.keystore
 !debug.keystore
 android/app/google-services.json
+*.apk
+*.aab
 
 # node.js
 #
