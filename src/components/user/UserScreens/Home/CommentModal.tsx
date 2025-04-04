@@ -23,6 +23,9 @@ import { useTypedSelector } from '../../../../hooks/useTypedSelector';
 import { formatFirestoreTimestamp } from '../../../../service/firebase/utils';
 import { primaryColor } from '../../../../res/strings/eng';
 import { createStyles } from '../../../../styles/components/user/CommentModal.styles';
+import { Avatar } from 'react-native-elements';
+import { getUsernameForLogo } from '../../../../helpers/stringHelpers';
+import Snackbar from 'react-native-snackbar';
 
 interface CommentModalProps {
     visible: boolean;
@@ -36,6 +39,15 @@ interface CommentModalProps {
     postId?: string;
 }
 
+/**
+ * CommentModal displays a list of comments and allows users to add new comments
+ * It supports features like:
+ * - Viewing all comments
+ * - Adding a new comment
+ * - Liking comments
+ * - Replying to comments
+ * - Editing/Deleting your own comments
+ */
 const CommentModal: React.FC<CommentModalProps> = ({
     visible,
     onClose,
@@ -60,10 +72,12 @@ const CommentModal: React.FC<CommentModalProps> = ({
     const styles = createStyles(isDark);
     const [localComments, setLocalComments] = useState(comments);
 
+    // Update local comments when props change
     useEffect(() => {
         setLocalComments(comments);
     }, [comments]);
 
+    // Handle refresh - pull to refresh comments
     const onRefresh = useCallback(async () => {
         try {
             setRefreshing(true);
@@ -76,12 +90,14 @@ const CommentModal: React.FC<CommentModalProps> = ({
         }
     }, [onAddComment]);
 
+    // Handle copy text function
     const handleCopyText = (text: string) => {
         Clipboard.setString(text);
         setShowOptions(false);
         Alert.alert('Success', 'Comment text copied');
     };
 
+    // Options modal for comment actions (copy, edit, delete)
     const CommentOptionsModal = () => {
         if (!selectedComment) return null;
 
@@ -145,6 +161,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
         );
     };
 
+    // Handle like comment function
     const handleLikeComment = async (commentId: string) => {
         try {
             const response = await firebase.posts.likeComment(postId, commentId);
@@ -176,6 +193,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
         }
     };
 
+    // Handle edit comment function
     const handleEditComment = useCallback(async (commentId: string) => {
         if (!editedText.trim()) return;
 
@@ -233,6 +251,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
         }
     }, [editedText, firebase.posts, postId, localComments, comments]);
 
+    // Handle delete comment function
     const handleDeleteComment = useCallback(async (commentId: string) => {
         Alert.alert(
             'Delete Comment',
@@ -249,11 +268,9 @@ const CommentModal: React.FC<CommentModalProps> = ({
                         try {
                             // Update local state immediately for better UX
                             const updatedComments = localComments.filter(comment => {
-                                // Filter out the deleted comment
-                                if (comment.id === commentId) return false;
-
-                                // If comment has replies, check if any reply needs to be removed
-                                if (comment.replies && comment.replies.length > 0) {
+                                if (comment.id === commentId) {
+                                    return false;
+                                } else if (comment.replies && comment.replies.length > 0) {
                                     comment.replies = comment.replies.filter(reply => reply.id !== commentId);
                                 }
                                 return true;
@@ -265,7 +282,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
                             // Then perform the actual deletion in the backend
                             const result = await firebase.posts.deleteComment(
                                 postId,
-                                commentId,
+                                commentId
                             );
 
                             if (!result.success) {
@@ -282,199 +299,184 @@ const CommentModal: React.FC<CommentModalProps> = ({
                     },
                 },
             ],
+            { cancelable: true }
         );
     }, [firebase.posts, postId, localComments, comments]);
 
+    // Handle add reply function
     const handleAddReply = async (commentId: string, replyText: string) => {
-        if (!commentId || !replyText.trim()) {
-            console.log('Invalid reply parameters:', { commentId, replyText });
-            Alert.alert('Error', 'Invalid reply parameters');
-            return;
-        }
+        if (!replyText.trim()) return;
 
         try {
-            // Log the full comment object for debugging
-            const parentComment = comments.find(c => c.id === commentId);
-            console.log('Found parent comment:', parentComment);
+            setIsAddingReply(true);
 
-            console.log('Attempting to add reply:', {
+            const result = await firebase.posts.addReply(
                 postId,
                 commentId,
-                replyText,
-                replyingTo: replyingTo?.username,
-                parentCommentExists: !!parentComment
-            });
+                replyText.trim()
+            );
 
-            if (!parentComment) {
-                console.error('Parent comment not found in comments array');
-                Alert.alert('Error', 'Could not find the comment to reply to');
-                return;
-            }
+            if (result.success) {
+                // Update local state with new reply
+                const updatedComments = localComments.map(comment => {
+                    if (comment.id === commentId) {
+                        const newReplies = comment.replies || [];
+                        newReplies.push(result.reply);
+                        return { ...comment, replies: newReplies };
+                    }
+                    return comment;
+                });
 
-            setIsAddingReply(true);
-            const response = await firebase.posts.addReply(postId, commentId, replyText.trim());
-
-            if (response.success) {
-                console.log('Reply added successfully:', response.reply);
+                setLocalComments(updatedComments);
                 setReplyingTo(null);
                 setReplyText('');
-                if (onAddComment) {
-                    await onAddComment();
-                }
             } else {
-                console.error('Failed to add reply:', response.error);
-                Alert.alert('Error', response.error || 'Failed to add reply');
+                Alert.alert('Error', result.error || 'Failed to add reply');
             }
         } catch (error) {
-            console.error('Error in handleAddReply:', error);
+            console.error('Error adding reply:', error);
             Alert.alert('Error', 'Failed to add reply');
         } finally {
             setIsAddingReply(false);
         }
     };
 
-    const renderComment = useCallback((comment: Comment, isReply = false) => {
-        const isEditing = editingCommentId === comment.id;
-        const canEdit = comment.userId === currentUser?.uid;
-        const canDelete = comment.userId === currentUser?.uid;
+    // Handle cancel edit function
+    const handleCancelEdit = () => {
+        setEditingCommentId(null);
+        setEditedText('');
+    };
 
+    // Render a single comment or reply
+    const renderComment = (comment: Comment, isReply = false) => {
         return (
             <View key={comment.id} style={[styles.commentItem, isReply && styles.replyItem]}>
-                <Image
-                    source={{ uri: comment.userImage }}
-                    style={styles.commentAvatar}
-                />
+                {comment.userImage ? (
+                    <Image source={{ uri: comment.userImage }} style={styles.commentAvatar} />
+                ) : (
+                    <Avatar
+                        rounded
+                        title={getUsernameForLogo(comment.username)}
+                        size={40}
+                        containerStyle={[styles.commentAvatar, { backgroundColor: primaryColor }]}
+                        titleStyle={{ fontSize: 16 }}
+                    />
+                )}
+
                 <View style={styles.commentContent}>
                     <View style={styles.commentHeader}>
-                        <Text style={[
-                            styles.commentUsername,
-                            { color: isDark ? 'white' : 'black' }
-                        ]}>
-                            {comment.username}
-                        </Text>
-                        {(canEdit || canDelete) && (
-                            <TouchableOpacity
-                                onPress={() => {
-                                    setSelectedComment(comment);
-                                    setShowOptions(true);
-                                }}
-                                style={styles.optionsButton}
-                            >
-                                <MaterialIcons
-                                    name="more-vert"
-                                    size={20}
-                                    color={isDark ? '#8e8e8e' : '#666666'}
-                                />
-                            </TouchableOpacity>
-                        )}
+                        <Text style={styles.commentUsername}>{comment.username}</Text>
                     </View>
-                    {isEditing ? (
+
+                    {editingCommentId === comment.id ? (
                         <View style={styles.editContainer}>
                             <TextInput
-                                style={[
-                                    styles.editInput,
-                                    {
-                                        color: isDark ? 'white' : 'black',
-                                        backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5',
-                                    },
-                                ]}
+                                style={styles.editInput}
                                 value={editedText}
                                 onChangeText={setEditedText}
                                 multiline
-                                autoFocus
+                                placeholder="Edit your comment..."
+                                placeholderTextColor={isDark ? '#8e8e8e' : '#666666'}
                             />
                             <View style={styles.editActions}>
                                 <TouchableOpacity
-                                    onPress={() => {
-                                        setEditingCommentId(null);
-                                        setEditedText('');
-                                    }}
-                                    style={styles.editButton}>
+                                    style={styles.editButton}
+                                    onPress={handleCancelEdit}
+                                >
                                     <Text style={styles.editButtonText}>Cancel</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
+                                    style={[styles.editButton, styles.saveButton]}
                                     onPress={() => handleEditComment(comment.id)}
-                                    style={[styles.editButton, styles.saveButton]}>
+                                >
                                     <Text style={styles.saveButtonText}>Save</Text>
                                 </TouchableOpacity>
                             </View>
                         </View>
                     ) : (
                         <>
-                            <Text style={[
-                                styles.commentText,
-                                { color: isDark ? '#e0e0e0' : '#2c2c2c' }
-                            ]}>
-                                {comment.text}
-                            </Text>
+                            <Text style={styles.commentText}>{comment.text}</Text>
                             <View style={styles.commentMeta}>
-                                <Text style={[
-                                    styles.commentTimestamp,
-                                    { color: isDark ? '#8e8e8e' : '#666666' }
-                                ]}>
+                                <Text style={styles.commentTimestamp}>
                                     {typeof comment.timestamp === 'string'
                                         ? comment.timestamp
                                         : formatFirestoreTimestamp(comment.timestamp)}
                                     {comment.editedAt && ' (edited)'}
                                 </Text>
-                                <Text style={[
-                                    styles.commentLikes,
-                                    { color: isDark ? '#8e8e8e' : '#666666' }
-                                ]}>
+                                <Text style={styles.commentLikes}>
                                     {comment.likes} likes
                                 </Text>
-                                {!isReply && (
-                                    <TouchableOpacity
-                                        style={styles.replyButton}
-                                        className={`${isDark ? 'bg-[#1a9cd8]' : 'bg-[#3EB9F1]'}`}
-                                        onPress={() => {
-                                            setReplyingTo(comment);
-                                            setReplyText(`@${comment.username} `);
-                                        }}>
-                                        <Text style={[
-                                            styles.replyButtonText,
-                                        ]}>Reply</Text>
-                                    </TouchableOpacity>
-                                )}
+                                <TouchableOpacity
+                                    onPress={() => setReplyingTo(comment)}
+                                    style={{ marginRight: 16 }}
+                                >
+                                    <Text style={styles.commentLikes}>Reply</Text>
+                                </TouchableOpacity>
                             </View>
                         </>
                     )}
                 </View>
+
                 <TouchableOpacity
                     style={styles.likeButton}
-                    onPress={() => handleLikeComment(comment.id)}>
+                    onPress={() => handleLikeComment(comment.id)}
+                >
                     <AntDesign
                         name={comment.isLiked ? "heart" : "hearto"}
                         size={16}
                         color={comment.isLiked ? "red" : (isDark ? "#8e8e8e" : "#666666")}
                     />
                 </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={{ padding: 4 }}
+                    onPress={() => {
+                        setSelectedComment(comment);
+                        setShowOptions(true);
+                    }}
+                >
+                    <Icon
+                        name="more-vertical"
+                        size={16}
+                        color={isDark ? "#8e8e8e" : "#666666"}
+                    />
+                </TouchableOpacity>
             </View>
         );
-    }, [editingCommentId, editedText, currentUser, isDark, handleLikeComment, handleEditComment, handleDeleteComment]);
+    };
+
+    // Render all replies for a comment
+    const renderReplies = (comment: Comment) => {
+        if (!comment.replies || comment.replies.length === 0) return null;
+
+        return (
+            <View style={styles.replyContainer}>
+                {comment.replies.map(reply => renderComment(reply, true))}
+            </View>
+        );
+    };
 
     return (
         <Modal
             animationType="slide"
-            transparent={true}
+            transparent
             visible={visible}
-            onRequestClose={onClose}>
-            <View style={[
-                styles.modalContainer,
-                { backgroundColor: isDark ? 'rgba(0, 0, 0, 0.95)' : 'rgba(255, 255, 255, 0.95)' }
-            ]}>
-                <View style={[
-                    styles.modalContent,
-                    { backgroundColor: isDark ? '#1a1a1a' : 'white' }
-                ]}>
+            onRequestClose={onClose}
+        >
+            <View style={styles.modalContainer}>
+                <View style={styles.modalContent}>
                     <View style={styles.header}>
-                        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                            <Icon name="chevron-down" size={28} color={isDark ? 'white' : 'black'} />
+                        <TouchableOpacity
+                            style={styles.closeButton}
+                            onPress={onClose}
+                        >
+                            <Icon
+                                name="x"
+                                size={24}
+                                color={isDark ? "white" : "black"}
+                            />
                         </TouchableOpacity>
-                        <Text style={[
-                            styles.headerText,
-                            { color: isDark ? 'white' : 'black' }
-                        ]}>Comments</Text>
+                        <Text style={styles.headerText}>Comments</Text>
                         <View style={styles.placeholder} />
                     </View>
 
@@ -484,80 +486,81 @@ const CommentModal: React.FC<CommentModalProps> = ({
                             <RefreshControl
                                 refreshing={refreshing}
                                 onRefresh={onRefresh}
-                                tintColor={isDark ? '#ffffff' : '#000000'}
+                                tintColor={isDark ? "white" : primaryColor}
                                 colors={[primaryColor]}
-                                progressBackgroundColor={isDark ? '#1a1a1a' : '#ffffff'}
                             />
                         }
                     >
-                        {localComments.map(comment => (
-                            <React.Fragment key={comment.id}>
-                                {renderComment(comment)}
-                                {comment.replies?.map(reply => renderComment(reply, true))}
-                            </React.Fragment>
-                        ))}
-                    </ScrollView>
-
-                    <View style={styles.commentInputContainer}>
-                        {replyingTo ? (
-                            <>
-                                <View style={styles.replyingToContainer}>
-                                    <Text style={styles.replyingToText}>
-                                        Replying to @{replyingTo.username}
-                                    </Text>
-                                    <TouchableOpacity
-                                        onPress={() => {
-                                            setReplyingTo(null);
-                                            setReplyText('');
-                                        }}>
-                                        <Icon name="x" size={16} color={isDark ? '#8e8e8e' : '#666666'} />
-                                    </TouchableOpacity>
-                                </View>
-                                <View style={styles.inputWrapper}>
-                                    <TextInput
-                                        style={styles.commentInput}
-                                        placeholder="Add a reply..."
-                                        placeholderTextColor={isDark ? '#8e8e8e' : '#666666'}
-                                        value={replyText}
-                                        onChangeText={setReplyText}
-                                        multiline
-                                    />
-                                    <TouchableOpacity
-                                        onPress={() => handleAddReply(replyingTo.id, replyText)}
-                                        disabled={!replyText.trim()}
-                                        style={[
-                                            styles.postButton,
-                                            !replyText.trim() && styles.disabledPostButton
-                                        ]}>
-                                        <Icon name="send" size={20} color="white" />
-                                    </TouchableOpacity>
-                                </View>
-                            </>
+                        {localComments.length > 0 ? (
+                            localComments.map(comment => (
+                                <React.Fragment key={comment.id}>
+                                    {renderComment(comment)}
+                                    {renderReplies(comment)}
+                                </React.Fragment>
+                            ))
                         ) : (
-                            <View style={styles.inputWrapper}>
-                                <TextInput
-                                    style={styles.commentInput}
-                                    placeholder="Add a comment..."
-                                    placeholderTextColor={isDark ? '#8e8e8e' : '#666666'}
-                                    value={newComment}
-                                    onChangeText={setNewComment}
-                                    multiline
-                                />
-                                {isAddingComment ? (
-                                    <ActivityIndicator size={20} color="white" style={styles.postButton} />
-                                ) : (
-                                    <TouchableOpacity
-                                        onPress={onAddComment}
-                                        disabled={!newComment.trim()}
-                                        style={[
-                                            styles.postButton,
-                                            !newComment.trim() && styles.disabledPostButton
-                                        ]}>
-                                        <Icon name="send" size={20} color="white" />
-                                    </TouchableOpacity>
-                                )}
+                            <View style={{ padding: 16, alignItems: 'center' }}>
+                                <Text style={{ color: isDark ? '#8e8e8e' : '#666666' }}>
+                                    No comments yet. Be the first to comment!
+                                </Text>
                             </View>
                         )}
+                    </ScrollView>
+
+                    {replyingTo && (
+                        <View style={styles.replyingToContainer}>
+                            <Text style={styles.replyingToText}>
+                                Replying to {replyingTo.username}
+                            </Text>
+                            <TouchableOpacity onPress={() => setReplyingTo(null)}>
+                                <Icon
+                                    name="x"
+                                    size={16}
+                                    color={isDark ? "#8e8e8e" : "#666666"}
+                                />
+                            </TouchableOpacity>
+                        </View>
+                    )}
+
+                    <View style={styles.commentInputContainer}>
+                        <View style={styles.inputWrapper}>
+                            <TextInput
+                                style={styles.commentInput}
+                                placeholder={replyingTo ? "Add a reply..." : "Add a comment..."}
+                                placeholderTextColor={isDark ? '#8e8e8e' : '#666666'}
+                                value={replyingTo ? replyText : newComment}
+                                onChangeText={replyingTo ? setReplyText : setNewComment}
+                                multiline
+                            />
+                            <TouchableOpacity
+                                style={[
+                                    styles.postButton,
+                                    (replyingTo ? !replyText.trim() : !newComment.trim()) && styles.disabledPostButton
+                                ]}
+                                disabled={replyingTo ? isAddingReply || !replyText.trim() : isAddingComment || !newComment.trim()}
+                                onPress={async () => {
+                                    if (replyingTo) {
+                                        await handleAddReply(replyingTo.id, replyText);
+                                    } else {
+                                        await onAddComment();
+                                    }
+                                }}
+                            >
+                                {replyingTo ? (
+                                    isAddingReply ? (
+                                        <ActivityIndicator size="small" color="white" />
+                                    ) : (
+                                        <Icon name="send" size={16} color="white" />
+                                    )
+                                ) : (
+                                    isAddingComment ? (
+                                        <ActivityIndicator size="small" color="white" />
+                                    ) : (
+                                        <Icon name="send" size={16} color="white" />
+                                    )
+                                )}
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 </View>
                 <CommentOptionsModal />

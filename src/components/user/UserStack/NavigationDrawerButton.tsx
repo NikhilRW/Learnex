@@ -389,6 +389,7 @@ const NavigationDrawerButton = memo(({ tintColor, navigation }: { tintColor: str
 
   return (
     <View
+      on
       className={`${isDark ? "bg-[#1a1a1a]" : "bg-white"} flex-row w-full px-2 py-1 items-center`}>
       <TouchableOpacity onPress={handleOpenDrawer}>
         <Image

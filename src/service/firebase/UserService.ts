@@ -1,6 +1,6 @@
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
-import {AuthResponse, EmailCheckResponse} from '../../types/firebase';
+import {AuthResponse} from '../../types/firebase';
 
 export class UserService {
   async getNameUsernamestring(): Promise<{fullName: string; username: string}> {
@@ -33,7 +33,6 @@ export class UserService {
       return {success: false, error};
     }
   }
-
   async checkEmailIsAvailable(email: string): Promise<AuthResponse> {
     try {
       const user = await firestore()
@@ -49,7 +48,7 @@ export class UserService {
 
   async checkUsernameOrEmailRegistered(
     emailOrUsername: string,
-  ): Promise<EmailCheckResponse> {
+  ): Promise<{success: boolean,email?: string,error?:Error}> {
     try {
       const email = await firestore()
         .collection('users')

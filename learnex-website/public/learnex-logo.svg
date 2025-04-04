@@ -1,0 +1,16 @@
+<svg width="120" height="40" viewBox="0 0 120 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Gradient definition -->
+  <defs>
+    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#3B82F6" /> <!-- primary color -->
+      <stop offset="100%" stop-color="#6366F1" /> <!-- accent color -->
+    </linearGradient>
+  </defs>
+  
+  <!-- Text "Learnex" -->
+  <path d="M10 8H15V32H30V36H10V8Z" fill="url(#logoGradient)" />
+  <path d="M35 8H53V12H40V20H50V24H40V32H53V36H35V8Z" fill="url(#logoGradient)" />
+  <path d="M58 8H63L67 25.2L71.5 8H76L80.5 25.2L85 8H90L82.5 36H78L73.5 18.8L69 36H64.5L58 8Z" fill="url(#logoGradient)" />
+  <path d="M94 8H99V28H109V36H94V8Z" fill="url(#logoGradient)" />
+  <path d="M112 8H120L115.5 18L120 36H115L112 22L109 36H104L108.5 18L104 8H108.5L112 18V8Z" fill="url(#logoGradient)" />
+</svg> 

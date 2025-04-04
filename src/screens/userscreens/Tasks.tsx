@@ -8,7 +8,6 @@ import {
     TextInput,
     SafeAreaView,
     StatusBar,
-    Modal,
     ScrollView,
     Alert,
     ActivityIndicator
@@ -22,6 +21,7 @@ import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { Task } from '../../types/taskTypes';
 import { TaskService } from '../../service/firebase/TaskService';
 import { styles } from '../../styles/screens/userscreens/Tasks.styles';
+import TaskModal from '../../components/TaskModal';
 
 const Tasks = () => {
     const isDark = useTypedSelector((state) => state.user.theme) === "dark";
@@ -35,6 +35,7 @@ const Tasks = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [categories, setCategories] = useState<string[]>([]);
     const taskService = new TaskService();
+    const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
 
     const [newTask, setNewTask] = useState<Omit<Task, 'id' | 'userId' | 'createdAt' | 'updatedAt'>>({
         title: '',
@@ -134,6 +135,7 @@ const Tasks = () => {
 
     const handleEditTask = (task: Task) => {
         setIsEditMode(true);
+        setCurrentTaskId(task.id);
         const { id, userId, createdAt, updatedAt, ...editableFields } = task;
         setNewTask(editableFields);
         setModalVisible(true);
@@ -146,24 +148,17 @@ const Tasks = () => {
         }
 
         try {
-            if (isEditMode && tasks.find(t => t.title === newTask.title)) {
-                // Update existing task
-                const existingTask = tasks.find(t => t.title === newTask.title);
-                if (existingTask) {
-                    await taskService.updateTask(existingTask.id, newTask);
-                    Alert.alert('Success', 'Task updated successfully');
-                }
+            if (isEditMode && currentTaskId) {
+                await taskService.updateTask(currentTaskId, newTask);
+                Alert.alert('Success', 'Task updated successfully');
             } else {
-                // Add new task - TaskService will handle adding userId internally
                 await taskService.addTask({
                     ...newTask,
-                    userId: 'placeholder' // TaskService will override this with the current user's ID
+                    userId: 'placeholder'
                 });
             }
 
-            // Reset form and close modal
             closeModal();
-            // Refresh tasks with current filter
             await fetchTasks(selectedFilter);
         } catch (error) {
             console.error('Error updating task:', error);
@@ -174,6 +169,7 @@ const Tasks = () => {
     const closeModal = () => {
         setModalVisible(false);
         setIsEditMode(false);
+        setCurrentTaskId(null);
         resetForm();
     };
 
@@ -292,212 +288,6 @@ const Tasks = () => {
                 </View>
             </View>
         </View>
-    );
-
-    const TaskModal = () => (
-        <Modal
-            animationType="slide"
-            transparent={true}
-            visible={modalVisible}
-            onRequestClose={closeModal}
-        >
-            <View style={styles.modalOverlay}>
-                <View style={[
-                    styles.modalContent,
-                    { backgroundColor: isDark ? '#1a1a1a' : 'white' }
-                ]}>
-                    <View style={styles.modalHeader}>
-                        <Text style={[styles.modalTitle, { color: isDark ? 'white' : 'black' }]}>
-                            {isEditMode ? 'Edit Task' : 'Add New Task'}
-                        </Text>
-                        <TouchableOpacity onPress={closeModal}>
-                            <Icon name="close" size={24} color={isDark ? 'white' : 'black'} />
-                        </TouchableOpacity>
-                    </View>
-
-                    <ScrollView style={styles.modalBody}>
-                        <View style={styles.inputGroup}>
-                            <Text style={[styles.inputLabel, { color: isDark ? 'white' : 'black' }]}>Title *</Text>
-                            <TextInput
-                                style={[
-                                    styles.input,
-                                    {
-                                        backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5',
-                                        color: isDark ? 'white' : 'black',
-                                        borderColor: isDark ? '#404040' : '#e0e0e0'
-                                    }
-                                ]}
-                                placeholder="Task title"
-                                placeholderTextColor={isDark ? '#8e8e8e' : '#999'}
-                                value={newTask.title}
-                                onChangeText={(text) => setNewTask({ ...newTask, title: text })}
-                            />
-                        </View>
-
-                        <View style={styles.inputGroup}>
-                            <Text style={[styles.inputLabel, { color: isDark ? 'white' : 'black' }]}>Description</Text>
-                            <TextInput
-                                style={[
-                                    styles.input,
-                                    styles.textArea,
-                                    {
-                                        backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5',
-                                        color: isDark ? 'white' : 'black',
-                                        borderColor: isDark ? '#404040' : '#e0e0e0'
-                                    }
-                                ]}
-                                placeholder="Task description"
-                                placeholderTextColor={isDark ? '#8e8e8e' : '#999'}
-                                value={newTask.description}
-                                onChangeText={(text) => setNewTask({ ...newTask, description: text })}
-                                multiline
-                                numberOfLines={4}
-                            />
-                        </View>
-
-                        <View style={styles.inputGroup}>
-                            <Text style={[styles.inputLabel, { color: isDark ? 'white' : 'black' }]}>Due Date</Text>
-                            <TextInput
-                                style={[
-                                    styles.input,
-                                    {
-                                        backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5',
-                                        color: isDark ? 'white' : 'black',
-                                        borderColor: isDark ? '#404040' : '#e0e0e0'
-                                    }
-                                ]}
-                                placeholder="YYYY-MM-DD"
-                                placeholderTextColor={isDark ? '#8e8e8e' : '#999'}
-                                value={newTask.dueDate}
-                                onChangeText={(text) => setNewTask({ ...newTask, dueDate: text })}
-                            />
-                        </View>
-
-                        <View style={styles.inputGroup}>
-                            <Text style={[styles.inputLabel, { color: isDark ? 'white' : 'black' }]}>Category</Text>
-                            <TextInput
-                                style={[
-                                    styles.input,
-                                    {
-                                        backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5',
-                                        color: isDark ? 'white' : 'black',
-                                        borderColor: isDark ? '#404040' : '#e0e0e0'
-                                    }
-                                ]}
-                                placeholder="e.g. Work, Personal, Health"
-                                placeholderTextColor={isDark ? '#8e8e8e' : '#999'}
-                                value={newTask.category}
-                                onChangeText={(text) => setNewTask({ ...newTask, category: text })}
-                            />
-                        </View>
-
-                        <View style={styles.inputGroup}>
-                            <Text style={[styles.inputLabel, { color: isDark ? 'white' : 'black' }]}>Priority</Text>
-                            <View style={styles.prioritySelector}>
-                                {['low', 'medium', 'high'].map((priority) => (
-                                    <TouchableOpacity
-                                        key={priority}
-                                        style={[
-                                            styles.priorityOption,
-                                            {
-                                                backgroundColor: newTask.priority === priority
-                                                    ? getPriorityColor(priority)
-                                                    : isDark ? '#2a2a2a' : '#f5f5f5',
-                                                borderColor: isDark ? '#404040' : '#e0e0e0'
-                                            }
-                                        ]}
-                                        onPress={() => setNewTask({ ...newTask, priority: priority as 'low' | 'medium' | 'high' })}
-                                    >
-                                        <Text style={[
-                                            styles.priorityText,
-                                            {
-                                                color: newTask.priority === priority
-                                                    ? 'white'
-                                                    : isDark ? 'white' : 'black'
-                                            }
-                                        ]}>
-                                            {priority.charAt(0).toUpperCase() + priority.slice(1)}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </View>
-
-                        {isEditMode && (
-                            <View style={styles.inputGroup}>
-                                <Text style={[styles.inputLabel, { color: isDark ? 'white' : 'black' }]}>Status</Text>
-                                <View style={styles.statusSelector}>
-                                    <TouchableOpacity
-                                        style={[
-                                            styles.statusOption,
-                                            {
-                                                backgroundColor: !newTask.completed
-                                                    ? '#1a9cd8'
-                                                    : isDark ? '#2a2a2a' : '#f5f5f5',
-                                                borderColor: isDark ? '#404040' : '#e0e0e0'
-                                            }
-                                        ]}
-                                        onPress={() => setNewTask({ ...newTask, completed: false })}
-                                    >
-                                        <Text style={[
-                                            styles.statusText,
-                                            {
-                                                color: !newTask.completed
-                                                    ? 'white'
-                                                    : isDark ? 'white' : 'black'
-                                            }
-                                        ]}>
-                                            Pending
-                                        </Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={[
-                                            styles.statusOption,
-                                            {
-                                                backgroundColor: newTask.completed
-                                                    ? '#34C759'
-                                                    : isDark ? '#2a2a2a' : '#f5f5f5',
-                                                borderColor: isDark ? '#404040' : '#e0e0e0'
-                                            }
-                                        ]}
-                                        onPress={() => setNewTask({ ...newTask, completed: true })}
-                                    >
-                                        <Text style={[
-                                            styles.statusText,
-                                            {
-                                                color: newTask.completed
-                                                    ? 'white'
-                                                    : isDark ? 'white' : 'black'
-                                            }
-                                        ]}>
-                                            Completed
-                                        </Text>
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
-                        )}
-                    </ScrollView>
-
-                    <View style={styles.modalFooter}>
-                        <TouchableOpacity
-                            style={[styles.modalButton, styles.cancelButton]}
-                            onPress={closeModal}
-                        >
-                            <Text style={styles.cancelButtonText}>Cancel</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={[styles.modalButton, styles.addButton]}
-                            onPress={updateTask}
-                        >
-                            <Text style={styles.addButtonText}>
-                                {isEditMode ? 'Update Task' : 'Add Task'}
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </View>
-        </Modal>
     );
 
     return (
@@ -721,7 +511,16 @@ const Tasks = () => {
                 )}
             </View>
 
-            <TaskModal />
+            <TaskModal
+                modalVisible={modalVisible}
+                isEditMode={isEditMode}
+                isDark={isDark}
+                newTask={newTask}
+                onClose={closeModal}
+                onUpdateTask={updateTask}
+                onChangeTask={setNewTask}
+                getPriorityColor={getPriorityColor}
+            />
         </SafeAreaView>
     );
 };

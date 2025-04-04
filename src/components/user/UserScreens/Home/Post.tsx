@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, Image, TouchableOpacity, Modal, TouchableWithoutFeedback, Dimensions, Animated, StyleSheet, FlatList, Text, ScrollView, ImageURISource, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
+import { View, Image, TouchableOpacity, Modal, TouchableWithoutFeedback, Dimensions, Animated, StyleSheet, FlatList, Text, ScrollView, ImageURISource, NativeSyntheticEvent, NativeScrollEvent, ActivityIndicator } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import AntDesign from 'react-native-vector-icons/AntDesign';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
@@ -10,6 +10,11 @@ import { primaryColor } from '../../../../res/strings/eng';
 import CommentModal from './CommentModal';
 import { getUsernameForLogo } from '../../../../helpers/stringHelpers';
 import { Avatar } from 'react-native-elements';
+import { useNavigation } from '@react-navigation/native';
+import { MessageService } from '../../../../service/firebase/MessageService';
+import Snackbar from 'react-native-snackbar';
+import { UserStackParamList } from '../../../../routes/UserStack';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 /**
  * Post component that displays a social media post with images
@@ -27,6 +32,8 @@ interface VideoProgress {
     seekableDuration: number;
 }
 
+type UserNavigation = NativeStackNavigationProp<UserStackParamList>;
+
 const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
     const isDark = useTypedSelector((state) => state.user.theme) === "dark";
     const screenWidth = Dimensions.get('window').width;
@@ -37,12 +44,20 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
     const [isPaused, setIsPaused] = useState(!isVisible);
     const [showDots, setShowDots] = useState(true);
     const [showComments, setShowComments] = useState(false);
+    const [newComment, setNewComment] = useState('');
+    const [isAddingComment, setIsAddingComment] = useState(false);
     const videoRef = useRef<Video>(null);
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const dotsAnim = useRef(new Animated.Value(0)).current;
     const controlsTimeout = useRef<NodeJS.Timeout>();
     const dotsTimeout = useRef<NodeJS.Timeout>();
     const lastPosition = useRef(0);
+    const firebase = useTypedSelector(state => state.firebase.firebase);
+    const navigation = useNavigation<UserNavigation>();
+    const messageService = new MessageService();
+    const [isHiding, setIsHiding] = useState(false);
+    const [isSaved, setIsSaved] = useState(post.isSaved || false);
+    const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
         // Handle video visibility changes
@@ -151,9 +166,16 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
             } else if (typeof post.postVideo === 'string') {
                 videoSource = { uri: post.postVideo };
                 console.log('Video is a string URI:', post.postVideo);
-            } else if (post.postVideo && typeof post.postVideo === 'object' && 'uri' in post.postVideo) {
-                videoSource = { uri: post.postVideo.uri as any };
-                console.log('Video is an object with URI:', post.postVideo.uri);
+            } else if (post.postVideo && typeof post.postVideo === 'object') {
+                // Safely access the uri property with proper type checking
+                const videoObject = post.postVideo as { uri?: string };
+                if (videoObject.uri) {
+                    videoSource = { uri: videoObject.uri };
+                    console.log('Video is an object with URI:', videoObject.uri);
+                } else {
+                    console.error('Video object has no URI property:', post.postVideo);
+                    return <View style={styles.errorContainer}><Text>Invalid video format</Text></View>;
+                }
             } else {
                 console.error('Video has invalid format:', post.postVideo);
                 return <View style={styles.errorContainer}><Text>Invalid video format</Text></View>;
@@ -257,6 +279,172 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
         );
     };
 
+    const handleMessageUser = async () => {
+        // Close the options modal
+        setShowOptions(false);
+
+        const currentUser = firebase.currentUser();
+        if (!currentUser || !post.user.id) {
+            Snackbar.show({
+                text: 'Unable to message user at this time',
+                duration: Snackbar.LENGTH_LONG,
+                textColor: 'white',
+                backgroundColor: '#ff3b30',
+            });
+            return;
+        }
+
+        try {
+            // Show loading indicator
+            Snackbar.show({
+                text: 'Setting up conversation...',
+                duration: Snackbar.LENGTH_INDEFINITE,
+                textColor: 'white',
+                backgroundColor: '#2379C2',
+            });
+
+            // Create or get conversation
+            const conversation = await messageService.getOrCreateConversation(currentUser.uid, post.user.id);
+
+            // Dismiss loading indicator
+            Snackbar.dismiss();
+
+            // Navigate to chat with proper typing
+            navigation.navigate('Chat', {
+                conversationId: conversation.id,
+                recipientId: post.user.id,
+                recipientName: post.user.username,
+                recipientPhoto: typeof post.user.image === 'string' ? post.user.image : undefined
+            });
+        } catch (error) {
+            console.error('Error starting conversation:', error);
+            Snackbar.show({
+                text: 'Failed to start conversation',
+                duration: Snackbar.LENGTH_LONG,
+                textColor: 'white',
+                backgroundColor: '#ff3b30',
+            });
+        }
+    };
+
+    const handleAddComment = async () => {
+        if (!newComment.trim()) return;
+
+        try {
+            setIsAddingComment(true);
+
+            const currentUser = firebase.currentUser();
+            if (!currentUser) {
+                Snackbar.show({
+                    text: 'You must be logged in to comment',
+                    duration: Snackbar.LENGTH_LONG,
+                    textColor: 'white',
+                    backgroundColor: '#ff3b30',
+                });
+                return;
+            }
+
+            // Call firebase service to add comment
+            const result = await firebase.posts.addComment(post.id, newComment.trim());
+
+            if (result.success) {
+                setNewComment('');
+                // Refresh comments (this would usually come from props or context in a real app)
+                // For now, let's just show the modal which will trigger fetching updated comments
+                setShowComments(true);
+            } else {
+                Snackbar.show({
+                    text: result.error || 'Failed to add comment',
+                    duration: Snackbar.LENGTH_LONG,
+                    textColor: 'white',
+                    backgroundColor: '#ff3b30',
+                });
+            }
+        } catch (error) {
+            console.error('Error adding comment:', error);
+            Snackbar.show({
+                text: 'An error occurred while adding your comment',
+                duration: Snackbar.LENGTH_LONG,
+                textColor: 'white',
+                backgroundColor: '#ff3b30',
+            });
+        } finally {
+            setIsAddingComment(false);
+        }
+    };
+
+    const handleHidePost = async () => {
+        try {
+            setIsHiding(true);
+            setShowOptions(false);
+
+            const result = await firebase.posts.hidePost(post.id);
+
+            if (result.success) {
+                Snackbar.show({
+                    text: 'Post hidden successfully',
+                    duration: Snackbar.LENGTH_SHORT,
+                    textColor: 'white',
+                    backgroundColor: '#2379C2',
+                });
+            } else {
+                Snackbar.show({
+                    text: result.error || 'Failed to hide post',
+                    duration: Snackbar.LENGTH_LONG,
+                    textColor: 'white',
+                    backgroundColor: '#ff3b30',
+                });
+            }
+        } catch (error) {
+            console.error('Error hiding post:', error);
+            Snackbar.show({
+                text: 'Failed to hide post',
+                duration: Snackbar.LENGTH_LONG,
+                textColor: 'white',
+                backgroundColor: '#ff3b30',
+            });
+        } finally {
+            setIsHiding(false);
+        }
+    };
+
+    const handleSavePost = async () => {
+        try {
+            setIsSaving(true);
+
+            const result = await firebase.posts.savePost(post.id);
+
+            if (result.success) {
+                setIsSaved(result.saved);
+
+                // Show feedback to user
+                Snackbar.show({
+                    text: result.saved ? 'Post saved' : 'Post unsaved',
+                    duration: Snackbar.LENGTH_SHORT,
+                    textColor: 'white',
+                    backgroundColor: '#2379C2',
+                });
+            } else {
+                Snackbar.show({
+                    text: result.error || 'Failed to save post',
+                    duration: Snackbar.LENGTH_LONG,
+                    textColor: 'white',
+                    backgroundColor: '#ff3b30',
+                });
+            }
+        } catch (error) {
+            console.error('Error saving post:', error);
+            Snackbar.show({
+                text: 'An error occurred while saving the post',
+                duration: Snackbar.LENGTH_LONG,
+                textColor: 'white',
+                backgroundColor: '#ff3b30',
+            });
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
     const PostOptionsModal = () => (
         <Modal
             animationType="fade"
@@ -271,47 +459,27 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
                             styles.modalContent,
                             { backgroundColor: isDark ? '#2a2a2a' : 'white' }
                         ]}>
+
                             <TouchableOpacity
                                 style={styles.optionItem}
-                                onPress={() => {
-                                    // Handle follow/unfollow
-                                    setShowOptions(false);
-                                }}
+                                onPress={handleMessageUser}
                             >
-                                <Icon name="user-plus" size={24} color={isDark ? "white" : "black"} />
-                                <Text style={[styles.optionText, { color: isDark ? "white" : "black" }]}>Follow @{post.user.username}</Text>
+                                <Icon name="message-circle" size={24} color={isDark ? "white" : "black"} />
+                                <Text style={[styles.optionText, { color: isDark ? "white" : "black" }]}>Message @{post.user.username}</Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity
                                 style={styles.optionItem}
-                                onPress={() => {
-                                    // Handle mute
-                                    setShowOptions(false);
-                                }}
-                            >
-                                <Icon name="bell-off" size={24} color={isDark ? "white" : "black"} />
-                                <Text style={[styles.optionText, { color: isDark ? "white" : "black" }]}>Mute @{post.user.username}</Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                style={styles.optionItem}
-                                onPress={() => {
-                                    // Handle hide
-                                    setShowOptions(false);
-                                }}
+                                onPress={handleHidePost}
+                                disabled={isHiding}
                             >
                                 <Icon name="eye-off" size={24} color={isDark ? "white" : "black"} />
-                                <Text style={[styles.optionText, { color: isDark ? "white" : "black" }]}>Hide this post</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={styles.optionItem}
-                                onPress={() => {
-                                    // Handle about this account
-                                    setShowOptions(false);
-                                }}
-                            >
-                                <Icon name="info" size={24} color={isDark ? "white" : "black"} />
-                                <Text style={[styles.optionText, { color: isDark ? "white" : "black" }]}>About this account</Text>
+                                <Text style={[styles.optionText, { color: isDark ? "white" : "black" }]}>
+                                    {isHiding ? 'Hiding post...' : 'Hide this post'}
+                                </Text>
+                                {isHiding && (
+                                    <ActivityIndicator size="small" color={isDark ? "white" : "#2379C2"} style={{ marginLeft: 8 }} />
+                                )}
                             </TouchableOpacity>
 
                             <TouchableOpacity
@@ -360,6 +528,22 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
         }
     }, [post.commentsList]);
 
+    useEffect(() => {
+        const checkPostSavedStatus = async () => {
+            try {
+                // Only check with service if it's not already known
+                if (post.isSaved === undefined) {
+                    const saved = firebase.posts.isPostSaved(post.id);
+                    setIsSaved(Boolean(saved));
+                }
+            } catch (error) {
+                console.error('Error checking post saved status:', error);
+            }
+        };
+
+        checkPostSavedStatus();
+    }, [firebase.posts, post.id, post.isSaved]);
+
     return (
         <Animated.View
             key={post.id}
@@ -404,15 +588,23 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
                     <TouchableOpacity onPress={() => setIsLiked(!isLiked)} style={styles.actionButton}>
                         <AntDesign name={isLiked ? "heart" : "hearto"} size={24} color={isLiked ? "red" : (isDark ? "white" : "black")} />
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.actionButton}>
+                    <TouchableOpacity style={styles.actionButton} onPress={() => setShowComments(true)}>
                         <MaterialIcons name="comment" size={24} color={isDark ? "white" : "black"} />
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.actionButton}>
+                    <TouchableOpacity style={styles.actionButton} onPress={handleMessageUser}>
                         <Icon name="send" size={24} color={isDark ? "white" : "black"} />
                     </TouchableOpacity>
                 </View>
-                <TouchableOpacity>
-                    <Icon name="bookmark" size={24} color={isDark ? "white" : "black"} />
+                <TouchableOpacity onPress={handleSavePost} disabled={isSaving}>
+                    {isSaving ? (
+                        <ActivityIndicator size="small" color={isDark ? "white" : "#2379C2"} />
+                    ) : (
+                        <MaterialIcons
+                            name={isSaved ? "bookmark" : "bookmark-outline"}
+                            size={24}
+                            color={isSaved ? "#2379C2" : (isDark ? "white" : "black")}
+                        />
+                    )}
                 </TouchableOpacity>
             </View>
 
@@ -447,8 +639,12 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
                 onClose={() => setShowComments(false)}
                 comments={post.commentsList || []}
                 isDark={isDark}
+                onAddComment={handleAddComment}
+                newComment={newComment}
+                setNewComment={setNewComment}
+                isAddingComment={isAddingComment}
+                postId={post.id}
             />
-
             <PostOptionsModal />
         </Animated.View>
     );

@@ -3,7 +3,7 @@
     "target": "ES2022",
     "module": "commonjs",
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": "./",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -11,10 +11,22 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "baseUrl": ".",
+    "incremental": true,
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
     "paths": {
-      "*": ["node_modules/*"]
+      "*": [
+        "node_modules/*"
+      ]
     }
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "**/*.test.ts"]
-} 
+  "include": [
+    "src/**/*",
+    "api/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/*.test.ts",
+    "dist",
+    ".vercel"
+  ]
+}

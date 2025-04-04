@@ -42,10 +42,12 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   });
 });
 
-// Start server
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-  console.log(`API available at http://localhost:${port}/api`);
-});
+// Start server only if in development (not on Vercel)
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(port, () => {
+    console.log(`Server running on port ${port}`);
+    console.log(`API available at http://localhost:${port}/api`);
+  });
+}
 
 export default app;

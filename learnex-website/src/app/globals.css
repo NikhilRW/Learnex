@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+    --background: hsl(221, 39%, 11%);
+    --foreground: hsl(210, 40%, 98%);
+
+    --primary: #e9feff;
+    --primary-foreground: hsl(210, 40%, 98%);
+
+    --secondary: #2aadff;
+    --secondary-foreground: hsl(210, 40%, 98%);
+
+    --accent: hsl(240, 82%, 68%);
+    --accent-foreground: hsl(210, 40%, 98%);
+
+    --border: hsl(215, 16%, 25%);
+    --muted: hsl(215, 16%, 15%);
+}
+
+@layer base {
+    body {
+        @apply bg-background text-foreground;
+        font-feature-settings: "rlig" 1, "calt" 1;
+    }
+}
+
+@layer utilities {
+    .text-gradient {
+        color: white;
+        background: linear-gradient(to right, #e9feff, #2aadff);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+}
