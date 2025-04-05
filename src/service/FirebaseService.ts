@@ -92,6 +92,32 @@ class AuthModule {
       );
       await auth().signInWithCredential(googleCredential);
 
+      // Create user document if it doesn't exist
+      const user = auth().currentUser;
+      if (user) {
+        const userDoc = await firestore()
+          .collection('users')
+          .doc(user.uid)
+          .get();
+        if (!userDoc.exists) {
+          await firestore()
+            .collection('users')
+            .doc(user.uid)
+            .set({
+              email: user.email,
+              username: user.displayName || user.email?.split('@')[0] || 'User',
+              fullName: user.displayName || 'User',
+              isLoggedIn: true,
+              savedPosts: [],
+              createdAt: firestore.FieldValue.serverTimestamp(),
+              image:
+                user.photoURL ||
+                'https://www.gravatar.com/avatar/' +
+                  Math.random().toString(36).substring(7),
+            });
+        }
+      }
+
       return {success: true};
     } catch (error: any) {
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
@@ -124,6 +150,34 @@ class AuthModule {
         authState.accessToken,
       );
       await auth().signInWithCredential(githubCredential);
+
+      // Create user document if it doesn't exist
+      const user = auth().currentUser;
+      if (user) {
+        const userDoc = await firestore()
+          .collection('users')
+          .doc(user.uid)
+          .get();
+        if (!userDoc.exists) {
+          await firestore()
+            .collection('users')
+            .doc(user.uid)
+            .set({
+              email: user.email,
+              username:
+                user.displayName || user.email?.split('@')[0] || 'GitHub User',
+              fullName: user.displayName || 'GitHub User',
+              isLoggedIn: true,
+              savedPosts: [],
+              createdAt: firestore.FieldValue.serverTimestamp(),
+              image:
+                user.photoURL ||
+                'https://www.gravatar.com/avatar/' +
+                  Math.random().toString(36).substring(7),
+            });
+        }
+      }
+
       return {success: true};
     } catch (error) {
       console.log('AuthModule :: githubSignIn() ::', error);
@@ -284,7 +338,10 @@ class PostsModule {
           .limit(limit)
           .get();
       } catch (orderByError) {
-        console.log('Error with orderBy, fetching without sorting:', orderByError);
+        console.log(
+          'Error with orderBy, fetching without sorting:',
+          orderByError,
+        );
         snapshot = await postsRef.limit(limit).get();
       }
 
@@ -292,9 +349,9 @@ class PostsModule {
         snapshot.docs.map(async doc => {
           const data = doc.data();
           // Check if current user has liked this post
-          const isLiked = currentUser ? 
-            await this.isPostLikedByUser(doc.id) : 
-            false;
+          const isLiked = currentUser
+            ? await this.isPostLikedByUser(doc.id)
+            : false;
 
           // Get comments with their like status
           const commentsSnapshot = await doc.ref
@@ -312,8 +369,10 @@ class PostsModule {
               userImage: commentData.userImage,
               text: commentData.text,
               likes: commentData.likes || 0,
-              timestamp: this.formatTimestamp(commentData.createdAt?.toDate() || new Date()),
-              isLiked: false // You can implement comment likes similarly if needed
+              timestamp: this.formatTimestamp(
+                commentData.createdAt?.toDate() || new Date(),
+              ),
+              isLiked: false, // You can implement comment likes similarly if needed
             };
           });
 
@@ -327,22 +386,24 @@ class PostsModule {
             description: data.description || '',
             likes: data.likes || 0,
             comments: data.comments || 0,
-            timestamp: this.formatTimestamp(data.createdAt?.toDate() || new Date()),
+            timestamp: this.formatTimestamp(
+              data.createdAt?.toDate() || new Date(),
+            ),
             postImages: data.postImages || [],
             postVideo: data.postVideo,
             isVideo: data.isVideo,
             commentsList: comments,
-            isLiked // Include the like status
+            isLiked, // Include the like status
           };
-        })
+        }),
       );
 
-      return { success: true, posts: postsWithLikes };
+      return {success: true, posts: postsWithLikes};
     } catch (error) {
       console.error('PostsModule :: getPosts() ::', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to fetch posts'
+        error: error instanceof Error ? error.message : 'Failed to fetch posts',
       };
     }
   }
@@ -370,26 +431,32 @@ class PostsModule {
       if (!currentUser) throw new Error('User not authenticated');
 
       const postRef = firestore().collection('posts').doc(postId);
-      const likeDocRef = firestore().collection('likes').doc(`${postId}_${currentUser.uid}`);
+      const likeDocRef = firestore()
+        .collection('likes')
+        .doc(`${postId}_${currentUser.uid}`);
 
       await firestore().runTransaction(async transaction => {
         const likeDoc = await transaction.get(likeDocRef);
         if (likeDoc.exists) {
           transaction.delete(likeDocRef);
-          transaction.update(postRef, { likes: firestore.FieldValue.increment(-1) });
+          transaction.update(postRef, {
+            likes: firestore.FieldValue.increment(-1),
+          });
         } else {
           transaction.set(likeDocRef, {
             userId: currentUser.uid,
             postId,
             createdAt: firestore.FieldValue.serverTimestamp(),
           });
-          transaction.update(postRef, { likes: firestore.FieldValue.increment(1) });
+          transaction.update(postRef, {
+            likes: firestore.FieldValue.increment(1),
+          });
         }
       });
 
       // Determine new status after transaction
       const updatedLikeDoc = await likeDocRef.get();
-      return { success: true, liked: updatedLikeDoc.exists };
+      return {success: true, liked: updatedLikeDoc.exists};
     } catch (error) {
       console.log('PostsModule :: likePost() ::', error);
       return {
@@ -407,30 +474,131 @@ class PostsModule {
       const userModule = new UserModule();
       const {fullName: username} = await userModule.getNameUsernamestring();
 
-      const commentRef = firestore().collection('comments');
+      // Create a batch to ensure atomic operations
+      const batch = firestore().batch();
+
+      // Get post reference
       const postRef = firestore().collection('posts').doc(postId);
 
+      // Get post data first to verify it exists
+      const postDoc = await postRef.get();
+      if (!postDoc.exists) {
+        throw new Error('Post not found');
+      }
+
+      // Create a direct comments collection in the post document
+      const commentRef = postRef.collection('comments').doc();
+
+      // Get current timestamp
+      const timestamp = firestore.FieldValue.serverTimestamp();
+
+      // Create the comment data
       const newComment = {
         postId,
         userId: currentUser.uid,
         username,
         userImage: currentUser.photoURL || '',
         text: comment,
-        createdAt: firestore.FieldValue.serverTimestamp(),
+        likes: 0,
+        likedBy: [],
+        timestamp,
+        createdAt: timestamp,
       };
 
-      await commentRef.add(newComment);
-      await postRef.update({
+      // Add comment to the batch
+      batch.set(commentRef, newComment);
+
+      // Increment comment count in post
+      batch.update(postRef, {
         comments: firestore.FieldValue.increment(1),
       });
 
-      return {success: true};
+      // Commit the batch
+      await batch.commit();
+
+      // Construct the comment object to return for immediate UI update
+      return {
+        success: true,
+        comment: {
+          id: commentRef.id,
+          userId: currentUser.uid,
+          username,
+          userImage: currentUser.photoURL || '',
+          text: comment,
+          likes: 0,
+          timestamp: new Date().toISOString(),
+          isLiked: false,
+        },
+      };
     } catch (error) {
       console.log('PostsModule :: addComment() ::', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to add comment',
       };
+    }
+  }
+
+  async savePost(postId: string) {
+    try {
+      const currentUser = auth().currentUser;
+      if (!currentUser) {
+        return {success: false, error: 'User not authenticated'};
+      }
+
+      // Check if post exists
+      const postDoc = await firestore().collection('posts').doc(postId).get();
+      if (!postDoc.exists) {
+        return {success: false, error: 'Post not found'};
+      }
+
+      // Get user document
+      const userRef = firestore().collection('users').doc(currentUser.uid);
+      const userDoc = await userRef.get();
+
+      // If user document doesn't exist, create it with savedPosts field
+      if (!userDoc.exists) {
+        await userRef.set({
+          savedPosts: [postId],
+          updatedAt: firestore.FieldValue.serverTimestamp(),
+        });
+        return {success: true, saved: true};
+      }
+
+      // Check if post is already saved
+      const userData = userDoc.data();
+      const savedPosts = userData?.savedPosts || [];
+      const isSaved = savedPosts.includes(postId);
+
+      // Toggle saved status
+      await userRef.update({
+        savedPosts: isSaved
+          ? firestore.FieldValue.arrayRemove(postId)
+          : firestore.FieldValue.arrayUnion(postId),
+        updatedAt: firestore.FieldValue.serverTimestamp(),
+      });
+
+      return {success: true, saved: !isSaved};
+    } catch (error) {
+      console.log('PostsModule :: savePost() ::', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to save post',
+      };
+    }
+  }
+
+  isPostSaved(postId: string): boolean {
+    try {
+      const currentUser = auth().currentUser;
+      if (!currentUser) return false;
+
+      // This is a synchronous check, so we need to have the data already cached
+      // Return false if we're not sure, the UI will update once the actual status is fetched
+      return false;
+    } catch (error) {
+      console.error('Error checking saved status:', error);
+      return false;
     }
   }
 }

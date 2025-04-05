@@ -29,39 +29,68 @@ const SignIn = () => {
   const firebase = useTypedSelector(state => state.firebase.firebase);
   const dispatch = useTypedDispatch();
   const [isPasswordHidden, setisPasswordHidden] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isGithubLoading, setIsGithubLoading] = useState(false);
+  const [isForgotPasswordLoading, setIsForgotPasswordLoading] = useState(false);
   const userData: signInData = {
     usernameOrEmail: '',
     password: '',
   };
   const handleGoogleSignIn = async () => {
-    const response = await firebase.auth.googleSignIn();
-    console.log(response);
-    if(response.success){
-      dispatch(changeProfileColor(getRandomColors()));
-      dispatch(changeIsLoggedIn(true));
-    }
-    else{
+    try {
+      setIsGoogleLoading(true);
+      const response = await firebase.auth.googleSignIn();
+      console.log(response);
+      if (response.success) {
+        dispatch(changeProfileColor(getRandomColors()));
+        dispatch(changeIsLoggedIn(true));
+      }
+      else {
+        Snackbar.show({
+          text: 'Login Unsuccessful Due To : ' + response.error,
+          duration: Snackbar.LENGTH_LONG,
+          textColor: 'white',
+          backgroundColor: '#007cb5',
+        });
+      }
+    } catch (error) {
+      console.error('Google sign in error:', error);
       Snackbar.show({
-        text: 'Login Unsuccessful Due To : ' + response.error,
+        text: 'Failed to sign in with Google',
         duration: Snackbar.LENGTH_LONG,
         textColor: 'white',
-        backgroundColor: '#007cb5',
+        backgroundColor: '#ff3b30',
       });
+    } finally {
+      setIsGoogleLoading(false);
     }
   }
   const handleGithubSignIn = async () => {
-    const response = await firebase.auth.githubSignIn();
-    if(response.success){
-      dispatch(changeProfileColor(getRandomColors()));
-      dispatch(changeIsLoggedIn(true));
-    }
-    else{
+    try {
+      setIsGithubLoading(true);
+      const response = await firebase.auth.githubSignIn();
+      if (response.success) {
+        dispatch(changeProfileColor(getRandomColors()));
+        dispatch(changeIsLoggedIn(true));
+      }
+      else {
+        Snackbar.show({
+          text: 'Login Unsuccessful Due To : ' + response.error,
+          duration: Snackbar.LENGTH_LONG,
+          textColor: 'white',
+          backgroundColor: '#007cb5',
+        });
+      }
+    } catch (error) {
+      console.error('GitHub sign in error:', error);
       Snackbar.show({
-        text: 'Login Unsuccessful Due To : ' + response.error,
+        text: 'Failed to sign in with GitHub',
         duration: Snackbar.LENGTH_LONG,
         textColor: 'white',
-        backgroundColor: '#007cb5',
+        backgroundColor: '#ff3b30',
       });
+    } finally {
+      setIsGithubLoading(false);
     }
   };
   const signInUser = async ({ usernameOrEmail, password }: signInData) => {
@@ -94,32 +123,55 @@ const SignIn = () => {
     }
   };
   const handleForgotPassword = async (usernameOrEmail: string) => {
-    const { success, email } = await firebase.user.checkUsernameOrEmailRegistered(
-      usernameOrEmail,
-    );
-    if (success) {
-      if ((await firebase.auth.sendPasswordResetEmail(email!)).success) {
-        Snackbar.show({
-          text: 'Email Sent Successfully',
-          duration: Snackbar.LENGTH_LONG,
-          textColor: 'white',
-          backgroundColor: '#007cb5',
-        });
-      } else {
-        Snackbar.show({
-          text: 'Email Not Sent',
-          duration: Snackbar.LENGTH_LONG,
-          textColor: 'white',
-          backgroundColor: '#007cb5',
-        });
-      }
-    } else {
+    if (!usernameOrEmail.trim()) {
       Snackbar.show({
-        text: 'Username Or Email Is Not Registered',
+        text: 'Please enter a username or email',
         duration: Snackbar.LENGTH_LONG,
         textColor: 'white',
-        backgroundColor: '#007cb5',
+        backgroundColor: '#ff3b30',
       });
+      return;
+    }
+
+    try {
+      setIsForgotPasswordLoading(true);
+      const { success, email } = await firebase.user.checkUsernameOrEmailRegistered(
+        usernameOrEmail,
+      );
+      if (success) {
+        if ((await firebase.auth.sendPasswordResetEmail(email!)).success) {
+          Snackbar.show({
+            text: 'Password reset email sent successfully',
+            duration: Snackbar.LENGTH_LONG,
+            textColor: 'white',
+            backgroundColor: '#007cb5',
+          });
+        } else {
+          Snackbar.show({
+            text: 'Failed to send password reset email',
+            duration: Snackbar.LENGTH_LONG,
+            textColor: 'white',
+            backgroundColor: '#ff3b30',
+          });
+        }
+      } else {
+        Snackbar.show({
+          text: 'Username or email is not registered',
+          duration: Snackbar.LENGTH_LONG,
+          textColor: 'white',
+          backgroundColor: '#ff3b30',
+        });
+      }
+    } catch (error) {
+      console.error('Forgot password error:', error);
+      Snackbar.show({
+        text: 'Failed to process password reset',
+        duration: Snackbar.LENGTH_LONG,
+        textColor: 'white',
+        backgroundColor: '#ff3b30',
+      });
+    } finally {
+      setIsForgotPasswordLoading(false);
     }
   };
   return (
@@ -245,11 +297,13 @@ const SignIn = () => {
                         }}
                       />
                       <Text
-                        onPress={async () =>
-                          await handleForgotPassword(values.usernameOrEmail)
-                        }
+                        onPress={async () => {
+                          if (!isForgotPasswordLoading) {
+                            await handleForgotPassword(values.usernameOrEmail);
+                          }
+                        }}
                         className="text-[#3EB9F1] font-bold text-[3.5vw]">
-                        Forgot Password ?
+                        {isForgotPasswordLoading ? 'Sending...' : 'Forgot Password ?'}
                       </Text>
                     </View>
                     <TouchableOpacity
@@ -288,17 +342,36 @@ const SignIn = () => {
                       <View className="h-0.5 w-[30%] bg-gray-500"></View>
                     </View>
                     <View className="flex flex-row gap-3 justify-center py-[3%] items-center">
-                      <Image
-                        source={require('../../res/pngs/google.png')}
-                        className="w-50 h-50"
-                        style={{ width: 55, height: 55 }}
+                      <TouchableOpacity
+                        disabled={isGoogleLoading || isSubmitting}
                         onPress={handleGoogleSignIn}
-                      />
-                      <Image
-                        source={require('../../res/jpgs/github.jpg')}
-                        style={{ width: 40, height: 40, borderRadius: 30 }}
+                        style={{ width: 55, height: 55, justifyContent: 'center', alignItems: 'center' }}
+                      >
+                        {isGoogleLoading ? (
+                          <ButtonLoader size="small" color={isDark ? '#ffffff' : '#1a9cd8'} />
+                        ) : (
+                          <Image
+                            source={require('../../res/pngs/google.png')}
+                            className="w-50 h-50"
+                            style={{ width: 55, height: 55 }}
+                          />
+                        )}
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        disabled={isGithubLoading || isSubmitting}
                         onPress={handleGithubSignIn}
-                      />
+                        style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'center', borderRadius: 30 }}
+                      >
+                        {isGithubLoading ? (
+                          <ButtonLoader size="small" color={isDark ? '#ffffff' : '#000000'} />
+                        ) : (
+                          <Image
+                            source={require('../../res/jpgs/github.jpg')}
+                            style={{ width: 40, height: 40, borderRadius: 30 }}
+                          />
+                        )}
+                      </TouchableOpacity>
                     </View>
                   </View>
                 </View>

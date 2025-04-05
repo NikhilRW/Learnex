@@ -368,28 +368,27 @@ const NavigationDrawerButton = memo(({ tintColor, navigation }: { tintColor: str
 
   const handleSearchFocus = useCallback(() => {
     setIsTyping(true);
-    setSearchText('');
-    navigation.navigate('Search');
-  }, [navigation]);
+    // Don't navigate immediately on focus, let the user type first
+  }, []);
 
   const handleSearchChange = useCallback((text: string) => {
+    setSearchText(text);
     if (text.length > 0) {
       setIsTyping(true);
-      setSearchText(text);
-      navigation.navigate('Search', { searchText: text });
     } else {
       setIsTyping(false);
     }
-  }, [navigation]);
+  }, []);
 
   const handleSearchPress = useCallback(() => {
     setIsTyping(true);
-    navigation.navigate('Search');
-  }, [navigation]);
+    // Navigate to search with current search text if available
+    navigation.navigate('Search', { searchText: searchText });
+  }, [navigation, searchText]);
 
   return (
     <View
-      on
+    
       className={`${isDark ? "bg-[#1a1a1a]" : "bg-white"} flex-row w-full px-2 py-1 items-center`}>
       <TouchableOpacity onPress={handleOpenDrawer}>
         <Image
@@ -419,22 +418,17 @@ const NavigationDrawerButton = memo(({ tintColor, navigation }: { tintColor: str
               fontSize: Math.min(SCREEN_WIDTH * 0.04, 16),
             }}
             onChangeText={handleSearchChange}
+            value={searchText}
+            placeholder="Search Posts"
+            placeholderTextColor={isDark ? "#999" : "#666"}
+            returnKeyType="search"
+            onSubmitEditing={() => {
+              if (searchText.trim().length > 0) {
+                navigation.navigate('Search', { searchText: searchText });
+              }
+            }}
           />
-          <TouchableOpacity
-            className="w-full "
-            onPress={handleSearchPress}>
-            <Animated.Text
-              className={`${isTyping ? 'opacity-0' : 'opacity-100'}  ${isDark ? "text-white" : "text-black"}`}
-              style={{
-                fontSize: Math.min(SCREEN_WIDTH * 0.04, 16),
-                opacity: fadeAnim
-              }}
-              numberOfLines={1}
-              ellipsizeMode="tail"
-            >
-              {`${currentGreeting} ${getFirstName()}`}
-            </Animated.Text>
-          </TouchableOpacity>
+    
         </View>
         {
           photoURL ?

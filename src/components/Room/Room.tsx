@@ -635,15 +635,20 @@ const Room: React.FC<RoomProps> = ({
         if (pinnedParticipantId && totalParticipants > 1) {
             numColumns = 1; // Stack the pinned participant on top
         } else {
-            if (totalParticipants === 4) {
+            if (totalParticipants === 2) {
+                numColumns = 2; // 2x1 grid for 2 people
+            } else if (totalParticipants === 3) {
+                numColumns = 3; // 3x1 grid for 3 people
+            } else if (totalParticipants === 4) {
                 numColumns = 2; // 2x2 grid for 4 people
             } else if (totalParticipants >= 5) {
-                numColumns = 2; // 2x3 grid for 5+ people
+                numColumns = 3; // 3x2 grid for 5+ people
             }
         }
 
         // Calculate item height based on number of participants and pinned state
         let itemHeight = height * 0.8; // Default for 1 participant
+        let itemWidth = width / numColumns;
 
         if (pinnedParticipantId && totalParticipants > 1) {
             // Pinned layout: large on top, small at bottom
@@ -655,13 +660,15 @@ const Room: React.FC<RoomProps> = ({
         } else {
             // Regular grid layout
             if (totalParticipants === 2) {
-                itemHeight = height * 0.4; // 1x2 grid
+                itemHeight = height * 0.5; // 2x1 grid
             } else if (totalParticipants === 3) {
-                itemHeight = height * 0.26; // 1x3 grid
+                itemHeight = height * 0.33; // 3x1 grid
             } else if (totalParticipants === 4) {
-                itemHeight = height * 0.4; // 2x2 grid
-            } else if (totalParticipants >= 5) {
-                itemHeight = height * 0.26; // 2x3 grid with scrolling
+                itemHeight = height * 0.45; // 2x2 grid
+            } else if (totalParticipants >= 5 && totalParticipants <= 6) {
+                itemHeight = height * 0.33; // 3x2 grid
+            } else if (totalParticipants > 6) {
+                itemHeight = height * 0.25; // 3x3 grid with scrolling
             }
         }
 
@@ -677,12 +684,16 @@ const Room: React.FC<RoomProps> = ({
                 })}
                 keyExtractor={(item) => item.id}
                 style={styles.participantsList}
-                contentContainerStyle={styles.participantsListContent}
+                contentContainerStyle={[
+                    styles.participantsListContent,
+                    { flexDirection: 'row', flexWrap: 'wrap' }
+                ]}
                 showsVerticalScrollIndicator={true}
                 numColumns={numColumns}
                 key={numColumns} // Force re-render when columns change
                 initialNumToRender={6}
                 maxToRenderPerBatch={6}
+                columnWrapperStyle={numColumns > 1 ? { justifyContent: 'flex-start' } : undefined}
             />
         );
     };
@@ -751,6 +762,10 @@ const Room: React.FC<RoomProps> = ({
             <TouchableOpacity
                 onLongPress={() => handlePinParticipant(item.participantId || item.id)}
                 activeOpacity={0.9}
+                style={{
+                    width: `${100 / numColumns}%`,
+                    paddingHorizontal: 2
+                }}
             >
                 <View style={[
                     styles.participantContainer,
@@ -885,26 +900,29 @@ const Room: React.FC<RoomProps> = ({
         // Check if current user has reacted
         const myReaction = item.reactions?.[currentUserId];
 
+        // Determine if this is a message from the current user
+        const isCurrentUserMessage = item.senderId === currentUserId;
+
         return (
             <TouchableOpacity
                 onLongPress={() => handleLongPressMessage(item.id)}
                 activeOpacity={0.8}
             >
-                <View style={[styles.messageContainer, item.isMe && styles.myMessageContainer]}>
-                    {!item.isMe && (
+                <View style={[styles.messageContainer, isCurrentUserMessage && styles.myMessageContainer]}>
+                    {!isCurrentUserMessage && (
                         <Text style={[styles.messageSender, isDark && styles.messageSenderDark]}>
-                            {item.senderName}
+                            {item.senderName || 'Unknown User'}
                         </Text>
                     )}
                     <View style={[
                         styles.messageBubble,
-                        item.isMe && styles.myMessageBubble,
+                        isCurrentUserMessage && styles.myMessageBubble,
                         isDark && styles.messageBubbleDark,
-                        item.isMe && isDark && styles.myMessageBubbleDark
+                        isCurrentUserMessage && isDark && styles.myMessageBubbleDark
                     ]}>
                         <Text style={[
                             styles.messageText,
-                            item.isMe && styles.myMessageText,
+                            isCurrentUserMessage && styles.myMessageText,
                             isDark && styles.messageTextDark
                         ]}>
                             {item.text}
@@ -933,7 +951,7 @@ const Room: React.FC<RoomProps> = ({
                     )}
 
                     <Text style={[styles.messageTime, isDark && styles.messageTimeDark]}>
-                        {item.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {isCurrentUserMessage ? 'You' : item.senderName} • {item.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </Text>
                 </View>
             </TouchableOpacity>
@@ -1608,9 +1626,9 @@ const styles = StyleSheet.create({
         borderColor: 'rgba(255, 255, 255, 0.3)',
     },
     avatarCircleSpeaking: {
-        borderColor: '#34A853', // Google Green
+        borderColor: '#4285f4',
         borderWidth: 3,
-        shadowColor: '#34A853',
+        shadowColor: '#4285f4',
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 0.5,
         shadowRadius: 8,

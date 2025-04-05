@@ -159,7 +159,12 @@ export class MeetingService {
         meetingData.maxParticipants &&
         meetingData.participants.length >= meetingData.maxParticipants
       ) {
-        throw this.createError('Meeting has reached maximum participants');
+        console.warn(
+          `Meeting ${meetingId} has reached maximum participants limit of ${meetingData.maxParticipants}`,
+        );
+        throw this.createError(
+          `Meeting has reached maximum participants limit of ${meetingData.maxParticipants}`,
+        );
       }
 
       await meetingRef.update({
@@ -310,8 +315,10 @@ export class MeetingService {
 
       const meetingData = meetingDoc.data() as Meeting;
       const now = new Date();
-      const endTime = new Date(meetingData.duration * 60000 + meetingData.createdAt.toMillis());
-      
+      const endTime = new Date(
+        meetingData.duration * 60000 + meetingData.createdAt.toMillis(),
+      );
+
       return endTime <= now;
     } catch (error) {
       console.error('Error checking meeting end time:', error);
