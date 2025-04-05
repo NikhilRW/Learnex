@@ -348,9 +348,27 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
             const result = await firebase.posts.addComment(post.id, newComment.trim());
 
             if (result.success) {
+                // Update UI immediately with the new comment
+                if (result.comment) {
+                    // Add the new comment to the post's comment list
+                    const updatedCommentsList = [...(post.commentsList || []), result.comment];
+
+                    // Update the post object to include the new comment
+                    post.commentsList = updatedCommentsList;
+                    post.comments = (post.comments || 0) + 1;
+                }
+
                 setNewComment('');
-                // Refresh comments (this would usually come from props or context in a real app)
-                // For now, let's just show the modal which will trigger fetching updated comments
+
+                // Show feedback
+                Snackbar.show({
+                    text: 'Comment added successfully',
+                    duration: Snackbar.LENGTH_SHORT,
+                    textColor: 'white',
+                    backgroundColor: '#2379C2',
+                });
+
+                // Show comments modal with updated comments
                 setShowComments(true);
             } else {
                 Snackbar.show({
@@ -544,6 +562,48 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
         checkPostSavedStatus();
     }, [firebase.posts, post.id, post.isSaved]);
 
+    const handleLikePost = async () => {
+        try {
+            // Optimistically update UI immediately
+            const newIsLiked = !isLiked;
+            setIsLiked(newIsLiked);
+            
+            // Update the likes count locally
+            const likesChange = newIsLiked ? 1 : -1;
+            post.likes += likesChange;
+            
+            // Send request to backend
+            const result = await firebase.posts.likePost(post.id);
+            
+            if (!result.success) {
+                // Revert UI changes if request failed
+                setIsLiked(!newIsLiked);
+                post.likes -= likesChange;
+                
+                // Show error to user
+                Snackbar.show({
+                    text: result.error || 'Failed to update like status',
+                    duration: Snackbar.LENGTH_LONG,
+                    textColor: 'white',
+                    backgroundColor: '#ff3b30',
+                });
+            }
+        } catch (error) {
+            console.error('Error liking post:', error);
+            
+            // Revert UI changes in case of error
+            setIsLiked(!isLiked);
+            
+            // Show error to user
+            Snackbar.show({
+                text: 'Failed to update like status',
+                duration: Snackbar.LENGTH_LONG,
+                textColor: 'white',
+                backgroundColor: '#ff3b30',
+            });
+        }
+    };
+
     return (
         <Animated.View
             key={post.id}
@@ -585,7 +645,7 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
             {renderMedia()}
             <View style={styles.postActions}>
                 <View style={styles.leftActions}>
-                    <TouchableOpacity onPress={() => setIsLiked(!isLiked)} style={styles.actionButton}>
+                    <TouchableOpacity onPress={handleLikePost} style={styles.actionButton}>
                         <AntDesign name={isLiked ? "heart" : "hearto"} size={24} color={isLiked ? "red" : (isDark ? "white" : "black")} />
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.actionButton} onPress={() => setShowComments(true)}>

@@ -324,7 +324,7 @@ const Chat: React.FC<ChatProps> = ({ meetingId, isVisible, onClose }) => {
                             >
                                 {!isOwnMessage && !isSystemMessage && (
                                     <Text style={[styles.senderName, isDark && styles.darkText]}>
-                                        {item.senderName}
+                                        {item.senderName || 'Unknown User'}
                                     </Text>
                                 )}
                                 <Text style={[
@@ -337,7 +337,7 @@ const Chat: React.FC<ChatProps> = ({ meetingId, isVisible, onClose }) => {
                                 </Text>
                                 {!isSystemMessage && (
                                     <Text style={[styles.timestamp, isDark && styles.darkTimestamp]}>
-                                        {item.timestamp?.toDate().toLocaleTimeString([], {
+                                        {isOwnMessage ? 'You' : ''} • {item.timestamp?.toDate().toLocaleTimeString([], {
                                             hour: '2-digit',
                                             minute: '2-digit',
                                         })}

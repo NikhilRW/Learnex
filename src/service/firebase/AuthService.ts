@@ -15,7 +15,7 @@ export class AuthService {
       webClientId:
         '378245937295-p9lvf9tenrtchg6d2t5g6tamlhm5a168.apps.googleusercontent.com',
     });
-    console.log("UserID "+auth().currentUser?.uid);
+    console.log('UserID ' + auth().currentUser?.uid);
   }
 
   currentUser() {
@@ -108,6 +108,32 @@ export class AuthService {
       );
       await auth().signInWithCredential(googleCredential);
 
+      // Create user document if it doesn't exist
+      const user = auth().currentUser;
+      if (user) {
+        const userDoc = await firestore()
+          .collection('users')
+          .doc(user.uid)
+          .get();
+        if (!userDoc.exists) {
+          await firestore()
+            .collection('users')
+            .doc(user.uid)
+            .set({
+              email: user.email,
+              username: user.displayName || user.email?.split('@')[0] || 'User',
+              fullName: user.displayName || 'User',
+              isLoggedIn: true,
+              savedPosts: [],
+              createdAt: firestore.FieldValue.serverTimestamp(),
+              image:
+                user.photoURL ||
+                'https://www.gravatar.com/avatar/' +
+                  Math.random().toString(36).substring(7),
+            });
+        }
+      }
+
       return {success: true};
     } catch (error: any) {
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
@@ -141,6 +167,33 @@ export class AuthService {
         authState.accessToken,
       );
       await auth().signInWithCredential(githubCredential);
+
+      // Create user document if it doesn't exist
+      const user = auth().currentUser;
+      if (user) {
+        const userDoc = await firestore()
+          .collection('users')
+          .doc(user.uid)
+          .get();
+        if (!userDoc.exists) {
+          await firestore()
+            .collection('users')
+            .doc(user.uid)
+            .set({
+              email: user.email,
+              username:
+                user.displayName || user.email?.split('@')[0] || 'GitHub User',
+              fullName: user.displayName || 'GitHub User',
+              isLoggedIn: true,
+              savedPosts: [],
+              createdAt: firestore.FieldValue.serverTimestamp(),
+              image:
+                user.photoURL ||
+                'https://www.gravatar.com/avatar/' +
+                  Math.random().toString(36).substring(7),
+            });
+        }
+      }
 
       return {success: true};
     } catch (error) {

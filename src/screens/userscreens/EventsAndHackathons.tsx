@@ -13,6 +13,7 @@ import {
     Image,
     StyleSheet,
     StatusBar,
+    RefreshControl,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
@@ -61,6 +62,7 @@ const EventsAndHackathons: React.FC = () => {
     const [location, setLocation] = useState<string>('India');
     const [locationModalVisible, setLocationModalVisible] = useState<boolean>(false);
     const [filterType, setFilterType] = useState<string>('all'); // all, online, in-person, hybrid
+    const [refreshing, setRefreshing] = useState<boolean>(false);
 
     const navigation = useNavigation();
     const isDark = useTypedSelector((state) => state.user.theme) === 'dark';
@@ -132,6 +134,15 @@ const EventsAndHackathons: React.FC = () => {
             id: event.id,
             source: event.source,
         });
+    };
+
+    /**
+     * Handle refresh when pull-to-refresh is triggered
+     */
+    const onRefresh = async () => {
+        setRefreshing(true);
+        await fetchEvents();
+        setRefreshing(false);
     };
 
     /**
@@ -255,7 +266,7 @@ const EventsAndHackathons: React.FC = () => {
      * Render main content based on loading/error state
      */
     const renderContent = () => {
-        if (loading) {
+        if (loading && !refreshing) {
             return (
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color="#2379C2" />
@@ -263,14 +274,14 @@ const EventsAndHackathons: React.FC = () => {
                         Loading events...
                     </Text>
                 </View>
-                
+
             );
         };
-        if (error) {
-            
+        if (error && !refreshing) {
+
             return renderErrorContent();
         }
-        if (filteredEvents.length === 0) {
+        if (filteredEvents.length === 0 && !refreshing) {
             return (
                 <View style={styles.noEventsContainer}>
                     <Text style={styles.noEventsText}>
@@ -298,6 +309,16 @@ const EventsAndHackathons: React.FC = () => {
                 }}
                 contentContainerStyle={styles.listContainer}
                 showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        colors={['#2379C2']}
+                        tintColor={isDark ? '#fff' : '#2379C2'}
+                        title="Refreshing events..."
+                        titleColor={isDark ? '#ddd' : '#555'}
+                    />
+                }
             />
         );
     };
@@ -312,7 +333,24 @@ const EventsAndHackathons: React.FC = () => {
                 >
                     <Ionicons name="arrow-back" size={24} color={isDark ? 'white' : 'black'} />
                 </TouchableOpacity>
-                <FontAwesome5Icon name='calendar-alt'size={24} color={isDark ? 'white' : 'black'} />
+
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <FontAwesome5Icon name='calendar-alt' size={24} color={isDark ? 'white' : 'black'} />
+                    <Text style={[styles.headerTitle, { marginLeft: 10 }]}>Events & Hackathons</Text>
+                </View>
+
+                {/* Add refresh button */}
+                <TouchableOpacity
+                    style={styles.refreshButton}
+                    onPress={onRefresh}
+                    disabled={refreshing || loading}
+                >
+                    {refreshing ? (
+                        <ActivityIndicator size="small" color={isDark ? 'white' : 'black'} />
+                    ) : (
+                        <Ionicons name="refresh" size={24} color={isDark ? 'white' : 'black'} />
+                    )}
+                </TouchableOpacity>
             </View>
 
             {/* Location selector */}

@@ -29,6 +29,10 @@ export const createStyles = (isDark: boolean) =>
     backButton: {
       padding: 8,
     },
+    refreshButton: {
+      padding: 8,
+      marginLeft: 'auto',
+    },
     content: {
       flex: 1,
       padding: 16,

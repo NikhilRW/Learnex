@@ -35,7 +35,7 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
   const navigationCategories = {
     main: ['Room', 'Tasks', 'Direct Messages'],
     tools: ['Scan or Generate QR', 'Events & Hackathons'],
-    account: ['Saved', 'Invite'],
+    account: ['Saved'],
     support: ['About us', 'Toggle Theme']
   };
 
@@ -52,7 +52,6 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
     'Saved': 'bookmark',
     'Help and FAQs': 'question-circle',
     'Contact us': 'envelope',
-    'Invite': 'user-plus',
     'Setting': 'cog',
     'About us': 'info-circle',
     'Toggle Theme': isDark ? 'moon' : 'sun'
@@ -107,8 +106,8 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
         navigation.navigate('QRCode');
         break;
       case 'About us':
-        if (await Linking.canOpenURL('https://learnex-jvn70k72m-nikhil-wankhedes-projects.vercel.app/#about')) {
-          await Linking.openURL('https://learnex-jvn70k72m-nikhil-wankhedes-projects.vercel.app/#about');
+        if (await Linking.canOpenURL('https://learnex-web.vercel.app/#about')) {
+          await Linking.openURL('https://learnex-web.vercel.app/#about');
         } else {
           Snackbar.show({
             text: 'Cannot open URL',
