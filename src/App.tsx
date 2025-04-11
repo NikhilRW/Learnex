@@ -12,12 +12,47 @@ import ThemeListener from './components/user/ThemeListener';
 import Loader from './components/auth/Loader';
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { setDeepLink } from './reducers/DeepLink';
+import { fetchHackathons } from './reducers/Hackathon';
+import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
+import { DeepLinkHandler } from './navigation/DeepLinkHandler';
+import { PushNotificationHandler } from './utils/PushNotificationHandler';
 
 const App = () => {
+  const navigationRef = useNavigationContainerRef();
+
   useEffect(() => {
     if (Platform.OS === 'android') {
       SplashScreen.hide();
     }
+
+    // Configure deep links
+    DeepLinkHandler.configureDeepLinks(navigationRef);
+
+    // Load hackathon data on app startup - always use 'India' as location
+    store.dispatch(fetchHackathons({ location: 'India' }));
+
+    // Check for push notifications permission on startup
+    PushNotificationHandler.checkPermissions();
+
+    // Initialize notification service during app startup
+    const initNotifications = async () => {
+      try {
+        const notificationService = require('./service/NotificationService').default;
+        await notificationService.setupNotificationChannels();
+
+        // If user is already logged in, set up the message listener
+        const auth = require('@react-native-firebase/auth').default;
+        if (auth().currentUser) {
+          console.log('User already logged in, setting up message listener');
+          notificationService.setupMessageListener();
+        } else {
+          console.log('No user logged in yet, skipping message listener setup');
+        }
+      } catch (error) {
+        console.error('Failed to initialize notification service:', error);
+      }
+    };
+    initNotifications();
 
     // Set up deep link handler
     const handleDeepLink = (event) => {

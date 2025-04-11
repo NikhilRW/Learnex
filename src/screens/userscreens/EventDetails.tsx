@@ -34,9 +34,20 @@ type EventDetailsRouteProp = RouteProp<UserStackParamList, 'EventDetails'>;
 const formatDate = (dateString: string): string => {
     try {
         const date = parseISO(dateString);
+        if (isNaN(date.getTime())) {
+            throw new Error('Invalid date');
+        }
         return format(date, 'dd MMMM yyyy, h:mm a');
     } catch (err) {
-        return dateString;
+        console.warn(`Error formatting date: ${dateString}`, err);
+
+        // Try to extract a date-like string
+        const match = dateString.match(/\b\d{1,2}\s+[A-Za-z]{3,}\s+\d{4}\b/);
+        if (match) {
+            return match[0];
+        }
+
+        return 'Date to be determined';
     }
 };
 
@@ -122,27 +133,10 @@ const EventDetails: React.FC = () => {
     };
 
     /**
-     * Open registration URL
+     * Handle opening the registration link
      */
     const handleOpenRegistration = () => {
-        if (!event) return;
-
-        // Check if registration deadline has passed
-        try {
-            const deadline = parseISO(event.registrationDeadline);
-            if (isPast(deadline)) {
-                Alert.alert(
-                    'Registration Closed',
-                    'The registration deadline for this event has passed.',
-                    [{ text: 'OK' }]
-                );
-                return;
-            }
-        } catch (err) {
-            // Continue if date parsing fails
-        }
-
-        // Open URL
+        // Open URL directly
         Linking.canOpenURL(event.url).then(supported => {
             if (supported) {
                 Linking.openURL(event.url);
@@ -171,6 +165,162 @@ const EventDetails: React.FC = () => {
             </Text>
         </View>
     );
+
+    /**
+     * Render the event timeline section
+     */
+    const renderTimeline = () => {
+        if (!event?.timeline || event.timeline.length === 0) {
+            return null;
+        }
+
+        return (
+            <View style={styles.section}>
+                <Text style={[styles.sectionTitle, isDark && styles.darkText]}>
+                    Event Timeline
+                </Text>
+                {event.timeline.map((item, index) => (
+                    <View key={index} style={styles.timelineItem}>
+                        <View style={styles.timelineDot} />
+                        <View style={styles.timelineContent}>
+                            <Text style={[styles.timelineDate, isDark && styles.darkText]}>
+                                {item.date}
+                            </Text>
+                            <Text style={[styles.timelineEvent, isDark && styles.darkSubText]}>
+                                {item.event}
+                            </Text>
+                        </View>
+                    </View>
+                ))}
+            </View>
+        );
+    };
+
+    /**
+     * Render the prize section
+     */
+    const renderPrize = () => {
+        // Check for the new prize field
+        if (event?.prize) {
+            return (
+                <View style={styles.section}>
+                    <Text style={[styles.sectionTitle, isDark && styles.darkText]}>
+                        Prizes
+                    </Text>
+                    <Text style={[styles.sectionContent, isDark && styles.darkSubText]}>
+                        {event.prize}
+                    </Text>
+                </View>
+            );
+        }
+
+        // Fallback to legacy prizes structure if the new format is not available
+        if (event?.prizes) {
+            return (
+                <View style={styles.section}>
+                    <Text style={[styles.sectionTitle, isDark && styles.darkText]}>
+                        Prizes
+                    </Text>
+                    {event.prizes.first && (
+                        <Text style={[styles.sectionContent, isDark && styles.darkSubText]}>
+                            🥇 First Prize: {event.prizes.first}
+                        </Text>
+                    )}
+                    {event.prizes.second && (
+                        <Text style={[styles.sectionContent, isDark && styles.darkSubText]}>
+                            🥈 Second Prize: {event.prizes.second}
+                        </Text>
+                    )}
+                    {event.prizes.third && (
+                        <Text style={[styles.sectionContent, isDark && styles.darkSubText]}>
+                            🥉 Third Prize: {event.prizes.third}
+                        </Text>
+                    )}
+                    {event.prizes.other && event.prizes.other.length > 0 && (
+                        <Text style={[styles.sectionContent, isDark && styles.darkSubText]}>
+                            🎁 Additional Prizes: {event.prizes.other.join(', ')}
+                        </Text>
+                    )}
+                </View>
+            );
+        }
+
+        return null;
+    };
+
+    /**
+     * Render rules section
+     */
+    const renderRules = () => {
+        if (!event?.rules && !event?.rulesUrl) {
+            return null;
+        }
+
+        return (
+            <View style={styles.section}>
+                <Text style={[styles.sectionTitle, isDark && styles.darkText]}>
+                    Rules
+                </Text>
+                {event.rules && (
+                    <Text style={[styles.sectionContent, isDark && styles.darkSubText]}>
+                        {event.rules}
+                    </Text>
+                )}
+                {event.rulesUrl && (
+                    <TouchableOpacity
+                        style={styles.linkButton}
+                        onPress={() => Linking.openURL(event.rulesUrl || '')}
+                    >
+                        <Text style={styles.linkButtonText}>View Rules</Text>
+                    </TouchableOpacity>
+                )}
+            </View>
+        );
+    };
+
+    /**
+     * Render additional info section
+     */
+    const renderAdditionalInfo = () => {
+        if (!event?.additionalInfo) {
+            return null;
+        }
+
+        return (
+            <View style={styles.section}>
+                <Text style={[styles.sectionTitle, isDark && styles.darkText]}>
+                    Additional Information
+                </Text>
+                <Text style={[styles.sectionContent, isDark && styles.darkSubText]}>
+                    {event.additionalInfo}
+                </Text>
+            </View>
+        );
+    };
+
+    /**
+     * Render sponsors section
+     */
+    const renderSponsors = () => {
+        if (!event?.sponsors || event.sponsors.length === 0) {
+            return null;
+        }
+
+        return (
+            <View style={styles.section}>
+                <Text style={[styles.sectionTitle, isDark && styles.darkText]}>
+                    Sponsors
+                </Text>
+                <View style={styles.sponsorsContainer}>
+                    {event.sponsors.map((sponsor, index) => (
+                        <Text key={index} style={[styles.sponsorItem, isDark && styles.darkSubText]}>
+                            • {sponsor}
+                        </Text>
+                    ))}
+                </View>
+            </View>
+        );
+    };
 
     /**
      * Render the content based on loading/error state
@@ -216,7 +366,7 @@ const EventDetails: React.FC = () => {
                             <Image
                                 source={{ uri: event.imageUrl }}
                                 className='w-[90vw] h-[30vh] object-center '
-                                style={{borderRadius: 20,width: SCREEN_WIDTH * 0.9, height: SCREEN_WIDTH * 0.4}}
+                                style={{ borderRadius: 20, width: SCREEN_WIDTH * 0.9, height: SCREEN_WIDTH * 0.4 }}
                                 resizeMode="contain"
                             />
                         ) : (
@@ -232,17 +382,9 @@ const EventDetails: React.FC = () => {
                     <View style={styles.content}>
                         <Text style={styles.eventTitle}>{event.title}</Text>
                         <Text style={styles.sourceLabel}>
-                            {event.source === 'hackerearth' ? 'HackerEarth Event' : 'Devfolio Event'}
+                            {event.source === 'hackerearth' ?'HackerEarth Event' : 'Devfolio Event'}
                         </Text>
-
-                        <View style={[styles.timeRemainingContainer, isPast && styles.timePassed]}>
-                            <Text style={[styles.timeRemainingText, isPast && styles.timePassedText]}>
-                                {timeString}
-                            </Text>
-                        </View>
-
                         <Text style={styles.eventDescription}>{event.description}</Text>
-
                         <View style={styles.infoContainer}>
                             <View style={styles.infoRow}>
                                 <View style={styles.infoIcon}>
@@ -251,7 +393,7 @@ const EventDetails: React.FC = () => {
                                 <View style={styles.infoTextContainer}>
                                     <Text style={styles.infoLabel}>Dates</Text>
                                     <Text style={styles.infoText}>
-                                        {formatDate(event.startDate)} - {formatDate(event.endDate)}
+                                        {formatDate(event.startDate as string)} - {formatDate(event.endDate as string)}
                                     </Text>
                                 </View>
                             </View>
@@ -262,17 +404,13 @@ const EventDetails: React.FC = () => {
                                 </View>
                                 <View style={styles.infoTextContainer}>
                                     <Text style={styles.infoLabel}>Location</Text>
-                                    <Text style={styles.infoText}>{event.location}</Text>
+                                    <Text style={styles.infoText}>{event.location || 'Not specified'}</Text>
                                 </View>
                             </View>
 
                             <View style={styles.infoRow}>
                                 <View style={styles.infoIcon}>
-                                    <MaterialCommunityIcons
-                                        name={event.mode === 'online' ? 'web' : event.mode === 'hybrid' ? 'laptop' : 'map-marker'}
-                                        size={20}
-                                        color={isDark ? '#2379C2' : '#2379C2'}
-                                    />
+                                    <Ionicons name="layers-outline" size={20} color={isDark ? '#2379C2' : '#2379C2'} />
                                 </View>
                                 <View style={styles.infoTextContainer}>
                                     <Text style={styles.infoLabel}>Event Type</Text>
@@ -281,62 +419,15 @@ const EventDetails: React.FC = () => {
                                     </Text>
                                 </View>
                             </View>
-
-                            <View style={styles.infoRow}>
-                                <View style={styles.infoIcon}>
-                                    <Ionicons name="time-outline" size={20} color={isDark ? '#2379C2' : '#2379C2'} />
-                                </View>
-                                <View style={styles.infoTextContainer}>
-                                    <Text style={styles.infoLabel}>Registration Deadline</Text>
-                                    <Text style={styles.infoText}>{formatDate(event.registrationDeadline)}</Text>
-                                </View>
-                            </View>
                         </View>
 
                         {/* Optional sections - render only if data exists */}
 
-                        {event.prizes && (
-                            <>
-                                <Text style={styles.sectionTitle}>Prizes</Text>
-                                <View style={styles.prizeContainer}>
-                                    {event.prizes.first && (
-                                        <View style={styles.prizeRow}>
-                                            <Text style={styles.prizeLabel}>1st Prize:</Text>
-                                            <Text style={styles.prizeValue}>{event.prizes.first}</Text>
-                                        </View>
-                                    )}
-                                    {event.prizes.second && (
-                                        <View style={styles.prizeRow}>
-                                            <Text style={styles.prizeLabel}>2nd Prize:</Text>
-                                            <Text style={styles.prizeValue}>{event.prizes.second}</Text>
-                                        </View>
-                                    )}
-                                    {event.prizes.third && (
-                                        <View style={styles.prizeRow}>
-                                            <Text style={styles.prizeLabel}>3rd Prize:</Text>
-                                            <Text style={styles.prizeValue}>{event.prizes.third}</Text>
-                                        </View>
-                                    )}
-                                    {event.prizes.other && event.prizes.other.map((prize, index) => (
-                                        <View key={index} style={styles.prizeRow}>
-                                            <Text style={styles.prizeLabel}>Other:</Text>
-                                            <Text style={styles.prizeValue}>{prize}</Text>
-                                        </View>
-                                    ))}
-                                </View>
-                            </>
-                        )}
-
-                        {event.sponsors && event.sponsors.length > 0 && (
-                            <>
-                                <Text style={styles.sectionTitle}>Sponsors</Text>
-                                <View style={styles.sponsorsContainer}>
-                                    {event.sponsors.map((sponsor, index) => (
-                                        <Text key={index} style={styles.sponsorItem}>• {sponsor}</Text>
-                                    ))}
-                                </View>
-                            </>
-                        )}
+                        {renderTimeline()}
+                        {renderPrize()}
+                        {renderRules()}
+                        {renderAdditionalInfo()}
+                        {renderSponsors()}
 
                         {event.tags && event.tags.length > 0 && (
                             <>
@@ -351,22 +442,24 @@ const EventDetails: React.FC = () => {
                             </>
                         )}
 
-                        {event.teamSize && (
-                            <>
-                                <Text style={styles.sectionTitle}>Team Size</Text>
-                                <Text style={styles.eventDescription}>
-                                    {event.teamSize.min === event.teamSize.max
-                                        ? `Exactly ${event.teamSize.min} ${event.teamSize.min === 1 ? 'person' : 'people'} per team`
-                                        : `${event.teamSize.min} to ${event.teamSize.max} people per team`}
-                                </Text>
-                            </>
-                        )}
-
                         {event.eligibility && (
                             <>
                                 <Text style={styles.sectionTitle}>Eligibility</Text>
                                 <Text style={styles.eventDescription}>{event.eligibility}</Text>
                             </>
+                        )}
+
+                        {event?.teamSize && (
+                            <View style={styles.section}>
+                                <Text style={[styles.sectionTitle, isDark && styles.darkText]}>
+                                    Team Size
+                                </Text>
+                                <Text style={[styles.sectionContent, isDark && styles.darkSubText]}>
+                                    {event.teamSize.min === event.teamSize.max
+                                        ? `Exactly ${event.teamSize.min} ${event.teamSize.min === 1 ? 'person' : 'people'} per team`
+                                        : `${event.teamSize.min} to ${event.teamSize.max} people per team`}
+                                </Text>
+                            </View>
                         )}
                     </View>
                 </ScrollView>

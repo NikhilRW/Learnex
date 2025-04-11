@@ -23,7 +23,7 @@ import SavedPosts from '../screens/userscreens/SavedPosts';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useTypedSelector } from '../hooks/useTypedSelector';
 import NavigationIconHelper from '../helpers/NavigationIconHelper';
-import { Dimensions, Alert } from 'react-native';
+import { Dimensions, Alert, ImageSourcePropType } from 'react-native';
 import { useEffect, useRef } from 'react';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import { useTypedDispatch } from '../hooks/useTypedDispatch';
@@ -60,7 +60,7 @@ export type UserStackParamList = {
     conversationId: string;
     recipientId: string;
     recipientName: string;
-    recipientPhoto?: string;
+    recipientPhoto?: string | ImageSourcePropType;
   };
   ContactList: undefined;
   SavedPosts: undefined;
@@ -74,17 +74,27 @@ export type UserNavigationProps = BottomTabNavigationProp<UserStackParamList>;
  */
 const extractRoomCodeFromUrl = (url: string): string | null => {
   try {
-    // Handle both formats: learnex://meeting?roomCode=ABC123 or https://learnex-241f1.web.app/join?code=ABC123
+    // Handle both formats: learnex://meeting?roomCode=ABC123 or https://learnex-web.vercel.app/join/ABC123
     const urlObj = new URL(url);
 
     if (urlObj.protocol === 'learnex:') {
       // Mobile deep link format
       const params = new URLSearchParams(urlObj.search);
       return params.get('roomCode');
-    } else if (urlObj.hostname.includes('learnex-241f1.web.app')) {
-      // Web URL format
+    } else if (urlObj.hostname.includes('learnex-web.vercel.app')) {
+      // Check for old query parameter format
       const params = new URLSearchParams(urlObj.search);
-      return params.get('code');
+      const queryCode = params.get('code');
+
+      if (queryCode) {
+        return queryCode;
+      }
+
+      // Check for new path format: /join/ABC123
+      const pathParts = urlObj.pathname.split('/');
+      if (pathParts.length >= 3 && pathParts[1] === 'join') {
+        return pathParts[2];
+      }
     }
 
     return null;
@@ -131,6 +141,45 @@ const UserStack = () => {
   const messageService = useRef(new MessageService()).current;
   const userService = useRef(new UserService()).current;
   const firebase = useTypedSelector(state => state.firebase.firebase);
+
+  // Set up notification channels and handlers for direct messages
+  useEffect(() => {
+    const setupNotifications = async () => {
+      try {
+        // Import notification service
+        const notificationService = require('../service/NotificationService').default;
+
+        // Set up notification channels (for Android)
+        await notificationService.setupNotificationChannels();
+
+        // Set up foreground notification handlers for navigation
+        notificationService.setupNotificationHandlers(navigation);
+
+        // Set up background notification handler
+        notificationService.setupBackgroundHandler();
+
+        // Start listening for new messages to trigger notifications
+        notificationService.setupMessageListener();
+
+        console.log('Notification services initialized');
+      } catch (error) {
+        console.error('Failed to set up notification services:', error);
+      }
+    };
+
+    // Set up notifications when the component mounts
+    setupNotifications();
+
+    return () => {
+      // Clean up message listener when component unmounts
+      try {
+        const notificationService = require('../service/NotificationService').default;
+        notificationService.removeMessageListener();
+      } catch (error) {
+        console.error('Failed to clean up notification listener:', error);
+      }
+    };
+  }, [navigation]);
 
   // Handle deep link navigation
   useEffect(() => {
@@ -341,7 +390,7 @@ const UserStack = () => {
         name="Chat"
         component={ChatScreen}
         options={{
-          headerShown: false, // Hide header for Chat screen
+          headerShown: true, // Changed from false to true to show the header
           swipeEnabled: false, // Disable drawer swipe for this screen
           drawerItemStyle: { display: 'none' }, // Hide from drawer
         }}

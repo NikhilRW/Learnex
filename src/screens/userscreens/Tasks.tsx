@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     StyleSheet,
     Text,
@@ -10,7 +10,8 @@ import {
     StatusBar,
     ScrollView,
     Alert,
-    ActivityIndicator
+    ActivityIndicator,
+    RefreshControl
 } from 'react-native';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -36,6 +37,7 @@ const Tasks = () => {
     const [categories, setCategories] = useState<string[]>([]);
     const taskService = new TaskService();
     const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
+    const [refreshing, setRefreshing] = useState(false);
 
     const [newTask, setNewTask] = useState<Omit<Task, 'id' | 'userId' | 'createdAt' | 'updatedAt'>>({
         title: '',
@@ -290,6 +292,18 @@ const Tasks = () => {
         </View>
     );
 
+    // Add onRefresh function
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        try {
+            await fetchTasks(selectedFilter);
+        } catch (error) {
+            console.error('Error refreshing tasks:', error);
+        } finally {
+            setRefreshing(false);
+        }
+    }, [fetchTasks, selectedFilter]);
+
     return (
         <SafeAreaView style={[
             styles.container,
@@ -507,6 +521,15 @@ const Tasks = () => {
                         keyExtractor={item => item.id}
                         contentContainerStyle={styles.taskList}
                         showsVerticalScrollIndicator={false}
+                        refreshControl={
+                            <RefreshControl
+                                refreshing={refreshing}
+                                onRefresh={onRefresh}
+                                colors={['#1a9cd8']}
+                                tintColor={isDark ? 'white' : '#1a9cd8'}
+                                progressBackgroundColor={isDark ? '#2a2a2a' : '#f0f0f0'}
+                            />
+                        }
                     />
                 )}
             </View>

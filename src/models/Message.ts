@@ -18,7 +18,7 @@ export interface Conversation {
   participantDetails: {
     [userId: string]: {
       name: string;
-      photo?: string;
+      image: string;
       lastSeen?: number;
       typing?: boolean;
     };

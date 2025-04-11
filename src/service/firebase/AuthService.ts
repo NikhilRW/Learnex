@@ -41,9 +41,9 @@ export class AuthService {
         isLoggedIn: true,
         savedPosts: [],
         createdAt: firestore.FieldValue.serverTimestamp(),
-        image:
-          'https://www.gravatar.com/avatar/' +
-          Math.random().toString(36).substring(7),
+        image: `https://avatar.iran.liara.run/username?username=${encodeURIComponent(
+          fullName,
+        )}`,
       };
 
       await firestore()
@@ -64,6 +64,25 @@ export class AuthService {
   ): Promise<AuthResponse> {
     try {
       await auth().signInWithEmailAndPassword(email, password);
+
+      // Update user's isLoggedIn status in Firestore
+      const user = auth().currentUser;
+      if (user) {
+        await firestore().collection('users').doc(user.uid).update({
+          isLoggedIn: true,
+          lastLogin: firestore.FieldValue.serverTimestamp(),
+        });
+
+        // Start notification listeners for the logged in user
+        try {
+          const notificationService =
+            require('../../service/NotificationService').default;
+          notificationService.setupMessageListener();
+        } catch (error) {
+          console.error('Failed to setup notification listeners:', error);
+        }
+      }
+
       return {success: true};
     } catch (error: any) {
       console.log('AuthService :: loginWithEmailAndPassword() ::', error);
@@ -83,6 +102,24 @@ export class AuthService {
 
   async signOut(): Promise<AuthResponse> {
     try {
+      // Update the user's isLoggedIn status before signing out
+      const user = auth().currentUser;
+      if (user) {
+        await firestore().collection('users').doc(user.uid).update({
+          isLoggedIn: false,
+          lastLogout: firestore.FieldValue.serverTimestamp(),
+        });
+      }
+
+      // Clean up notification listeners before signing out
+      try {
+        const notificationService =
+          require('../../service/NotificationService').default;
+        notificationService.removeMessageListener();
+      } catch (error) {
+        console.error('Failed to clean up notification listeners:', error);
+      }
+
       await auth().signOut();
       await GoogleSignin.signOut();
       return {success: true};
@@ -108,14 +145,16 @@ export class AuthService {
       );
       await auth().signInWithCredential(googleCredential);
 
-      // Create user document if it doesn't exist
+      // Handle user document (create or update)
       const user = auth().currentUser;
       if (user) {
         const userDoc = await firestore()
           .collection('users')
           .doc(user.uid)
           .get();
+
         if (!userDoc.exists) {
+          // First time user - create new document
           await firestore()
             .collection('users')
             .doc(user.uid)
@@ -128,9 +167,25 @@ export class AuthService {
               createdAt: firestore.FieldValue.serverTimestamp(),
               image:
                 user.photoURL ||
-                'https://www.gravatar.com/avatar/' +
-                  Math.random().toString(36).substring(7),
+                `https://avatar.iran.liara.run/username?username=${encodeURIComponent(
+                  user.displayName || 'Anonymous',
+                )}`,
             });
+        } else {
+          // Returning user - update isLoggedIn status
+          await firestore().collection('users').doc(user.uid).update({
+            isLoggedIn: true,
+            lastLogin: firestore.FieldValue.serverTimestamp(),
+          });
+
+          // Start notification listeners for the logged in user
+          try {
+            const notificationService =
+              require('../../service/NotificationService').default;
+            notificationService.setupMessageListener();
+          } catch (error) {
+            console.error('Failed to setup notification listeners:', error);
+          }
         }
       }
 
@@ -168,14 +223,16 @@ export class AuthService {
       );
       await auth().signInWithCredential(githubCredential);
 
-      // Create user document if it doesn't exist
+      // Handle user document (create or update)
       const user = auth().currentUser;
       if (user) {
         const userDoc = await firestore()
           .collection('users')
           .doc(user.uid)
           .get();
+
         if (!userDoc.exists) {
+          // First time user - create new document
           await firestore()
             .collection('users')
             .doc(user.uid)
@@ -189,9 +246,16 @@ export class AuthService {
               createdAt: firestore.FieldValue.serverTimestamp(),
               image:
                 user.photoURL ||
-                'https://www.gravatar.com/avatar/' +
-                  Math.random().toString(36).substring(7),
+                `https://avatar.iran.liara.run/username?username=${encodeURIComponent(
+                  user.displayName || 'Anonymous',
+                )}`,
             });
+        } else {
+          // Returning user - update isLoggedIn status
+          await firestore().collection('users').doc(user.uid).update({
+            isLoggedIn: true,
+            lastLogin: firestore.FieldValue.serverTimestamp(),
+          });
         }
       }
 

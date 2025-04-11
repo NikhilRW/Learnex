@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
     View,
     Text,
@@ -8,17 +8,22 @@ import {
     ActivityIndicator,
     SafeAreaView,
     StatusBar,
-    Dimensions
+    Dimensions,
+    Image,
+    RefreshControl
 } from 'react-native';
 import { Avatar, SearchBar } from 'react-native-elements';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, CommonActions } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MessageService } from '../../service/firebase/MessageService';
 import { getUsernameForLogo } from '../../helpers/stringHelpers';
 import Snackbar from 'react-native-snackbar';
 import firestore from '@react-native-firebase/firestore';
+import { log } from 'console';
+import { UserStackParamList } from '../../routes/UserStack';
+import { NavigationProp } from '@react-navigation/native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -26,13 +31,13 @@ interface User {
     id: string;
     username: string;
     fullName: string;
-    photoURL?: string;
+    image?: string;
     lastSeen?: number;
 }
 
 const ContactListScreen: React.FC = () => {
     const insets = useSafeAreaInsets();
-    const navigation = useNavigation();
+    const navigation = useNavigation<NavigationProp<UserStackParamList>>();
     const isDark = useTypedSelector((state) => state.user.theme) === "dark";
     const firebase = useTypedSelector(state => state.firebase.firebase);
     const currentUser = firebase.currentUser();
@@ -41,37 +46,57 @@ const ContactListScreen: React.FC = () => {
     const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
+    const [refreshing, setRefreshing] = useState(false);
     const messageService = new MessageService();
 
+    // Define fetchUsers outside useEffect so it can be reused
+    const fetchUsers = async () => {
+        try {
+            const usersSnapshot = await firestore().collection('users').get();
+
+            const usersData = usersSnapshot.docs
+                .map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                } as User))
+                .filter(user => user.id !== currentUser?.uid); // Exclude current user
+            console.log("userdata : " + usersData[0]);
+            setUsers(usersData);
+            setFilteredUsers(usersData);
+            setLoading(false);
+        } catch (error) {
+            console.error('Error fetching users:', error);
+            setLoading(false);
+            Snackbar.show({
+                text: 'Failed to load contacts',
+                duration: Snackbar.LENGTH_LONG,
+                textColor: 'white',
+                backgroundColor: '#ff3b30',
+            });
+        }
+    };
+
     useEffect(() => {
-        const fetchUsers = async () => {
-            try {
-                const usersSnapshot = await firestore().collection('users').get();
-
-                const usersData = usersSnapshot.docs
-                    .map(doc => ({
-                        id: doc.id,
-                        ...doc.data()
-                    } as User))
-                    .filter(user => user.id !== currentUser?.uid); // Exclude current user
-
-                setUsers(usersData);
-                setFilteredUsers(usersData);
-                setLoading(false);
-            } catch (error) {
-                console.error('Error fetching users:', error);
-                setLoading(false);
-                Snackbar.show({
-                    text: 'Failed to load contacts',
-                    duration: Snackbar.LENGTH_LONG,
-                    textColor: 'white',
-                    backgroundColor: '#ff3b30',
-                });
-            }
-        };
-
         fetchUsers();
     }, [currentUser]);
+
+    // Add onRefresh callback function with fetchUsers dependency
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        try {
+            await fetchUsers();
+        } catch (error) {
+            console.error('Error refreshing contacts:', error);
+            Snackbar.show({
+                text: 'Failed to refresh contacts',
+                duration: Snackbar.LENGTH_LONG,
+                textColor: 'white',
+                backgroundColor: '#ff3b30',
+            });
+        } finally {
+            setRefreshing(false);
+        }
+    }, [fetchUsers]);
 
     useEffect(() => {
         if (search.trim() === '') {
@@ -109,7 +134,7 @@ const ContactListScreen: React.FC = () => {
                 conversationId: conversation.id,
                 recipientId: user.id,
                 recipientName: user.fullName || user.username,
-                recipientPhoto: user.photoURL
+                recipientPhoto: user.image
             });
         } catch (error) {
             console.error('Error starting conversation:', error);
@@ -155,13 +180,13 @@ const ContactListScreen: React.FC = () => {
                 ]}
                 onPress={() => handleUserPress(item)}
             >
-                {item.photoURL ? (
-                    <Avatar
-                        rounded
-                        source={{ uri: item.photoURL }}
-                        size={Math.min(SCREEN_WIDTH * 0.12, 50)}
-                        containerStyle={styles.avatar}
-                    />
+                {item.image ? (
+                <Avatar
+                    rounded
+                    size={Math.min(SCREEN_WIDTH * 0.12, 50)}
+                    containerStyle={[styles.avatar, { backgroundColor: '#2379C2' }]}
+                    source={{ uri: item.image }}
+                />
                 ) : (
                     <Avatar
                         rounded
@@ -229,8 +254,9 @@ const ContactListScreen: React.FC = () => {
 
             <SearchBar
                 placeholder="Search contacts..."
-                onChangeText={setSearch}
+                onChangeText={setSearch as any}
                 value={search}
+                platform="default"
                 containerStyle={[
                     styles.searchContainer,
                     { backgroundColor: isDark ? '#1a1a1a' : 'white' }
@@ -254,6 +280,15 @@ const ContactListScreen: React.FC = () => {
                     styles.listContent,
                     filteredUsers.length === 0 && styles.emptyListContent
                 ]}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        colors={['#2379C2']}
+                        tintColor={isDark ? '#ffffff' : '#2379C2'}
+                        progressBackgroundColor={isDark ? '#2a2a2a' : '#f0f0f0'}
+                    />
+                }
             />
         </SafeAreaView>
     );

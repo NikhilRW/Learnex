@@ -108,7 +108,7 @@ const SignUp = () => {
     const handleDeepLink = (event: { url: string }) => { };
 
     // Set up listeners for deep links - handle API differences in React Native versions
-    let subscription;
+    let subscription: any;
     if (Linking.addEventListener) {
       // Modern React Native (>=0.65)
       subscription = Linking.addEventListener('url', handleDeepLink);

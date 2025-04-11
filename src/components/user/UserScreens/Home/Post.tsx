@@ -35,6 +35,7 @@ interface VideoProgress {
 type UserNavigation = NativeStackNavigationProp<UserStackParamList>;
 
 const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
+    post
     const isDark = useTypedSelector((state) => state.user.theme) === "dark";
     const screenWidth = Dimensions.get('window').width;
     const [isLiked, setIsLiked] = useState(false);
@@ -240,7 +241,6 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
                             console.error(`Image ${index} has invalid format:`, image);
                             return null; // Skip invalid images
                         }
-                        console.log(`Image ${index} final source:`, source);
                         return (
                             <TouchableWithoutFeedback
                                 key={index}
@@ -308,13 +308,12 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
 
             // Dismiss loading indicator
             Snackbar.dismiss();
-
             // Navigate to chat with proper typing
             navigation.navigate('Chat', {
                 conversationId: conversation.id,
                 recipientId: post.user.id,
                 recipientName: post.user.username,
-                recipientPhoto: typeof post.user.image === 'string' ? post.user.image : undefined
+                recipientPhoto: post.user.image
             });
         } catch (error) {
             console.error('Error starting conversation:', error);
@@ -567,19 +566,19 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
             // Optimistically update UI immediately
             const newIsLiked = !isLiked;
             setIsLiked(newIsLiked);
-            
+
             // Update the likes count locally
             const likesChange = newIsLiked ? 1 : -1;
             post.likes += likesChange;
-            
+
             // Send request to backend
             const result = await firebase.posts.likePost(post.id);
-            
+
             if (!result.success) {
                 // Revert UI changes if request failed
                 setIsLiked(!newIsLiked);
                 post.likes -= likesChange;
-                
+
                 // Show error to user
                 Snackbar.show({
                     text: result.error || 'Failed to update like status',
@@ -590,10 +589,10 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
             }
         } catch (error) {
             console.error('Error liking post:', error);
-            
+
             // Revert UI changes in case of error
             setIsLiked(!isLiked);
-            
+
             // Show error to user
             Snackbar.show({
                 text: 'Failed to update like status',

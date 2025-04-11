@@ -13,7 +13,8 @@ import {
     ActivityIndicator,
     StatusBar,
     Alert,
-    Modal
+    Modal,
+    Image
 } from 'react-native';
 import { Avatar } from 'react-native-elements';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -31,7 +32,7 @@ type ChatScreenRouteParams = {
     conversationId: string;
     recipientId: string;
     recipientName: string;
-    recipientPhoto?: string;
+    recipientPhoto: string;
 };
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -100,13 +101,13 @@ const ChatScreen: React.FC = () => {
 
         try {
             setSending(true);
-
+            const {fullName} = await firebase.user.getNameUsernamestring();
             // Prepare message data with no undefined values
             const messageData = {
                 conversationId,
                 senderId: currentUser.uid,
-                senderName: currentUser.displayName || 'User',
-                senderPhoto: currentUser.photoURL || undefined,
+                senderName: currentUser.displayName || fullName || 'User',
+                senderPhoto: currentUser.photoURL || "https://avatar.iran.liara.run/username?username=" + encodeURIComponent(currentUser.displayName || fullName || 'User'),
                 recipientId,
                 text: newMessage.trim(),
                 timestamp: new Date().getTime(),
@@ -286,49 +287,93 @@ const ChatScreen: React.FC = () => {
         );
     };
 
-    // Render header
-    const renderHeader = () => (
-        <View style={[
-            styles.header,
-            { backgroundColor: isDark ? '#1a1a1a' : 'white' }
-        ]}>
-            <TouchableOpacity
-                style={styles.backButton}
-                onPress={() => navigation.goBack()}
-            >
-                <Ionicons
-                    name="arrow-back"
-                    size={Math.min(SCREEN_WIDTH * 0.06, 24)}
-                    color={isDark ? 'white' : 'black'}
-                />
-            </TouchableOpacity>
+    // Update header settings with recipient information
+    useEffect(() => {
+        navigation.setOptions({
+            title: '',
+            headerTitleAlign: 'center',
+            headerLeft: () => (
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <TouchableOpacity
+                        style={{ marginLeft: 10, marginRight: 8 }}
+                        onPress={() => navigation.goBack()}
+                    >
+                        <Ionicons name="arrow-back" size={24} color={isDark ? "white" : "black"} />
+                    </TouchableOpacity>
 
-            <View style={styles.headerTitle}>
-                {recipientPhoto ? (
-                    <Avatar
-                        rounded
-                        source={{ uri: recipientPhoto }}
-                        size={Math.min(SCREEN_WIDTH * 0.1, 40)}
-                        containerStyle={styles.headerAvatar}
-                    />
-                ) : (
-                    <Avatar
-                        rounded
-                        title={getUsernameForLogo(recipientName)}
-                        size={Math.min(SCREEN_WIDTH * 0.1, 40)}
-                        containerStyle={[styles.headerAvatar, { backgroundColor: '#2379C2' }]}
-                    />
-                )}
-
-                <Text style={[
-                    styles.headerName,
-                    { color: isDark ? 'white' : 'black' }
-                ]}>
-                    {recipientName}
-                </Text>
-            </View>
-        </View>
-    );
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        {recipientPhoto ? (
+                            <Image
+                                source={
+                                    typeof recipientPhoto === 'string'
+                                        ? { uri: recipientPhoto }
+                                        : recipientPhoto
+                                }
+                                style={{ width: 36, height: 36, borderRadius: 18 }}
+                            />
+                        ) : (
+                            <Avatar
+                                rounded
+                                title={getUsernameForLogo(recipientName)}
+                                size={36}
+                                containerStyle={{ backgroundColor: '#2379C2' }}
+                            />
+                        )}
+                        <Text style={{
+                            marginLeft: 8,
+                            fontSize: 17,
+                            fontWeight: '600',
+                            color: isDark ? "white" : "black"
+                        }}>
+                            {recipientName}
+                        </Text>
+                    </View>
+                </View>
+            ),
+            headerRight: () => (
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <TouchableOpacity
+                        style={{ marginRight: 10 }}
+                        onPress={() => {
+                            Alert.alert(
+                                'Delete Conversation',
+                                'Are you sure you want to delete this conversation? This action cannot be undone.',
+                                [
+                                    { text: 'Cancel', style: 'cancel' },
+                                    {
+                                        text: 'Delete',
+                                        style: 'destructive',
+                                        onPress: () => {
+                                            messageService.deleteConversation(conversationId)
+                                                .then(() => {
+                                                    navigation.goBack();
+                                                })
+                                                .catch(error => {
+                                                    Snackbar.show({
+                                                        text: 'Failed to delete conversation',
+                                                        duration: Snackbar.LENGTH_LONG,
+                                                        textColor: 'white',
+                                                        backgroundColor: '#ff3b30',
+                                                    });
+                                                });
+                                        }
+                                    }
+                                ]
+                            );
+                        }}
+                    >
+                        <MaterialIcons name="delete" size={24} color={isDark ? "white" : "black"} />
+                    </TouchableOpacity>
+                </View>
+            ),
+            headerTintColor: isDark ? "white" : "black",
+            headerStyle: {
+                backgroundColor: isDark ? "#121212" : "white",
+                elevation: 0,
+                shadowOpacity: 0,
+            },
+        });
+    }, [navigation, recipientName, recipientPhoto, isDark, conversationId]);
 
     return (
         <SafeAreaView style={[
@@ -339,8 +384,6 @@ const ChatScreen: React.FC = () => {
                 barStyle={isDark ? 'light-content' : 'dark-content'}
                 backgroundColor={isDark ? '#1a1a1a' : 'white'}
             />
-
-            {renderHeader()}
 
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -523,29 +566,6 @@ const ChatScreen: React.FC = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(0,0,0,0.1)',
-    },
-    backButton: {
-        padding: 8,
-    },
-    headerTitle: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginLeft: 8,
-    },
-    headerAvatar: {
-        marginRight: 10,
-    },
-    headerName: {
-        fontSize: 18,
-        fontWeight: '600',
     },
     keyboardAvoidingView: {
         flex: 1,

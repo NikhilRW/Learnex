@@ -1,22 +1,27 @@
-import firebase from '@react-native-firebase/app';
 import firestore from '@react-native-firebase/firestore';
+import firebase from '@react-native-firebase/app';
+import auth from '@react-native-firebase/auth';
 import {Conversation, Message} from '../../models/Message';
 import {FirebaseErrorHandler} from '../../helpers/FirebaseErrorHandler';
+import notificationService from '../../service/NotificationService';
+
 /**
  * Helper function to clean objects before storing in Firestore
- * Replaces undefined values with null, which Firestore supports
+ * Removes undefined values which Firestore doesn't allow
  */
 const sanitizeForFirestore = (obj: any): any => {
-  if (obj === undefined) return null;
-  if (obj === null || typeof obj !== 'object') return obj;
+  if (obj === null || obj === undefined || typeof obj !== 'object') {
+    return obj;
+  }
 
+  // Handle arrays
   if (Array.isArray(obj)) {
     return obj.map(item => sanitizeForFirestore(item));
   }
 
-  const sanitized: any = {};
+  // Handle objects
+  const sanitized: Record<string, any> = {};
   for (const [key, value] of Object.entries(obj)) {
-    // Skip undefined values entirely
     if (value !== undefined) {
       sanitized[key] = sanitizeForFirestore(value);
     }
@@ -72,12 +77,12 @@ export class MessageService {
       const participantDetails: Conversation['participantDetails'] = {
         [userId1]: {
           name: user1Data.fullName || user1Data.username || 'User',
-          photo: user1Data.photoURL || null,
+          image: user1Data.image || null,
           lastSeen: firebase.firestore.Timestamp.now().toMillis(),
         },
         [userId2]: {
           name: user2Data.fullName || user2Data.username || 'User',
-          photo: user2Data.photoURL || null,
+          image: user2Data.image || null,
           lastSeen: user2Data.lastSeen || null,
         },
       };
@@ -110,6 +115,16 @@ export class MessageService {
     message: Omit<Message, 'id'>,
   ): Promise<Message> {
     try {
+      // Check if conversation exists first
+      const conversationDoc = await this.conversationsCollection
+        .doc(conversationId)
+        .get();
+      if (!conversationDoc.exists) {
+        throw new Error(
+          `Conversation ${conversationId} not found. Cannot send message.`,
+        );
+      }
+
       const messageRef = this.messagesCollection.doc();
       const newMessage: Message = {
         id: messageRef.id,
@@ -131,6 +146,29 @@ export class MessageService {
         [`unreadCount.${message.recipientId}`]:
           firestore.FieldValue.increment(1),
       });
+
+      // Trigger a notification for the recipienthi
+      try {
+        // Check if the message is sent by the current user
+        const isSenderCurrentUser =
+          message.senderId === auth().currentUser?.uid;
+
+        if (!isSenderCurrentUser) {
+          // Send notification to the recipient
+          notificationService.displayMessageNotification(
+            message.senderId,
+            message.senderName,
+            message.text,
+            conversationId,
+            message.recipientId,
+            message.senderPhoto,
+          );
+        }
+      } catch (err) {
+        console.error('Error sending notification:', err);
+        // Continue even if notification fails - messaging functionality
+        // should work independently of notification delivery
+      }
 
       return newMessage;
     } catch (error) {
@@ -177,6 +215,17 @@ export class MessageService {
     userId: string,
   ): Promise<void> {
     try {
+      // First check if the conversation exists
+      const conversationDoc = await this.conversationsCollection
+        .doc(conversationId)
+        .get();
+      if (!conversationDoc.exists) {
+        console.warn(
+          `Conversation ${conversationId} not found. Cannot mark messages as read.`,
+        );
+        return;
+      }
+
       // Update unread count in conversation
       await this.conversationsCollection.doc(conversationId).update({
         [`unreadCount.${userId}`]: 0,
@@ -207,6 +256,13 @@ export class MessageService {
   // Delete a message
   async deleteMessage(messageId: string): Promise<void> {
     try {
+      // Check if the message exists
+      const messageDoc = await this.messagesCollection.doc(messageId).get();
+      if (!messageDoc.exists) {
+        console.warn(`Message ${messageId} not found. Cannot delete message.`);
+        return;
+      }
+
       await this.messagesCollection.doc(messageId).delete();
     } catch (error) {
       throw this.errorHandler.handleError(error, 'Failed to delete message');
@@ -216,33 +272,49 @@ export class MessageService {
   // Edit a message
   async editMessage(messageId: string, newText: string): Promise<void> {
     try {
+      // Check if the message exists first
+      const messageDocRef = this.messagesCollection.doc(messageId);
+      const messageDocSnapshot = await messageDocRef.get();
+
+      if (!messageDocSnapshot.exists) {
+        console.warn(`Message ${messageId} not found. Cannot edit message.`);
+        return;
+      }
+
       const timestamp = new Date().getTime();
-      await this.messagesCollection.doc(messageId).update({
+      await messageDocRef.update({
         text: newText,
         edited: true,
         editedAt: timestamp,
       });
 
-      // Check if this message is the last message in the conversation
-      const messageDoc = await this.messagesCollection.doc(messageId).get();
-      const messageData = messageDoc.data() as Message;
+      // Get the message data
+      const messageData = messageDocSnapshot.data() as Message;
 
-      if (messageData) {
+      if (messageData?.conversationId) {
+        // Check if the conversation exists
+        const conversationDocRef = this.conversationsCollection.doc(
+          messageData.conversationId,
+        );
+        const conversationDocSnapshot = await conversationDocRef.get();
+
+        if (!conversationDocSnapshot.exists) {
+          console.warn(
+            `Conversation ${messageData.conversationId} not found. Cannot update last message.`,
+          );
+          return;
+        }
+
+        const conversationData = conversationDocSnapshot.data() as Conversation;
+
         // Update the last message in conversation if this is the last message
-        const conversationDoc = await this.conversationsCollection
-          .doc(messageData.conversationId)
-          .get();
-        const conversationData = conversationDoc.data() as Conversation;
-
         if (
           conversationData?.lastMessage?.senderId === messageData.senderId &&
           conversationData?.lastMessage?.timestamp === messageData.timestamp
         ) {
-          await this.conversationsCollection
-            .doc(messageData.conversationId)
-            .update({
-              'lastMessage.text': newText,
-            });
+          await conversationDocRef.update({
+            'lastMessage.text': newText,
+          });
         }
       }
     } catch (error) {
@@ -257,6 +329,17 @@ export class MessageService {
     isTyping: boolean,
   ): Promise<void> {
     try {
+      // Check if the conversation exists first
+      const conversationDoc = await this.conversationsCollection
+        .doc(conversationId)
+        .get();
+      if (!conversationDoc.exists) {
+        console.warn(
+          `Conversation ${conversationId} not found. Cannot update typing status.`,
+        );
+        return;
+      }
+
       await this.conversationsCollection.doc(conversationId).update({
         [`participantDetails.${userId}.typing`]: isTyping,
       });
@@ -264,6 +347,46 @@ export class MessageService {
       throw this.errorHandler.handleError(
         error,
         'Failed to update typing status',
+      );
+    }
+  }
+
+  // Delete a conversation and all its messages
+  async deleteConversation(conversationId: string): Promise<void> {
+    try {
+      // Check if the conversation exists
+      const conversationDoc = await this.conversationsCollection
+        .doc(conversationId)
+        .get();
+      if (!conversationDoc.exists) {
+        console.warn(
+          `Conversation ${conversationId} not found. Cannot delete conversation.`,
+        );
+        return;
+      }
+
+      // Get all messages in the conversation
+      const messagesSnapshot = await this.messagesCollection
+        .where('conversationId', '==', conversationId)
+        .get();
+
+      // Create a batch to delete all messages
+      const batch = firestore().batch();
+
+      // Add message deletions to batch
+      messagesSnapshot.docs.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+
+      // Add conversation deletion to batch
+      batch.delete(this.conversationsCollection.doc(conversationId));
+
+      // Commit the batch
+      await batch.commit();
+    } catch (error) {
+      throw this.errorHandler.handleError(
+        error,
+        'Failed to delete conversation',
       );
     }
   }

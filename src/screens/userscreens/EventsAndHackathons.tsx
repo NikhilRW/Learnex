@@ -14,18 +14,32 @@ import {
     StyleSheet,
     StatusBar,
     RefreshControl,
+    ToastAndroid,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
 import { createStyles } from '../../styles/screens/EventsAndHackathons.styles';
 import { HackathonService } from '../../service/hackathonService';
-import { HackathonSummary, EventMode } from '../../types/hackathon';
+import { HackathonSummary, EventMode, EventSource } from '../../types/hackathon';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { format, parseISO } from 'date-fns';
-import EventLogo from '../../components/hackathons/EventLogo';
+import { format, parseISO, isAfter, isBefore, isWithinInterval, addMinutes, addHours } from 'date-fns';
 import FontAwesome5Icon from 'react-native-vector-icons/FontAwesome5';
+import { useDispatch } from 'react-redux';
+import { fetchHackathons, refreshHackathons, setFilterType, clearHackathonCache } from '../../reducers/Hackathon';
+import { AnyAction } from '@reduxjs/toolkit';
+import LinearGradient from 'react-native-linear-gradient';
+
+/**
+ * SIMPLIFIED REFRESH APPROACH:
+ * 
+ * The backend now handles caching with a 5-minute threshold.
+ * Frontend simply requests data and the backend decides whether to:
+ * 1. Return cached data (if less than 5 minutes old)
+ * 2. Do a fresh scrape (if cache is older than 5 minutes)
+ * 
+ * No frontend timestamp tracking is needed anymore.
+ */
 
 // Event locations for filter
 const LOCATIONS = [
@@ -40,89 +54,165 @@ const LOCATIONS = [
 ];
 
 /**
- * Formats a date string for display
+ * Format a date for display
+ * @param dateString ISO date string
+ * @returns Formatted date
  */
-const formatDate = (dateInput: string | Date): string => {
+const formatDate = (dateString: string): string => {
     try {
-        const date = typeof dateInput === 'string' ? parseISO(dateInput) : dateInput;
+        // Some date strings might already be formatted or invalid
+        if (!dateString || dateString === "Invalid Date") {
+            return "TBA";
+        }
+
+        // If it's already formatted like "25 May 2023", return as is
+        if (/\d{1,2}\s+[A-Za-z]{3}\s+\d{4}/.test(dateString)) {
+            return dateString;
+        }
+
+        const date = parseISO(dateString);
+        if (isNaN(date.getTime())) {
+            return "TBA";
+        }
+
         return format(date, 'dd MMM yyyy');
-    } catch (err) {
-        return String(dateInput);
+    } catch (error) {
+        console.error("Error formatting date:", error);
+        return "TBA";
     }
+};
+
+/**
+ * Get event status based on start and end dates
+ * @param startDate Event start date
+ * @param endDate Event end date
+ * @returns Status object with type and text
+ */
+const getEventStatus = (startDate: string, endDate: string): { type: 'upcoming' | 'live' | 'ended', text: string } => {
+    try {
+        const now = new Date();
+        const start = parseISO(startDate);
+        const end = parseISO(endDate);
+
+        // Check if dates are valid
+        if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+            return { type: 'upcoming', text: 'Dates TBA' };
+        }
+
+        // Check if event has ended
+        if (isAfter(now, end)) {
+            // Event has ended
+            return { type: 'ended', text: 'Ended' };
+        }
+
+        // Check if event is live
+        if (isWithinInterval(now, { start, end })) {
+            // Calculate remaining time
+            const hoursLeft = Math.round((end.getTime() - now.getTime()) / (1000 * 60 * 60));
+            if (hoursLeft < 24) {
+                return { type: 'live', text: `Live • ${hoursLeft}h left` };
+            }
+            const daysLeft = Math.round(hoursLeft / 24);
+            return { type: 'live', text: `Live • ${daysLeft}d left` };
+        }
+
+        // Event is upcoming
+        const daysToStart = Math.round((start.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        if (daysToStart <= 7) {
+            if (daysToStart === 0) {
+                const hoursToStart = Math.round((start.getTime() - now.getTime()) / (1000 * 60 * 60));
+                return { type: 'upcoming', text: `Starts in ${hoursToStart}h` };
+            }
+            if (daysToStart === 1) {
+                return { type: 'upcoming', text: 'Starts tomorrow' };
+            }
+            return { type: 'upcoming', text: `Starts in ${daysToStart} days` };
+        }
+
+        return { type: 'upcoming', text: formatDate(startDate) };
+    } catch (error) {
+        console.error('Error calculating event status:', error);
+        return { type: 'upcoming', text: formatDate(startDate) };
+    }
+};
+
+/**
+ * Render error content when fetch fails
+ */
+const renderErrorContent = (error: string | null, isDark: boolean, retryFn: () => void, styles: any) => {
+    return (
+        <View style={styles.errorContainer}>
+            <MaterialCommunityIcons
+                name="cloud-alert"
+                size={50}
+                color={isDark ? '#ddd' : '#555'}
+            />
+            <Text style={[styles.errorText, isDark && styles.darkText]}>
+                {error || "Something went wrong while fetching events"}
+            </Text>
+            <TouchableOpacity style={styles.retryButton} onPress={retryFn}>
+                <Text style={styles.retryButtonText}>Try Again</Text>
+            </TouchableOpacity>
+        </View>
+    );
 };
 
 /**
  * Component for Events and Hackathons screen
  */
 const EventsAndHackathons: React.FC = () => {
-    const [events, setEvents] = useState<HackathonSummary[]>([]);
-    const [filteredEvents, setFilteredEvents] = useState<HackathonSummary[]>([]);
-    const [loading, setLoading] = useState<boolean>(true);
-    const [error, setError] = useState<string | null>(null);
-    const [location, setLocation] = useState<string>('India');
-    const [locationModalVisible, setLocationModalVisible] = useState<boolean>(false);
-    const [filterType, setFilterType] = useState<string>('all'); // all, online, in-person, hybrid
     const [refreshing, setRefreshing] = useState<boolean>(false);
-
+    const dispatch = useDispatch();
     const navigation = useNavigation();
+
+    // Get state from Redux
     const isDark = useTypedSelector((state) => state.user.theme) === 'dark';
+    const { events, filteredEvents, loading, error, filterType, lastFetched } =
+        useTypedSelector((state) => state.hackathon);
     const styles = createStyles(isDark);
 
     /**
      * Fetch events from the API
      */
-    const fetchEvents = async (selectedLocation: string = location) => {
-        setLoading(true);
-        setError(null);
+    const fetchEvents = async (forceRefresh = false) => {
         try {
-            // Get events from service
-            const eventsData = await HackathonService.getHackathons(selectedLocation);
-            setEvents(eventsData);
-            applyFilters(eventsData, filterType);
-        } catch (err) {
-            console.error('Error fetching events:', err);
-            setError('Failed to fetch events. Please try again.');
-        } finally {
-            setLoading(false);
+            // Dispatch the fetch action
+            // The backend will handle the caching and decide if it needs to scrape
+            const result = await dispatch(fetchHackathons({
+                location: 'India',
+                forceRefresh: forceRefresh
+            }) as unknown as AnyAction);
+
+            return result.type.includes('/fulfilled');
+        } catch (error) {
+            console.error('Error fetching events:', error);
+            return false;
         }
     };
 
     /**
-     * Apply filters to the events
-     */
-    const applyFilters = (eventsToFilter: HackathonSummary[], typeFilter: string) => {
-        let filtered = [...eventsToFilter];
-
-        // Filter by event type
-        if (typeFilter !== 'all') {
-            filtered = filtered.filter(event => event.mode === typeFilter);
-        }
-
-        setFilteredEvents(filtered);
-    };
-
-    /**
-     * Initialize component by fetching events
+     * Effect for initial load and focus listener
      */
     useEffect(() => {
+        console.log('Initial load: Fetching events');
         fetchEvents();
-    }, []);
+
+        // Add listener for when screen comes into focus
+        const unsubscribeFocus = navigation.addListener('focus', () => {
+            // Fetch fresh data when screen is focused
+            console.log('Events screen focused, fetching data...');
+            fetchEvents();
+        });
+
+        // Clean up the focus listener
+        return unsubscribeFocus;
+    }, [navigation]);
 
     /**
      * Handle filter changes
      */
     const handleFilterChange = (newFilter: string) => {
-        setFilterType(newFilter);
-        applyFilters(events, newFilter);
-    };
-
-    /**
-     * Handle location selection
-     */
-    const handleLocationSelect = (selectedLocation: string) => {
-        setLocation(selectedLocation);
-        setLocationModalVisible(false);
-        fetchEvents(selectedLocation);
+        dispatch(setFilterType(newFilter));
     };
 
     /**
@@ -140,127 +230,294 @@ const EventsAndHackathons: React.FC = () => {
      * Handle refresh when pull-to-refresh is triggered
      */
     const onRefresh = async () => {
+        console.log('User triggered Pull-to-Refresh');
         setRefreshing(true);
-        await fetchEvents();
-        setRefreshing(false);
+
+        try {
+            // Clear the Redux cache first
+            dispatch(clearHackathonCache());
+
+            // Request fresh data with forceRefresh=true to ensure backend re-scrapes
+            const success = await fetchEvents(true);
+
+            if (success) {
+                if (Platform.OS === 'android') {
+                    ToastAndroid.show('Events refreshed successfully!', ToastAndroid.SHORT);
+                }
+            } else {
+                if (Platform.OS === 'android') {
+                    ToastAndroid.show('Failed to refresh events. Try again later.', ToastAndroid.LONG);
+                }
+            }
+        } catch (error) {
+            console.error('Error refreshing events:', error);
+            if (Platform.OS === 'android') {
+                ToastAndroid.show('Failed to refresh events. Check your network connection.', ToastAndroid.LONG);
+            }
+        } finally {
+            setRefreshing(false);
+        }
+    };
+
+    /**
+     * Handle manual refresh from the reload button
+     */
+    const handleManualRefresh = async () => {
+        console.log('User triggered Manual Refresh');
+
+        if (Platform.OS === 'android') {
+            ToastAndroid.show('Fetching latest events...', ToastAndroid.SHORT);
+        }
+
+        setRefreshing(true);
+
+        try {
+            // Clear the Redux cache first
+            dispatch(clearHackathonCache());
+
+            // Trigger a refresh on the backend to scrape fresh data
+            try {
+                // Trigger the backend to scrape fresh data
+                const refreshResult = await HackathonService.refreshEvents({ waitForCompletion: true });
+
+                if (refreshResult.success) {
+                    console.log('Backend scraping successful');
+
+                    if (Platform.OS === 'android') {
+                        ToastAndroid.show('Events refreshed successfully!', ToastAndroid.SHORT);
+                    }
+                } else {
+                    console.log('Backend scraping failed:', refreshResult.message);
+
+                    // Show more specific error messages for common issues
+                    if (Platform.OS === 'android') {
+                        // Check if the error message contains timeout indicators
+                        if (refreshResult.message &&
+                            (refreshResult.message.includes('timed out') ||
+                                refreshResult.message.includes('timeout') ||
+                                refreshResult.message.includes('429'))) {
+                            ToastAndroid.show('Scraping service timed out. Try again later.', ToastAndroid.LONG);
+                        } else {
+                            ToastAndroid.show(`Refresh failed: ${refreshResult.message}`, ToastAndroid.LONG);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error during server refresh:', error);
+                if (Platform.OS === 'android') {
+                    ToastAndroid.show('Server refresh failed.', ToastAndroid.LONG);
+                }
+            }
+
+            // Even if server refresh failed, try to fetch available data
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            try {
+                const result = await dispatch(fetchHackathons({
+                    location: 'India',
+                    forceRefresh: true
+                }) as unknown as AnyAction);
+
+                const receivedData = result.type.includes('/fulfilled') &&
+                    result.payload &&
+                    Array.isArray(result.payload.events) &&
+                    result.payload.events.length > 0;
+
+                if (receivedData) {
+                    console.log(`Loaded ${result.payload.events.length} events`);
+                } else {
+                    if (Platform.OS === 'android') {
+                        ToastAndroid.show('No events found. Try again later.', ToastAndroid.LONG);
+                    }
+                }
+            } catch (fetchError) {
+                console.error('Error fetching events after refresh:', fetchError);
+                if (Platform.OS === 'android') {
+                    ToastAndroid.show('Failed to load events. Check your network connection.', ToastAndroid.LONG);
+                }
+            }
+        } catch (error) {
+            console.error('Error refreshing events:', error);
+            if (Platform.OS === 'android') {
+                ToastAndroid.show('Failed to refresh events.', ToastAndroid.LONG);
+            }
+        } finally {
+            setRefreshing(false);
+        }
     };
 
     /**
      * Render event item
      */
     const renderItem = ({ item }: { item: HackathonSummary }) => {
-        // Ensure event always has a valid image URL
-        const imageUrl = item.imageUrl && item.imageUrl.startsWith('http')
-            ? item.imageUrl
-            : null;
-        // Get source as string for reliable comparison
+        // Determine source for display
         const sourceStr = typeof item.source === 'string'
-            ? item.source.toLowerCase()
-            : String(item.source).toLowerCase();
+            ? item.source
+            : item.source === EventSource.HACKEREARTH
+                ? 'hackerearth'
+                : 'devfolio';
 
-        console.log("Event source:", sourceStr, "imageUrl:", imageUrl);
+        // Get default background color based on source
+        const bgColor = sourceStr === 'hackerearth' ? '#3176B9' : '#6C4AA0';
+
+        // Get event status
+        const status = getEventStatus(item.startDate, item.endDate);
+
+        // Determine status color and styles
+        let statusColor = '#888';
+        let statusBgColor = '#f0f0f0';
+
+        if (status.type === 'live') {
+            statusColor = '#2e7d32';
+            statusBgColor = '#e8f5e9';
+        } else if (status.type === 'upcoming') {
+            statusColor = '#0288d1';
+            statusBgColor = '#e1f5fe';
+        } else if (status.type === 'ended') {
+            statusColor = '#757575';
+            statusBgColor = '#eeeeee';
+        }
 
         return (
             <TouchableOpacity
-                style={[styles.eventCard, isDark && styles.darkEventCard]}
+                style={[
+                    styles.eventCard,
+                    isDark && styles.darkEventCard,
+                    status.type === 'ended' && styles.endedEventCard
+                ]}
                 onPress={() => navigateToDetails(item)}
+                activeOpacity={0.7}
             >
+                {status.type === 'live' && (
+                    <View style={styles.liveIndicator}>
+                        <View style={styles.liveDot} />
+                        <Text style={styles.liveText}>LIVE NOW</Text>
+                    </View>
+                )}
+
                 <View style={styles.eventHeader}>
-                    {imageUrl ? (
+                    {item.imageUrl && item.imageUrl.startsWith('http') ? (
                         <Image
-                            source={{ uri: imageUrl }}
-                            style={styles.eventLogo}
-                            resizeMode="contain"
+                            source={{ uri: item.imageUrl }}
+                            style={[styles.eventLogo, {
+                                width: 56,
+                                height: 56,
+                                borderRadius: 12,
+                                marginRight: 12,
+                                opacity: status.type === 'ended' ? 0.7 : 1
+                            }]}
+                            resizeMode="cover"
                         />
                     ) : (
                         <View style={[styles.eventLogo, {
-                            backgroundColor: sourceStr === 'hackerearth' ? '#3176B9' : '#6C4AA0',
+                            width: 56,
+                            height: 56,
+                            backgroundColor: bgColor,
                             justifyContent: 'center',
                             alignItems: 'center',
-                            borderRadius: 8,
+                            borderRadius: 12,
                             borderWidth: 1,
                             borderColor: 'rgba(255,255,255,0.3)',
+                            opacity: status.type === 'ended' ? 0.7 : 1
                         }]}>
                             {sourceStr === 'hackerearth' ? (
-                                <FontAwesome name="code" size={22} color="#ffffff" />
-                            ) : (<MaterialCommunityIcons name="rocket-launch" size={22} color="#ffffff" />
+                                <MaterialCommunityIcons name="rocket-launch" size={24} color="#ffffff" />
+                            ) : (
+                                <MaterialCommunityIcons name="code-braces" size={24} color="#ffffff" />
                             )}
                         </View>
                     )}
                     <View style={styles.eventHeaderText}>
-                        <Text style={[styles.eventTitle, isDark && styles.darkText]}>
+                        <Text
+                            style={[
+                                styles.eventTitle,
+                                isDark && styles.darkText,
+                                status.type === 'ended' && styles.endedEventTitle
+                            ]}
+                            numberOfLines={2}
+                        >
                             {item.title}
                         </Text>
-                        <Text style={[styles.eventDate, isDark && styles.darkSubText]}>
-                            {formatDate(new Date(item.startDate))} - {formatDate(new Date(item.endDate))}
-                        </Text>
+
+                        <View style={styles.eventMetaContainer}>
+                            <Text
+                                style={[
+                                    styles.organizerText,
+                                    isDark && styles.darkSubText,
+                                    status.type === 'ended' && styles.endedEventSubText
+                                ]}
+                            >
+                                by {sourceStr.charAt(0).toUpperCase() + sourceStr.slice(1)}
+                            </Text>
+                        </View>
                     </View>
                 </View>
+
                 <Text
-                    style={[styles.eventDescription, isDark && styles.darkSubText]}
-                    numberOfLines={3}
+                    style={[
+                        styles.eventDescription,
+                        isDark && styles.darkSubText,
+                        status.type === 'ended' && styles.endedEventSubText
+                    ]}
+                    numberOfLines={2}
                 >
                     {item.description}
                 </Text>
+
                 <View style={styles.eventFooter}>
+                    <View style={styles.eventTypeContainer}>
+                        <View
+                            style={[
+                                styles.eventTypeTag,
+                                item.mode === EventMode.ONLINE
+                                    ? styles.onlineTag
+                                    : item.mode === EventMode.IN_PERSON
+                                        ? styles.inPersonTag
+                                        : styles.hybridTag,
+                                status.type === 'ended' && { opacity: 0.7 }
+                            ]}
+                        >
+                            <Text style={[
+                                styles.eventTypeText,
+                                {
+                                    color: item.mode === EventMode.ONLINE
+                                        ? '#0288d1'
+                                        : item.mode === EventMode.IN_PERSON
+                                            ? '#2e7d32'
+                                            : '#e65100'
+                                },
+                                status.type === 'ended' && { opacity: 0.7 }
+                            ]}>
+                                {item.mode === EventMode.ONLINE
+                                    ? 'Online'
+                                    : item.mode === EventMode.IN_PERSON
+                                        ? 'In-Person'
+                                        : 'Hybrid'}
+                            </Text>
+                        </View>
+                    </View>
+
                     <View style={styles.locationContainer}>
                         <Ionicons
                             name="location-outline"
-                            size={16}
-                            color={isDark ? '#ddd' : '#555'}
+                            size={14}
+                            color={isDark ? '#aaa' : '#666'}
+                            style={{ opacity: status.type === 'ended' ? 0.7 : 1 }}
                         />
-                        <Text style={[styles.eventLocation, isDark && styles.darkSubText]}>
-                            {item.location}
-                        </Text>
-                    </View>
-                    <View style={styles.eventType}>
                         <Text
                             style={[
-                                styles.eventTypeText,
-                                {
-                                    color:
-                                        item.mode === EventMode.ONLINE
-                                            ? '#007aff'
-                                            : item.mode === EventMode.IN_PERSON
-                                                ? '#ff9500'
-                                                : '#5856d6',
-                                },
+                                styles.locationText,
+                                isDark && styles.darkSubText,
+                                status.type === 'ended' && styles.endedEventSubText
                             ]}
                         >
-                            {item.mode}
+                            {item.location || 'Location TBA'}
                         </Text>
                     </View>
                 </View>
             </TouchableOpacity>
         );
     };
-
-    /**
-     * Render location selection item
-     */
-    const renderLocationItem = ({ item }: { item: string }) => {
-        return (
-            <TouchableOpacity
-                style={styles.locationItem}
-                onPress={() => handleLocationSelect(item)}
-            >
-                <Text style={styles.locationText}>{item}</Text>
-            </TouchableOpacity>
-        );
-    };
-
-    const renderErrorContent = () => (
-        <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity style={styles.retryButton} onPress={() => fetchEvents()}>
-                <Text style={styles.retryButtonText}>Retry</Text>
-            </TouchableOpacity>
-            <Text style={[styles.errorText, { marginTop: 20, fontSize: 14 }]}>
-                Note: This feature requires the backend server to be running.
-                Please make sure the backend server is started with 'npm run dev' in the backend folder.
-            </Text>
-        </View>
-    );
 
     /**
      * Render main content based on loading/error state
@@ -274,21 +531,26 @@ const EventsAndHackathons: React.FC = () => {
                         Loading events...
                     </Text>
                 </View>
-
             );
-        };
-        if (error && !refreshing) {
-
-            return renderErrorContent();
         }
+
+        if (error && !refreshing) {
+            return renderErrorContent(error, isDark, () => fetchEvents(), styles);
+        }
+
         if (filteredEvents.length === 0 && !refreshing) {
             return (
                 <View style={styles.noEventsContainer}>
+                    <MaterialCommunityIcons
+                        name="calendar-remove"
+                        size={60}
+                        color={isDark ? '#555' : '#ddd'}
+                    />
                     <Text style={styles.noEventsText}>
                         No events found for the selected criteria.
                     </Text>
                     <TouchableOpacity style={styles.retryButton} onPress={() => {
-                        setFilterType('all');
+                        handleFilterChange('all');
                         fetchEvents();
                     }}>
                         <Text style={styles.retryButtonText}>Reset Filters</Text>
@@ -314,9 +576,7 @@ const EventsAndHackathons: React.FC = () => {
                         refreshing={refreshing}
                         onRefresh={onRefresh}
                         colors={['#2379C2']}
-                        tintColor={isDark ? '#fff' : '#2379C2'}
-                        title="Refreshing events..."
-                        titleColor={isDark ? '#ddd' : '#555'}
+                        tintColor={isDark ? '#ffffff' : '#2379C2'}
                     />
                 }
             />
@@ -325,8 +585,11 @@ const EventsAndHackathons: React.FC = () => {
 
     return (
         <SafeAreaView style={[styles.container]}>
-            {/* Header */}
-            <View style={styles.headerContainer}>
+            {/* Header with title */}
+            <LinearGradient
+                colors={isDark ? ['#1a1a1a', '#121212'] : ['#ffffff', '#f8f8f8']}
+                style={styles.headerContainer}
+            >
                 <TouchableOpacity
                     style={styles.backButton}
                     onPress={() => navigation.goBack()}
@@ -336,33 +599,24 @@ const EventsAndHackathons: React.FC = () => {
 
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <FontAwesome5Icon name='calendar-alt' size={24} color={isDark ? 'white' : 'black'} />
-                    <Text style={[styles.headerTitle, { marginLeft: 10 }]}>Events & Hackathons</Text>
+                    <Text style={[styles.headerTitle, { marginLeft: 10 }]}>Open Hackathons</Text>
                 </View>
 
-                {/* Add refresh button */}
                 <TouchableOpacity
                     style={styles.refreshButton}
-                    onPress={onRefresh}
-                    disabled={refreshing || loading}
+                    onPress={handleManualRefresh}
+                    disabled={loading}
                 >
-                    {refreshing ? (
-                        <ActivityIndicator size="small" color={isDark ? 'white' : 'black'} />
-                    ) : (
-                        <Ionicons name="refresh" size={24} color={isDark ? 'white' : 'black'} />
-                    )}
+                    <Ionicons
+                        name="refresh"
+                        size={24}
+                        color={isDark ? 'white' : 'black'}
+                        style={{ opacity: loading ? 0.5 : 1 }}
+                    />
                 </TouchableOpacity>
-            </View>
+            </LinearGradient>
 
-            {/* Location selector */}
-            <TouchableOpacity
-                style={styles.locationButton}
-                onPress={() => setLocationModalVisible(true)}
-            >
-                <Text style={styles.locationButtonText}>Location: {location}</Text>
-                <Ionicons name="chevron-down" size={20} color={isDark ? 'white' : 'black'} />
-            </TouchableOpacity>
-
-            {/* Filters */}
+            {/* Mode Filters */}
             <View style={styles.filterContainer}>
                 <TouchableOpacity
                     style={[
@@ -377,21 +631,21 @@ const EventsAndHackathons: React.FC = () => {
                             filterType === 'all' && styles.filterTextActive,
                         ]}
                     >
-                        All
+                        All Types
                     </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                     style={[
                         styles.filterButton,
-                        filterType === 'online' && styles.filterButtonActive,
+                        filterType === 'online' && styles.onlineFilterButtonActive,
                     ]}
                     onPress={() => handleFilterChange('online')}
                 >
                     <Text
                         style={[
                             styles.filterText,
-                            filterType === 'online' && styles.filterTextActive,
+                            filterType === 'online' && styles.onlineFilterTextActive,
                         ]}
                     >
                         Online
@@ -401,71 +655,23 @@ const EventsAndHackathons: React.FC = () => {
                 <TouchableOpacity
                     style={[
                         styles.filterButton,
-                        filterType === 'in-person' && styles.filterButtonActive,
+                        filterType === 'in-person' && styles.inPersonFilterButtonActive,
                     ]}
                     onPress={() => handleFilterChange('in-person')}
                 >
                     <Text
                         style={[
                             styles.filterText,
-                            filterType === 'in-person' && styles.filterTextActive,
+                            filterType === 'in-person' && styles.inPersonFilterTextActive,
                         ]}
                     >
                         In-Person
                     </Text>
                 </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={[
-                        styles.filterButton,
-                        filterType === 'hybrid' && styles.filterButtonActive,
-                    ]}
-                    onPress={() => handleFilterChange('hybrid')}
-                >
-                    <Text
-                        style={[
-                            styles.filterText,
-                            filterType === 'hybrid' && styles.filterTextActive,
-                        ]}
-                    >
-                        Hybrid
-                    </Text>
-                </TouchableOpacity>
             </View>
 
             {/* Main content */}
-            <View style={styles.content}>
-                {renderContent()}
-            </View>
-
-            {/* Location selection modal */}
-            <Modal
-                animationType="fade"
-                transparent={true}
-                visible={locationModalVisible}
-                onRequestClose={() => setLocationModalVisible(false)}
-            >
-                <TouchableWithoutFeedback onPress={() => setLocationModalVisible(false)}>
-                    <View style={styles.modalContainer}>
-                        <TouchableWithoutFeedback>
-                            <View style={styles.modalContent}>
-                                <Text style={styles.modalTitle}>Select Location</Text>
-                                <FlatList
-                                    data={LOCATIONS}
-                                    renderItem={renderLocationItem}
-                                    keyExtractor={(item) => item}
-                                />
-                                <TouchableOpacity
-                                    style={styles.closeButton}
-                                    onPress={() => setLocationModalVisible(false)}
-                                >
-                                    <Text style={styles.closeButtonText}>Close</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </TouchableWithoutFeedback>
-                    </View>
-                </TouchableWithoutFeedback>
-            </Modal>
+            {renderContent()}
         </SafeAreaView>
     );
 };

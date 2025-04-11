@@ -21,14 +21,24 @@ export interface HackathonSummary {
   endDate: string;
   location: string;
   mode: EventMode;
-  registrationDeadline: string;
-  imageUrl?: string;
+  imageUrl: string | null;
   url: string;
 }
 
 // Extended interface for detailed event information
-export interface HackathonDetails extends HackathonSummary {
-  // Additional details that might be available
+export interface HackathonDetails {
+  id: string;
+  source: EventSource;
+  title: string;
+  description: string;
+  url: string;
+  prize?: string;
+  timeline?: Array<{date: string; event: string}>;
+  rules?: string;
+  eligibility?: string;
+  imageUrl: string;
+  additionalInfo?: string;
+  // Include legacy fields for backward compatibility
   prizes?: {
     first?: string;
     second?: string;
@@ -36,13 +46,17 @@ export interface HackathonDetails extends HackathonSummary {
     other?: string[];
   };
   sponsors?: string[];
-  eligibility?: string;
   rulesUrl?: string;
   tags?: string[];
   teamSize?: {
     min: number;
     max: number;
   };
+  // Include fields from HackathonSummary for backwards compatibility
+  startDate?: string;
+  endDate?: string;
+  location?: string;
+  mode?: EventMode;
 }
 
 // API response for hackathon listings

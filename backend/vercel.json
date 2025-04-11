@@ -2,31 +2,14 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/index.ts",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": ["dist/**"],
-        "excludeFiles": ["**/*.test.ts", "**/*.spec.ts"]
-      }
+      "src": "api/index.py",
+      "use": "@vercel/python"
     }
   ],
   "routes": [
     {
-      "src": "/api/(.*)",
-      "dest": "api/index.ts",
-      "headers": {
-        "cache-control": "s-maxage=60, stale-while-revalidate=86400"
-      }
-    },
-    {
       "src": "/(.*)",
-      "dest": "api/index.ts"
+      "dest": "api/index.py"
     }
-  ],
-  "env": {
-    "NODE_ENV": "production"
-  },
-  "github": {
-    "silent": true
-  }
+  ]
 }

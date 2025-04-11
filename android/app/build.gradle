@@ -34,6 +34,7 @@ android {
         versionCode 1
         versionName "1.0"
         manifestPlaceholders = [appAuthRedirectScheme: "myapp"]
+        multiDexEnabled true
     }
     packagingOptions {
         jniLibs {
@@ -73,6 +74,12 @@ dependencies {
     implementation 'com.google.firebase:firebase-analytics'
     implementation project(':react-native-splash-screen')
     implementation project(':react-native-inappbrowser-reborn')
+    
+    // Add explicit AndroidX dependencies
+    implementation 'androidx.core:core:1.12.0'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.multidex:multidex:2.0.1'
+    
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
     } else {

@@ -54,14 +54,13 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="learnex" />
             </intent-filter>
-            <!-- Add support for Firebase dynamic links and web URLs -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" />
-                <data android:host="learnex-241f1.web.app" />
-                <data android:pathPattern="/join.*" />
+                <data android:host="learnex-web.vercel.app" />
+                <data android:pathPattern="/join/.*" />
             </intent-filter>
         </activity>
     </application>

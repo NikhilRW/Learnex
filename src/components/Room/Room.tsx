@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
-import { createAndSendNotification, stopNotification } from "../../service/NotificationService";
 import {
     View,
     StyleSheet,
@@ -20,7 +19,7 @@ import {
     ScrollView,
     ActivityIndicator,
 } from 'react-native';
-import { mediaDevices, MediaStream, RTCView, MediaStreamTrack } from 'react-native-webrtc';
+import { MediaStream, RTCView, MediaStreamTrack } from 'react-native-webrtc';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Meeting } from '../../service/firebase/MeetingService';
@@ -42,11 +41,6 @@ interface Message {
 }
 interface ExtendedMediaStream extends MediaStream {
     participantId?: string; // Add any additional properties you need
-}
-
-// Add custom type declaration for MediaStreamTrack with onended
-interface EnhancedMediaStreamTrack extends MediaStreamTrack {
-    onended?: () => void;
 }
 
 interface RoomProps {
@@ -71,7 +65,6 @@ interface RoomProps {
     isConnecting: boolean;
     onFlipCamera?: () => void;
     isFrontCamera?: boolean;
-    onScreenShare?: (isSharing: boolean) => void;
 }
 
 const Room: React.FC<RoomProps> = ({
@@ -96,7 +89,6 @@ const Room: React.FC<RoomProps> = ({
     isConnecting,
     onFlipCamera,
     isFrontCamera: propIsFrontCamera,
-    onScreenShare
 }) => {
     const [isControlsVisible, setIsControlsVisible] = useState(true);
     const [isHandRaised, setIsHandRaised] = useState(false);
@@ -104,7 +96,6 @@ const Room: React.FC<RoomProps> = ({
     const [showReactions, setShowReactions] = useState(false);
     const [showQuickMessages, setShowQuickMessages] = useState(false);
     const [showParticipants, setShowParticipants] = useState(false);
-    const [isScreenSharing, setIsScreenSharing] = useState(false);
     const [messageText, setMessageText] = useState('');
     const [keyboardVisible, setKeyboardVisible] = useState(false);
     const chatPanelOpacity = useRef(new Animated.Value(0)).current;
@@ -121,9 +112,9 @@ const Room: React.FC<RoomProps> = ({
     const [userInfoCache, setUserInfoCache] = useState<Map<string, { email: string | null, fullName: string | null, username: string | null }>>(new Map());
     const userService = useMemo(() => new UserService(), []);
     const [localIsFrontCamera, setLocalIsFrontCamera] = useState(true); // Local state as fallback
-    const [showMoreControls, setShowMoreControls] = useState(false); // State to manage controls view
+    const [showMoreControls, setShowMoreControls] = useState(false);
 
-    // Use provided prop value if available, otherwise use local state
+    // Restore this line if it was removed:
     const currentIsFrontCamera = propIsFrontCamera !== undefined ? propIsFrontCamera : localIsFrontCamera;
 
     // Quick message templates
@@ -258,12 +249,13 @@ const Room: React.FC<RoomProps> = ({
             const deepLink = `learnex://meeting?roomCode=${meeting.roomCode}`;
 
             // Create a fallback web URL (for users who don't have the app)
-            const webFallbackUrl = `https://learnex-241f1.web.app/join?code=${meeting.roomCode}`;
+            // Use path-based format instead of query parameter
+            const webFallbackUrl = `https://learnex-web.vercel.app/join/${meeting.roomCode}`;
 
             const shareMessage = Platform.select({
-                ios: `Join my Learnex meeting: ${deepLink}\n\nOr use meeting code: ${meeting.roomCode}`,
-                android: `Join my Learnex meeting.\n\nMeeting code: ${meeting.roomCode}\n\nTap link to join: ${deepLink}\n\nDon't have the app? ${webFallbackUrl}`,
-                default: `Join my Learnex meeting with code: ${meeting.roomCode}\n\n${deepLink}`
+                ios: `Join my Learnex meeting.\n\nMeeting code: ${meeting.roomCode}\n\nTap link to join: ${deepLink}\n\nDon't have the app? ${webFallbackUrl}`,
+                android: `Join my Learnex meeting.\n\nMeeting code: ${meeting.roomCode}\n\nTap link to join: ${deepLink}\n\nDon't have the app? Visit: ${webFallbackUrl}`,
+                default: `Join my Learnex meeting with code: ${meeting.roomCode}\n\nOpen in app: ${deepLink}\n\nOr visit: ${webFallbackUrl}`
             });
 
             await Share.share({
@@ -353,21 +345,51 @@ const Room: React.FC<RoomProps> = ({
     };
 
     const getAllParticipants = () => {
-        const participants = [
-            { id: currentUserId, name: currentUserName, isLocal: true }
-        ];
+        const participantsMap = new Map();
 
-        // Add remote participants from the participant states
-        participantStates.forEach((state, id) => {
-            if (id !== currentUserId) {
-                // Find the name from remoteStreams if available
-                const stream = remoteStreams.find(s => s.participantId === id || s.id === id);
-                const name = stream?.participantName || `User ${id.substring(0, 5)}`;
-                participants.push({ id, name, isLocal: false });
+        // Add current user with localStream
+        participantsMap.set(currentUserId, {
+            id: currentUserId,
+            name: currentUserName,
+            isLocal: true,
+            stream: localStream
+        });
+
+        // Add all remote participants with their streams
+        remoteStreams.forEach(stream => {
+            const participantId = stream.participantId || stream.id;
+            if (participantId) {
+                const userInfo = userInfoCache.get(participantId);
+                participantsMap.set(participantId, {
+                    id: participantId,
+                    name: userInfo?.fullName || userInfo?.username || `User ${participantId.substring(0, 5)}`,
+                    isLocal: false,
+                    stream: stream
+                });
             }
         });
 
-        return participants;
+        // Add any participants from participantStates that don't have streams
+        participantStates.forEach((state, id) => {
+            if (id !== currentUserId && !participantsMap.has(id)) {
+                const userInfo = userInfoCache.get(id);
+                participantsMap.set(id, {
+                    id: id,
+                    name: userInfo?.fullName || userInfo?.username || `User ${id.substring(0, 5)}`,
+                    isLocal: false,
+                    state: state
+                });
+            } else if (participantsMap.has(id)) {
+                // Add state to existing participants that have streams
+                const participant = participantsMap.get(id);
+                participantsMap.set(id, {
+                    ...participant,
+                    state: state
+                });
+            }
+        });
+
+        return Array.from(participantsMap.values());
     };
 
     const handlePinParticipant = (participantId: string) => {
@@ -380,527 +402,96 @@ const Room: React.FC<RoomProps> = ({
         // Close participants panel
         setShowParticipants(false);
     };
-    const handleScreenShare = async () => {
-        try {
-            if (!isScreenSharing) {
-                // Request screen sharing permission
-                const screenStream = await mediaDevices.getDisplayMedia() as ExtendedMediaStream;
-
-                if (screenStream) {
-                    // Create a notification for Android
-                    const success = await createAndSendNotification();
-
-                    // Ensure the screen share stream has the participant ID
-                    screenStream.participantId = currentUserId;
-
-                    // Mark tracks as screen share
-                    const tracks = screenStream.getTracks();
-                    for (const track of tracks) {
-                        // Cast to our enhanced type
-                        const enhancedTrack = track as EnhancedMediaStreamTrack;
-                        // Set the onended callback
-                        enhancedTrack.onended = () => {
-                            console.log('Screen sharing ended by system');
-                            setIsScreenSharing(false);
-                            stopNotification().catch(console.error);
-
-                            // Get back to camera stream (restore camera)
-                            mediaDevices.getUserMedia({
-                                audio: true,
-                                video: true
-                            }).then((cameraStream) => {
-                                // Make sure the camera stream has the participant ID
-                                const extendedCameraStream = cameraStream as ExtendedMediaStream;
-                                extendedCameraStream.participantId = currentUserId;
-
-                                // Replace the stream in all peer connections
-                                const oldTracks = localStream?.getTracks() || [];
-                                // Stop all old tracks
-                                oldTracks.forEach((t: MediaStreamTrack) => t.stop());
-
-                                // Update local stream for UI rendering
-                                updateLocalStream(extendedCameraStream);
-
-                                // Update state for participants
-                                if (onScreenShare) {
-                                    onScreenShare(false);
-                                }
-                            }).catch(console.error);
-                        };
-                    }
-
-                    // Replace tracks in all existing peer connections
-                    if (localStream) {
-                        const oldTracks = localStream.getTracks();
-                        // Stop all old tracks from camera
-                        oldTracks.forEach((t: MediaStreamTrack) => t.stop());
-                    }
-
-                    // Send this stream to other participants
-                    updateLocalStream(screenStream);
-                    setIsScreenSharing(true);
-
-                    // Update state for participants
-                    if (onScreenShare) {
-                        onScreenShare(true);
-                    }
-                }
-            } else {
-                // Stop screen sharing
-                if (localStream) {
-                    // Stop all tracks in the screen sharing stream
-                    const tracks = localStream.getTracks();
-                    for (const track of tracks) {
-                        track.stop();
-                    }
-                }
-
-                // Stop notification
-                await stopNotification();
-
-                // Get back to camera stream
-                const cameraStream = await mediaDevices.getUserMedia({
-                    audio: true,
-                    video: true
-                }) as ExtendedMediaStream;
-
-                // Make sure the camera stream has the participant ID
-                cameraStream.participantId = currentUserId;
-
-                // Replace the stream in all peer connections
-                updateLocalStream(cameraStream);
-                setIsScreenSharing(false);
-
-                // Update state for participants
-                if (onScreenShare) {
-                    onScreenShare(false);
-                }
-            }
-        } catch (error) {
-            console.error('Error toggling screen share:', error);
-            // If the user cancels the screen sharing dialog, this catches that error
-            setIsScreenSharing(false);
-            if (onScreenShare) {
-                onScreenShare(false);
-            }
-        }
-    };
-    const renderParticipantListItem = ({ item }: { item: { id: string, name: string, isLocal: boolean } }) => {
-        const participantState = participantStates.get(item.id);
-        const isAudioOn = item.isLocal ? isAudioEnabled : (participantState?.isAudioEnabled ?? true);
-        const isVideoOn = item.isLocal ? isVideoEnabled : (participantState?.isVideoEnabled ?? true);
-        const isHandRaised = participantState?.isHandRaised ?? false;
-        const isSpeaking = participantState?.isSpeaking ?? false;
-        const isPinned = item.id === pinnedParticipantId;
-
-        return (
-            <TouchableOpacity
-                onPress={() => handlePinParticipant(item.id)}
-                style={[
-                    styles.participantListItem,
-                    isDark && styles.participantListItemDark,
-                    isPinned && styles.participantListItemPinned
-                ]}
-            >
-                <View style={styles.participantListItemLeft}>
-                    <View style={[
-                        styles.participantListAvatar,
-                        isSpeaking && styles.participantListAvatarSpeaking
-                    ]}>
-                        <Text style={styles.participantListAvatarText}>
-                            {item.name.charAt(0).toUpperCase()}
-                        </Text>
-                    </View>
-                    <View>
-                        <Text style={[
-                            styles.participantListName,
-                            isDark && styles.participantListNameDark
-                        ]}>
-                            {item.name}
-                        </Text>
-                        {isPinned && (
-                            <Text style={styles.participantListPinnedText}>
-                                Pinned
-                            </Text>
-                        )}
-                    </View>
-                </View>
-                <View style={styles.participantListItemRight}>
-                    {isPinned && (
-                        <Icon name="push-pin" size={20} color="#4285f4" style={styles.participantListIcon} />
-                    )}
-                    {!isAudioOn && (
-                        <Icon name="mic-off" size={20} color="#ea4335" style={styles.participantListIcon} />
-                    )}
-                    {!isVideoOn && (
-                        <Icon name="videocam-off" size={20} color="#ea4335" style={styles.participantListIcon} />
-                    )}
-                    {isHandRaised && (
-                        <MaterialCommunityIcons name="hand-wave" size={20} color="#fbbc05" style={styles.participantListIcon} />
-                    )}
-                    {isSpeaking && isAudioOn && (
-                        <Icon name="volume-up" size={20} color="#4285f4" style={styles.participantListIcon} />
-                    )}
-                </View>
-            </TouchableOpacity>
-        );
-    };
-
-    const renderParticipantGrid = () => {
-        // Create a map to ensure we only have one stream per participant
-        const streamMap = new Map();
-
-        // Add local stream with proper identification
-        if (localStream) {
-            streamMap.set(currentUserId, {
-                stream: localStream,
-                isLocal: true,
-                name: currentUserName,
-                id: currentUserId,
-                participantId: currentUserId // Ensure participantId is set
-            });
-        }
-
-        // Add remote streams, ensuring no duplicates and proper identification
-        remoteStreams.forEach((stream, idx) => {
-            // Get participant ID, preferring the explicitly set participantId
-            const participantId = stream.participantId || stream.id || `remote-${idx}`;
-
-            // Only add if we don't already have this participant's stream
-            if (!streamMap.has(participantId)) {
-                // Get user info from cache
-                const userInfo = userInfoCache.get(participantId);
-
-                streamMap.set(participantId, {
-                    stream,
-                    isLocal: false,
-                    name: stream.participantName || userInfo?.fullName || userInfo?.username || `User ${participantId.substring(0, 5)}`,
-                    email: stream.participantEmail || userInfo?.email || null,
-                    id: participantId,
-                    participantId // Ensure participantId is set
-                });
-            }
-        });
-
-        // Log participant info for debugging purposes
-        console.log(`renderParticipantGrid: Local user ID: ${currentUserId}`);
-        console.log(`renderParticipantGrid: Remote streams count: ${remoteStreams.length}`);
-        console.log(`renderParticipantGrid: Participant states count: ${participantStates.size}`);
-        console.log('renderParticipantGrid: Participant states:', [...participantStates.keys()]);
-        console.log(`renderParticipantGrid: streamMap size: ${streamMap.size}`);
-
-        // Add participants from participantStates who might not have streams yet
-        participantStates.forEach((state, participantId) => {
-            // Skip current user as they're already added
-            if (participantId === currentUserId) return;
-
-            // Skip if already added through streams
-            if (streamMap.has(participantId)) return;
-
-            // Get user info from cache
-            const userInfo = userInfoCache.get(participantId);
-
-            // Add the participant even without a stream
-            streamMap.set(participantId, {
-                stream: null, // No stream yet
-                isLocal: false,
-                name: userInfo?.fullName || userInfo?.username || `User ${participantId.substring(0, 5)}`,
-                email: userInfo?.email || null,
-                id: participantId,
-                participantId
-            });
-        });
-
-        // Convert map to array
-        let streams = Array.from(streamMap.values());
-
-        // Extra logging to debug participation issues
-        console.log(`renderParticipantGrid: Final participants count: ${streams.length}`);
-        streams.forEach(p => console.log(`renderParticipantGrid: Participant: ${p.id}, isLocal: ${p.isLocal}, name: ${p.name}`));
-
-        // If a participant is pinned, move them to the front
-        if (pinnedParticipantId && streamMap.has(pinnedParticipantId)) {
-            const pinnedStream = streamMap.get(pinnedParticipantId);
-            streams = [
-                pinnedStream,
-                ...streams.filter(s => s.id !== pinnedParticipantId)
-            ];
-        }
-
-        // Determine grid layout based on number of participants
-        const totalParticipants = streams.length;
-        let numColumns = 1;
-
-        // If a participant is pinned, use a different layout
-        if (pinnedParticipantId && totalParticipants > 1) {
-            numColumns = 1; // Stack the pinned participant on top
-        } else {
-            if (totalParticipants === 2) {
-                numColumns = 2; // 2x1 grid for 2 people
-            } else if (totalParticipants === 3) {
-                numColumns = 3; // 3x1 grid for 3 people
-            } else if (totalParticipants === 4) {
-                numColumns = 2; // 2x2 grid for 4 people
-            } else if (totalParticipants >= 5) {
-                numColumns = 3; // 3x2 grid for 5+ people
-            }
-        }
-
-        // Calculate item height based on number of participants and pinned state
-        let itemHeight = height * 0.8; // Default for 1 participant
-        let itemWidth = width / numColumns;
-
-        if (pinnedParticipantId && totalParticipants > 1) {
-            // Pinned layout: large on top, small at bottom
-            if (streams[0].id === pinnedParticipantId) {
-                itemHeight = height * 0.7; // Pinned participant gets 70% of height
-            } else {
-                itemHeight = height * 0.2; // Other participants share 30% of height
-            }
-        } else {
-            // Regular grid layout
-            if (totalParticipants === 2) {
-                itemHeight = height * 0.5; // 2x1 grid
-            } else if (totalParticipants === 3) {
-                itemHeight = height * 0.33; // 3x1 grid
-            } else if (totalParticipants === 4) {
-                itemHeight = height * 0.45; // 2x2 grid
-            } else if (totalParticipants >= 5 && totalParticipants <= 6) {
-                itemHeight = height * 0.33; // 3x2 grid
-            } else if (totalParticipants > 6) {
-                itemHeight = height * 0.25; // 3x3 grid with scrolling
-            }
-        }
-
-        return (
-            <FlatList
-                ref={participantsListRef}
-                data={streams}
-                renderItem={({ item, index }) => renderParticipantItem({
-                    item,
-                    index,
-                    height: itemHeight,
-                    isPinned: item.id === pinnedParticipantId
-                })}
-                keyExtractor={(item) => item.id}
-                style={styles.participantsList}
-                contentContainerStyle={[
-                    styles.participantsListContent,
-                    { flexDirection: 'row', flexWrap: 'wrap' }
-                ]}
-                showsVerticalScrollIndicator={true}
-                numColumns={numColumns}
-                key={numColumns} // Force re-render when columns change
-                initialNumToRender={6}
-                maxToRenderPerBatch={6}
-                columnWrapperStyle={numColumns > 1 ? { justifyContent: 'flex-start' } : undefined}
-            />
-        );
-    };
 
     const renderParticipantItem = ({
         item,
         index,
-        height,
         isPinned = false
     }: {
-        item: any,
-        index: number,
-        height: number,
-        isPinned?: boolean
+        item: any;
+        index: number;
+        isPinned?: boolean;
     }) => {
-        // Get participant state from the map
-        const participantState = participantStates.get(item.participantId || item.id);
+        // Access numColumns and itemHeight from the outer scope (renderParticipantGrid)
+        // Note: This relies on renderParticipantItem being called ONLY from within renderParticipantGrid
+        // where numColumns and itemHeight are defined.
+        const outerScopeNumColumns = (renderParticipantGrid as any).numColumns; // Need a way to access these... this is tricky
+        const outerScopeItemHeight = (renderParticipantGrid as any).itemHeight;
 
-        // Log individual participant render for debugging
-        console.log(`Rendering participant: ${item.id}, hasStream: ${!!item.stream}, participantState: ${!!participantState}`);
+        // Corrected renderParticipantItem (doesn't need height/numColumns passed in)
+        const participantState = item.state || {};
+        const isCurrentUser = item.id === currentUserId;
+        const isVideoOn = isCurrentUser ? isVideoEnabled : (participantState.isVideoEnabled ?? true);
+        const isAudioOn = isCurrentUser ? isAudioEnabled : (participantState.isAudioEnabled ?? true);
+        const isParticipantHandRaised = participantState.isHandRaised ?? false;
+        const isParticipantSpeaking = participantState.isSpeaking ?? false;
+        const hasThumbsUp = participantState.isThumbsUp ?? false;
+        const hasThumbsDown = participantState.isThumbsDown ?? false;
+        const isClapping = participantState.isClapping ?? false;
+        const isWaving = participantState.isWaving ?? false;
 
-        // Determine if video is enabled based on participant state or fallback to default
-        const isVideoOn = item.isLocal
-            ? isVideoEnabled
-            : (participantState ? participantState.isVideoEnabled : true);
-
-        // Determine if audio is enabled based on participant state
-        const isAudioOn = item.isLocal
-            ? isAudioEnabled
-            : (participantState ? participantState.isAudioEnabled : true);
-
-        // Check if hand is raised
-        const isParticipantHandRaised = participantState ? participantState.isHandRaised : false;
-
-        // Check if participant is speaking
-        const isParticipantSpeaking = participantState ? participantState.isSpeaking : false;
-
-        // Check if participant is screen sharing
-        const isParticipantScreenSharing = participantState ? participantState.isScreenSharing : false;
-
-        // Check for reactions
-        const hasThumbsUp = participantState ? participantState.isThumbsUp : false;
-        const hasThumbsDown = participantState ? participantState.isThumbsDown : false;
-        const isClapping = participantState ? participantState.isClapping : false;
-        const isWaving = participantState ? participantState.isWaving : false;
-
-        // Get first and last initials for avatar
         const nameParts = item.name.split(' ');
         const firstInitial = nameParts[0] ? nameParts[0].charAt(0).toUpperCase() : '';
         const lastInitial = nameParts.length > 1 ? nameParts[nameParts.length - 1].charAt(0).toUpperCase() : '';
         const initials = lastInitial ? `${firstInitial}${lastInitial}` : firstInitial;
-
-        // Determine if this is the current user
-        const isCurrentUser = item.id === currentUserId;
-
-        // Get display name - prioritize name from the item, fall back to initials
         const displayName = item.name || initials;
-
-        // Determine avatar color based on participant ID for consistency
         const avatarColor = getAvatarColor(item.id);
-        // Determine text color - dark text on pale colors, light text on dark colors
         const avatarHue = Number(item.id.charCodeAt(0)) % 360;
         const avatarTextColor = avatarHue > 30 && avatarHue < 190 ? '#202124' : '#ffffff';
 
         return (
-            <TouchableOpacity
-                onLongPress={() => handlePinParticipant(item.participantId || item.id)}
-                activeOpacity={0.9}
-                style={{
-                    width: `${100 / numColumns}%`,
-                    paddingHorizontal: 2
-                }}
-            >
-                <View style={[
-                    styles.participantContainer,
-                    { height },
-                    isParticipantSpeaking && styles.participantSpeakingContainer,
-                    isPinned && styles.participantPinnedContainer,
-                    isCurrentUser && styles.currentUserContainer
-                ]}>
-                    {item.stream && isVideoOn ? (
-                        <RTCView
-                            streamURL={item.stream.toURL()}
-                            style={styles.participantVideo}
-                            objectFit="cover"
-                            mirror={item.isLocal}
-                        />
-                    ) : (
-                        <View style={[
-                            styles.videoPlaceholder,
-                            { backgroundColor: '#1f1f1f' } // Darker background for better contrast
-                        ]}>
-                            <View style={[
-                                styles.avatarCircle,
-                                { backgroundColor: avatarColor },
-                                isParticipantSpeaking && styles.avatarCircleSpeaking
-                            ]}>
-                                <Text style={[
-                                    styles.avatarText,
-                                    { color: avatarTextColor }
-                                ]}>{initials}</Text>
-                            </View>
-                        </View>
-                    )}
-
-                    {/* Audio indicator */}
-                    {!isAudioOn && (
-                        <View style={styles.audioOffIndicator}>
-                            <Icon name="mic-off" size={20} color="#fff" />
-                        </View>
-                    )}
-
-                    {/* Speaking indicator */}
-                    {isParticipantSpeaking && isAudioOn && (
-                        <View style={styles.speakingIndicator}>
-                            <Icon name="volume-up" size={20} color="#fff" />
-                        </View>
-                    )}
-
-                    {/* Screen sharing indicator */}
-                    {isParticipantScreenSharing && (
-                        <View style={styles.screenSharingIndicator}>
-                            <MaterialCommunityIcons name="projector-screen" size={20} color="#fff" />
-                        </View>
-                    )}
-
-                    {/* Hand raised indicator */}
-                    {isParticipantHandRaised && (
-                        <View style={styles.handRaisedIndicator}>
-                            <MaterialCommunityIcons name="hand-wave" size={20} color="#fff" />
-                        </View>
-                    )}
-
-                    {/* Reaction indicators */}
-                    {hasThumbsUp && (
-                        <View style={styles.reactionIndicator}>
-                            <MaterialCommunityIcons name="thumb-up" size={20} color="#fff" />
-                        </View>
-                    )}
-
-                    {hasThumbsDown && (
-                        <View style={[styles.reactionIndicator, styles.thumbsDownIndicator]}>
-                            <MaterialCommunityIcons name="thumb-down" size={20} color="#fff" />
-                        </View>
-                    )}
-
-                    {isClapping && (
-                        <View style={[styles.reactionIndicator, styles.clappingIndicator]}>
-                            <MaterialCommunityIcons name="hand-clap" size={20} color="#fff" />
-                        </View>
-                    )}
-
-                    {isWaving && (
-                        <View style={[styles.reactionIndicator, styles.wavingIndicator]}>
-                            <MaterialCommunityIcons name="hand-wave" size={20} color="#fff" />
-                        </View>
-                    )}
-
-                    <View style={[
-                        styles.nameTag,
-                        isCurrentUser && styles.currentUserNameTag,
-                        isParticipantSpeaking && styles.speakingNameTag
-                    ]}>
-                        <View style={styles.nameTagContent}>
-                            {isCurrentUser && (
-                                <View style={styles.youIndicator}>
-                                    <Text style={styles.youIndicatorText}>YOU</Text>
-                                </View>
-                            )}
-                            <Text style={[
-                                styles.nameText,
-                                isCurrentUser && styles.currentUserNameText
-                            ]}>
-                                {displayName}
-                            </Text>
-                            {item.email && (
-                                <Text style={styles.emailText} numberOfLines={1} ellipsizeMode="middle">
-                                    {item.email}
-                                </Text>
-                            )}
+            // Moved layout styles to renderGridItem's wrapper
+            <View style={[
+                styles.participantContainer,
+                isParticipantSpeaking && styles.participantSpeakingContainer,
+                isPinned && styles.participantPinnedContainer,
+                isCurrentUser && styles.currentUserContainer
+            ]}>
+                {/* RTCView or Placeholder */}
+                {item.stream && isVideoOn ? (
+                    <RTCView
+                        streamURL={item.stream.toURL()}
+                        style={styles.participantVideo}
+                        objectFit="cover"
+                        mirror={isCurrentUser}
+                    />
+                ) : (
+                    <View style={[styles.videoPlaceholder, { backgroundColor: '#1f1f1f' }]}>
+                        <View style={[styles.avatarCircle, { backgroundColor: avatarColor }, isParticipantSpeaking && styles.avatarCircleSpeaking]}>
+                            <Text style={[styles.avatarText, { color: avatarTextColor }]}>{initials}</Text>
                         </View>
                     </View>
-
-                    {/* Pin indicator */}
-                    {isPinned && (
-                        <View style={styles.pinnedIndicator}>
-                            <Icon name="push-pin" size={16} color="#fff" />
-                        </View>
-                    )}
+                )}
+                {/* Indicators */}
+                {!isAudioOn && (<View style={styles.audioOffIndicator}><Icon name="mic-off" size={20} color="#fff" /></View>)}
+                {isParticipantSpeaking && isAudioOn && (<View style={styles.speakingIndicator}><Icon name="volume-up" size={20} color="#fff" /></View>)}
+                {isParticipantHandRaised && (<View style={styles.handRaisedIndicator}><MaterialCommunityIcons name="hand-wave" size={20} color="#fff" /></View>)}
+                {hasThumbsUp && (<View style={styles.reactionIndicator}><MaterialCommunityIcons name="thumb-up" size={20} color="#fff" /></View>)}
+                {hasThumbsDown && (<View style={[styles.reactionIndicator, styles.thumbsDownIndicator]}><MaterialCommunityIcons name="thumb-down" size={20} color="#fff" /></View>)}
+                {isClapping && (<View style={[styles.reactionIndicator, styles.clappingIndicator]}><MaterialCommunityIcons name="hand-clap" size={20} color="#fff" /></View>)}
+                {isWaving && (<View style={[styles.reactionIndicator, styles.wavingIndicator]}><MaterialCommunityIcons name="hand-wave" size={20} color="#fff" /></View>)}
+                {/* Name Tag */}
+                <View style={[styles.nameTag, isCurrentUser && styles.currentUserNameTag, isParticipantSpeaking && styles.speakingNameTag]}>
+                    <View style={styles.nameTagContent}>
+                        {isCurrentUser && (<View style={styles.youIndicator}><Text style={styles.youIndicatorText}>YOU</Text></View>)}
+                        <Text style={[styles.nameText, isCurrentUser && styles.currentUserNameText]}>{displayName}</Text>
+                        {item.email && (<Text style={styles.emailText} numberOfLines={1} ellipsizeMode="middle">{item.email}</Text>)}
+                    </View>
                 </View>
-            </TouchableOpacity>
+                {/* Pin indicator */}
+                {isPinned && (<View style={styles.pinnedIndicator}><Icon name="push-pin" size={16} color="#fff" /></View>)}
+            </View>
         );
     };
 
     const renderMessageItem = ({ item }: { item: Message }) => {
-        // Count reactions by type
         const reactionCounts: { [type: string]: number } = {};
         if (item.reactions) {
             Object.values(item.reactions).forEach(type => {
                 reactionCounts[type] = (reactionCounts[type] || 0) + 1;
             });
         }
-
-        // Check if current user has reacted
         const myReaction = item.reactions?.[currentUserId];
-
-        // Determine if this is a message from the current user
         const isCurrentUserMessage = item.senderId === currentUserId;
 
         return (
@@ -928,8 +519,6 @@ const Room: React.FC<RoomProps> = ({
                             {item.text}
                         </Text>
                     </View>
-
-                    {/* Message reactions display */}
                     {Object.keys(reactionCounts).length > 0 && (
                         <View style={styles.messageReactionsContainer}>
                             {Object.entries(reactionCounts).map(([type, count]) => (
@@ -949,7 +538,6 @@ const Room: React.FC<RoomProps> = ({
                             ))}
                         </View>
                     )}
-
                     <Text style={[styles.messageTime, isDark && styles.messageTimeDark]}>
                         {isCurrentUserMessage ? 'You' : item.senderName} • {item.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </Text>
@@ -960,14 +548,12 @@ const Room: React.FC<RoomProps> = ({
 
     const handleFlipCamera = () => {
         if (localStream && onFlipCamera) {
-            // Add vibration feedback if available
             if (Platform.OS === 'android' || Platform.OS === 'ios') {
-                // @ts-ignore - react-native has Vibration
+                // @ts-ignore
                 const Vibration = require('react-native').Vibration;
-                Vibration.vibrate(50); // Short vibration for tactile feedback
+                Vibration.vibrate(50);
             }
 
-            // Create a small animation for button press
             const animateButtonPress = Animated.sequence([
                 Animated.timing(new Animated.Value(1), {
                     toValue: 0.8,
@@ -982,12 +568,9 @@ const Room: React.FC<RoomProps> = ({
             ]);
             animateButtonPress.start();
 
-            // Call the parent component's handler to flip camera
             onFlipCamera();
-            // Toggle the local state to update UI
             setLocalIsFrontCamera(!currentIsFrontCamera);
         } else if (localStream) {
-            // Direct implementation if onFlipCamera prop is not provided
             localStream.getVideoTracks().forEach((track: any) => {
                 if (typeof track._switchCamera === 'function') {
                     track._switchCamera();
@@ -1013,6 +596,107 @@ const Room: React.FC<RoomProps> = ({
         // Use the sum of character codes to determine color index
         const charSum = id.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
         return colors[charSum % colors.length];
+    };
+
+    const renderParticipantGrid = () => {
+        const participantsArray = getAllParticipants();
+        const totalParticipants = participantsArray.length;
+        let numColumns = 1;
+        let itemHeight = height * 0.8;
+
+        // Store these values for renderParticipantItem to access
+        (renderParticipantGrid as any).numColumns = numColumns;
+        (renderParticipantGrid as any).itemHeight = itemHeight;
+
+        // --- Calculate Layout Values ---
+        // Check if any participant is screen sharing
+        const screenSharingParticipant = participantsArray.find(p =>
+            participantStates.get(p.id)?.isScreenSharing
+        );
+
+        if (screenSharingParticipant) {
+            // When someone is screen sharing, pin them automatically
+            setPinnedParticipantId(screenSharingParticipant.id);
+            numColumns = 1;
+        } else if (pinnedParticipantId && totalParticipants > 1) {
+            numColumns = 1;
+        } else if (totalParticipants >= 4) {
+            numColumns = 2;
+        } else {
+            numColumns = 1;
+        }
+
+        if (screenSharingParticipant) {
+            // When someone is screen sharing, make their video larger
+            if (participantsArray[0].id === screenSharingParticipant.id)
+                itemHeight = height * 0.7;
+            else
+                itemHeight = height * 0.2;
+        } else if (pinnedParticipantId && totalParticipants > 1) {
+            if (participantsArray[0].id === pinnedParticipantId)
+                itemHeight = height * 0.7;
+            else
+                itemHeight = height * 0.2;
+        } else {
+            if (numColumns === 1) {
+                if (totalParticipants === 1) itemHeight = height * 0.8;
+                else if (totalParticipants === 2) itemHeight = height * 0.4;
+                else if (totalParticipants === 3) itemHeight = height * 0.3;
+            } else {
+                const numRows = Math.ceil(totalParticipants / 2);
+                itemHeight = height / numRows * 0.85;
+                itemHeight = Math.max(itemHeight, height * 0.25);
+            }
+        }
+        // --- End Calculation ---
+
+        // Update the stored values for renderParticipantItem to access
+        (renderParticipantGrid as any).numColumns = numColumns;
+        (renderParticipantGrid as any).itemHeight = itemHeight;
+
+        // Define renderItem directly for FlatList
+        const renderGridItem = ({ item, index }: { item: any, index: number }) => {
+            // Check if this participant is screen sharing
+            const isItemScreenSharing = participantStates.get(item.id)?.isScreenSharing;
+
+            const isPinned = item.id === pinnedParticipantId ||
+                (item.id === currentUserId && isItemScreenSharing);
+
+            // Apply layout styles here in the wrapper
+            return (
+                <TouchableOpacity
+                    onLongPress={() => handlePinParticipant(item.participantId || item.id)}
+                    activeOpacity={0.9}
+                    style={[
+                        styles.participantWrapper,
+                        {
+                            width: `${100 / numColumns}%`,
+                            height: itemHeight,
+                            zIndex: isPinned ? 10 : 1
+                        }
+                    ]}
+                >
+                    {/* Call the inner content renderer */}
+                    {renderParticipantItem({ item, index, isPinned })}
+                </TouchableOpacity>
+            );
+        };
+
+        return (
+            <FlatList
+                ref={participantsListRef}
+                data={participantsArray}
+                renderItem={renderGridItem} // Use the wrapper function
+                keyExtractor={(item) => item.id}
+                style={styles.participantsList}
+                contentContainerStyle={styles.participantsListContent}
+                showsVerticalScrollIndicator={true}
+                numColumns={numColumns}
+                key={numColumns}
+                initialNumToRender={6}
+                maxToRenderPerBatch={6}
+            />
+        );
     };
 
     return (
@@ -1206,34 +890,6 @@ const Room: React.FC<RoomProps> = ({
                                                 color="white"
                                             />
                                         </TouchableOpacity>
-                                        <TouchableOpacity
-                                            style={[
-                                                styles.controlButton,
-                                                isScreenSharing ? styles.controlButtonActive : null
-                                            ]}
-                                            onPress={handleScreenShare}
-                                        >
-                                            <MaterialCommunityIcons
-                                                name={isScreenSharing ? "projector-screen-outline" : "projector-screen-off-outline"}
-                                                size={24}
-                                                color="white"
-                                            />
-                                        </TouchableOpacity>
-                                        {/* Back Button */}
-                                        <TouchableOpacity
-                                            style={[
-                                                styles.controlButton,
-                                                styles.backControlsButton
-                                            ]}
-                                            onPress={() => setShowMoreControls(false)}
-                                        >
-                                            <Icon
-                                                name="arrow-back"
-                                                size={24}
-                                                color="white"
-                                            />
-                                        </TouchableOpacity>
-
                                         <TouchableOpacity
                                             style={[styles.controlButton, styles.endCallButton]}
                                             onPress={onEndCall}
@@ -1491,7 +1147,7 @@ const Room: React.FC<RoomProps> = ({
 
                             <FlatList
                                 data={getAllParticipants()}
-                                renderItem={renderParticipantListItem}
+                                renderItem={renderParticipantItem}
                                 keyExtractor={(item) => item.id}
                                 style={[
                                     styles.participantsList,
@@ -1499,20 +1155,6 @@ const Room: React.FC<RoomProps> = ({
                                 ]}
                             />
                         </Animated.View>
-                    )}
-
-                    {/* Screen Sharing Overlay Banner */}
-                    {isScreenSharing && (
-                        <View style={styles.screenSharingBanner}>
-                            <MaterialCommunityIcons name="projector-screen" size={20} color="#fff" />
-                            <Text style={styles.screenSharingText}>You are sharing your screen</Text>
-                            <TouchableOpacity
-                                style={styles.stopSharingButton}
-                                onPress={handleScreenShare}
-                            >
-                                <Text style={styles.stopSharingText}>Stop</Text>
-                            </TouchableOpacity>
-                        </View>
                     )}
                 </View>
             </KeyboardAvoidingView>
@@ -1559,7 +1201,7 @@ const styles = StyleSheet.create({
         position: 'relative',
     },
     participantVideo: {
-        flex: 1,
+        ...StyleSheet.absoluteFillObject,
     },
     nameTag: {
         position: 'absolute',
@@ -2229,49 +1871,6 @@ const styles = StyleSheet.create({
     backControlsButton: {
         backgroundColor: '#8ab4f8',
     },
-    screenSharingIndicator: {
-        position: 'absolute',
-        top: 60, // Position below hand raised indicator
-        right: 16,
-        backgroundColor: 'rgba(59, 130, 246, 0.8)', // Blue background
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        justifyContent: 'center',
-        alignItems: 'center',
-        zIndex: 3,
-    },
-    screenSharingBanner: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        backgroundColor: 'rgba(66, 133, 244, 0.9)',
-        paddingVertical: 8,
-        paddingHorizontal: 16,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        zIndex: 10,
-    },
-    screenSharingText: {
-        color: '#ffffff',
-        fontSize: 14,
-        fontWeight: '500',
-        marginLeft: 8,
-        flex: 1,
-    },
-    stopSharingButton: {
-        backgroundColor: 'rgba(234, 67, 53, 0.9)',
-        paddingVertical: 6,
-        paddingHorizontal: 12,
-        borderRadius: 4,
-    },
-    stopSharingText: {
-        color: '#ffffff',
-        fontSize: 12,
-        fontWeight: '500',
-    },
     participantInfoBar: {
         flex: 1,
         padding: 8,
@@ -2279,6 +1878,14 @@ const styles = StyleSheet.create({
     participantName: {
         fontSize: 16,
         color: '#202124',
+    },
+    participantWrapper: {
+        flex: 1,
+        margin: 4,
+        borderRadius: 12,
+        overflow: 'hidden',
+        backgroundColor: '#3c4043',
+        position: 'relative',
     },
 });
 

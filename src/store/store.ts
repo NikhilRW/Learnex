@@ -10,7 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const persistConfig = {
   key: 'root',
   storage: AsyncStorage,
-  whitelist: ['user'], // Only persist user reducer
+  whitelist: ['user', 'hackathon'], // Include hackathon reducer for persistence
   blacklist: ['firebase'], // Don't persist firebase state
 };
 

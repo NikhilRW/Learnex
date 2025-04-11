@@ -2,22 +2,26 @@ import React, { useEffect, useState } from 'react';
 import {
     View,
     Text,
-    FlatList,
     TouchableOpacity,
     StyleSheet,
     ActivityIndicator,
     SafeAreaView,
     StatusBar,
     Dimensions,
-    RefreshControl
+    RefreshControl,
+    Alert,
+    Platform
 } from 'react-native';
 import { Avatar, SearchBar } from 'react-native-elements';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, CommonActions } from '@react-navigation/native';
+import { NavigationProp } from '@react-navigation/native';
+import { UserStackParamList } from '../../routes/UserStack';
 import { MessageService } from '../../service/firebase/MessageService';
 import { Conversation } from '../../models/Message';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import { SwipeListView } from 'react-native-swipe-list-view';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { formatDistanceToNow } from 'date-fns';
 import { getUsernameForLogo } from '../../helpers/stringHelpers';
@@ -27,7 +31,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const ConversationsScreen: React.FC = () => {
     const insets = useSafeAreaInsets();
-    const navigation = useNavigation();
+    const navigation = useNavigation<NavigationProp<UserStackParamList>>();
     const isDark = useTypedSelector((state) => state.user.theme) === "dark";
     const firebase = useTypedSelector(state => state.firebase.firebase);
     const currentUser = firebase.currentUser();
@@ -88,8 +92,60 @@ const ConversationsScreen: React.FC = () => {
         navigation.navigate('Chat', {
             conversationId: conversation.id,
             recipientId: otherParticipantId,
-            recipientName: conversation.participantDetails[otherParticipantId].name
+            recipientName: conversation.participantDetails[otherParticipantId].name,
+            recipientPhoto: conversation.participantDetails[otherParticipantId].image
         });
+    };
+
+    // Handle conversation deletion
+    const handleDeleteConversation = async (conversationId: string) => {
+        try {
+            // Show confirmation dialog
+            if (Platform.OS === 'ios' || Platform.OS === 'android') {
+                Alert.alert(
+                    'Delete Conversation',
+                    'Are you sure you want to delete this conversation? This action cannot be undone.',
+                    [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                            text: 'Delete',
+                            style: 'destructive',
+                            onPress: async () => {
+                                try {
+                                    Snackbar.show({
+                                        text: 'Deleting conversation...',
+                                        duration: Snackbar.LENGTH_INDEFINITE,
+                                    });
+
+                                    await messageService.deleteConversation(conversationId);
+
+                                    Snackbar.dismiss();
+                                    Snackbar.show({
+                                        text: 'Conversation deleted successfully',
+                                        duration: Snackbar.LENGTH_SHORT,
+                                        backgroundColor: '#4CAF50',
+                                    });
+                                } catch (error) {
+                                    console.error('Error deleting conversation:', error);
+                                    Snackbar.show({
+                                        text: 'Failed to delete conversation',
+                                        duration: Snackbar.LENGTH_LONG,
+                                        backgroundColor: '#F44336',
+                                    });
+                                }
+                            }
+                        }
+                    ]
+                );
+            }
+        } catch (error) {
+            console.error('Error deleting conversation:', error);
+            Snackbar.show({
+                text: 'Failed to delete conversation',
+                duration: Snackbar.LENGTH_LONG,
+                backgroundColor: '#F44336',
+            });
+        }
     };
 
     const renderEmptyList = () => (
@@ -121,6 +177,7 @@ const ConversationsScreen: React.FC = () => {
         if (!otherParticipantId) return null;
 
         const otherParticipant = item.participantDetails[otherParticipantId];
+        console.log("otherParticipant", otherParticipant);
         const isUnread = item.unreadCount && item.unreadCount > 0;
         const lastMessageTime = item.lastMessage?.timestamp ?
             formatDistanceToNow(new Date(item.lastMessage.timestamp), { addSuffix: true }) : '';
@@ -133,10 +190,10 @@ const ConversationsScreen: React.FC = () => {
                 ]}
                 onPress={() => handleConversationPress(item)}
             >
-                {otherParticipant.photo ? (
+                {otherParticipant.image ? (
                     <Avatar
                         rounded
-                        source={{ uri: otherParticipant.photo }}
+                        source={{ uri: otherParticipant.image }}
                         size={Math.min(SCREEN_WIDTH * 0.12, 50)}
                         containerStyle={styles.avatar}
                     />
@@ -202,12 +259,28 @@ const ConversationsScreen: React.FC = () => {
         );
     };
 
+    // Render hidden item with delete action
+    const renderHiddenItem = ({ item }: { item: Conversation }) => (
+        <View style={[
+            styles.rowBack,
+            { backgroundColor: isDark ? '#331111' : '#ffebee' }
+        ]}>
+            <TouchableOpacity
+                style={[styles.deleteButton]}
+                onPress={() => handleDeleteConversation(item.id)}
+            >
+                <MaterialIcons name="delete" size={24} color="#ffffff" />
+                <Text style={styles.deleteButtonText}>Delete</Text>
+            </TouchableOpacity>
+        </View>
+    );
+
     return (
         <SafeAreaView style={[
             styles.container,
             {
                 backgroundColor: isDark ? '#1a1a1a' : 'white',
-                paddingTop: insets.top > 0 ? 0 : StatusBar.currentHeight ?? 0
+                paddingTop: 10
             }
         ]}>
             <View style={styles.header}>
@@ -215,16 +288,17 @@ const ConversationsScreen: React.FC = () => {
                     Messages
                 </Text>
                 <TouchableOpacity
-                    style={styles.newMessageButton}
+                    style={styles.newMessageButtonSmall}
                     onPress={handleNewMessage}
                 >
                     <Ionicons name="create-outline" size={Math.min(SCREEN_WIDTH * 0.06, 24)} color="white" />
                 </TouchableOpacity>
             </View>
 
+            {/* @ts-ignore */}
             <SearchBar
                 placeholder="Search conversations..."
-                onChangeText={(text) => setSearch(text)}
+                onChangeText={(text: string) => setSearch(text)}
                 value={search}
                 containerStyle={[
                     styles.searchContainer,
@@ -232,7 +306,7 @@ const ConversationsScreen: React.FC = () => {
                 ]}
                 inputContainerStyle={[
                     styles.searchInputContainer,
-                    { backgroundColor: isDark ? '#333' : '#f5f5f5',  }
+                    { backgroundColor: isDark ? '#333' : '#f5f5f5' }
                 ]}
                 inputStyle={{ color: isDark ? 'white' : 'black' }}
                 placeholderTextColor={isDark ? '#aaa' : '#999'}
@@ -240,24 +314,30 @@ const ConversationsScreen: React.FC = () => {
                 lightTheme={!isDark}
             />
 
-            <FlatList
-                data={filteredConversations}
-                renderItem={renderConversationItem}
-                keyExtractor={(item) => item.id}
-                ListEmptyComponent={renderEmptyList}
-                contentContainerStyle={[
-                    styles.listContent,
-                    filteredConversations.length === 0 && styles.emptyListContent
-                ]}
-                refreshControl={
-                    <RefreshControl
-                        refreshing={refreshing}
-                        onRefresh={onRefresh}
-                        colors={['#2379C2']}
-                        tintColor={isDark ? '#2379C2' : '#2379C2'}
-                    />
-                }
-            />
+            {filteredConversations.length === 0 ? (
+                renderEmptyList()
+            ) : (
+                <SwipeListView
+                    data={filteredConversations}
+                    renderItem={renderConversationItem}
+                    renderHiddenItem={renderHiddenItem}
+                    keyExtractor={(item) => item.id}
+                    rightOpenValue={-75}
+                    disableRightSwipe
+                    contentContainerStyle={[
+                        styles.listContent,
+                        filteredConversations.length === 0 && styles.emptyListContent
+                    ]}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={onRefresh}
+                            colors={['#2379C2']}
+                            tintColor={isDark ? '#2379C2' : '#2379C2'}
+                        />
+                    }
+                />
+            )}
         </SafeAreaView>
     );
 };
@@ -277,11 +357,20 @@ const styles = StyleSheet.create({
         fontSize: Math.min(SCREEN_WIDTH * 0.075, 28),
         fontWeight: '700',
     },
+    newMessageButtonSmall: {
+        backgroundColor: '#2379C2',
+        width: 40,
+        height: 40,
+        borderRadius: 100,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     newMessageButton: {
         backgroundColor: '#2379C2',
-        width: Math.min(SCREEN_WIDTH * 0.12, 48),
-        height: Math.min(SCREEN_WIDTH * 0.12, 48),
-        borderRadius: Math.min(SCREEN_WIDTH * 0.06, 24),
+        width: 200,
+        height: 40,
+        padding: 10,
+        borderRadius: 100,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -292,7 +381,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     searchContainer: {
-        paddingVertical: 0,
+        paddingTop: 5,
         marginHorizontal: 16,
         paddingHorizontal: 16,
         borderTopWidth: 0,
@@ -300,8 +389,8 @@ const styles = StyleSheet.create({
     },
     searchInputContainer: {
         borderRadius: 25,
-        paddingHorizontal:5,
-        paddingVertical:3,
+        paddingHorizontal: 5,
+        paddingVertical: 3,
     },
     listContent: {
         paddingHorizontal: 16,
@@ -381,6 +470,31 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: '600',
         paddingHorizontal: 6,
+    },
+    // Add new styles for swipe delete feature
+    rowBack: {
+        alignItems: 'center',
+        flex: 1,
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        paddingRight: 15,
+        borderRadius: 12,
+        marginTop: 8,
+        height: '100%',
+    },
+    deleteButton: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 75,
+        height: '85%',
+        backgroundColor: '#F44336',
+        borderRadius: 12,
+    },
+    deleteButtonText: {
+        color: 'white',
+        fontSize: 12,
+        fontWeight: '600',
+        marginTop: 3,
     },
 });
 

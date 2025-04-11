@@ -170,7 +170,6 @@ const RoomScreen: React.FC = () => {
                                 isAudioEnabled: true,
                                 isVideoEnabled: true,
                                 isHandRaised: false,
-                                isScreenSharing: false,
                                 isThumbsUp: false,
                                 isThumbsDown: false,
                                 isClapping: false,
@@ -216,8 +215,7 @@ const RoomScreen: React.FC = () => {
                 await webRTCService.updateLocalParticipantState(meeting.id, {
                     isAudioEnabled,
                     isVideoEnabled,
-                    isHandRaised: false,
-                    isScreenSharing: false
+                    isHandRaised: false
                 });
 
                 // Listen for participant state changes
@@ -564,14 +562,6 @@ const RoomScreen: React.FC = () => {
         }
     };
 
-    // Handle screen sharing state
-    const handleScreenShare = async (isSharing: boolean) => {
-        // Update participant state in Firestore
-        await webRTCService.updateLocalParticipantState(meeting.id, {
-            isScreenSharing: isSharing
-        });
-    };
-
     useEffect(() => {
         const fetchUserData = async () => {
             try {
@@ -761,7 +751,6 @@ const RoomScreen: React.FC = () => {
                     isConnecting={isConnecting}
                     onFlipCamera={handleFlipCamera}
                     isFrontCamera={isFrontCamera}
-                    onScreenShare={handleScreenShare}
                 />
             )}
         </View>

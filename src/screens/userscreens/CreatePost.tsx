@@ -428,7 +428,7 @@ const CreatePost = () => {
         user: {
           id: currentUser.uid,
           username: currentUser.displayName || fullName || 'Anonymous',
-          image: currentUser.photoURL || `https://avatar.iran.liara.run/username?username=${currentUser.displayName || fullName || 'Anonymous'}`,
+          image: currentUser.photoURL || `https://avatar.iran.liara.run/username?username=${encodeURIComponent(currentUser.displayName || fullName || 'Anonymous')}`,
         },
         description: formData.description,
         // Use the appropriate field based on media type
@@ -505,32 +505,6 @@ const CreatePost = () => {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={[styles.container, { backgroundColor: isDark ? '#121212' : '#fff' }]}
     >
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-        >
-          <Ionicons
-            name="arrow-back"
-            size={24}
-            color={isDark ? 'white' : 'black'}
-          />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: isDark ? 'white' : '#333' }]}>
-          Create Post
-        </Text>
-        <TouchableOpacity
-          onPress={handleSubmit}
-          style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-          disabled={loading || !formData.description}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : (
-            <Text style={styles.submitButtonText}>Post</Text>
-          )}
-        </TouchableOpacity>
-      </View>
 
       {/* Display storage permission status */}
       {Platform.OS === 'android' && (
