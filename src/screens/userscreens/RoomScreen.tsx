@@ -11,6 +11,7 @@ import { UserStackParamList } from '../../routes/UserStack';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { TaskService } from '../../service/firebase/TaskService';
 
 type RoomScreenRouteProp = RouteProp<UserStackParamList, 'RoomScreen'>;
 type RoomScreenNavigationProp = DrawerNavigationProp<UserStackParamList>;
@@ -33,6 +34,7 @@ interface ExtendedMediaStream extends MediaStream {
 
 const meetingService = new MeetingService();
 const webRTCService = new WebRTCService();
+const taskService = new TaskService();
 
 const RoomScreen: React.FC = () => {
     const navigation = useNavigation<RoomScreenNavigationProp>();
@@ -418,6 +420,14 @@ const RoomScreen: React.FC = () => {
     };
 
     const handleMeetingEnded = () => {
+        // If we're the host and there's an associated task, we've already handled task completion
+        // in the handleEndCall function, so we just navigate back
+        if (isHost) {
+            cleanup();
+            navigation.navigate('Home');
+            return;
+        }
+
         Alert.alert('Meeting Ended', 'The meeting has been ended by the host', [
             {
                 text: 'OK',
@@ -613,14 +623,54 @@ const RoomScreen: React.FC = () => {
     const handleEndCall = async () => {
         try {
             if (isHost) {
-                await meetingService.endMeeting(meeting.id);
+                // Check if meeting has an associated task
+                if (meeting.taskId) {
+                    // Prompt user about task completion
+                    Alert.alert(
+                        'Task Completion',
+                        `Did you complete the task associated with this meeting?`,
+                        [
+                            {
+                                text: 'No',
+                                style: 'cancel',
+                                onPress: async () => {
+                                    await meetingService.endMeeting(meeting.id);
+                                    cleanup();
+                                    navigation.navigate('Home');
+                                },
+                            },
+                            {
+                                text: 'Yes',
+                                onPress: async () => {
+                                    try {
+                                        // Mark task as completed
+                                        await taskService.updateTask(meeting.taskId!, { completed: true });
+                                        await meetingService.endMeeting(meeting.id);
+                                        cleanup();
+                                        navigation.navigate('Home');
+                                    } catch (error) {
+                                        console.error('Failed to update task:', error);
+                                        Alert.alert('Error', 'Failed to update task status');
+                                        await meetingService.endMeeting(meeting.id);
+                                        cleanup();
+                                        navigation.navigate('Home');
+                                    }
+                                },
+                            },
+                        ],
+                        { cancelable: false }
+                    );
+                } else {
+                    // No associated task, end meeting normally
+                    await meetingService.endMeeting(meeting.id);
+                    cleanup();
+                    navigation.navigate('Home');
+                }
             } else {
                 await meetingService.leaveMeeting(meeting.id);
+                cleanup();
+                navigation.navigate('Home');
             }
-
-            cleanup();
-            // Use the correct screen name 'Home'
-            navigation.navigate('Home');
         } catch (error) {
             console.error('Failed to end/leave meeting:', error);
             // Even if there's an error, try to navigate away

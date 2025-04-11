@@ -9,9 +9,6 @@ import { PostType } from '../../types/post';
 import { styles } from '../../styles/screens/userscreens/Home.styles';
 import { primaryColor } from '../../res/strings/eng';
 
-// Fallback trending tags to use when API returns empty results
-const FALLBACK_TRENDING_TAGS = ['travel', 'fitness', 'food', 'dance', 'movies', 'vacation', 'beach', 'workout', 'cooking', 'tutorial'];
-
 const Home = () => {
   const firebase = useTypedSelector(state => state.firebase.firebase);
   const theme = useTypedSelector(state => state.user.theme);
@@ -171,10 +168,9 @@ const Home = () => {
           .map(([tag]) => tag);
 
         // Use fallback tags if no trending tags are found
-        setTrendingTags(topTags.length > 0 ? topTags : FALLBACK_TRENDING_TAGS);
+        setTrendingTags(topTags);
       } else {
         // Use fallback tags if API call fails
-        setTrendingTags(FALLBACK_TRENDING_TAGS);
       }
 
       // Refresh user data
@@ -183,7 +179,6 @@ const Home = () => {
     } catch (error) {
       console.error('Error refreshing home feed:', error);
       // Use fallback tags if there's an error
-      setTrendingTags(FALLBACK_TRENDING_TAGS);
     } finally {
       setRefreshing(false);
     }
@@ -248,23 +243,70 @@ const Home = () => {
             .map(([tag]) => tag);
 
           console.log('Setting trending tags:', topTags);
-          setTrendingTags(topTags.length > 0 ? topTags : FALLBACK_TRENDING_TAGS);
+          setTrendingTags(topTags);
         } else {
-          console.log('No trending posts found or API call failed, using fallback tags');
-          setTrendingTags(FALLBACK_TRENDING_TAGS);
+          console.log('No trending posts found or API call failed, extracting tags from posts');
+          // Extract tags from available posts instead of using fallback tags
+          const extractTagsFromPosts = () => {
+            const allTags = new Set<string>();
+
+            posts.forEach(post => {
+              if (post.hashtags && Array.isArray(post.hashtags)) {
+                post.hashtags.forEach(tag => {
+                  if (tag && tag.trim() !== '') {
+                    allTags.add(tag);
+                  }
+                });
+              }
+            });
+
+            return Array.from(allTags).slice(0, 10);
+          };
+
+          const extractedTags = extractTagsFromPosts();
+          console.log('Extracted tags from posts:', extractedTags);
+
+          if (extractedTags.length > 0) {
+            setTrendingTags(extractedTags);
+          } else {
+            setTrendingTags([]);
+          }
         }
       } catch (error) {
         console.error('Error in fetchTrendingTags:', error);
-        // Use fallback tags if there's an error
+        // Extract tags from available posts instead of using empty array
         if (mounted) {
-          setTrendingTags(FALLBACK_TRENDING_TAGS);
+          const extractTagsFromPosts = () => {
+            const allTags = new Set<string>();
+
+            posts.forEach(post => {
+              if (post.hashtags && Array.isArray(post.hashtags)) {
+                post.hashtags.forEach(tag => {
+                  if (tag && tag.trim() !== '') {
+                    allTags.add(tag);
+                  }
+                });
+              }
+            });
+
+            return Array.from(allTags).slice(0, 10);
+          };
+
+          const extractedTags = extractTagsFromPosts();
+          console.log('Extracted tags from posts after error:', extractedTags);
+
+          if (extractedTags.length > 0) {
+            setTrendingTags(extractedTags);
+          } else {
+            setTrendingTags([]);
+          }
         }
       }
     };
 
     fetchTrendingTags();
     return () => { mounted = false; };
-  }, [firebase.trending]);
+  }, [firebase.trending, posts]);
 
   // Optimize tag filtering
   const handleTagPress = useCallback((tag: string) => {

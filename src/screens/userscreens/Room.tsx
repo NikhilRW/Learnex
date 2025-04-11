@@ -11,6 +11,8 @@ import {
     KeyboardAvoidingView,
     Dimensions,
     useWindowDimensions,
+    Modal,
+    FlatList,
 } from 'react-native';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
 import { useNavigation } from '@react-navigation/native';
@@ -18,6 +20,8 @@ import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { userState } from '../../types/userType';
 import { MeetingService } from '../../service/firebase/MeetingService';
 import { UserStackParamList } from '../../routes/UserStack';
+import { TaskService } from '../../service/firebase/TaskService';
+import { Task } from '../../types/taskTypes';
 
 interface MeetingRoom {
     id?: string;
@@ -29,9 +33,11 @@ interface MeetingRoom {
     meetingLink?: string;
     host: string;
     roomCode?: string;
+    taskId?: string;
 }
 
 const meetingService = new MeetingService();
+const taskService = new TaskService();
 
 const Room = () => {
     const navigation = useNavigation<DrawerNavigationProp<UserStackParamList>>();
@@ -45,6 +51,12 @@ const Room = () => {
     const { width, height } = useWindowDimensions();
     const isSmallScreen = width < 380;
 
+    // Task related states
+    const [tasks, setTasks] = useState<Task[]>([]);
+    const [isTasksLoading, setIsTasksLoading] = useState(false);
+    const [showTaskModal, setShowTaskModal] = useState(false);
+    const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+
     const [meetingRoom, setMeetingRoom] = useState<MeetingRoom>({
         title: '',
         description: '',
@@ -52,14 +64,37 @@ const Room = () => {
         capacity: 10,
         isPrivate: false,
         host: 'Current User', // Will be replaced with actual user data
+        taskId: '', // Initialize taskId field
     });
+
+    // Fetch tasks when component mounts
+    useEffect(() => {
+        fetchTasks();
+    }, []);
+
+    // Function to fetch user's tasks
+    const fetchTasks = async () => {
+        try {
+            setIsTasksLoading(true);
+            const userTasks = await taskService.getTasks();
+            // Filter out completed tasks
+            const pendingTasks = userTasks.filter(task => !task.completed);
+            setTasks(pendingTasks);
+        } catch (error) {
+            console.error('Error fetching tasks:', error);
+            Alert.alert('Error', 'Failed to load tasks');
+        } finally {
+            setIsTasksLoading(false);
+        }
+    };
+
     const handleCreateRoom = async () => {
         // Validate form
         if (!meetingRoom.title.trim()) {
             Alert.alert('Error', 'Please enter a meeting title');
             return;
         }
-        if(meetingRoom.duration < 1) {
+        if (meetingRoom.duration < 1) {
             Alert.alert('Error', 'Duration must be at least 1 minute');
             return;
         }
@@ -83,6 +118,7 @@ const Room = () => {
                 isPrivate: meetingRoom.isPrivate,
                 maxParticipants: meetingRoom.capacity,
                 host: meetingRoom.host, // Include host field
+                taskId: meetingRoom.taskId, // Include taskId field
                 settings: {
                     muteOnEntry: true,
                     allowChat: true,
@@ -107,6 +143,112 @@ const Room = () => {
             );
         } finally {
             setLoading(false);
+        }
+    };
+
+    // Function to handle task selection
+    const handleTaskSelect = (task: Task) => {
+        setSelectedTask(task);
+        setMeetingRoom(prev => ({ ...prev, taskId: task.id }));
+        setShowTaskModal(false);
+    };
+
+    // Task modal component
+    const renderTaskModal = () => (
+        <Modal
+            visible={showTaskModal}
+            transparent={true}
+            animationType="slide"
+            onRequestClose={() => setShowTaskModal(false)}
+        >
+            <View style={[styles.modalOverlay]}>
+                <View style={[
+                    styles.modalContent,
+                    { backgroundColor: isDark ? '#1a1a1a' : 'white' }
+                ]}>
+                    <View style={styles.modalHeader}>
+                        <Text style={[styles.modalTitle, { color: isDark ? 'white' : 'black' }]}>
+                            Select a Task
+                        </Text>
+                        <TouchableOpacity onPress={() => setShowTaskModal(false)}>
+                            <Text style={{ color: isDark ? 'white' : 'black', fontSize: 16 }}>Cancel</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    {isTasksLoading ? (
+                        <View style={styles.loadingContainer}>
+                            <Text style={{ color: isDark ? 'white' : 'black' }}>Loading tasks...</Text>
+                        </View>
+                    ) : tasks.length === 0 ? (
+                        <View style={styles.emptyContainer}>
+                            <Text style={{ color: isDark ? 'white' : 'black' }}>No tasks found</Text>
+                            <Text style={{ color: isDark ? '#aaa' : '#666', marginTop: 5 }}>
+                                Create tasks in the Tasks section first
+                            </Text>
+                        </View>
+                    ) : (
+                        <FlatList
+                            data={tasks}
+                            keyExtractor={(item) => item.id}
+                            renderItem={({ item }) => (
+                                <TouchableOpacity
+                                    style={[
+                                        styles.taskItem,
+                                        { backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5' }
+                                    ]}
+                                    onPress={() => handleTaskSelect(item)}
+                                >
+                                    <View>
+                                        <Text style={{
+                                            color: isDark ? 'white' : 'black',
+                                            fontWeight: 'bold',
+                                            fontSize: 16
+                                        }}>
+                                            {item.title}
+                                        </Text>
+                                        {item.description ? (
+                                            <Text
+                                                style={{ color: isDark ? '#bbb' : '#666', marginTop: 5 }}
+                                                numberOfLines={2}
+                                            >
+                                                {item.description}
+                                            </Text>
+                                        ) : null}
+                                        <View style={{ flexDirection: 'row', marginTop: 8 }}>
+                                            <Text style={{
+                                                color: isDark ? '#aaa' : '#888',
+                                                fontSize: 12,
+                                                marginRight: 10
+                                            }}>
+                                                {item.dueDate}
+                                            </Text>
+                                            <Text style={{
+                                                color: getPriorityColor(item.priority),
+                                                fontSize: 12
+                                            }}>
+                                                {item.priority.toUpperCase()}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                </TouchableOpacity>
+                            )}
+                        />
+                    )}
+                </View>
+            </View>
+        </Modal>
+    );
+
+    const getPriorityColor = (priority: string) => {
+        switch (priority) {
+            case 'high':
+                return '#FF3B30';
+            case 'medium':
+                return '#FF9500';
+            case 'low':
+                return '#34C759';
+            default:
+                return '#8E8E93';
         }
     };
 
@@ -180,6 +322,28 @@ const Room = () => {
                     }
                 />
             </View>
+
+            {/* Task selection */}
+            <View style={styles.inputGroup}>
+                <Text style={[styles.label, isDark && styles.darkText]}>
+                    Associated Task (Optional)
+                </Text>
+                <TouchableOpacity
+                    style={[
+                        styles.input,
+                        styles.taskSelector,
+                        isDark && styles.darkInput,
+                    ]}
+                    onPress={() => setShowTaskModal(true)}
+                >
+                    <Text style={[
+                        selectedTask ? { color: isDark ? 'white' : 'black' } : { color: isDark ? '#888888' : '#666666' },
+                    ]}>
+                        {selectedTask ? selectedTask.title : "Select a task for this meeting"}
+                    </Text>
+                </TouchableOpacity>
+            </View>
+
             <View style={styles.inputGroup}>
                 <Text style={[styles.label, isDark && styles.darkText]}>
                     Duration (minutes)
@@ -327,6 +491,7 @@ const Room = () => {
                     </TouchableOpacity>
                 </View>
                 {activeTab === 'create' ? renderCreateRoomForm() : renderJoinRoomForm()}
+                {renderTaskModal()}
             </ScrollView>
         </KeyboardAvoidingView>
     );
@@ -481,6 +646,51 @@ const styles = StyleSheet.create({
         color: 'white',
         fontSize: isSmallDevice ? 16 : 18,
         fontWeight: '600',
+    },
+    taskSelector: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 12,
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    modalContent: {
+        width: '100%',
+        backgroundColor: 'white',
+        borderRadius: 12,
+        maxHeight: '80%',
+        overflow: 'hidden',
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#e0e0e0',
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+    },
+    taskItem: {
+        padding: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#e0e0e0',
+    },
+    loadingContainer: {
+        padding: 20,
+        alignItems: 'center',
+    },
+    emptyContainer: {
+        padding: 20,
+        alignItems: 'center',
     },
 });
 

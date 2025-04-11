@@ -38,7 +38,7 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
     post
     const isDark = useTypedSelector((state) => state.user.theme) === "dark";
     const screenWidth = Dimensions.get('window').width;
-    const [isLiked, setIsLiked] = useState(false);
+    const [isLiked, setIsLiked] = useState(post.isLiked || false);
     const [imageHeight, setImageHeight] = useState(300);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [showOptions, setShowOptions] = useState(false);
@@ -66,6 +66,11 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
             setIsPaused(!isVisible);
         }
     }, [isVisible, post.isVideo]);
+
+    // Keep isLiked state synchronized with post prop
+    useEffect(() => {
+        setIsLiked(post.isLiked || false);
+    }, [post.isLiked]);
 
     useEffect(() => {
         // Fade in animation for post
@@ -497,17 +502,6 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
                                 {isHiding && (
                                     <ActivityIndicator size="small" color={isDark ? "white" : "#2379C2"} style={{ marginLeft: 8 }} />
                                 )}
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                style={[styles.optionItem, { borderBottomWidth: 0 }]}
-                                onPress={() => {
-                                    // Handle report
-                                    setShowOptions(false);
-                                }}
-                            >
-                                <MaterialIcons name="report-problem" size={24} color="#FF3B30" />
-                                <Text style={[styles.optionText, { color: "#FF3B30" }]}>Report Post</Text>
                             </TouchableOpacity>
                         </View>
                     </TouchableWithoutFeedback>

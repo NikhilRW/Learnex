@@ -23,6 +23,9 @@ export class NotificationService {
   // Store active message listeners to avoid duplicates
   private messageListeners: {[userId: string]: () => void} = {};
   private isServiceRunning: boolean = false;
+  private notificationPreferencesCollection = firestore().collection(
+    'notificationPreferences',
+  );
 
   /**
    * Create a notification channel for screen capture
@@ -317,6 +320,13 @@ export class NotificationService {
         return false;
       }
 
+      // Check if the sender is muted
+      const isMuted = await this.isRecipientMuted(senderId);
+      if (isMuted) {
+        console.log(`Sender ${senderId} is muted, skipping notification`);
+        return false;
+      }
+
       // Check if user is already in the conversation to avoid unnecessary notifications
       // This would require more complex implementation with a service to track active screens
 
@@ -424,6 +434,121 @@ export class NotificationService {
         }
       }
     });
+  }
+
+  /**
+   * Check if notifications from a specific user are muted
+   *
+   * @param recipientId The ID of the user to check
+   * @returns Promise<boolean> True if notifications are muted
+   */
+  async isRecipientMuted(recipientId: string): Promise<boolean> {
+    try {
+      const currentUser = auth().currentUser;
+      if (!currentUser) return false;
+
+      const prefsDoc = await this.notificationPreferencesCollection
+        .doc(currentUser.uid)
+        .get();
+
+      if (!prefsDoc.exists) return false;
+
+      const prefs = prefsDoc.data();
+      return prefs?.mutedRecipients?.includes(recipientId) ?? false;
+    } catch (error) {
+      console.error('Error checking if recipient is muted:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Mute notifications from a specific user
+   *
+   * @param recipientId The ID of the user to mute
+   * @returns Promise<boolean> True if successful
+   */
+  async muteRecipient(recipientId: string): Promise<boolean> {
+    try {
+      const currentUser = auth().currentUser;
+      if (!currentUser) return false;
+
+      const userId = currentUser.uid;
+      const userPrefsRef = this.notificationPreferencesCollection.doc(userId);
+
+      // Get current preferences
+      const prefsDoc = await userPrefsRef.get();
+
+      if (prefsDoc.exists) {
+        // Update existing preferences
+        await userPrefsRef.update({
+          mutedRecipients: firestore.FieldValue.arrayUnion(recipientId),
+          updatedAt: firestore.FieldValue.serverTimestamp(),
+        });
+      } else {
+        // Create new preferences document
+        await userPrefsRef.set({
+          userId,
+          mutedRecipients: [recipientId],
+          createdAt: firestore.FieldValue.serverTimestamp(),
+          updatedAt: firestore.FieldValue.serverTimestamp(),
+        });
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error muting recipient:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Unmute notifications from a specific user
+   *
+   * @param recipientId The ID of the user to unmute
+   * @returns Promise<boolean> True if successful
+   */
+  async unmuteRecipient(recipientId: string): Promise<boolean> {
+    try {
+      const currentUser = auth().currentUser;
+      if (!currentUser) return false;
+
+      const userId = currentUser.uid;
+      const userPrefsRef = this.notificationPreferencesCollection.doc(userId);
+
+      // Get current preferences
+      const prefsDoc = await userPrefsRef.get();
+
+      if (prefsDoc.exists) {
+        // Remove the recipient from the muted list
+        await userPrefsRef.update({
+          mutedRecipients: firestore.FieldValue.arrayRemove(recipientId),
+          updatedAt: firestore.FieldValue.serverTimestamp(),
+        });
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error unmuting recipient:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Toggle mute status for a recipient
+   *
+   * @param recipientId The ID of the user to toggle mute status
+   * @returns Promise<boolean> New mute status (true = muted)
+   */
+  async toggleMuteRecipient(recipientId: string): Promise<boolean> {
+    const isMuted = await this.isRecipientMuted(recipientId);
+
+    if (isMuted) {
+      await this.unmuteRecipient(recipientId);
+      return false; // Now unmuted
+    } else {
+      await this.muteRecipient(recipientId);
+      return true; // Now muted
+    }
   }
 }
 

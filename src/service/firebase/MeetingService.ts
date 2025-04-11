@@ -15,6 +15,7 @@ export interface Meeting {
   roomCode: string;
   isPrivate: boolean;
   maxParticipants: number;
+  taskId?: string; // Associated task ID for the meeting
   settings: {
     muteOnEntry: boolean;
     allowChat: boolean;

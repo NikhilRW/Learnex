@@ -21,7 +21,6 @@
 nativewind-env.d.ts
 
 # Xcode
-#
 build/
 *.pbxuser
 !default.pbxuser
@@ -151,4 +150,4 @@ logs/
 *.tmp
 *.bak
 *.swp
-*~
+*~ 

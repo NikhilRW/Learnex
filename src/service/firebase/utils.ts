@@ -40,10 +40,28 @@ export function toImageSource(url: string): ImageSourcePropType {
 
 // Helper function to format timestamps
 export function formatTimestamp(date: Date): string {
+  // Check if date is valid
+  if (!date || isNaN(date.getTime())) {
+    return 'just now';
+  }
+
   const now = new Date();
+
+  // Calculate time difference in seconds without timezone adjustments
   const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
 
-  if (diffInSeconds < 60) return `${diffInSeconds}s ago`;
+  // Check if the timestamp string contains negative value
+  if (diffInSeconds < 0) {
+    // For any negative time difference, always show "just now"
+    console.log('Negative time detected:', diffInSeconds, 'seconds');
+    return 'just now';
+  }
+
+  // Very recent timestamps
+  if (diffInSeconds < 15) return 'just now';
+  if (diffInSeconds < 60) return `${Math.abs(diffInSeconds)}s ago`;
+
+  // Minutes, hours, days, weeks
   if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
   if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
   if (diffInSeconds < 604800)
@@ -51,6 +69,7 @@ export function formatTimestamp(date: Date): string {
   if (diffInSeconds < 2419200)
     return `${Math.floor(diffInSeconds / 604800)}w ago`;
 
+  // For older content, show the date
   return date.toLocaleDateString('en-US', {
     day: 'numeric',
     month: 'short',
@@ -60,36 +79,64 @@ export function formatTimestamp(date: Date): string {
 
 // Helper function to convert Firestore timestamp to formatted string
 export function formatFirestoreTimestamp(timestamp: any): string {
-  if (!timestamp) return '';
+  if (!timestamp) return 'just now';
 
-  // Handle different timestamp formats
-  if (timestamp.toDate && typeof timestamp.toDate === 'function') {
-    // Standard Firestore timestamp object with toDate() method
-    return formatTimestamp(timestamp.toDate());
-  } else if (
-    timestamp._seconds !== undefined &&
-    timestamp._nanoseconds !== undefined
-  ) {
-    // Raw Firestore timestamp object with _seconds and _nanoseconds
-    const date = new Date(timestamp._seconds * 1000);
-    return formatTimestamp(date);
-  } else if (timestamp instanceof Date) {
-    // Already a Date object
-    return formatTimestamp(timestamp);
-  } else if (typeof timestamp === 'number') {
-    // Timestamp as milliseconds
-    return formatTimestamp(new Date(timestamp));
-  } else if (typeof timestamp === 'string') {
-    // Already formatted string or ISO date string
-    if (isNaN(Date.parse(timestamp))) {
-      // Not a valid date string, return as is
-      return timestamp;
+  try {
+    let date: Date | null = null;
+
+    // Handle different timestamp formats
+    if (timestamp.toDate && typeof timestamp.toDate === 'function') {
+      // Standard Firestore timestamp object with toDate() method
+      date = timestamp.toDate();
+    } else if (
+      timestamp._seconds !== undefined &&
+      timestamp._nanoseconds !== undefined
+    ) {
+      // Raw Firestore timestamp object with _seconds and _nanoseconds
+      date = new Date(timestamp._seconds * 1000);
+    } else if (timestamp instanceof Date) {
+      // Already a Date object
+      date = timestamp;
+    } else if (typeof timestamp === 'number') {
+      // Timestamp as milliseconds
+      date = new Date(timestamp);
+    } else if (typeof timestamp === 'string') {
+      // Check for the special Firestore timestamp format "v2025-04-11T16:37:14.111Z"
+      if (
+        timestamp.startsWith('v') &&
+        timestamp.includes('T') &&
+        timestamp.includes('Z')
+      ) {
+        // Remove the 'v' prefix and parse as ISO string
+        const isoString = timestamp.substring(1);
+        date = new Date(isoString);
+      } else if (isNaN(Date.parse(timestamp))) {
+        // Not a valid date string, just show as text
+        return timestamp;
+      } else {
+        // Standard ISO string or other parseable date format
+        date = new Date(timestamp);
+      }
     }
-    return formatTimestamp(new Date(timestamp));
+
+    if (!date || isNaN(date.getTime())) {
+      return 'just now';
+    }
+
+    // Ensure the date is not in the future
+    const now = new Date();
+    if (date.getTime() > now.getTime()) {
+      return 'just now';
+    }
+
+    return formatTimestamp(date);
+  } catch (error) {
+    console.error('Error formatting timestamp:', error, timestamp);
+    return 'just now';
   }
 
   // Fallback for unknown format
-  return '';
+  return 'just now';
 }
 
 // Helper function to convert FirestoreComment to Comment

@@ -27,6 +27,7 @@ import { format } from 'date-fns';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getUsernameForLogo } from '../../helpers/stringHelpers';
 import Snackbar from 'react-native-snackbar';
+import notificationService from '../../service/NotificationService';
 
 type ChatScreenRouteParams = {
     conversationId: string;
@@ -57,6 +58,7 @@ const ChatScreen: React.FC = () => {
     const [isContextMenuVisible, setIsContextMenuVisible] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
     const [editText, setEditText] = useState('');
+    const [isMuted, setIsMuted] = useState<boolean>(false);
 
     // Set up real-time messages listener
     useEffect(() => {
@@ -70,10 +72,17 @@ const ChatScreen: React.FC = () => {
                 const newMessages = snapshot.docs.map(doc => ({
                     id: doc.id,
                     ...doc.data()
-                } as Message)).sort((a, b) => b.timestamp - a.timestamp);
+                } as Message)).sort((a, b) => a.timestamp - b.timestamp);
 
                 setMessages(newMessages);
                 setLoading(false);
+
+                // Scroll to bottom when messages update
+                setTimeout(() => {
+                    if (flatListRef.current) {
+                        flatListRef.current.scrollToEnd({ animated: true });
+                    }
+                }, 100);
             }, error => {
                 console.error('Error loading messages:', error);
                 setLoading(false);
@@ -101,7 +110,7 @@ const ChatScreen: React.FC = () => {
 
         try {
             setSending(true);
-            const {fullName} = await firebase.user.getNameUsernamestring();
+            const { fullName } = await firebase.user.getNameUsernamestring();
             // Prepare message data with no undefined values
             const messageData = {
                 conversationId,
@@ -118,6 +127,13 @@ const ChatScreen: React.FC = () => {
 
             setNewMessage('');
             setSending(false);
+
+            // Scroll to bottom after sending a message
+            setTimeout(() => {
+                if (flatListRef.current) {
+                    flatListRef.current.scrollToEnd({ animated: true });
+                }
+            }, 100);
         } catch (error) {
             console.error('Error sending message:', error);
             setSending(false);
@@ -287,7 +303,44 @@ const ChatScreen: React.FC = () => {
         );
     };
 
-    // Update header settings with recipient information
+    // Check if recipient is muted
+    useEffect(() => {
+        const checkMuteStatus = async () => {
+            if (recipientId) {
+                const muted = await notificationService.isRecipientMuted(recipientId);
+                setIsMuted(muted);
+            }
+        };
+
+        checkMuteStatus();
+    }, [recipientId]);
+
+    // Toggle notification mute for this recipient
+    const toggleNotifications = async () => {
+        try {
+            const newMuteStatus = await notificationService.toggleMuteRecipient(recipientId);
+            setIsMuted(newMuteStatus);
+
+            Snackbar.show({
+                text: newMuteStatus
+                    ? `Notifications from ${recipientName} are now muted`
+                    : `Notifications from ${recipientName} are now unmuted`,
+                duration: Snackbar.LENGTH_SHORT,
+                textColor: 'white',
+                backgroundColor: '#2379C2',
+            });
+        } catch (error) {
+            console.error('Error toggling notification status:', error);
+            Snackbar.show({
+                text: 'Failed to update notification settings',
+                duration: Snackbar.LENGTH_LONG,
+                textColor: 'white',
+                backgroundColor: '#ff3b30',
+            });
+        }
+    };
+
+    // Update header settings with recipient information and notification toggle
     useEffect(() => {
         navigation.setOptions({
             title: '',
@@ -333,6 +386,16 @@ const ChatScreen: React.FC = () => {
             headerRight: () => (
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <TouchableOpacity
+                        style={{ marginRight: 15 }}
+                        onPress={toggleNotifications}
+                    >
+                        <Ionicons
+                            name={isMuted ? "notifications-off" : "notifications"}
+                            size={24}
+                            color={isDark ? "white" : "black"}
+                        />
+                    </TouchableOpacity>
+                    <TouchableOpacity
                         style={{ marginRight: 10 }}
                         onPress={() => {
                             Alert.alert(
@@ -373,7 +436,7 @@ const ChatScreen: React.FC = () => {
                 shadowOpacity: 0,
             },
         });
-    }, [navigation, recipientName, recipientPhoto, isDark, conversationId]);
+    }, [navigation, recipientName, recipientPhoto, isDark, conversationId, isMuted]);
 
     return (
         <SafeAreaView style={[
@@ -401,7 +464,6 @@ const ChatScreen: React.FC = () => {
                         keyExtractor={item => item.id}
                         renderItem={renderMessageItem}
                         contentContainerStyle={styles.messagesList}
-                        inverted
                     />
                 )}
 
@@ -578,6 +640,8 @@ const styles = StyleSheet.create({
     messagesList: {
         paddingHorizontal: 12,
         paddingVertical: 16,
+        flexGrow: 1,
+        justifyContent: 'flex-end',
     },
     messageContainer: {
         flexDirection: 'row',

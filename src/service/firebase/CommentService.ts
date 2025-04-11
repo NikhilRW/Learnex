@@ -134,26 +134,29 @@ export class CommentService {
       console.log(
         `Comment ${commentId} not found as main comment, searching in replies...`,
       );
+
+      // Get all main comments
       const commentsSnapshot = await postRef.collection('comments').get();
       console.log(
         `Found ${commentsSnapshot.size} main comments to search through`,
       );
 
+      // Improved reply search - iterate through each main comment and check its replies collection
       for (const mainComment of commentsSnapshot.docs) {
-        console.log(`Checking replies for main comment: ${mainComment.id}`);
-        const repliesSnapshot = await mainComment.ref
-          .collection('replies')
-          .where(firestore.FieldPath.documentId(), '==', commentId)
-          .get();
+        const mainCommentRef = mainComment.ref;
 
-        if (!repliesSnapshot.empty) {
+        // Look for the reply directly in this comment's replies collection
+        const replyRef = mainCommentRef.collection('replies').doc(commentId);
+        const replyDoc = await replyRef.get();
+
+        if (replyDoc.exists) {
           console.log(
             `Found reply with ID ${commentId} under main comment ${mainComment.id}`,
           );
           return {
             type: 'reply',
-            commentRef: repliesSnapshot.docs[0].ref,
-            parentCommentRef: mainComment.ref,
+            commentRef: replyRef,
+            parentCommentRef: mainCommentRef,
           };
         }
       }
@@ -402,12 +405,19 @@ export class CommentService {
       await batch.commit();
       console.log('Reply created successfully with ID:', replyRef.id);
 
-      // Return the reply with its ID
+      // Return the reply with its ID and a fixed timestamp
       const reply = {
         id: replyRef.id,
-        ...replyData,
-        timestamp: new Date().toISOString(), // Format timestamp for UI consumption
-        isLiked: false, // Initialize isLiked for UI consumption
+        userId: currentUser.uid,
+        username,
+        userImage,
+        text: text.trim(),
+        likes: 0,
+        likedBy: [],
+        timestamp: 'just now', // Use fixed string instead of timestamp
+        editedAt: null,
+        isLiked: false,
+        replies: [],
       };
 
       return {success: true, reply};

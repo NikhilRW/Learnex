@@ -164,7 +164,10 @@ const CommentModal: React.FC<CommentModalProps> = ({
     // Handle like comment function
     const handleLikeComment = async (commentId: string) => {
         try {
+            // Make the API call first
             const response = await firebase.posts.likeComment(postId, commentId);
+
+            // Only update UI if the API call succeeds
             if (response.success) {
                 const updatedComments = localComments.map(comment => {
                     if (comment.id === commentId) {
@@ -184,12 +187,16 @@ const CommentModal: React.FC<CommentModalProps> = ({
                     }
                     return comment;
                 });
+
+                // Update the UI only after successful API response
                 setLocalComments(updatedComments);
             } else {
-                Alert.alert('Error', response.error || 'Failed to like comment');
+                console.error('Like comment failed:', response.error);
+                // No UI update if the API call fails
             }
         } catch (error) {
-            Alert.alert('Error', 'An error occurred while liking the comment');
+            console.error('Error liking comment:', error);
+            // No alert - just log the error
         }
     };
 
@@ -398,20 +405,27 @@ const CommentModal: React.FC<CommentModalProps> = ({
                             <Text style={styles.commentText}>{comment.text}</Text>
                             <View style={styles.commentMeta}>
                                 <Text style={styles.commentTimestamp}>
-                                    {typeof comment.timestamp === 'string'
+                                    {isReply && typeof comment.timestamp === 'string'
                                         ? comment.timestamp
-                                        : formatFirestoreTimestamp(comment.timestamp)}
+                                        : typeof comment.timestamp === 'string' && comment.timestamp.includes('-')
+                                            ? 'just now'
+                                            : typeof comment.timestamp === 'string'
+                                                ? comment.timestamp
+                                                : formatFirestoreTimestamp(comment.timestamp)}
                                     {comment.editedAt && ' (edited)'}
                                 </Text>
                                 <Text style={styles.commentLikes}>
                                     {comment.likes} likes
                                 </Text>
-                                <TouchableOpacity
-                                    onPress={() => setReplyingTo(comment)}
-                                    style={{ marginRight: 16 }}
-                                >
-                                    <Text style={styles.commentLikes}>Reply</Text>
-                                </TouchableOpacity>
+                                {/* Only show Reply button for main comments, not for replies */}
+                                {!isReply && (
+                                    <TouchableOpacity
+                                        onPress={() => setReplyingTo(comment)}
+                                        style={{ marginRight: 16 }}
+                                    >
+                                        <Text style={styles.commentLikes}>Reply</Text>
+                                    </TouchableOpacity>
+                                )}
                             </View>
                         </>
                     )}

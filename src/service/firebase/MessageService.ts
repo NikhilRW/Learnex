@@ -147,7 +147,7 @@ export class MessageService {
           firestore.FieldValue.increment(1),
       });
 
-      // Trigger a notification for the recipienthi
+      // Trigger a notification for the recipient
       try {
         // Check if the message is sent by the current user
         const isSenderCurrentUser =
@@ -155,6 +155,7 @@ export class MessageService {
 
         if (!isSenderCurrentUser) {
           // Send notification to the recipient
+          // Note: The mute check is now handled in the NotificationService
           notificationService.displayMessageNotification(
             message.senderId,
             message.senderName,
