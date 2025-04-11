@@ -10,13 +10,15 @@
 *.njsproj
 *.sln
 *.sw?
-nativewind-env.d.ts
+
+# Environment and secret files
 .env
 .env.*
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+nativewind-env.d.ts
 
 # Xcode
 #
@@ -38,10 +40,6 @@ DerivedData
 *.xcuserstate
 **/.xcode.env.local
 
-# Personal/Project-specific
-scripts/
-personal/
-
 # Android/IntelliJ
 #
 build/
@@ -57,7 +55,7 @@ android/app/google-services.json
 *.apk
 *.aab
 
-# node.js
+# Node.js
 #
 node_modules/
 npm-debug.log
@@ -94,6 +92,7 @@ build/
 # Ruby / CocoaPods
 **/Pods/
 /vendor/bundle/
+Gemfile.lock
 
 # Temporary files created by Metro to check the health of the file watcher
 .metro-health-check*
@@ -115,3 +114,41 @@ build/
 
 # Cache
 .cache/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+htmlcov/
+.coverage
+.coverage.*
+.pytest_cache/
+.mypy_cache/
+
+# Personal/Project-specific
+scripts/
+personal/
+backend/api/cache/
+
+# Data files
+*.csv
+*.db
+*.sqlite3
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
