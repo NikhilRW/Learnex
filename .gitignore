@@ -20,6 +20,18 @@
 .env.production.local
 nativewind-env.d.ts
 
+# Credentials and secrets
+**/credentials.json
+**/service-account*.json
+**/*-credentials.json
+**/firebase-adminsdk*.json
+**/google-services.json
+**/*.keystore
+**/*.jks
+**/*.p12
+**/*.pem
+**/*.key
+
 # Xcode
 build/
 *.pbxuser
