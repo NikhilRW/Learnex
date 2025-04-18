@@ -1,7 +1,10 @@
+import cloudinary.uploader
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import os
-import json
+from google.cloud.firestore_v1.base_query import FieldFilter
+import cloudinary
+from cloudinary import exceptions
 from datetime import datetime, timedelta
 import requests
 from bs4 import BeautifulSoup
@@ -11,6 +14,9 @@ import threading
 import concurrent.futures
 import pickle
 import hashlib
+import json
+import firebase_admin
+from firebase_admin import credentials, firestore, messaging
 
 # Add dotenv for loading environment variables
 try:
@@ -22,6 +28,21 @@ except ImportError:
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
+
+# Initialize Firebase Admin SDK if not already initialized
+if not firebase_admin._apps:
+    try:
+        # Try to load from environment variable first
+        cred = credentials.Certificate('credentials.json')
+        firebase_admin.initialize_app(cred, {
+            'projectId': 'learnex-241f1',  # Replace with your actual Firebase project ID
+            # Disable direct connection to Firebase APIs
+            'httpTimeout': 30,
+            'databaseURL': None  # Prevent direct database connections
+        })
+        print("Firebase Admin SDK initialized successfully")
+    except Exception as e:
+        print(f"Firebase Admin SDK initialization error: {e}")
 
 # Define types/enums to match frontend expectations
 
@@ -103,6 +124,29 @@ def health_check():
         "status": "healthy",
         "version": "1.0.0"
     })
+
+
+cloudinary.config(
+    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.getenv("CLOUDINARY_API_KEY"),
+    api_secret=os.getenv("CLOUDINARY_API_SECRET")
+)
+
+
+@app.route('/api/cloudinary/delete', methods=['POST'])
+def delete_asset():
+    public_id = request.json.get('public_id')
+    print("")
+    if not public_id:
+        return jsonify({"error": "Public ID is required"}), 400
+
+    try:
+        result = cloudinary.uploader.destroy(public_id)
+        return jsonify({"message": "Asset deleted successfully", "result": result}), 200
+    except exceptions.NotFoundError:
+        return jsonify({"error": "Asset not found"}), 404
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route('/api/hackathons', methods=['GET'])
@@ -327,6 +371,182 @@ def refresh_status():
             "total": len(hackerearth_events) + len(devfolio_events)
         }
     })
+
+
+@app.route('/api/notifications/message', methods=['POST'])
+def send_message_notification():
+    """
+    Send a direct message notification via Firebase Cloud Messaging
+
+    This endpoint implements device-to-device messaging by:
+    1. Retrieving the recipient's FCM tokens from Firestore
+    2. Sending the notification directly to each device token
+    3. This is more appropriate for direct messages than topic-based messaging
+
+    Expected JSON payload:
+    {
+        "recipientId": "user_id_to_receive_notification",
+        "senderId": "user_id_who_sent_message",
+        "senderName": "Name of message sender",
+        "senderPhoto": "URL to sender's profile image (optional)",
+        "message": "Text content of the message",
+        "conversationId": "ID of the conversation"
+    }
+    """
+    try:
+        data = request.json
+
+        # Validate required fields
+        required_fields = ['recipientId', 'senderId',
+                           'senderName', 'message', 'conversationId']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({"error": f"Missing required field: {field}"}), 400
+
+        # Get user's FCM tokens from Firestore
+        db = firestore.client()
+        tokens_ref = db.collection('fcmTokens').where(
+            filter=FieldFilter('userId', '==', data['recipientId'])).stream()
+
+        # Check if recipient has muted the sender
+        prefs_ref = db.collection('notificationPreferences').document(
+            data['recipientId']).get()
+
+        is_muted = False
+        if prefs_ref.exists:
+            prefs = prefs_ref.to_dict()
+            muted_recipients = prefs.get('mutedRecipients', [])
+            is_muted = data['senderId'] in muted_recipients
+
+        if is_muted:
+            return jsonify({"status": "skipped", "reason": "sender_muted"}), 200
+
+        # Collect all device tokens for this user
+        tokens = []
+        invalid_tokens = []
+
+        for token_doc in tokens_ref:
+            token_data = token_doc.to_dict()
+            # Only include active tokens (if the field exists)
+            if 'active' in token_data and token_data['active'] == False:
+                continue
+
+            tokens.append({
+                'token': token_data['token'],
+                'doc_id': token_doc.id
+            })
+
+        if not tokens:
+            return jsonify({"status": "skipped", "reason": "no_tokens_found"}), 200
+
+        # Check if message ID was provided, otherwise generate one
+        message_id = data.get('messageId', '')
+
+        # Create notification data
+        notification_data = {
+            'type': 'direct_message',
+            'conversationId': data['conversationId'],
+            'senderId': data['senderId'],
+            'recipientId': data['recipientId'],
+            'senderName': data['senderName'],
+            'senderPhoto': data['senderPhoto'],
+            # Add title to data payload for data-only messages
+            'title': data['senderName'],
+            # Add body to data payload for data-only messages
+            'body': data['message'],
+            'messageId': message_id,      # Include message ID for notification tracking
+            'click_action': 'NOTIFICATION_CLICK'
+        }
+
+        # Create notification payload
+        notification = messaging.Notification(
+            title=data['senderName'],
+            body=data['message']
+        )
+
+        # Send to each token individually instead of using multicast
+        # This avoids the batch endpoint issue with Vercel
+        success_count = 0
+        failure_count = 0
+
+        for token_info in tokens:
+            token = token_info['token']
+            doc_id = token_info['doc_id']
+
+            try:
+                # Create message for a single token
+                message = messaging.Message(
+                    token=token,
+                    notification=notification,
+                    data=notification_data,
+                    android=messaging.AndroidConfig(
+                        priority='high',  # Ensures delivery even when device is in Doze mode
+                        notification=messaging.AndroidNotification(
+                            channel_id='direct_messages',
+                            priority='high',
+                            default_sound=True,
+                            default_vibrate_timings=True
+                        )
+                    ),
+                    apns=messaging.APNSConfig(
+                        # High priority (5 is normal)
+                        headers={'apns-priority': '10'},
+                        payload=messaging.APNSPayload(
+                            aps=messaging.Aps(
+                                alert=messaging.ApsAlert(
+                                    title=data['senderName'],
+                                    body=data['message']
+                                ),
+                                sound='default',
+                                badge=1,
+                                content_available=True,  # This is key for background delivery on iOS
+                                mutable_content=True,    # Allows notification service extension to modify content
+                                category='MESSAGE'       # Allows for action buttons if configured
+                            )
+                        )
+                    )
+                )
+
+                # Send message directly (not using batch)
+                response = messaging.send(message)
+                success_count += 1
+                print(
+                    f"Successfully sent notification to token: {token[:10]}...")
+            except Exception as e:
+                failure_count += 1
+                error_msg = str(e)
+                print(f"Failed to send to token {token[:10]}...: {error_msg}")
+
+                # Check if the token is invalid/expired
+                if "Requested entity was not found" in error_msg or "Invalid registration" in error_msg:
+                    invalid_tokens.append(doc_id)
+                    print(
+                        f"Token {token[:10]}... appears to be invalid. Marking as inactive.")
+
+        # Update invalid tokens as inactive
+        batch = db.batch()
+        for doc_id in invalid_tokens:
+            doc_ref = db.collection('fcmTokens').document(doc_id)
+            batch.update(doc_ref, {
+                'active': False,
+                'updatedAt': firestore.SERVER_TIMESTAMP,
+                'error': 'Token invalid or not found'
+            })
+
+        if invalid_tokens:
+            batch.commit()
+            print(f"Marked {len(invalid_tokens)} invalid tokens as inactive")
+
+        return jsonify({
+            "status": "success",
+            "success_count": success_count,
+            "failure_count": failure_count,
+            "invalid_tokens": len(invalid_tokens)
+        }), 200
+
+    except Exception as e:
+        print(f"Error sending notification: {e}")
+        return jsonify({"error": str(e)}), 500
 
 # Scraping functions
 
@@ -1329,15 +1549,14 @@ def initialize():
 # Call initialize before each request if data is empty
 
 
-@app.before_request
-def check_initialization():
-    if not hackerearth_events and not devfolio_events:
-        initialize()
-
+# @app.before_request
+# def check_initialization():
+#     if not hackerearth_events and not devfolio_events:
+#         initialize()
 
 # For local development
 if __name__ == "__main__":
     # Load initial data
-    initialize()
+    # initialize()
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)

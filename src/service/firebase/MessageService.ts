@@ -4,6 +4,10 @@ import auth from '@react-native-firebase/auth';
 import {Conversation, Message} from '../../models/Message';
 import {FirebaseErrorHandler} from '../../helpers/FirebaseErrorHandler';
 import notificationService from '../../service/NotificationService';
+import Config from 'react-native-config';
+
+// Configure backend URL for sending push notifications
+const BACKEND_URL = Config.BACKEND_URL || 'https://learnex-backend.vercel.app';
 
 /**
  * Helper function to clean objects before storing in Firestore
@@ -91,7 +95,10 @@ export class MessageService {
       const newConversation: Omit<Conversation, 'id'> = {
         participants: [userId1, userId2],
         participantDetails,
-        unreadCount: 0,
+        unreadCount: {
+          [userId1]: 0,
+          [userId2]: 0,
+        },
       };
 
       // Sanitize to remove any undefined values
@@ -147,15 +154,15 @@ export class MessageService {
           firestore.FieldValue.increment(1),
       });
 
-      // Trigger a notification for the recipient
+      // Trigger a notification through the local NotificationService
+      // This works when the app is in foreground or background
       try {
         // Check if the message is sent by the current user
         const isSenderCurrentUser =
           message.senderId === auth().currentUser?.uid;
 
         if (!isSenderCurrentUser) {
-          // Send notification to the recipient
-          // Note: The mute check is now handled in the NotificationService
+          // Send notification to the recipient via local service
           notificationService.displayMessageNotification(
             message.senderId,
             message.senderName,
@@ -163,17 +170,123 @@ export class MessageService {
             conversationId,
             message.recipientId,
             message.senderPhoto,
+            newMessage.id,
           );
         }
       } catch (err) {
-        console.error('Error sending notification:', err);
+        console.error('Error sending local notification:', err);
         // Continue even if notification fails - messaging functionality
         // should work independently of notification delivery
       }
 
+      // Send notification through your backend (optional)
+      try {
+        const otherUserId = message.recipientId;
+        const currentUser = auth().currentUser;
+
+        if (currentUser && otherUserId) {
+          // Add notification metadata for backend - match expected structure from backend API
+          const notificationPayload = {
+            recipientId: otherUserId,
+            senderId: currentUser.uid,
+            senderName: message.senderName || 'User',
+            senderPhoto: message.senderPhoto,
+            message: message.text,
+            conversationId: conversationId,
+          };
+
+          // Check for network connectivity before making the request
+          const isConnected = await this.checkNetworkConnectivity();
+
+          if (isConnected) {
+            try {
+              // Use a timeout to prevent hanging on backend requests
+              const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(
+                  () =>
+                    reject(new Error('Backend notification request timed out')),
+                  5000,
+                );
+              });
+
+              const fetchPromise = fetch(
+                `${BACKEND_URL}/api/notifications/message`,
+                {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify(notificationPayload),
+                },
+              );
+
+              // Race the fetch against the timeout
+              const response = (await Promise.race([
+                fetchPromise,
+                timeoutPromise,
+              ])) as Response;
+
+              if (response.ok) {
+                const data = await response.json();
+                console.log('Backend notification response:', data);
+              } else {
+                const errorText = await response.text();
+                console.error(
+                  `Backend notification failed with status: ${response.status}`,
+                );
+                console.error(`Error body: ${errorText}`);
+
+                // If we get a 404 specifically with /batch in the error, it's likely
+                // the Vercel routing issue with Firebase batch endpoint
+                if (response.status === 404 && errorText.includes('/batch')) {
+                  console.log(
+                    'Detected Firebase batch endpoint issue with Vercel, using local notification only',
+                  );
+                  // Continue with message sending despite notification failure
+                }
+              }
+            } catch (error) {
+              // This catch block will handle network errors and the 404 batch error
+              console.error('Error sending backend notification:', error);
+              console.log('Using local notification only');
+              // Local notification handled above, so we can safely continue
+            }
+          } else {
+            console.log('Device is offline, using local notification only');
+          }
+        }
+      } catch (error) {
+        console.error('Error preparing notification:', error);
+        // Errors in notification should not prevent message sending
+      }
+
       return newMessage;
     } catch (error) {
-      throw this.errorHandler.handleError(error, 'Failed to send message');
+      console.error('MessageService :: sendMessage() ::', error);
+      throw error;
+    }
+  }
+
+  // Helper function to check network connectivity
+  async checkNetworkConnectivity(): Promise<boolean> {
+    try {
+      // Create an AbortController with a timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+      // Try to fetch the health check endpoint with the correct URL
+      const response = await fetch(`${BACKEND_URL}/api/health`, {
+        method: 'GET',
+        headers: {'Cache-Control': 'no-cache'},
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+      return response.ok;
+    } catch (error) {
+      // Any error means we're offline
+      console.log('Network connectivity check failed:', error);
+      return false;
     }
   }
 
@@ -208,6 +321,55 @@ export class MessageService {
           console.error('Error listening to conversations:', error);
         },
       );
+  }
+
+  // Update participant details in conversations (e.g., when profile photo changes)
+  async updateParticipantDetails(
+    userId: string,
+    updates: {name?: string; image?: string},
+  ): Promise<void> {
+    try {
+      // Find all conversations this user is part of
+      const conversationsQuery = await this.conversationsCollection
+        .where('participants', 'array-contains', userId)
+        .get();
+
+      if (conversationsQuery.empty) {
+        console.log('No conversations found for user', userId);
+        return;
+      }
+
+      // Create batch to update all conversations at once
+      const batch = firestore().batch();
+
+      conversationsQuery.docs.forEach(doc => {
+        // Only update fields that are provided in the updates object
+        const updateData: Record<string, any> = {};
+
+        if (updates.name !== undefined) {
+          updateData[`participantDetails.${userId}.name`] = updates.name;
+        }
+
+        if (updates.image !== undefined) {
+          updateData[`participantDetails.${userId}.image`] = updates.image;
+        }
+
+        // Skip if no updates to apply
+        if (Object.keys(updateData).length > 0) {
+          batch.update(doc.ref, updateData);
+        }
+      });
+
+      await batch.commit();
+      console.log(
+        `Updated participant details for user ${userId} in ${conversationsQuery.size} conversations`,
+      );
+    } catch (error) {
+      throw this.errorHandler.handleError(
+        error,
+        'Failed to update participant details',
+      );
+    }
   }
 
   // Mark messages as read

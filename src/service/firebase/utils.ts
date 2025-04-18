@@ -155,6 +155,20 @@ export function convertFirestoreComment(comment: FirestoreComment): Comment {
   };
 }
 
+// Helper function to extract hashtags from description
+export function extractHashtagsFromText(text: string): string[] {
+  if (!text) return [];
+
+  // Regex to match hashtags
+  const hashtagRegex = /#[\w]+/g;
+  const matches = text.match(hashtagRegex) || [];
+
+  // Remove the # symbol and filter out empty strings
+  return matches
+    .map(tag => tag.replace('#', '').trim())
+    .filter(tag => tag.length > 0);
+}
+
 // Helper function to convert FirestorePost to PostType
 export function convertFirestorePost(
   postData: FirestorePost,
@@ -164,6 +178,22 @@ export function convertFirestorePost(
   const convertedPostImages = postData.postImages
     ? postData.postImages.map(img => toImageSource(img))
     : undefined;
+
+  // Ensure hashtags is always an array even if it's undefined or null
+  let hashtags = Array.isArray(postData.hashtags)
+    ? [...postData.hashtags] // Create a copy to avoid reference issues
+    : [];
+
+  // Extract hashtags from description and combine with existing hashtags
+  if (postData.description) {
+    const extractedTags = extractHashtagsFromText(postData.description);
+    if (extractedTags.length > 0) {
+      // Combine both arrays and remove duplicates
+      hashtags = [...new Set([...hashtags, ...extractedTags])];
+    }
+  }
+
+  console.log(`Converting post ${postData.id} with hashtags:`, hashtags);
 
   return {
     id: postData.id,
@@ -178,7 +208,7 @@ export function convertFirestorePost(
     timestamp: formatFirestoreTimestamp(postData.timestamp),
     postImages: convertedPostImages, // Use converted images array
     postVideo: postData.postVideo,
-    hashtags: postData.hashtags || [],
+    hashtags: hashtags, // Use the combined hashtags array
     isVideo: postData.isVideo,
     commentsList: postData.commentsList?.map(convertFirestoreComment),
     isLiked: (postData.likedBy || []).includes(currentUserId),

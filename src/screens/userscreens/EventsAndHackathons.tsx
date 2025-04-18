@@ -195,6 +195,7 @@ const EventsAndHackathons: React.FC = () => {
      */
     useEffect(() => {
         console.log('Initial load: Fetching events');
+        // Fetch once at initial load
         fetchEvents();
 
         // Add listener for when screen comes into focus
@@ -205,7 +206,9 @@ const EventsAndHackathons: React.FC = () => {
         });
 
         // Clean up the focus listener
-        return unsubscribeFocus;
+        return () => {
+            unsubscribeFocus();
+        };
     }, [navigation]);
 
     /**

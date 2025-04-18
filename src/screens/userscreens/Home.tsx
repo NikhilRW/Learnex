@@ -392,15 +392,14 @@ const Home = () => {
                           borderColor: '#0095f6'
                         }
                       ]}
-                      onPress={() => handleTagPress(tag)}
-                    >
+                      onPress={() => handleTagPress(tag)}>
                       <Text style={[
                         styles.tagText,
                         {
                           color: selectedTag === tag ? '#0095f6' : (isDark ? "white" : "black")
                         }
                       ]}>
-                        #{tag}
+                        {tag.includes('#') ? tag : `#${tag}`}
                       </Text>
                     </TouchableOpacity>
                   ))}
@@ -411,7 +410,7 @@ const Home = () => {
                       styles.filterText,
                       { color: isDark ? "white" : "black" }
                     ]}>
-                      Showing posts tagged with #{selectedTag}
+                      Showing posts tagged with {selectedTag.includes('#') ? selectedTag : `#${selectedTag}`}
                     </Text>
                     <TouchableOpacity
                       onPress={() => handleTagPress(selectedTag)}

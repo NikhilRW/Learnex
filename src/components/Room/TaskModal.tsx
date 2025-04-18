@@ -5,11 +5,12 @@ import {
     Text,
     TouchableOpacity,
     TextInput,
-    ScrollView
+    ScrollView,
+    Switch
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { Task } from '../types/taskTypes';
-import { styles } from '../styles/screens/userscreens/Tasks.styles';
+import { Task } from '../../types/taskTypes';
+import { styles } from '../../styles/screens/userscreens/Tasks.styles';
 
 interface TaskModalProps {
     modalVisible: boolean;
@@ -112,6 +113,24 @@ const TaskModal = ({
                         </View>
 
                         <View style={styles.inputGroup}>
+                            <Text style={[styles.inputLabel, { color: isDark ? 'white' : 'black' }]}>Due Time</Text>
+                            <TextInput
+                                style={[
+                                    styles.input,
+                                    {
+                                        backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5',
+                                        color: isDark ? 'white' : 'black',
+                                        borderColor: isDark ? '#404040' : '#e0e0e0'
+                                    }
+                                ]}
+                                placeholder="HH:MM (24-hour format)"
+                                placeholderTextColor={isDark ? '#8e8e8e' : '#999'}
+                                value={newTask.dueTime}
+                                onChangeText={(text) => onChangeTask({ ...newTask, dueTime: text })}
+                            />
+                        </View>
+
+                        <View style={styles.inputGroup}>
                             <Text style={[styles.inputLabel, { color: isDark ? 'white' : 'black' }]}>Category</Text>
                             <TextInput
                                 style={[
@@ -159,6 +178,24 @@ const TaskModal = ({
                                     </TouchableOpacity>
                                 ))}
                             </View>
+                        </View>
+
+                        <View style={styles.inputGroup}>
+                            <View style={styles.notifyContainer}>
+                                <Text style={[styles.inputLabel, { color: isDark ? 'white' : 'black' }]}>Send Notification</Text>
+                                <Switch
+                                    trackColor={{ false: isDark ? '#555' : '#ccc', true: '#34C759' }}
+                                    thumbColor={newTask.notify ? '#fff' : isDark ? '#888' : '#f4f3f4'}
+                                    ios_backgroundColor={isDark ? '#555' : '#ccc'}
+                                    onValueChange={(value) => onChangeTask({ ...newTask, notify: value })}
+                                    value={newTask.notify}
+                                />
+                            </View>
+                            {newTask.notify && (
+                                <Text style={[styles.notifyHint, { color: isDark ? '#8e8e8e' : '#666' }]}>
+                                    You will receive a notification at the scheduled time
+                                </Text>
+                            )}
                         </View>
 
                         {isEditMode && (

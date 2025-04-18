@@ -1,5 +1,4 @@
 import React, { useEffect } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
 import AuthStack from './AuthStack';
 import UserStack from './UserStack';
 import { useTypedSelector } from '../hooks/useTypedSelector';
@@ -26,12 +25,8 @@ const Route = () => {
     }
   }, []); // Empty dependency array means this runs once on mount
 
-  return (
-    <NavigationContainer>
-      {/* Conditional rendering based on auth state */}
-      {isLoggedIn ? <UserStack /> : <AuthStack />}
-    </NavigationContainer>
-  );
+  // Directly render appropriate stack without NavigationContainer
+  return isLoggedIn ? <UserStack /> : <AuthStack />;
 };
 
 export default Route;

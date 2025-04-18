@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, Image, TouchableOpacity, Modal, TouchableWithoutFeedback, Dimensions, Animated, StyleSheet, FlatList, Text, ScrollView, ImageURISource, NativeSyntheticEvent, NativeScrollEvent, ActivityIndicator } from 'react-native';
+import { View, Image, TouchableOpacity, Modal, TouchableWithoutFeedback, Dimensions, Animated, StyleSheet, FlatList, Text, ScrollView, ImageURISource, NativeSyntheticEvent, NativeScrollEvent, ActivityIndicator, SafeAreaView } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import AntDesign from 'react-native-vector-icons/AntDesign';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
@@ -15,6 +15,7 @@ import { MessageService } from '../../../../service/firebase/MessageService';
 import Snackbar from 'react-native-snackbar';
 import { UserStackParamList } from '../../../../routes/UserStack';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import firestore from '@react-native-firebase/firestore';
 
 /**
  * Post component that displays a social media post with images
@@ -47,6 +48,7 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
     const [showComments, setShowComments] = useState(false);
     const [newComment, setNewComment] = useState('');
     const [isAddingComment, setIsAddingComment] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
     const videoRef = useRef<Video>(null);
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const dotsAnim = useRef(new Animated.Value(0)).current;
@@ -57,8 +59,83 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
     const navigation = useNavigation<UserNavigation>();
     const messageService = new MessageService();
     const [isHiding, setIsHiding] = useState(false);
-    const [isSaved, setIsSaved] = useState(post.isSaved || false);
+    const [isSaved, setIsSaved] = useState(post.isSaved === true);
     const [isSaving, setIsSaving] = useState(false);
+    const [isCurrentUserPost, setIsCurrentUserPost] = useState(false);
+    const [formattedDescription, setFormattedDescription] = useState<React.ReactNode>(null);
+    const [userProfileImage, setUserProfileImage] = useState<string | null>(post.user.image);
+
+    // Add new state for mixed media navigation
+    const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
+
+    // Combine all media (images and video) into a single array for navigation
+    const allMedia = React.useMemo(() => {
+        const mediaArray = [];
+
+        // Add video if it exists
+        if (post.postVideo) {
+            mediaArray.push({
+                type: 'video',
+                source: post.postVideo
+            });
+        }
+
+        // Add images if they exist
+        if (post.postImages && post.postImages.length > 0) {
+            post.postImages.forEach(image => {
+                mediaArray.push({
+                    type: 'image',
+                    source: image
+                });
+            });
+        }
+
+        return mediaArray;
+    }, [post.postVideo, post.postImages]);
+
+    // Navigation handlers
+    const goToPreviousMedia = () => {
+        if (currentMediaIndex > 0) {
+            setCurrentMediaIndex(currentMediaIndex - 1);
+        }
+    };
+
+    const goToNextMedia = () => {
+        if (currentMediaIndex < allMedia.length - 1) {
+            setCurrentMediaIndex(currentMediaIndex + 1);
+        }
+    };
+
+    useEffect(() => {
+        // Check if the current user is the post creator
+        const checkCurrentUser = async () => {
+            const currentUser = firebase.currentUser();
+            if (currentUser && post.user.id === currentUser.uid) {
+                setIsCurrentUserPost(true);
+            }
+        };
+
+        checkCurrentUser();
+    }, [firebase, post.user.id]);
+
+    // Listen for profile image updates
+    useEffect(() => {
+        if (!post.user.id) return;
+
+        const unsubscribe = firestore()
+            .collection('users')
+            .doc(post.user.id)
+            .onSnapshot(snapshot => {
+                if (snapshot.exists) {
+                    const userData = snapshot.data();
+                    if (userData?.image && userData.image !== userProfileImage) {
+                        setUserProfileImage(userData.image);
+                    }
+                }
+            });
+
+        return () => unsubscribe();
+    }, [post.user.id, userProfileImage]);
 
     useEffect(() => {
         // Handle video visibility changes
@@ -159,148 +236,173 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
     };
 
     const renderMedia = () => {
-        console.log('Rendering media for post:', post.id);
-        console.log('isVideo:', post.isVideo, 'postVideo:', post.postVideo);
-        console.log('postImages:', post.postImages);
-        console.log('isVertical:', post.isVertical);
-
-        if (post.isVideo && post.postVideo) {
-            let videoSource;
-            if (typeof post.postVideo === 'number') {
-                videoSource = post.postVideo;
-                console.log('Video is a local asset number:', post.postVideo);
-            } else if (typeof post.postVideo === 'string') {
-                videoSource = { uri: post.postVideo };
-                console.log('Video is a string URI:', post.postVideo);
-            } else if (post.postVideo && typeof post.postVideo === 'object') {
-                // Safely access the uri property with proper type checking
-                const videoObject = post.postVideo as { uri?: string };
-                if (videoObject.uri) {
-                    videoSource = { uri: videoObject.uri };
-                    console.log('Video is an object with URI:', videoObject.uri);
-                } else {
-                    console.error('Video object has no URI property:', post.postVideo);
-                    return <View style={styles.errorContainer}><Text>Invalid video format</Text></View>;
-                }
-            } else {
-                console.error('Video has invalid format:', post.postVideo);
-                return <View style={styles.errorContainer}><Text>Invalid video format</Text></View>;
-            }
-            console.log('Final video source:', videoSource);
-
-            return (
-                <View style={styles.mediaContainer}>
-                    <TouchableWithoutFeedback onPress={handleVideoPress}>
-                        <View style={{
-                            width: screenWidth - 24,
-                            height: imageHeight,
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            backgroundColor: '#000'
-                        }}>
-                            <Video
-                                ref={videoRef}
-                                source={videoSource}
-                                style={[
-                                    styles.postImage,
-                                    post.isVertical
-                                        ? { width: '100%', height: '100%' }
-                                        : { width: '100%', height: '100%', }
-                                ]}
-                                resizeMode={post.isVertical ? "cover" : "contain"}
-                                paused={isPaused}
-                                repeat
-                                onProgress={handleVideoProgress}
-                                onError={(error) => console.error('Video loading error:', error)}
-                            />
-                            {isPaused && (
-                                <View style={styles.pausedOverlay} />
-                            )}
-                        </View>
-                    </TouchableWithoutFeedback>
-                </View>
-            );
+        // If there's no media, return null
+        if (!post.postVideo && (!post.postImages || post.postImages.length === 0)) {
+            return null;
         }
 
-        console.log('Rendering images carousel. Images count:', post.postImages?.length || 0);
+        // If there's only one media item (just a video or a single image)
+        if (allMedia.length === 1) {
+            if (post.isVideo && post.postVideo) {
+                // Render just the video
+                return renderVideoContent(post.postVideo);
+            } else if (post.postImages && post.postImages.length === 1) {
+                // Render just the single image
+                return renderImageContent(post.postImages[0], 0);
+            }
+        }
+
+        // For multiple media items (either multiple images or video + images)
         return (
-            <View style={styles.carouselContainer}>
-                <ScrollView
-                    horizontal
-                    pagingEnabled
-                    showsHorizontalScrollIndicator={false}
-                    onMomentumScrollEnd={handleScroll}
-                    onScrollBeginDrag={handleMediaTouch}
-                >
-                    {post.postImages?.map((image, index) => {
-                        let source;
-                        if (typeof image === 'number') {
-                            source = image;
-                        } else if (typeof image === 'string') {
-                            source = { uri: image };
-                            console.log(`Image ${index} is a string URI:`, image);
-                        } else if (image && typeof image === 'object' && 'uri' in image) {
-                            source = { uri: image.uri };
-                            console.log(`Image ${index} is an object with URI:`, image.uri);
-                        } else {
-                            console.error(`Image ${index} has invalid format:`, image);
-                            return null; // Skip invalid images
-                        }
-                        return (
-                            <TouchableWithoutFeedback
-                                key={index}
-                                onPress={handleMediaTouch}
+            <View style={styles.mediaContainer}>
+                {/* Current media item (video or image) */}
+                {allMedia[currentMediaIndex].type === 'video'
+                    ? renderVideoContent(allMedia[currentMediaIndex].source)
+                    : renderImageContent(allMedia[currentMediaIndex].source, currentMediaIndex)}
+
+                {/* Navigation buttons */}
+                {showDots && allMedia.length > 1 && (
+                    <>
+                        {/* Previous button */}
+                        {currentMediaIndex > 0 && (
+                            <TouchableOpacity
+                                style={[styles.navButton, styles.prevButton]}
+                                onPress={goToPreviousMedia}
                             >
-                                <Image
-                                    source={source}
+                                <Icon name="chevron-left" size={30} color="white" />
+                            </TouchableOpacity>
+                        )}
+
+                        {/* Next button */}
+                        {currentMediaIndex < allMedia.length - 1 && (
+                            <TouchableOpacity
+                                style={[styles.navButton, styles.nextButton]}
+                                onPress={goToNextMedia}
+                            >
+                                <Icon name="chevron-right" size={30} color="white" />
+                            </TouchableOpacity>
+                        )}
+
+                        {/* Pagination dots */}
+                        <View style={styles.paginationDots}>
+                            {allMedia.map((_, index) => (
+                                <Animated.View
+                                    key={index}
                                     style={[
-                                        styles.postImage,
+                                        styles.dot,
                                         {
-                                            width: screenWidth - 24,
-                                            height: imageHeight || (post.isVertical ? 480 : 300)
+                                            backgroundColor: index === currentMediaIndex ? '#fff' : 'rgba(255, 255, 255, 0.5)',
+                                            width: 6,
+                                            height: 6,
+                                            margin: 4,
+                                            borderRadius: 3
                                         }
                                     ]}
-                                    resizeMode={post.isVertical ? "cover" : "contain"}
-                                    onError={(error) => console.error('Image loading error for source', source, ':', error.nativeEvent.error)}
                                 />
-                            </TouchableWithoutFeedback>
-                        );
-                    })}
-                </ScrollView>
-                {showDots && post.postImages && post.postImages.length > 1 && (
-                    <View style={styles.paginationDots}>
-                        {post.postImages.map((_, index) => (
-                            <Animated.View
-                                key={index}
-                                style={[
-                                    styles.dot,
-                                    animateDot(index)
-                                ]}
-                            />
-                        ))}
-                    </View>
+                            ))}
+                        </View>
+                    </>
                 )}
             </View>
         );
     };
 
-    const handleMessageUser = async () => {
-        // Close the options modal
-        setShowOptions(false);
-
-        const currentUser = firebase.currentUser();
-        if (!currentUser || !post.user.id) {
-            Snackbar.show({
-                text: 'Unable to message user at this time',
-                duration: Snackbar.LENGTH_LONG,
-                textColor: 'white',
-                backgroundColor: '#ff3b30',
-            });
-            return;
+    // Helper function to render video content
+    const renderVideoContent = (videoSource: any) => {
+        let source;
+        if (typeof videoSource === 'number') {
+            source = videoSource;
+        } else if (typeof videoSource === 'string') {
+            source = { uri: videoSource };
+        } else if (videoSource && typeof videoSource === 'object') {
+            const videoObject = videoSource as { uri?: string };
+            if (videoObject.uri) {
+                source = { uri: videoObject.uri };
+            } else {
+                console.error('Video object has no URI property:', videoSource);
+                return <View style={styles.errorContainer}><Text>Invalid video format</Text></View>;
+            }
+        } else {
+            console.error('Video has invalid format:', videoSource);
+            return <View style={styles.errorContainer}><Text>Invalid video format</Text></View>;
         }
 
+        return (
+            <TouchableWithoutFeedback onPress={handleVideoPress}>
+                <View style={{
+                    // width: screenWidth - 24,
+                    height: imageHeight,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: '#000'
+                }}>
+                    <Video
+                        ref={videoRef}
+                        source={source}
+                        style={[
+                            styles.postImage,
+                            post.isVertical
+                                ? { width: '100%', height: '100%' }
+                                : { width: '100%', height: '100%', }
+                        ]}
+                        resizeMode={post.isVertical ? "cover" : "contain"}
+                        paused={isPaused}
+                        repeat
+                        onProgress={handleVideoProgress}
+                        onError={(error) => console.error('Video loading error:', error)}
+                    />
+                    {isPaused && (
+                        <View style={styles.pausedOverlay} />
+                    )}
+                </View>
+            </TouchableWithoutFeedback>
+        );
+    };
+
+    // Helper function to render image content
+    const renderImageContent = (imageSource: any, index: number) => {
+        let source;
+        if (typeof imageSource === 'number') {
+            source = imageSource;
+        } else if (typeof imageSource === 'string') {
+            source = { uri: imageSource };
+        } else if (imageSource && typeof imageSource === 'object' && 'uri' in imageSource) {
+            source = { uri: imageSource.uri };
+        } else {
+            return null; // Skip invalid images
+        }
+
+        return (
+            <TouchableWithoutFeedback onPress={handleMediaTouch}>
+                <Image
+                    source={source}
+                    style={[
+                        styles.postImage,
+                        {
+                            width: screenWidth,
+                            height: imageHeight || (post.isVertical ? 480 : 300)
+                        }
+                    ]}
+                    resizeMode={post.isVertical ? "cover" : "contain"}
+                    onError={(error) => console.error('Image loading error for source', source, ':', error.nativeEvent.error)}
+                />
+            </TouchableWithoutFeedback>
+        );
+    };
+
+    const handleMessageUser = async () => {
         try {
-            // Show loading indicator
+            const currentUser = firebase.currentUser();
+            if (!currentUser) {
+                Snackbar.show({
+                    text: 'You must be logged in to message users',
+                    duration: Snackbar.LENGTH_LONG,
+                    textColor: 'white',
+                    backgroundColor: '#ff3b30',
+                });
+                return;
+            }
+
             Snackbar.show({
                 text: 'Setting up conversation...',
                 duration: Snackbar.LENGTH_INDEFINITE,
@@ -431,13 +533,15 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
     };
 
     const handleSavePost = async () => {
-        try {
-            setIsSaving(true);
+        if (isSaving) return;
 
+        setIsSaving(true);
+        try {
+            // Call Firebase service to save/unsave the post
             const result = await firebase.posts.savePost(post.id);
 
             if (result.success) {
-                setIsSaved(result.saved);
+                setIsSaved(result.saved === true);
 
                 // Show feedback to user
                 Snackbar.show({
@@ -467,6 +571,71 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
         }
     };
 
+    const handleDeletePost = async () => {
+        // Close the options modal
+        setShowOptions(false);
+
+        const currentUser = firebase.currentUser();
+        if (!currentUser || !post.id) {
+            Snackbar.show({
+                text: 'Unable to delete post at this time',
+                duration: Snackbar.LENGTH_LONG,
+                textColor: 'white',
+                backgroundColor: '#ff3b30',
+            });
+            return;
+        }
+
+        // Confirm the user wants to delete
+        setIsDeleting(true);
+
+        try {
+            // Show loading indicator
+            Snackbar.show({
+                text: 'Deleting post...',
+                duration: Snackbar.LENGTH_INDEFINITE,
+                textColor: 'white',
+                backgroundColor: '#2379C2',
+            });
+
+            // Delete the post using the firebase posts module
+            const result = await firebase.posts.deletePost(post.id);
+
+            // Dismiss loading indicator and show success/error message
+            Snackbar.dismiss();
+
+            if (result.success) {
+                Snackbar.show({
+                    text: 'Post deleted successfully',
+                    duration: Snackbar.LENGTH_SHORT,
+                    textColor: 'white',
+                    backgroundColor: '#4CAF50',
+                });
+
+                // You could add a callback here to refresh the feed
+                // If you have a refresh function passed as prop, call it here
+            } else {
+                Snackbar.show({
+                    text: result.error || 'Failed to delete post',
+                    duration: Snackbar.LENGTH_LONG,
+                    textColor: 'white',
+                    backgroundColor: '#ff3b30',
+                });
+            }
+        } catch (error) {
+            console.error('Error deleting post:', error);
+            Snackbar.dismiss();
+            Snackbar.show({
+                text: 'Failed to delete post',
+                duration: Snackbar.LENGTH_LONG,
+                textColor: 'white',
+                backgroundColor: '#ff3b30',
+            });
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
     const PostOptionsModal = () => (
         <Modal
             animationType="fade"
@@ -481,28 +650,50 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
                             styles.modalContent,
                             { backgroundColor: isDark ? '#2a2a2a' : 'white' }
                         ]}>
+                            {isCurrentUserPost ? (
+                                // Show only delete option for the user's own post
+                                <TouchableOpacity
+                                    style={styles.optionItem}
+                                    onPress={handleDeletePost}
+                                    disabled={isDeleting}
+                                >
+                                    <Icon name="trash-2" size={24} color={isDark ? "#ff3b30" : "#ff3b30"} />
+                                    <Text style={[
+                                        styles.optionText,
+                                        { color: isDark ? "#ff3b30" : "#ff3b30" }
+                                    ]}>
+                                        {isDeleting ? 'Deleting post...' : 'Delete Post'}
+                                    </Text>
+                                    {isDeleting && (
+                                        <ActivityIndicator size="small" color={isDark ? "white" : "#2379C2"} style={{ marginLeft: 8 }} />
+                                    )}
+                                </TouchableOpacity>
+                            ) : (
+                                // Show normal options for other users' posts
+                                <>
+                                    <TouchableOpacity
+                                        style={styles.optionItem}
+                                        onPress={handleMessageUser}
+                                    >
+                                        <Icon name="message-circle" size={24} color={isDark ? "white" : "black"} />
+                                        <Text style={[styles.optionText, { color: isDark ? "white" : "black" }]}>Message @{post.user.username}</Text>
+                                    </TouchableOpacity>
 
-                            <TouchableOpacity
-                                style={styles.optionItem}
-                                onPress={handleMessageUser}
-                            >
-                                <Icon name="message-circle" size={24} color={isDark ? "white" : "black"} />
-                                <Text style={[styles.optionText, { color: isDark ? "white" : "black" }]}>Message @{post.user.username}</Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                style={styles.optionItem}
-                                onPress={handleHidePost}
-                                disabled={isHiding}
-                            >
-                                <Icon name="eye-off" size={24} color={isDark ? "white" : "black"} />
-                                <Text style={[styles.optionText, { color: isDark ? "white" : "black" }]}>
-                                    {isHiding ? 'Hiding post...' : 'Hide this post'}
-                                </Text>
-                                {isHiding && (
-                                    <ActivityIndicator size="small" color={isDark ? "white" : "#2379C2"} style={{ marginLeft: 8 }} />
-                                )}
-                            </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={styles.optionItem}
+                                        onPress={handleHidePost}
+                                        disabled={isHiding}
+                                    >
+                                        <Icon name="eye-off" size={24} color={isDark ? "white" : "black"} />
+                                        <Text style={[styles.optionText, { color: isDark ? "white" : "black" }]}>
+                                            {isHiding ? 'Hiding post...' : 'Hide this post'}
+                                        </Text>
+                                        {isHiding && (
+                                            <ActivityIndicator size="small" color={isDark ? "white" : "#2379C2"} style={{ marginLeft: 8 }} />
+                                        )}
+                                    </TouchableOpacity>
+                                </>
+                            )}
                         </View>
                     </TouchableWithoutFeedback>
                 </View>
@@ -510,50 +701,35 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
         </Modal>
     );
 
-    const animateDot = (index: number) => {
-        const isActive = index === currentImageIndex;
-        return {
-            width: 8,
-            height: 8,
-            backgroundColor: isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.3)',
-            transform: [
-                { scale: isActive ? 1 : 0.8 },
-                {
-                    translateY: dotsAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [10, 0]
-                    })
-                }
-            ],
-            opacity: dotsAnim,
-            margin: 4,
-        };
-    };
-
-    useEffect(() => {
-        console.log('Post comments:', post.commentsList);
-        if (!post.commentsList?.length) {
-            console.log('No comments to render');
-        } else {
-            console.log('Comments available:', post.commentsList.length);
-        }
-    }, [post.commentsList]);
-
     useEffect(() => {
         const checkPostSavedStatus = async () => {
             try {
-                // Only check with service if it's not already known
-                if (post.isSaved === undefined) {
-                    const saved = firebase.posts.isPostSaved(post.id);
-                    setIsSaved(Boolean(saved));
+                // We need to fetch the actual saved status from Firestore
+                const currentUser = firebase.currentUser();
+                if (!currentUser) return;
+
+                const userRef = firestore().collection('users').doc(currentUser.uid);
+                const userDoc = await userRef.get();
+
+                if (userDoc.exists) {
+                    const userData = userDoc.data();
+                    const savedPosts = userData?.savedPosts || [];
+                    const saved = savedPosts.includes(post.id);
+                    setIsSaved(saved);
+                } else {
+                    setIsSaved(false);
                 }
             } catch (error) {
                 console.error('Error checking post saved status:', error);
+                setIsSaved(false);
             }
         };
 
-        checkPostSavedStatus();
-    }, [firebase.posts, post.id, post.isSaved]);
+        // Only check saved status if it's not explicitly set in the post prop
+        if (post.isSaved === undefined) {
+            checkPostSavedStatus();
+        }
+    }, [firebase, post.id, post.isSaved]);
 
     const handleLikePost = async () => {
         try {
@@ -597,6 +773,353 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
         }
     };
 
+    // Function to extract hashtags from description
+    const extractHashtags = (text: string): string[] => {
+        // Regex to match hashtags
+        const hashtagRegex = /#[\w]+/g;
+        const matches = text.match(hashtagRegex) || [];
+
+        // Remove the # symbol and filter out empty strings
+        return matches
+            .map(tag => tag.replace('#', '').trim())
+            .filter(tag => tag.length > 0);
+    };
+
+    // Process description and hashtags
+    useEffect(() => {
+        // Extract hashtags from description
+        const extractedTags = extractHashtags(post.description || '');
+
+        // Get existing hashtags array (if any)
+        const existingTags = post.hashtags || [];
+
+        // Combine both sets of hashtags and remove duplicates
+        const allTags = [...new Set([...existingTags, ...extractedTags])];
+
+        // Store combined tags back to post object for filtering
+        post.hashtags = allTags;
+
+        // Format the description with clickable hashtags
+        formatDescriptionWithHashtags();
+    }, [post.description]);
+
+    // Format description with clickable hashtags
+    const formatDescriptionWithHashtags = () => {
+        if (!post.description) {
+            setFormattedDescription(null);
+            return;
+        }
+
+        const parts = post.description.split(/(#\w+)/g);
+        const formattedParts = parts.map((part, index) => {
+            if (part.startsWith('#')) {
+                const tag = part.slice(1); // Remove the # character
+                return (
+                    <Text
+                        key={index}
+                        style={[styles.hashtag, { color: isDark ? '#2379C2' : '#0095f6' }]}
+                        onPress={() => handleHashtagPress(tag)}
+                    >
+                        {part}
+                    </Text>
+                );
+            }
+            return <Text key={index}>{part}</Text>;
+        });
+
+        setFormattedDescription(formattedParts);
+    };
+
+    // Handle hashtag press
+    const handleHashtagPress = (tag: string) => {
+        // Navigate to hashtag results or trigger filtering
+        // Example navigation:
+        // navigation.navigate('HashtagResults', { tag });
+    };
+
+    const [showFullPostModal, setShowFullPostModal] = useState(false);
+
+    // Function to handle opening the full post details modal
+    const handleOpenFullPost = () => {
+        setShowFullPostModal(true);
+    };
+
+    // Update the FullPostModal component to memoize media content and improve scrolling
+    const FullPostModal = () => {
+        // Create local state for modal media navigation to prevent affecting the main feed
+        const [modalMediaIndex, setModalMediaIndex] = useState(currentMediaIndex);
+
+        // Function to handle comment button in the modal
+        const handleCommentButtonInModal = () => {
+            // First close the full post modal
+            setShowFullPostModal(false);
+
+            // After a small delay, open the comments modal
+            setTimeout(() => {
+                setShowComments(true);
+            }, 300);
+        };
+
+        // Media navigation functions that only affect the modal state
+        const goToPreviousMediaInModal = useCallback(() => {
+            if (modalMediaIndex > 0) {
+                setModalMediaIndex(modalMediaIndex - 1);
+            }
+        }, [modalMediaIndex]);
+
+        const goToNextMediaInModal = useCallback(() => {
+            if (modalMediaIndex < allMedia.length - 1) {
+                setModalMediaIndex(modalMediaIndex + 1);
+            }
+        }, [modalMediaIndex, allMedia.length]);
+
+        // Reset modal media index when the modal opens
+        useEffect(() => {
+            if (showFullPostModal) {
+                setModalMediaIndex(currentMediaIndex);
+            }
+        }, [showFullPostModal, currentMediaIndex]);
+
+        // Memoize the media content to prevent re-renders
+        const currentMediaContent = React.useMemo(() => {
+            if (allMedia.length === 0) return null;
+
+            const media = allMedia[modalMediaIndex];
+            if (media.type === 'video') {
+                return renderVideoContent(media.source);
+            } else {
+                return renderImageContent(media.source, modalMediaIndex);
+            }
+        }, [modalMediaIndex, allMedia]);
+
+        // Memoize pagination dots
+        const paginationDots = React.useMemo(() => {
+            if (allMedia.length <= 1) return null;
+
+            return (
+                <View style={styles.paginationDots}>
+                    {allMedia.map((_, index) => (
+                        <Animated.View
+                            key={index}
+                            style={[
+                                styles.dot,
+                                {
+                                    backgroundColor: index === modalMediaIndex ? '#fff' : 'rgba(255, 255, 255, 0.5)',
+                                    width: 6,
+                                    height: 6,
+                                    margin: 4,
+                                    borderRadius: 3
+                                }
+                            ]}
+                        />
+                    ))}
+                </View>
+            );
+        }, [allMedia, modalMediaIndex]);
+
+        return (
+            <Modal
+                animationType="slide"
+                transparent={false}
+                visible={showFullPostModal}
+                onRequestClose={() => setShowFullPostModal(false)}
+                statusBarTranslucent={false}
+            >
+                <SafeAreaView style={[
+                    styles.fullPostModalContainer,
+                    { backgroundColor: isDark ? '#1a1a1a' : 'white' }
+                ]}>
+                    <View style={[
+                        styles.fullPostHeader,
+                        { borderBottomColor: isDark ? '#333333' : '#f0f0f0' }
+                    ]}>
+                        <View style={styles.userInfo}>
+                            {userProfileImage ? (
+                                <Image
+                                    source={
+                                        typeof userProfileImage === 'string'
+                                            ? { uri: userProfileImage }
+                                            : userProfileImage
+                                    }
+                                    style={[styles.avatar]}
+                                    onError={(e) => console.log('Avatar loading error:', e.nativeEvent.error)}
+                                />
+                            ) : (
+                                <Avatar
+                                    titleStyle={{
+                                        textAlign: 'center',
+                                        fontFamily: 'Kufam-Thin'
+                                    }}
+                                    title={getUsernameForLogo(post.user.username || 'Anonymous')}
+                                    activeOpacity={0.7}
+                                />
+                            )}
+                            <Text style={[styles.username, { color: isDark ? "white" : "black" }]}>{post.user.username}</Text>
+                        </View>
+                        <TouchableOpacity
+                            onPress={() => setShowFullPostModal(false)}
+                            style={styles.closeButton}
+                        >
+                            <AntDesign name="close" size={24} color={isDark ? "white" : "black"} />
+                        </TouchableOpacity>
+                    </View>
+
+                    <ScrollView
+                        style={styles.fullPostScrollView}
+                        showsVerticalScrollIndicator={false}
+                        bounces={true}
+                        contentContainerStyle={styles.fullPostScrollContent}
+                    >
+                        <View style={styles.fullPostMediaContainer}>
+                            {/* Render the memoized media content to prevent re-renders */}
+                            <View style={{
+                                width: screenWidth,
+                                height: imageHeight,
+                                backgroundColor: '#000'
+                            }}>
+                                {currentMediaContent}
+                            </View>
+
+                            {allMedia.length > 1 && (
+                                <>
+                                    {modalMediaIndex > 0 && (
+                                        <TouchableOpacity
+                                            style={[styles.navButton, styles.prevButton]}
+                                            onPress={goToPreviousMediaInModal}
+                                            hitSlop={{ top: 20, bottom: 20, left: 20, right: 10 }}
+                                        >
+                                            <Icon name="chevron-left" size={30} color="white" />
+                                        </TouchableOpacity>
+                                    )}
+
+                                    {modalMediaIndex < allMedia.length - 1 && (
+                                        <TouchableOpacity
+                                            style={[styles.navButton, styles.nextButton]}
+                                            onPress={goToNextMediaInModal}
+                                            hitSlop={{ top: 20, bottom: 20, left: 10, right: 20 }}
+                                        >
+                                            <Icon name="chevron-right" size={30} color="white" />
+                                        </TouchableOpacity>
+                                    )}
+
+                                    {paginationDots}
+                                </>
+                            )}
+                        </View>
+
+                        <View style={[
+                            styles.fullPostActions,
+                            { borderBottomColor: isDark ? '#333333' : '#f0f0f0' }
+                        ]}>
+                            <View style={styles.leftActions}>
+                                <TouchableOpacity onPress={handleLikePost} style={styles.actionButton}>
+                                    <AntDesign name={isLiked ? "heart" : "hearto"} size={24} color={isLiked ? "red" : (isDark ? "white" : "black")} />
+                                </TouchableOpacity>
+                                <TouchableOpacity style={styles.actionButton} onPress={handleCommentButtonInModal}>
+                                    <MaterialIcons name="comment" size={24} color={isDark ? "white" : "black"} />
+                                </TouchableOpacity>
+                                <TouchableOpacity style={styles.actionButton} onPress={handleMessageUser}>
+                                    <Icon name="send" size={24} color={isDark ? "white" : "black"} />
+                                </TouchableOpacity>
+                            </View>
+                            <TouchableOpacity onPress={handleSavePost} disabled={isSaving}>
+                                {isSaving ? (
+                                    <ActivityIndicator size="small" color={isDark ? "white" : "#2379C2"} />
+                                ) : (
+                                    <MaterialIcons
+                                        name={isSaved ? "bookmark" : "bookmark-outline"}
+                                        size={26}
+                                        color={isSaved ? primaryColor : (isDark ? "white" : "black")}
+                                    />
+                                )}
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.fullPostContentContainer}>
+                            <Text style={[styles.likes, { color: isDark ? "white" : "black" }]}>{post.likes} likes</Text>
+
+                            <View style={styles.fullPostDescriptionContainer}>
+                                <Text style={[styles.username, { color: isDark ? "white" : "black", marginRight: 6 }]} numberOfLines={1}>
+                                    {post.user.username}
+                                </Text>
+                                <Text style={[styles.fullPostDescription, { color: isDark ? "#e0e0e0" : "#2c2c2c" }]}>
+                                    {formattedDescription || post.description}
+                                </Text>
+                            </View>
+
+                            <Text style={[styles.timestamp, { color: isDark ? "#8e8e8e" : "#666666" }]}>{post.timestamp}</Text>
+
+                            {post.commentsList && post.commentsList.length > 0 && (
+                                <View style={[
+                                    styles.fullPostCommentsSection,
+                                    { borderTopColor: isDark ? '#333333' : '#f0f0f0' }
+                                ]}>
+                                    <View style={styles.commentsHeaderContainer}>
+                                        <Text style={[styles.commentsHeader, { color: isDark ? "white" : "black" }]}>
+                                            Comments ({post.comments})
+                                        </Text>
+                                        <TouchableOpacity
+                                            onPress={handleCommentButtonInModal}
+                                            style={styles.viewAllCommentsButton}
+                                        >
+                                            <Text style={{ color: primaryColor }}>View all</Text>
+                                        </TouchableOpacity>
+                                    </View>
+
+                                    {/* Show just a few comments in the modal */}
+                                    {post.commentsList.slice(0, 3).map((comment, index) => (
+                                        <View key={index} style={[
+                                            styles.commentItem,
+                                            index < Math.min((post.commentsList?.length || 0), 3) - 1 && {
+                                                borderBottomWidth: 0.5,
+                                                borderBottomColor: isDark ? '#333333' : '#f0f0f0',
+                                                paddingBottom: 10,
+                                                marginBottom: 10
+                                            }
+                                        ]}>
+                                            <Image
+                                                source={
+                                                    comment.userImage
+                                                        ? { uri: comment.userImage }
+                                                        : { uri: "https://avatar.iran.liara.run/username?username=" + encodeURIComponent(comment.username || 'Anonymous') }
+                                                }
+                                                style={styles.commentAvatar}
+                                            />
+                                            <View style={styles.commentContent}>
+                                                <Text style={[styles.commentText, { color: isDark ? "#e0e0e0" : "#2c2c2c" }]}>
+                                                    <Text style={[styles.commentUsername, { color: isDark ? "white" : "black" }]}>
+                                                        {comment.username || 'Anonymous'}{' '}
+                                                    </Text>
+                                                    {comment.text}
+                                                </Text>
+                                                <View style={styles.commentMeta}>
+                                                    <Text style={[styles.commentTimestamp, { color: isDark ? "#8e8e8e" : "#666666" }]}>
+                                                        {comment.timestamp || ''}
+                                                    </Text>
+                                                </View>
+                                            </View>
+                                        </View>
+                                    ))}
+
+                                    {post.commentsList.length > 3 && (
+                                        <TouchableOpacity
+                                            onPress={handleCommentButtonInModal}
+                                            style={[styles.viewCommentsButton, { alignSelf: 'center', marginTop: 10 }]}
+                                        >
+                                            <Text style={{ color: primaryColor, textAlign: 'center' }}>
+                                                View all {post.comments} comments
+                                            </Text>
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
+                            )}
+                        </View>
+                    </ScrollView>
+                </SafeAreaView>
+            </Modal>
+        );
+    };
+
     return (
         <Animated.View
             key={post.id}
@@ -607,14 +1130,13 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
             ]}
         >
             <View style={styles.header}>
-                <View style={styles.userInfo} onLayout={() => console.log("postimg:" + post.user.image)}>
+                <View style={styles.userInfo}>
                     {
-
-                        post.user.image ? (<Image
+                        userProfileImage ? (<Image
                             source={
-                                typeof post.user.image === 'string'
-                                    ? { uri: post.user.image }
-                                    : post.user.image
+                                typeof userProfileImage === 'string'
+                                    ? { uri: userProfileImage }
+                                    : userProfileImage
                             }
                             style={styles.avatar}
                             onError={(e) => console.log('Avatar loading error:', e.nativeEvent.error)}
@@ -635,7 +1157,12 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
                     <Icon name="more-horizontal" size={24} color={isDark ? "white" : "black"} />
                 </TouchableOpacity>
             </View>
-            {renderMedia()}
+            {/* Make the post content clickable to open the full post modal */}
+            <TouchableWithoutFeedback onPress={handleOpenFullPost}>
+                <View>
+                    {renderMedia()}
+                </View>
+            </TouchableWithoutFeedback>
             <View style={styles.postActions}>
                 <View style={styles.leftActions}>
                     <TouchableOpacity onPress={handleLikePost} style={styles.actionButton}>
@@ -654,8 +1181,8 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
                     ) : (
                         <MaterialIcons
                             name={isSaved ? "bookmark" : "bookmark-outline"}
-                            size={24}
-                            color={isSaved ? "#2379C2" : (isDark ? "white" : "black")}
+                            size={26}
+                            color={isSaved ? primaryColor : (isDark ? "white" : "black")}
                         />
                     )}
                 </TouchableOpacity>
@@ -663,12 +1190,14 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
 
             <View style={styles.postFooter}>
                 <Text style={[styles.likes, { color: isDark ? "white" : "black" }]}>{post.likes} likes</Text>
-                <View style={styles.captionContainer}>
-                    <Text style={[styles.caption, { color: isDark ? "#e0e0e0" : "#2c2c2c" }]} numberOfLines={3} ellipsizeMode="tail">
-                        <Text style={[styles.username, { color: isDark ? "white" : "black" }]} numberOfLines={1}>{post.user.username + " ".repeat(2)}</Text>
-                        {post.description}
-                    </Text>
-                </View>
+                <TouchableWithoutFeedback onPress={handleOpenFullPost}>
+                    <View style={styles.captionContainer}>
+                        <Text style={[styles.caption, { color: isDark ? "#e0e0e0" : "#2c2c2c" }]} numberOfLines={3} ellipsizeMode="tail">
+                            <Text style={[styles.username, { color: isDark ? "white" : "black" }]} numberOfLines={1}>{post.user.username + " ".repeat(2)}</Text>
+                            {formattedDescription || post.description}
+                        </Text>
+                    </View>
+                </TouchableWithoutFeedback>
 
                 {post.commentsList && post.commentsList.length > 0 && (
                     <TouchableOpacity
@@ -699,6 +1228,7 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
                 postId={post.id}
             />
             <PostOptionsModal />
+            <FullPostModal />
         </Animated.View>
     );
 };
@@ -788,7 +1318,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     dot: {
-        borderRadius: 4,
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        margin: 4,
     },
     postActions: {
         flexDirection: 'row',
@@ -894,11 +1427,116 @@ const styles = StyleSheet.create({
         color: '#8e8e8e',
     },
     errorContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 20,
+        backgroundColor: '#f8d7da',
         width: '100%',
         height: 200,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#f8f8f8',
-        borderRadius: 8,
     },
+    hashtag: {
+        fontWeight: '600',
+        color: '#0095f6', // Default color for hashtags (used when isDark isn't available)
+    },
+    navButton: {
+        position: 'absolute',
+        top: '50%',
+        transform: [{ translateY: -15 }],
+        padding: 10,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        borderRadius: 20,
+    },
+    prevButton: {
+        left: 10,
+    },
+    nextButton: {
+        right: 10,
+    },
+    fullPostModalContainer: {
+        flex: 1,
+        width: '100%',
+        height: '100%',
+        paddingTop: 0, // Ensure no extra padding at the top
+    },
+    fullPostScrollView: {
+        flex: 1,
+        width: '100%',
+    },
+    fullPostScrollContent: {
+        flexGrow: 1,
+        paddingBottom: 20, // Add padding at the bottom for better scrolling
+    },
+    fullPostHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 16,
+        paddingTop: 8,
+        borderBottomWidth: 1,
+        elevation: 3,
+        shadowColor: "#000",
+        shadowOffset: {
+            width: 0,
+            height: 1,
+        },
+        shadowOpacity: 0.18,
+        shadowRadius: 1.0,
+        width: '100%',
+    },
+    closeButton: {
+        padding: 8,
+        borderRadius: 20,
+    },
+    fullPostMediaContainer: {
+        position: 'relative',
+        width: '100%',
+        backgroundColor: '#000',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: 200, // Ensure a minimum height even if content is loading
+    },
+    fullPostActions: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        width: '100%',
+    },
+    fullPostContentContainer: {
+        padding: 16,
+        width: '100%',
+    },
+    fullPostDescriptionContainer: {
+        marginVertical: 12,
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        width: '100%',
+    },
+    fullPostDescription: {
+        fontSize: 16,
+        lineHeight: 22,
+        flex: 1,
+        letterSpacing: 0.3,
+    },
+    fullPostCommentsSection: {
+        marginTop: 20,
+        paddingTop: 16,
+        borderTopWidth: 1,
+        width: '100%',
+    },
+    commentsHeaderContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 12
+    },
+    commentsHeader: {
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    viewAllCommentsButton: {
+        padding: 5,
+    }
 });

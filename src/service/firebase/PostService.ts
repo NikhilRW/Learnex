@@ -6,10 +6,11 @@ import {
   LikeResponse,
   SavePostResponse,
   AddCommentResponse,
-} from '../../types/authTypes';
+} from '../../types/responses';
 import {CommentService} from './CommentService';
 import {SavedPostService} from './SavedPostService';
 import {PostQueryService} from './PostQueryService';
+import axios from 'axios';
 
 export class PostService {
   constructor(
@@ -59,6 +60,135 @@ export class PostService {
     } catch (error) {
       console.error('Error in likePost:', error);
       return {success: false, error: 'Failed to update like status'};
+    }
+  }
+
+  // Helper function to extract public_id from Cloudinary URL
+  private extractCloudinaryPublicId(
+    url: string,
+  ): {publicId: string; resourceType: string} | null {
+    try {
+      if (!url || typeof url !== 'string' || !url.includes('cloudinary.com')) {
+        return null;
+      }
+
+      // Format: https://res.cloudinary.com/CLOUD_NAME/image|video/upload/v1234567890/folder/public_id.extension
+      const urlParts = url.split('/');
+      const fileNameWithExtension = urlParts[urlParts.length - 1];
+      const publicIdWithoutExtension = fileNameWithExtension.split('.')[0];
+
+      // Determine resource type (image or video)
+      const resourceType = url.includes('/image/') ? 'image' : 'video';
+
+      // If the URL has a folder structure, include it in the public_id
+      const uploadIndex = urlParts.indexOf('upload');
+      if (uploadIndex !== -1 && uploadIndex < urlParts.length - 2) {
+        const folderPath = urlParts
+          .slice(uploadIndex + 1, urlParts.length - 1)
+          .join('/');
+        const fullPublicId = `${folderPath}/${publicIdWithoutExtension}`;
+        return {publicId: fullPublicId, resourceType};
+      }
+
+      return {publicId: publicIdWithoutExtension, resourceType};
+    } catch (error) {
+      console.error('Error extracting public_id from URL:', error);
+      return null;
+    }
+  }
+
+  async deletePost(postId: string) {
+    try {
+      const currentUser = auth().currentUser;
+      if (!currentUser) {
+        return {success: false, error: 'User not authenticated'};
+      }
+
+      // Get the post to check ownership
+      const postRef = firestore().collection('posts').doc(postId);
+      const postDoc = await postRef.get();
+
+      if (!postDoc.exists) {
+        return {success: false, error: 'Post not found'};
+      }
+
+      // Verify that the current user is the creator of the post
+      const postData = postDoc.data();
+      if (postData?.user?.id !== currentUser.uid) {
+        return {success: false, error: 'Not authorized to delete this post'};
+      }
+
+      // Extract media URLs from post data
+      const mediaToDelete = [];
+      if (postData?.postImages && Array.isArray(postData.postImages)) {
+        mediaToDelete.push(...postData.postImages);
+      }
+      if (postData?.postVideo) {
+        mediaToDelete.push(postData.postVideo);
+      }
+
+      // Create a batch to delete the post and all its associated data
+      const batch = firestore().batch();
+
+      // 1. Delete all comments
+      const commentsSnapshot = await postRef.collection('comments').get();
+      commentsSnapshot.docs.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+
+      // 2. Delete the post itself
+      batch.delete(postRef);
+
+      // 3. Commit the batch
+      await batch.commit();
+
+      // 4. Delete media from Cloudinary
+      if (mediaToDelete.length > 0) {
+        try {
+          // Process each media URL to extract public_id
+          const deletePromises = mediaToDelete.map(async url => {
+            const cloudinaryInfo = this.extractCloudinaryPublicId(url);
+            if (cloudinaryInfo) {
+              const {publicId, resourceType} = cloudinaryInfo;
+              console.log(
+                `Deleting ${resourceType} from Cloudinary:`,
+                publicId.split('/')[1],
+              );
+              const response = await axios.post(
+                `https://learnex-backend.vercel.app/api/cloudinary/delete`,
+                {
+                  public_id: publicId.split('/')[1],
+                },
+                {
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                },
+              );
+              if (response.status === 200) {
+                console.log(`Successfully deleted media: ${publicId}`);
+              } else {
+                console.error(
+                  `Failed to delete media: ${publicId}`,
+                  response.data,
+                );
+              }
+            }
+          });
+          await Promise.all(deletePromises);
+        } catch (error) {
+          console.error('Error deleting media files from Cloudinary:', error);
+          // Continue with success response as the post was deleted successfully from Firestore
+        }
+      }
+
+      return {success: true};
+    } catch (error) {
+      console.log('PostsModule :: deletePost() ::', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to delete post',
+      };
     }
   }
 

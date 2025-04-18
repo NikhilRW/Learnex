@@ -164,63 +164,147 @@ export class PostQueryService {
         query = query.where('likedBy', 'array-contains', likedByUser);
       }
 
+      // Special handling for hashtag search
+      let postsWithHashtagInDesc: PostType[] = [];
+      let hashtagArrayPostIds: Set<string> = new Set();
+
       if (hashtag) {
-        query = query.where('hashtags', 'array-contains', hashtag);
-      }
+        // If searching by hashtag, we need to handle two queries:
+        // 1. Posts with hashtag in the hashtags array
+        // 2. Posts with hashtag in the description
 
-      if (timeRange) {
-        const now = new Date();
-        let startDate = new Date();
-        switch (timeRange) {
-          case 'day':
-            startDate.setDate(now.getDate() - 1);
-            break;
-          case 'week':
-            startDate.setDate(now.getDate() - 7);
-            break;
-          case 'month':
-            startDate.setMonth(now.getMonth() - 1);
-            break;
-          case 'year':
-            startDate.setFullYear(now.getFullYear() - 1);
-            break;
+        // First, get posts with hashtag in hashtags array
+        const hashtagArrayQuery = query.where(
+          'hashtags',
+          'array-contains',
+          hashtag,
+        );
+
+        if (lastVisible) {
+          hashtagArrayQuery.startAfter(lastVisible);
         }
-        query = query.where('timestamp', '>=', startDate);
-      }
 
-      query = query.orderBy('timestamp', 'desc');
+        const hashtagArraySnapshot = await hashtagArrayQuery
+          .orderBy('timestamp', 'desc')
+          .limit(limit)
+          .get();
 
-      if (lastVisible) {
-        query = query.startAfter(lastVisible);
-      }
+        const hashtagArrayPosts = hashtagArraySnapshot.docs.map(doc => {
+          const data = doc.data();
+          hashtagArrayPostIds.add(doc.id); // Track IDs to avoid duplicates
 
-      query = query.limit(limit);
+          return {
+            id: doc.id,
+            ...data,
+          };
+        });
 
-      const postsSnapshot = await query.get();
-      const lastVisibleDoc = postsSnapshot.docs[postsSnapshot.docs.length - 1];
+        // Second, look for hashtag in descriptions (only if we didn't fill the limit)
+        if (hashtagArrayPosts.length < limit) {
+          const descQuery = query.orderBy('timestamp', 'desc');
 
-      const posts = await Promise.all(
-        postsSnapshot.docs
-          .filter(doc => !blockedPostIds.includes(doc.id)) // Filter out blocked posts
-          .map(async doc => {
+          if (lastVisible) {
+            descQuery.startAfter(lastVisible);
+          }
+
+          const descQuerySnapshot = await descQuery
+            .limit(limit * 2) // Get more to filter
+            .get();
+
+          postsWithHashtagInDesc = descQuerySnapshot.docs
+            .filter(doc => {
+              // Skip if already in array-contains results
+              if (hashtagArrayPostIds.has(doc.id)) return false;
+
+              // Check description for hashtag
+              const data = doc.data();
+              return (data.description || '').includes(`#${hashtag}`);
+            })
+            .map(doc => {
+              return {
+                id: doc.id,
+                ...doc.data(),
+              };
+            });
+        }
+
+        // Process results after all queries
+        let snapshot;
+        if (postsWithHashtagInDesc.length > 0) {
+          // We need to combine results and sort them
+          const allPosts = [...hashtagArrayPosts, ...postsWithHashtagInDesc];
+
+          // Convert to PostType and filter blocked
+          const postsData = allPosts
+            .sort((a, b) => {
+              // Sort by timestamp descending
+              return b.timestamp?.seconds - a.timestamp?.seconds;
+            })
+            .slice(0, limit) // Limit to requested number
+            .filter(post => !blockedPostIds.includes(post.id))
+            .map(postData => {
+              return convertFirestorePost(
+                postData as FirestorePost,
+                currentUser.uid,
+              );
+            });
+
+          const lastDoc =
+            allPosts.length > 0 ? allPosts[allPosts.length - 1] : null;
+
+          // Update cache
+          this.queryCache.set(cacheKey, postsData);
+          this.queryCacheTimestamps.set(cacheKey, Date.now());
+
+          return {
+            success: true,
+            posts: postsData,
+            lastVisible: lastDoc,
+          };
+        } else {
+          snapshot = hashtagArraySnapshot;
+        }
+      } else {
+        // Handle normal query without hashtag
+        if (lastVisible) {
+          query = query.startAfter(lastVisible);
+        }
+
+        if (timeRange) {
+          // Add time range filter if specified
+          const rangeStart = this.getTimeRangeStart(timeRange);
+          query = query.where('timestamp', '>=', rangeStart);
+        }
+
+        query = query.orderBy('timestamp', 'desc').limit(limit);
+
+        const snapshot = await query.get();
+
+        // Process query results
+        const postsData = snapshot.docs
+          .filter(doc => !blockedPostIds.includes(doc.id))
+          .map(doc => {
             const postData = {id: doc.id, ...doc.data()} as FirestorePost;
-            const likedBy = postData.likedBy || [];
-
-            const comments = await this.commentService.getPostComments(doc.ref);
-            postData.commentsList = comments;
-            postData.comments = comments.length;
-
-            this.likeCache.setPostLikes(doc.id, likedBy);
             return convertFirestorePost(postData, currentUser.uid);
-          }),
-      );
+          });
 
-      this.queryCache.set(cacheKey, posts);
-      this.queryCacheTimestamps.set(cacheKey, Date.now());
+        const lastDoc =
+          snapshot.docs.length > 0
+            ? snapshot.docs[snapshot.docs.length - 1]
+            : null;
 
-      return {success: true, posts, lastVisible: lastVisibleDoc};
+        // Update cache
+        this.queryCache.set(cacheKey, postsData);
+        this.queryCacheTimestamps.set(cacheKey, Date.now());
+
+        return {
+          success: true,
+          posts: postsData,
+          lastVisible: lastDoc,
+        };
+      }
     } catch (error) {
-      console.error('PostQueryService :: getPosts() ::', error);
+      console.error('Error getting posts:', error);
       return {success: false, error: 'Failed to fetch posts'};
     }
   }
@@ -303,5 +387,30 @@ export class PostQueryService {
     this.queryCacheTimestamps.clear();
     this.activeListeners.forEach(unsubscribe => unsubscribe());
     this.activeListeners.clear();
+  }
+
+  // Helper function to determine the start date for a time range filter
+  private getTimeRangeStart(
+    timeRange: 'day' | 'week' | 'month' | 'year',
+  ): Date {
+    const now = new Date();
+    let startDate = new Date();
+
+    switch (timeRange) {
+      case 'day':
+        startDate.setDate(now.getDate() - 1);
+        break;
+      case 'week':
+        startDate.setDate(now.getDate() - 7);
+        break;
+      case 'month':
+        startDate.setMonth(now.getMonth() - 1);
+        break;
+      case 'year':
+        startDate.setFullYear(now.getFullYear() - 1);
+        break;
+    }
+
+    return startDate;
   }
 }

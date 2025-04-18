@@ -2,7 +2,7 @@ export const navigationDrawerOptions = [
   'Room',
   'Tasks',
   'Insights',
-  'Scan or Generate QR',
+  'Generate QR',
   'Feed News',
   'Events & Hackathons',
   'Rewards',

@@ -5,10 +5,13 @@ export interface Task {
   title: string;
   description: string;
   dueDate: string;
+  dueTime: string;
   priority: 'low' | 'medium' | 'high';
   completed: boolean;
   category: string;
   userId: string;
+  notify: boolean;
+  notificationId?: string;
   createdAt?: FirebaseFirestoreTypes.Timestamp;
   updatedAt?: FirebaseFirestoreTypes.Timestamp;
 }

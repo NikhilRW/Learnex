@@ -87,17 +87,63 @@ export class TrendingService {
         }
       }
 
-      const postsSnapshot = await firestore()
+      // First, get posts with hashtag in the hashtags array
+      const arrayContainsQuery = firestore()
         .collection('posts')
         .where('hashtags', 'array-contains', hashtag)
         .orderBy('timestamp', 'desc')
-        .limit(limit)
-        .get();
+        .limit(limit);
 
-      const posts = postsSnapshot.docs.map(doc => {
+      // Then, get posts with hashtag in the description
+      const descriptionQuery = firestore()
+        .collection('posts')
+        .orderBy('timestamp', 'desc')
+        .limit(limit * 2); // Fetch more to filter later
+
+      const [arrayContainsSnapshot, descriptionSnapshot] = await Promise.all([
+        arrayContainsQuery.get(),
+        descriptionQuery.get(),
+      ]);
+
+      // Process posts from array-contains query
+      const arrayContainsPosts = arrayContainsSnapshot.docs.map(doc => {
         const postData = {id: doc.id, ...doc.data()} as FirestorePost;
         return convertFirestorePost(postData, currentUser.uid);
       });
+
+      // Get post IDs from array-contains query to avoid duplicates
+      const arrayContainsPostIds = new Set(
+        arrayContainsPosts.map(post => post.id),
+      );
+
+      // Process posts from description query and filter for hashtag in description
+      const descriptionContainsPosts = descriptionSnapshot.docs
+        .filter(doc => {
+          // Skip posts already found in array-contains query
+          if (arrayContainsPostIds.has(doc.id)) return false;
+
+          // Check if description contains the hashtag
+          const data = doc.data();
+          const description = data.description || '';
+          return description.includes(`#${hashtag}`);
+        })
+        .map(doc => {
+          const postData = {id: doc.id, ...doc.data()} as FirestorePost;
+          return convertFirestorePost(postData, currentUser.uid);
+        });
+
+      // Combine both sets of posts
+      const allPosts = [...arrayContainsPosts, ...descriptionContainsPosts];
+
+      // Sort by timestamp and limit
+      const posts = allPosts
+        .sort((a, b) => {
+          // Convert string timestamps back to dates for comparison
+          const dateA = new Date(a.timestamp);
+          const dateB = new Date(b.timestamp);
+          return dateB.getTime() - dateA.getTime();
+        })
+        .slice(0, limit);
 
       // Calculate engagement rate
       const totalEngagement = posts.reduce(

@@ -3,14 +3,8 @@ import { createDrawerNavigator } from '@react-navigation/drawer';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import NavigationDrawer from '../components/user/UserStack/NavigationDrawer';
 import NavigationDrawerButton from '../components/user/UserStack/NavigationDrawerButton';
-import Ionicons from 'react-native-vector-icons/Ionicons';
-import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
-import HomeIcon from '../components/user/UserStack/HomeIcon';
 import Search from '../screens/userscreens/Search';
 import CreatePost from '../screens/userscreens/CreatePost';
-import Annoucement from '../screens/userscreens/Annoucement';
-import AnnouncementIcon from '../components/user/UserStack/AnnouncementIcon';
-import HashTrends from '../screens/userscreens/HashTrends';
 import Room from '../screens/userscreens/Room';
 import RoomScreen from '../screens/userscreens/RoomScreen';
 import Tasks from '../screens/userscreens/Tasks';
@@ -32,6 +26,7 @@ import { MeetingService } from '../service/firebase/MeetingService';
 import QRCode from '../screens/userscreens/QRCode';
 import { MessageService } from '../service/firebase/MessageService';
 import { UserService } from '../service/firebase/UserService';
+import LexAI from '../screens/userscreens/LexAI';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -43,7 +38,6 @@ export type UserStackParamList = {
   Search: { searchText?: string };
   Home: undefined;
   CreatePost: undefined;
-  HashTrends: undefined;
   Room: undefined;
   RoomScreen: {
     meeting: any;
@@ -55,6 +49,7 @@ export type UserStackParamList = {
     id: string;
     source: string;
   };
+  LexAI:undefined;
   Conversations: undefined;
   Chat: {
     conversationId: string;
@@ -142,7 +137,7 @@ const UserStack = () => {
   const userService = useRef(new UserService()).current;
   const firebase = useTypedSelector(state => state.firebase.firebase);
 
-  // Set up notification channels and handlers for direct messages
+  // Set up notification channels and handlers for direct messages and tasks
   useEffect(() => {
     const setupNotifications = async () => {
       try {
@@ -161,6 +156,17 @@ const UserStack = () => {
         // Start listening for new messages to trigger notifications
         notificationService.setupMessageListener();
 
+        // Start listening for tasks to schedule notifications
+        notificationService.setupTaskNotificationListener();
+
+        // Initialize Firebase Cloud Messaging
+        const fcmInitialized = await notificationService.initializeFCM();
+        if (fcmInitialized) {
+          console.log('Firebase Cloud Messaging initialized successfully');
+        } else {
+          console.warn('Firebase Cloud Messaging initialization failed or permission denied');
+        }
+
         console.log('Notification services initialized');
       } catch (error) {
         console.error('Failed to set up notification services:', error);
@@ -175,8 +181,10 @@ const UserStack = () => {
       try {
         const notificationService = require('../service/NotificationService').default;
         notificationService.removeMessageListener();
+        notificationService.removeTaskListener();
+        notificationService.cleanupFCM();
       } catch (error) {
-        console.error('Failed to clean up notification listener:', error);
+        console.error('Failed to clean up notification listeners:', error);
       }
     };
   }, [navigation]);
@@ -314,8 +322,13 @@ const UserStack = () => {
 
   return (
     <Drawer.Navigator
-      initialRouteName="Tabs"
-      drawerContent={(props) => <NavigationDrawer {...props} />}
+      initialRouteName="LexAI"
+      // initialRouteName="Tabs"
+      drawerContent={(props) => {
+        return (
+          <NavigationDrawer {...props} />
+        )
+      }}
       screenOptions={{
         headerShown: false, // Hide header for all screens by default
         drawerStyle: {
@@ -419,6 +432,14 @@ const UserStack = () => {
         options={{
           headerShown: false, // Hide header for Saved Posts screen
           swipeEnabled: false, // Disable drawer swipe for this screen
+          drawerItemStyle: { display: 'none' }, // Hide from drawer
+        }}
+      />
+      <Drawer.Screen
+        name="LexAI"
+        component={LexAI}
+        options={{
+          headerShown: false, // Hide header for LexAI screen
           drawerItemStyle: { display: 'none' }, // Hide from drawer
         }}
       />

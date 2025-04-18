@@ -21,6 +21,7 @@ const NavigationDrawerButton = memo(({ tintColor, navigation }: { tintColor: str
   const [isTyping, setIsTyping] = useState(false);
   const [searchText, setSearchText] = useState('');
   const profileColor = useTypedSelector(state => state.user.userProfileColor);
+  const reduxPhotoURL = useTypedSelector(state => state.user.userPhoto);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -31,7 +32,12 @@ const NavigationDrawerButton = memo(({ tintColor, navigation }: { tintColor: str
           return;
         }
 
-        if (currentUser.photoURL) {
+        // First check if we have a photo URL in Redux
+        if (reduxPhotoURL) {
+          setPhotoURL(reduxPhotoURL);
+        }
+        // If not, check Firebase user photo URL
+        else if (currentUser.photoURL) {
           console.log('User photo URL:', currentUser.photoURL);
           if (typeof currentUser.photoURL === 'string' &&
             (currentUser.photoURL.startsWith('http://') ||
@@ -61,7 +67,14 @@ const NavigationDrawerButton = memo(({ tintColor, navigation }: { tintColor: str
     };
 
     fetchUserData();
-  }, [firebase]);
+  }, [firebase, reduxPhotoURL]);
+
+  // Effect to update photoURL when reduxPhotoURL changes
+  useEffect(() => {
+    if (reduxPhotoURL !== null) {
+      setPhotoURL(reduxPhotoURL);
+    }
+  }, [reduxPhotoURL]);
 
   useEffect(() => {
     if (searchText.length > 0) {

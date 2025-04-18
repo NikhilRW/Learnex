@@ -588,6 +588,52 @@ class PostsModule {
     }
   }
 
+  async deletePost(postId: string) {
+    try {
+      const currentUser = auth().currentUser;
+      if (!currentUser) {
+        return {success: false, error: 'User not authenticated'};
+      }
+
+      // Get the post to check ownership
+      const postRef = firestore().collection('posts').doc(postId);
+      const postDoc = await postRef.get();
+
+      if (!postDoc.exists) {
+        return {success: false, error: 'Post not found'};
+      }
+
+      // Verify that the current user is the creator of the post
+      const postData = postDoc.data();
+      if (postData?.user?.id !== currentUser.uid) {
+        return {success: false, error: 'Not authorized to delete this post'};
+      }
+
+      // Create a batch to delete the post and all its associated data
+      const batch = firestore().batch();
+
+      // 1. Delete all comments
+      const commentsSnapshot = await postRef.collection('comments').get();
+      commentsSnapshot.docs.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+
+      // 2. Delete the post itself
+      batch.delete(postRef);
+
+      // 3. Commit the batch
+      await batch.commit();
+
+      return {success: true};
+    } catch (error) {
+      console.log('PostsModule :: deletePost() ::', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to delete post',
+      };
+    }
+  }
+
   isPostSaved(postId: string): boolean {
     try {
       const currentUser = auth().currentUser;

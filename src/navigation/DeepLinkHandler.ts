@@ -12,6 +12,31 @@ export class DeepLinkHandler {
   }
 
   /**
+   * Navigate directly to a screen using the navigation ref
+   * This is useful for programmatic navigation from notifications
+   *
+   * @param screenName The name of the screen to navigate to
+   * @param params Parameters to pass to the screen
+   * @returns boolean indicating if navigation was attempted
+   */
+  public static navigate(screenName: string, params?: any): boolean {
+    if (!this.navigationRef || !this.navigationRef.isReady()) {
+      console.log('Navigation not ready, storing navigation request for later');
+      this.pendingNavigation = {screenName, params};
+      return false;
+    }
+
+    try {
+      console.log(`Navigating to ${screenName}`, params);
+      this.navigationRef.navigate(screenName, params);
+      return true;
+    } catch (error) {
+      console.error('Error during navigation:', error);
+      return false;
+    }
+  }
+
+  /**
    * Handle a deep link URL
    * @param url The deep link URL to handle
    */
@@ -50,6 +75,29 @@ export class DeepLinkHandler {
             }
             break;
 
+          case 'chat':
+          case 'message':
+            if (pathSegments.length >= 2) {
+              // Format: /chat/[conversationId]?senderId=xxx&senderName=xxx
+              const conversationId = pathSegments[1];
+
+              // Get query parameters
+              const senderId = parsedUrl.searchParams.get('senderId') || '';
+              const senderName =
+                parsedUrl.searchParams.get('senderName') || 'User';
+              const senderPhoto =
+                parsedUrl.searchParams.get('senderPhoto') || '';
+
+              // Navigate to the chat screen
+              this.navigationRef.navigate('Chat', {
+                conversationId,
+                recipientId: senderId,
+                recipientName: senderName,
+                recipientPhoto: senderPhoto,
+              });
+            }
+            break;
+
           // Add more cases for other deep link types
 
           default:
@@ -69,9 +117,39 @@ export class DeepLinkHandler {
       this.handleDeepLink(this.pendingDeepLink);
       this.pendingDeepLink = null;
     }
+
+    // Also check for any pending direct navigation
+    if (this.pendingNavigation && this.navigationRef?.isReady()) {
+      const {screenName, params} = this.pendingNavigation;
+      this.navigate(screenName, params);
+      this.pendingNavigation = null;
+    }
+  }
+
+  /**
+   * Check for any pending navigation or deep links at app startup
+   * This should be called when the navigation container is ready
+   */
+  public static checkPendingNavigation(): void {
+    // Check for any pending deep link
+    if (this.pendingDeepLink && this.navigationRef?.isReady()) {
+      console.log('Processing pending deep link from app startup');
+      this.handleDeepLink(this.pendingDeepLink);
+      this.pendingDeepLink = null;
+    }
+
+    // Check for any pending direct navigation
+    if (this.pendingNavigation && this.navigationRef?.isReady()) {
+      console.log('Processing pending navigation from app startup');
+      const {screenName, params} = this.pendingNavigation;
+      this.navigate(screenName, params);
+      this.pendingNavigation = null;
+    }
   }
 
   // Private properties
   private static navigationRef: any = null;
   private static pendingDeepLink: string | null = null;
+  private static pendingNavigation: {screenName: string; params: any} | null =
+    null;
 }

@@ -3,7 +3,7 @@ import {ImageSourcePropType} from 'react-native';
 interface User {
   id: string;
   username: string;
-  image: ImageSourcePropType ;
+  image: string;
 }
 
 export interface Comment {

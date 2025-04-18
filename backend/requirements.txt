@@ -5,3 +5,5 @@ beautifulsoup4==4.12.2
 python-dotenv==1.0.0
 python-dateutil==2.8.2
 gunicorn==20.1.0 
+cloudinary==1.33.0
+firebase-admin==6.2.0

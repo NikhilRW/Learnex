@@ -6,8 +6,9 @@ const initialState: userState = {
   isLoggedIn: false,
   theme: Appearance.getColorScheme()!,
   userNewlyOpenedApp: null,
-  userProfileColor:null,
-  customColorPrefrence:false
+  userProfileColor: null,
+  customColorPrefrence: false,
+  userPhoto: null,
 };
 export const userSlice = createSlice({
   name: 'user',
@@ -25,6 +26,12 @@ export const userSlice = createSlice({
     changeUserNewlyOpenedApp: (state, action: PayloadAction<boolean>) => {
       state.userNewlyOpenedApp = action.payload;
     },
+    setCustomColorPrefrence: (state, action: PayloadAction<boolean>) => {
+      state.customColorPrefrence = action.payload;
+    },
+    updateUserPhoto: (state, action: PayloadAction<string | null>) => {
+      state.userPhoto = action.payload;
+    },
   },
 });
 
@@ -34,4 +41,6 @@ export const {
   changeProfileColor,
   changeThemeColor,
   changeUserNewlyOpenedApp,
+  setCustomColorPrefrence,
+  updateUserPhoto,
 } = userSlice.actions;

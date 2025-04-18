@@ -67,10 +67,18 @@ const Room = () => {
         taskId: '', // Initialize taskId field
     });
 
-    // Fetch tasks when component mounts
+    // Fetch tasks when component mounts and when screen is focused
     useEffect(() => {
         fetchTasks();
-    }, []);
+
+        // Add focus listener to refresh tasks when returning to this screen
+        const unsubscribe = navigation.addListener('focus', () => {
+            fetchTasks();
+        });
+
+        // Clean up the listener when the component is unmounted
+        return unsubscribe;
+    }, [navigation]);
 
     // Function to fetch user's tasks
     const fetchTasks = async () => {
@@ -80,6 +88,16 @@ const Room = () => {
             // Filter out completed tasks
             const pendingTasks = userTasks.filter(task => !task.completed);
             setTasks(pendingTasks);
+
+            // Verify if selected task still exists and is not completed
+            if (selectedTask) {
+                const taskStillExists = pendingTasks.some(task => task.id === selectedTask.id);
+                if (!taskStillExists) {
+                    // Selected task no longer exists or is completed, clear selection
+                    setSelectedTask(null);
+                    setMeetingRoom(prev => ({ ...prev, taskId: '' }));
+                }
+            }
         } catch (error) {
             console.error('Error fetching tasks:', error);
             Alert.alert('Error', 'Failed to load tasks');
@@ -153,6 +171,13 @@ const Room = () => {
         setShowTaskModal(false);
     };
 
+    // Function to handle showing the task modal
+    const handleShowTaskModal = () => {
+        // Fetch the latest tasks before showing the modal
+        fetchTasks();
+        setShowTaskModal(true);
+    };
+
     // Task modal component
     const renderTaskModal = () => (
         <Modal
@@ -160,6 +185,7 @@ const Room = () => {
             transparent={true}
             animationType="slide"
             onRequestClose={() => setShowTaskModal(false)}
+            onShow={() => fetchTasks()}
         >
             <View style={[styles.modalOverlay]}>
                 <View style={[
@@ -170,9 +196,25 @@ const Room = () => {
                         <Text style={[styles.modalTitle, { color: isDark ? 'white' : 'black' }]}>
                             Select a Task
                         </Text>
-                        <TouchableOpacity onPress={() => setShowTaskModal(false)}>
-                            <Text style={{ color: isDark ? 'white' : 'black', fontSize: 16 }}>Cancel</Text>
-                        </TouchableOpacity>
+                        <View style={{ flexDirection: 'row' }}>
+                            <TouchableOpacity
+                                onPress={fetchTasks}
+                                style={{ marginRight: 15 }}
+                                disabled={isTasksLoading}
+                            >
+                                <Text style={{
+                                    color: isTasksLoading ? (isDark ? '#555' : '#ccc') : (isDark ? '#2379C2' : '#2379C2'),
+                                    fontSize: 16
+                                }}>
+                                    Refresh
+                                </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => setShowTaskModal(false)}>
+                                <Text style={{ color: isDark ? 'white' : 'black', fontSize: 16 }}>
+                                    Cancel
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
 
                     {isTasksLoading ? (
@@ -328,20 +370,38 @@ const Room = () => {
                 <Text style={[styles.label, isDark && styles.darkText]}>
                     Associated Task (Optional)
                 </Text>
-                <TouchableOpacity
-                    style={[
-                        styles.input,
-                        styles.taskSelector,
-                        isDark && styles.darkInput,
-                    ]}
-                    onPress={() => setShowTaskModal(true)}
-                >
-                    <Text style={[
-                        selectedTask ? { color: isDark ? 'white' : 'black' } : { color: isDark ? '#888888' : '#666666' },
-                    ]}>
-                        {selectedTask ? selectedTask.title : "Select a task for this meeting"}
-                    </Text>
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row' }}>
+                    <TouchableOpacity
+                        style={[
+                            styles.input,
+                            styles.taskSelector,
+                            isDark && styles.darkInput,
+                            { flex: 1 }
+                        ]}
+                        onPress={handleShowTaskModal}
+                    >
+                        <Text style={[
+                            selectedTask ? { color: isDark ? 'white' : 'black' } : { color: isDark ? '#888888' : '#666666' },
+                        ]}>
+                            {selectedTask ? selectedTask.title : "Select a task for this meeting"}
+                        </Text>
+                    </TouchableOpacity>
+
+                    {selectedTask && (
+                        <TouchableOpacity
+                            style={[
+                                styles.clearButton,
+                                { backgroundColor: isDark ? '#333' : '#f0f0f0',borderColor: isDark ? '#444' : '#ddd', }
+                            ]}
+                            onPress={() => {
+                                setSelectedTask(null);
+                                setMeetingRoom(prev => ({ ...prev, taskId: '' }));
+                            }}
+                        >
+                            <Text style={{ color: isDark ? '#ff3b30' : '#ff3b30' ,marginVertical:'auto',fontSize:18,paddingBottom:3}}>✕</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
             </View>
 
             <View style={styles.inputGroup}>
@@ -691,6 +751,12 @@ const styles = StyleSheet.create({
     emptyContainer: {
         padding: 20,
         alignItems: 'center',
+    },
+    clearButton: {
+        padding: 8,
+        borderRadius: 8,
+        marginLeft: 8,
+        borderWidth: 1,
     },
 });
 

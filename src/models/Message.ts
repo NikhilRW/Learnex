@@ -29,5 +29,7 @@ export interface Conversation {
     senderId: string;
     read: boolean;
   };
-  unreadCount?: number;
+  unreadCount?: {
+    [userId: string]: number;
+  };
 }

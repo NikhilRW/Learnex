@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
     View,
     Text,
@@ -19,6 +19,7 @@ import {
 import { Avatar } from 'react-native-elements';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
 import { MessageService } from '../../service/firebase/MessageService';
@@ -28,12 +29,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getUsernameForLogo } from '../../helpers/stringHelpers';
 import Snackbar from 'react-native-snackbar';
 import notificationService from '../../service/NotificationService';
+import firestore from '@react-native-firebase/firestore';
+import LexAIService from '../../service/LexAIService';
 
 type ChatScreenRouteParams = {
     conversationId: string;
     recipientId: string;
     recipientName: string;
     recipientPhoto: string;
+    isLoading?: boolean;
+    fromPost?: boolean;
 };
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -41,17 +46,19 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const ChatScreen: React.FC = () => {
     const insets = useSafeAreaInsets();
     const route = useRoute<RouteProp<Record<string, ChatScreenRouteParams>, string>>();
-    const { conversationId, recipientId, recipientName, recipientPhoto } = route.params;
+    const { conversationId, recipientId, recipientName, recipientPhoto, isLoading, fromPost } = route.params;
     const navigation = useNavigation();
 
     const isDark = useTypedSelector((state) => state.user.theme) === "dark";
     const firebase = useTypedSelector(state => state.firebase.firebase);
     const currentUser = firebase.currentUser();
+    const reduxUserPhoto = useTypedSelector(state => state.user.userPhoto);
 
     const [messages, setMessages] = useState<Message[]>([]);
     const [newMessage, setNewMessage] = useState('');
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState<boolean>(isLoading || true);
     const [sending, setSending] = useState(false);
+    const [currentRecipientPhoto, setCurrentRecipientPhoto] = useState<string | null>(recipientPhoto || null);
     const messageService = new MessageService();
     const flatListRef = useRef<FlatList>(null);
     const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
@@ -59,22 +66,147 @@ const ChatScreen: React.FC = () => {
     const [isEditMode, setIsEditMode] = useState(false);
     const [editText, setEditText] = useState('');
     const [isMuted, setIsMuted] = useState<boolean>(false);
+    const lastReadTimestamp = useRef<number>(0);
+    const [suggestions, setSuggestions] = useState<string[]>([]);
+    const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
+    const [isFetchingSuggestions, setIsFetchingSuggestions] = useState<boolean>(false);
 
+    // Function to fetch initial messages
+    const fetchMessages = async () => {
+        try {
+            if (!currentUser || !conversationId) return;
+
+            const snapshot = await messageService.getMessages(conversationId).get();
+            const messagesData: Message[] = [];
+
+            snapshot.forEach(doc => {
+                const messageData = doc.data() as Message;
+                messagesData.push({
+                    ...messageData,
+                    id: doc.id,
+                });
+            });
+
+            // Sort messages chronologically (oldest to newest)
+            const sortedMessages = messagesData.sort((a, b) => a.timestamp - b.timestamp);
+
+            setMessages(sortedMessages);
+            setLoading(false);
+
+            // Scroll to bottom after fetching messages
+            setTimeout(() => {
+                if (flatListRef.current) {
+                    flatListRef.current.scrollToEnd({ animated: false });
+                }
+            }, 200);
+        } catch (error) {
+            console.error('Error fetching messages:', error);
+            setLoading(false);
+            Snackbar.show({
+                text: 'Error loading messages',
+                duration: Snackbar.LENGTH_LONG,
+                textColor: 'white',
+                backgroundColor: '#ff3b30',
+            });
+        }
+    };
+
+    // Listen for conversation updates to get the latest participant details
+    useEffect(() => {
+        if (!recipientId || !conversationId) return;
+
+        const unsubscribe = firestore()
+            .collection('conversations')
+            .doc(conversationId)
+            .onSnapshot(snapshot => {
+                if (snapshot.exists) {
+                    const data = snapshot.data();
+                    if (data?.participantDetails && data.participantDetails[recipientId]) {
+                        const updatedPhoto = data.participantDetails[recipientId].image;
+                        if (updatedPhoto !== currentRecipientPhoto) {
+                            setCurrentRecipientPhoto(updatedPhoto);
+                        }
+                    }
+                }
+            });
+
+        return () => unsubscribe();
+    }, [conversationId, recipientId, currentRecipientPhoto]);
+
+    // Display loading overlay when coming from a post
+    const renderLoadingOverlay = () => {
+        if (loading && fromPost) {
+            return (
+                <View style={[
+                    StyleSheet.absoluteFill,
+                    {
+                        backgroundColor: 'rgba(0,0,0,0.4)',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        zIndex: 1000
+                    }
+                ]}>
+                    <View style={{
+                        backgroundColor: isDark ? '#2a2a2a' : 'white',
+                        padding: 20,
+                        borderRadius: 10,
+                        alignItems: 'center'
+                    }}>
+                        <ActivityIndicator size="large" color="#2379C2" />
+                        <Text style={{
+                            marginTop: 10,
+                            color: isDark ? '#fff' : '#000'
+                        }}>
+                            Loading conversation...
+                        </Text>
+                    </View>
+                </View>
+            );
+        }
+        return null;
+    };
     // Set up real-time messages listener
     useEffect(() => {
         if (!currentUser || !conversationId) return;
 
-        // Mark messages as read when entering the chat
-        messageService.markMessagesAsRead(conversationId, currentUser.uid);
+        // Fetch initial messages when conversation is loaded
+        fetchMessages();
 
+        // Mark messages as read when chat is opened
+        markMessagesAsRead();
+
+        // Set up listener for new messages
         const unsubscribe = messageService.getMessages(conversationId)
             .onSnapshot(snapshot => {
-                const newMessages = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                } as Message)).sort((a, b) => a.timestamp - b.timestamp);
+                const newMessages: Message[] = [];
+                let hasNewMessages = false;
 
-                setMessages(newMessages);
+                snapshot.forEach(doc => {
+                    const messageData = doc.data() as Message;
+                    newMessages.push({
+                        ...messageData,
+                        id: doc.id,
+                    });
+
+                    // Check if this is a new message from the other person
+                    if (
+                        messageData.senderId === recipientId &&
+                        !messageData.read &&
+                        messageData.timestamp > lastReadTimestamp.current
+                    ) {
+                        hasNewMessages = true;
+                    }
+                });
+
+                if (hasNewMessages) {
+                    // Mark new messages as read since the chat is open
+                    markMessagesAsRead();
+                }
+
+                // Sort messages chronologically (oldest to newest)
+                const sortedMessages = newMessages.sort((a, b) => a.timestamp - b.timestamp);
+
+                setMessages(sortedMessages);
                 setLoading(false);
 
                 // Scroll to bottom when messages update
@@ -97,12 +229,58 @@ const ChatScreen: React.FC = () => {
         // Update typing status when entering chat
         messageService.setTypingStatus(conversationId, currentUser.uid, false);
 
+        // Add a small delay before removing loading overlay when coming from a post
+        if (fromPost) {
+            const timer = setTimeout(() => {
+                setLoading(false);
+            }, 1000); // 1 second delay for better user experience
+            return () => {
+                clearTimeout(timer);
+                unsubscribe();
+                // Clean up typing status when leaving chat
+                messageService.setTypingStatus(conversationId, currentUser.uid, false);
+            };
+        }
+
         return () => {
             unsubscribe();
             // Clean up typing status when leaving chat
             messageService.setTypingStatus(conversationId, currentUser.uid, false);
         };
-    }, [conversationId, currentUser]);
+    }, [conversationId, currentUser, fromPost]);
+
+    // Function to mark messages as read
+    const markMessagesAsRead = async () => {
+        try {
+            const batch = firestore().batch();
+            const snapshot = await messageService.getMessages(conversationId)
+                .where('recipientId', '==', currentUser?.uid)
+                .where('read', '==', false)
+                .get();
+
+            if (!snapshot.empty) {
+                snapshot.docs.forEach(doc => {
+                    batch.update(doc.ref, { read: true });
+                });
+
+                // Update the lastReadTimestamp to the current time
+                lastReadTimestamp.current = Date.now();
+
+                // Also reset unread count in the conversation
+                const conversationRef = firestore()
+                    .collection('conversations')
+                    .doc(conversationId);
+
+                batch.update(conversationRef, {
+                    [`unreadCount.${currentUser?.uid}`]: 0
+                });
+
+                await batch.commit();
+            }
+        } catch (error) {
+            console.error('Error marking messages as read:', error);
+        }
+    };
 
     // Send message function
     const sendMessage = async () => {
@@ -111,12 +289,18 @@ const ChatScreen: React.FC = () => {
         try {
             setSending(true);
             const { fullName } = await firebase.user.getNameUsernamestring();
+
+            // Determine the best profile photo to use
+            const profilePhoto = reduxUserPhoto || currentUser.photoURL ||
+                "https://avatar.iran.liara.run/username?username=" +
+                encodeURIComponent(currentUser.displayName || fullName || 'User');
+
             // Prepare message data with no undefined values
             const messageData = {
                 conversationId,
                 senderId: currentUser.uid,
                 senderName: currentUser.displayName || fullName || 'User',
-                senderPhoto: currentUser.photoURL || "https://avatar.iran.liara.run/username?username=" + encodeURIComponent(currentUser.displayName || fullName || 'User'),
+                senderPhoto: profilePhoto,
                 recipientId,
                 text: newMessage.trim(),
                 timestamp: new Date().getTime(),
@@ -355,12 +539,12 @@ const ChatScreen: React.FC = () => {
                     </TouchableOpacity>
 
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        {recipientPhoto ? (
+                        {currentRecipientPhoto ? (
                             <Image
                                 source={
-                                    typeof recipientPhoto === 'string'
-                                        ? { uri: recipientPhoto }
-                                        : recipientPhoto
+                                    typeof currentRecipientPhoto === 'string'
+                                        ? { uri: currentRecipientPhoto }
+                                        : currentRecipientPhoto
                                 }
                                 style={{ width: 36, height: 36, borderRadius: 18 }}
                             />
@@ -438,6 +622,51 @@ const ChatScreen: React.FC = () => {
         });
     }, [navigation, recipientName, recipientPhoto, isDark, conversationId, isMuted]);
 
+    // Fetch message suggestions
+    const fetchSuggestions = useCallback(async () => {
+        if (isFetchingSuggestions || !currentUser || messages.length === 0) return;
+
+        try {
+            setIsFetchingSuggestions(true);
+            const messageSuggestions = await LexAIService.generateMessageSuggestions(
+                messages,
+                recipientName
+            );
+            setSuggestions(messageSuggestions);
+            setShowSuggestions(true);
+            setIsFetchingSuggestions(false);
+        } catch (error) {
+            console.error('Error fetching suggestions:', error);
+            setIsFetchingSuggestions(false);
+        }
+    }, [currentUser, messages, recipientName, isFetchingSuggestions]);
+
+    // Replace the automatic suggestion loading with a manual trigger function
+    const handleRequestSuggestions = () => {
+        if (!isFetchingSuggestions && !showSuggestions) {
+            setShowSuggestions(true);
+            fetchSuggestions();
+        } else {
+            // If suggestions are already showing, hide them
+            setShowSuggestions(false);
+        }
+    };
+
+    // Keep the effect that hides suggestions when typing
+    useEffect(() => {
+        if (newMessage.trim().length > 0) {
+            setShowSuggestions(false);
+        }
+    }, [newMessage]);
+
+    // Handle suggestion click
+    const handleSuggestionClick = (suggestion: string) => {
+        setNewMessage(suggestion);
+        setShowSuggestions(false);
+        // Optional: auto-send the suggestion
+        // setTimeout(() => sendMessage(), 100);
+    };
+
     return (
         <SafeAreaView style={[
             styles.container,
@@ -453,6 +682,7 @@ const ChatScreen: React.FC = () => {
                 style={styles.keyboardAvoidingView}
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
             >
+                {renderLoadingOverlay()}
                 {loading ? (
                     <View style={styles.loadingContainer}>
                         <ActivityIndicator size="large" color="#2379C2" />
@@ -465,6 +695,47 @@ const ChatScreen: React.FC = () => {
                         renderItem={renderMessageItem}
                         contentContainerStyle={styles.messagesList}
                     />
+                )}
+
+                {/* Message Suggestions */}
+                {showSuggestions && !isEditMode && !isContextMenuVisible && (
+                    <View style={[
+                        styles.suggestionsContainer,
+                        isDark && styles.darkSuggestionsContainer
+                    ]}>
+                        {isFetchingSuggestions ? (
+                            <View style={styles.suggestionsLoading}>
+                                <ActivityIndicator size="small" color={isDark ? '#8ab4f8' : '#2379C2'} />
+                                <Text style={[
+                                    styles.suggestionsLoadingText,
+                                    isDark && { color: '#8ab4f8' }
+                                ]}>
+                                    Thinking...
+                                </Text>
+                            </View>
+                        ) : suggestions.length > 0 ? (
+                            suggestions.map((suggestion, index) => (
+                                <TouchableOpacity
+                                    key={index}
+                                    style={[
+                                        styles.suggestionButton,
+                                        isDark && styles.darkSuggestionButton
+                                    ]}
+                                    onPress={() => handleSuggestionClick(suggestion)}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.suggestionText,
+                                            isDark && styles.darkSuggestionText
+                                        ]}
+                                        numberOfLines={1}
+                                    >
+                                        {suggestion}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))
+                        ) : null}
+                    </View>
                 )}
 
                 {isEditMode ? (
@@ -525,6 +796,28 @@ const ChatScreen: React.FC = () => {
                         styles.inputContainer,
                         isDark && { backgroundColor: '#333' }
                     ]}>
+                        <TouchableOpacity
+                            style={[
+                                styles.suggestionToggleButton,
+                                showSuggestions && styles.suggestionToggleButtonActive,
+                                isDark && styles.darkSuggestionToggleButton,
+                                showSuggestions && isDark && styles.darkSuggestionToggleButtonActive
+                            ]}
+                            onPress={handleRequestSuggestions}
+                            disabled={messages.length === 0}
+                        >
+                            <MaterialCommunityIcons
+                                name="lightbulb-outline"
+                                size={22}
+                                color={
+                                    messages.length === 0 ?
+                                        (isDark ? '#555' : '#ccc') :
+                                        (showSuggestions ?
+                                            (isDark ? '#8ab4f8' : '#2379C2') :
+                                            (isDark ? '#aaa' : '#777'))
+                                }
+                            />
+                        </TouchableOpacity>
                         <TextInput
                             style={[
                                 styles.input,
@@ -778,7 +1071,72 @@ const styles = StyleSheet.create({
     editButtonText: {
         color: 'white',
         fontWeight: 'bold'
-    }
+    },
+    suggestionsContainer: {
+        flexDirection: 'row',
+        padding: 8,
+        overflow: 'scroll',
+        flexWrap: 'wrap',
+        justifyContent: 'center',
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(0,0,0,0.1)',
+        backgroundColor: '#f5f5f5',
+        width: '100%',
+    },
+    darkSuggestionsContainer: {
+        backgroundColor: '#222',
+        borderTopColor: 'rgba(255,255,255,0.1)',
+    },
+    suggestionButton: {
+        backgroundColor: '#e1efff',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 16,
+        marginHorizontal: 4,
+        marginVertical: 4,
+        borderWidth: 1,
+        borderColor: '#c7e0ff',
+    },
+    darkSuggestionButton: {
+        backgroundColor: '#293b59',
+        borderColor: '#3c5075',
+    },
+    suggestionText: {
+        color: '#2379C2',
+        fontSize: 14,
+    },
+    darkSuggestionText: {
+        color: '#8ab4f8',
+    },
+    disabledSendButton: {
+        backgroundColor: '#e0e0e0'
+    },
+    suggestionsLoading: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 8,
+        justifyContent: 'center',
+    },
+    suggestionsLoadingText: {
+        marginLeft: 8,
+        fontSize: 14,
+        color: '#2379C2',
+    },
+    suggestionToggleButton: {
+        padding: 8,
+        borderRadius: 20,
+        marginRight: 4,
+        backgroundColor: '#f0f0f0',
+    },
+    darkSuggestionToggleButton: {
+        backgroundColor: '#444',
+    },
+    suggestionToggleButtonActive: {
+        backgroundColor: '#e1efff',
+    },
+    darkSuggestionToggleButtonActive: {
+        backgroundColor: '#293b59',
+    },
 });
 
 export default ChatScreen; 

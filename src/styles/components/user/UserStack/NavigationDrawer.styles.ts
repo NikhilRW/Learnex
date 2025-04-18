@@ -45,12 +45,30 @@ export const createStyles = (isDark: boolean) =>
       flexDirection: 'row',
       alignItems: 'center',
     },
+    avatarContainer: {
+      position: 'relative',
+      width: Math.min(SCREEN_WIDTH * 0.15, 60),
+      height: Math.min(SCREEN_WIDTH * 0.15, 60),
+    },
     avatar: {
       width: Math.min(SCREEN_WIDTH * 0.15, 60),
       height: Math.min(SCREEN_WIDTH * 0.15, 60),
       borderRadius: Math.min(SCREEN_WIDTH * 0.075, 30),
       borderWidth: 2,
       borderColor: isDark ? '#2379C2' : '#2379C2',
+    },
+    editIconContainer: {
+      position: 'absolute',
+      bottom: -2,
+      right: -2,
+      backgroundColor: '#2379C2',
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 2,
+      borderColor: isDark ? '#121212' : 'white',
     },
     usernameContainer: {
       marginLeft: Math.min(SCREEN_WIDTH * 0.04, 16),
@@ -62,6 +80,11 @@ export const createStyles = (isDark: boolean) =>
       fontSize: Math.min(SCREEN_WIDTH * 0.045, 18),
       color: isDark ? '#FFFFFF' : '#333333',
       letterSpacing: 0.3,
+    },
+    email: {
+      fontSize: Math.min(SCREEN_WIDTH * 0.035, 14),
+      color: isDark ? '#AAAAAA' : '#666666',
+      marginTop: 2,
     },
     optionsContainer: {
       width: '100%',
@@ -161,5 +184,58 @@ export const createStyles = (isDark: boolean) =>
             : 'rgba(35, 121, 194, 0.2)',
         },
       }),
+    },
+    // Modal styles
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    photoPickerContainer: {
+      width: '80%',
+      maxWidth: 320,
+      borderRadius: 16,
+      overflow: 'hidden',
+      ...Platform.select({
+        ios: {
+          shadowColor: '#000',
+          shadowOffset: {width: 0, height: 4},
+          shadowOpacity: 0.25,
+          shadowRadius: 10,
+        },
+        android: {
+          elevation: 6,
+        },
+      }),
+    },
+    photoPickerTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      textAlign: 'center',
+      paddingVertical: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: isDark ? '#444' : '#eee',
+    },
+    photoPickerOption: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: isDark ? '#444' : '#eee',
+    },
+    photoPickerOptionText: {
+      fontSize: 16,
+      marginLeft: 16,
+    },
+    photoPickerCancelButton: {
+      padding: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderTopWidth: 1,
+    },
+    photoPickerCancelText: {
+      fontSize: 16,
+      fontWeight: '600',
     },
   });

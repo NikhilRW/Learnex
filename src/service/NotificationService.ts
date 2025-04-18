@@ -2,22 +2,39 @@ import notifee, {
   AndroidImportance,
   AndroidVisibility,
   EventType,
+  TriggerType,
+  TimestampTrigger,
+  AndroidCategory,
 } from '@notifee/react-native';
 import {ToastAndroid, Platform} from 'react-native';
 import {NavigationProp} from '@react-navigation/native';
 import {UserStackParamList} from '../routes/UserStack';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
+import messaging from '@react-native-firebase/messaging';
 import {Message} from '../models/Message';
+import {Task} from '../types/taskTypes';
+import {PushNotificationHandler} from '../utils/PushNotificationHandler';
+import {FCMTokenManager} from '../utils/FCMTokenManager';
 
 // Channel ID for direct messages
 const DM_CHANNEL_ID = 'direct_messages';
 // Channel ID for keeping the service alive
 const PERSISTENCE_CHANNEL_ID = 'message_service_persistence';
+// Channel ID for task notifications
+const TASK_CHANNEL_ID = 'task_reminders';
+// Channel ID for FCM notifications
+const FCM_CHANNEL_ID = 'fcm_notifications';
 
 /**
  * NotificationService class handles all notification-related functionality
  * including creating channels, displaying notifications, and handling notification events
+ *
+ * For direct messages, we use a device-to-device approach:
+ * - Each user's device FCM token is stored in Firestore
+ * - When a user sends a message, notifications are sent directly to the recipient's device tokens
+ * - This is more appropriate for direct messaging than topic-based messaging
+ * - The backend API fetches recipient tokens and sends notifications directly to those tokens
  */
 export class NotificationService {
   // Store active message listeners to avoid duplicates
@@ -26,6 +43,61 @@ export class NotificationService {
   private notificationPreferencesCollection = firestore().collection(
     'notificationPreferences',
   );
+  // Store active tasks listeners
+  private taskListeners: {[userId: string]: () => void} = {};
+  // Store FCM token
+  private fcmToken: string | null = null;
+  // Store listener for keep-alive notifications
+  private keepAliveEventListener: (() => void) | undefined = undefined;
+  // Store processed message IDs to avoid duplicate notifications
+  private processedMessageIds: Set<string> = new Set();
+
+  /**
+   * Initialize FCM and request permissions
+   * This should be called during app startup
+   */
+  async initializeFCM(): Promise<boolean> {
+    try {
+      // Request permissions
+      const hasPermission = await PushNotificationHandler.checkPermissions();
+      if (!hasPermission) {
+        console.log('Push notification permissions not granted');
+        return false;
+      }
+
+      // Register with FCM
+      this.fcmToken = await PushNotificationHandler.register();
+      if (!this.fcmToken) {
+        console.log('Failed to get FCM token');
+        return false;
+      }
+
+      // Save the token to Firestore
+      await FCMTokenManager.saveToken(this.fcmToken);
+
+      // Set up message handlers
+      PushNotificationHandler.setupMessageHandlers();
+
+      // Listen for token refresh
+      this.setupTokenRefreshListener();
+
+      return true;
+    } catch (error) {
+      console.error('Failed to initialize FCM:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Listen for FCM token refresh and update in Firestore
+   */
+  private setupTokenRefreshListener(): void {
+    messaging().onTokenRefresh(async (token: string) => {
+      console.log('FCM token refreshed:', token);
+      this.fcmToken = token;
+      await FCMTokenManager.saveToken(token);
+    });
+  }
 
   /**
    * Create a notification channel for screen capture
@@ -45,6 +117,7 @@ export class NotificationService {
         android: {
           channelId,
           asForegroundService: true,
+          smallIcon: 'ic_notification',
         },
       });
       return true;
@@ -71,7 +144,6 @@ export class NotificationService {
    */
   async setupNotificationChannels(): Promise<void> {
     try {
-      console.log('Setting up notification channels...');
       // For Android, create notification channels
       if (Platform.OS === 'android') {
         // Create direct messages channel
@@ -97,9 +169,27 @@ export class NotificationService {
           visibility: AndroidVisibility.SECRET,
         });
 
-        console.log('Notification channels created successfully');
-      } else {
-        console.log('Notification channels not needed on this platform');
+        // Create task reminders channel
+        await notifee.createChannel({
+          id: TASK_CHANNEL_ID,
+          name: 'Task Reminders',
+          description: 'Notifications for task due dates',
+          lights: true,
+          vibration: true,
+          importance: AndroidImportance.HIGH,
+          visibility: AndroidVisibility.PUBLIC,
+        });
+
+        // Create FCM notifications channel
+        await notifee.createChannel({
+          id: FCM_CHANNEL_ID,
+          name: 'Push Notifications',
+          description: 'Remote push notifications',
+          lights: true,
+          vibration: true,
+          importance: AndroidImportance.HIGH,
+          visibility: AndroidVisibility.PUBLIC,
+        });
       }
     } catch (err) {
       console.error('Failed to create notification channels:', err);
@@ -113,38 +203,105 @@ export class NotificationService {
   async startPersistentService(): Promise<void> {
     if (Platform.OS !== 'android') return;
 
-    try {
-      console.log('Starting persistent service for notifications...');
+    // If service is already running, don't start another one
+    if (this.isServiceRunning) {
+      console.log('Persistent service already running, skipping restart');
+      return;
+    }
 
+    try {
       // For Xiaomi/POCO devices, we need to make sure channels are set up first
       await this.setupNotificationChannels();
 
       // Cancel any existing notifications first
       await notifee.cancelAllNotifications();
 
-      // Create a notification to keep the service running
+      // Also cancel any existing trigger notifications, including our keep-alive
+      await notifee.cancelTriggerNotification('keep_alive');
+
+      // Create a foreground service notification that will keep the app alive
+      // This is necessary for devices that aggressively kill background processes
       await notifee.displayNotification({
-        title: 'Message Service',
-        body: 'Keeping you connected to receive messages',
+        id: 'persistent_service',
+        title: 'Learnex',
+        body: 'Keeping you connected',
         android: {
           channelId: PERSISTENCE_CHANNEL_ID,
-          asForegroundService: true,
-          ongoing: true,
-          autoCancel: false,
+          asForegroundService: true, // This is crucial for keeping the app alive
+          ongoing: true, // Make it ongoing so it can't be dismissed
+          autoCancel: false, // Don't allow it to be cancelled
           pressAction: {
             id: 'default',
           },
-          importance: AndroidImportance.MIN,
-          visibility: AndroidVisibility.SECRET,
-          // Some devices need a more visible notification to prevent killing the service
-          smallIcon: 'ic_notification',
+          importance: AndroidImportance.LOW, // Low importance to minimize battery impact
+          visibility: AndroidVisibility.PUBLIC, // Show in notification shade
+          color: '#3EB9F1',
+          smallIcon: 'ic_notification_logo', // Use a valid drawable resource name
+          // Remove or update the largeIcon if needed
+          largeIcon:
+            'https://res.cloudinary.com/dcyysl4h7/image/upload/v1744878330/icon_z9rgbp.png',
         },
       });
 
+      // Also schedule a periodic task that runs every 15 minutes to keep the app alive
+      // This provides redundancy in case the foreground service is killed
+      const now = Date.now();
+      const fifteenMinutes = 15 * 60 * 1000;
+
+      // Schedule a silent notification that will be used to keep the app alive
+      const trigger: TimestampTrigger = {
+        type: TriggerType.TIMESTAMP,
+        timestamp: now + fifteenMinutes,
+        alarmManager: {
+          allowWhileIdle: true,
+        },
+      };
+
+      // Create a silent notification that will be used to keep the app alive
+      await notifee.createTriggerNotification(
+        {
+          id: 'keep_alive',
+          title: 'Learnex',
+          body: 'Keeping you connected',
+          android: {
+            channelId: PERSISTENCE_CHANNEL_ID,
+            asForegroundService: false, // Don't show as a foreground service
+            ongoing: false, // Don't make it ongoing
+            autoCancel: true, // Allow it to be cancelled
+            pressAction: {
+              id: 'default',
+            },
+            smallIcon: 'ic_notification_logo', // Add smallIcon reference
+            importance: AndroidImportance.MIN,
+            visibility: AndroidVisibility.SECRET, // Hide from notification shade
+          },
+        },
+        trigger,
+      );
+
+      // Remove any existing event listener to prevent memory leaks
+      if (this.keepAliveEventListener) {
+        this.keepAliveEventListener();
+      }
+
+      // Set up a listener to reschedule the keep-alive task when it's triggered
+      this.keepAliveEventListener = notifee.onForegroundEvent(
+        ({type, detail}) => {
+          if (
+            type === EventType.TRIGGER_NOTIFICATION_CREATED &&
+            detail.notification?.id === 'keep_alive'
+          ) {
+            // Reschedule the keep-alive task
+            this.startPersistentService();
+          }
+        },
+      );
+
       this.isServiceRunning = true;
-      console.log('Persistent service started successfully');
+      console.log('Persistent service started with foreground notification');
     } catch (err) {
       console.error('Failed to start persistent service:', err);
+      this.isServiceRunning = false;
       throw err; // rethrow to allow caller to handle
     }
   }
@@ -156,7 +313,18 @@ export class NotificationService {
     if (!this.isServiceRunning) return;
 
     try {
-      console.log('Stopping persistent service...');
+      // Cancel any existing keep-alive notifications
+      await notifee.cancelTriggerNotification('keep_alive');
+
+      // Cancel the foreground service notification
+      await notifee.cancelNotification('persistent_service');
+
+      // Remove the event listener
+      if (this.keepAliveEventListener) {
+        this.keepAliveEventListener();
+        this.keepAliveEventListener = undefined;
+      }
+
       await notifee.stopForegroundService();
       this.isServiceRunning = false;
       console.log('Persistent service stopped');
@@ -181,7 +349,6 @@ export class NotificationService {
 
     // Set up a new listener
     const userId = currentUser.uid;
-    console.log(`Setting up message listener for user ${userId}`);
 
     // Start the persistent service to help with Xiaomi/POCO devices
     // Place this after we confirm we have a logged-in user
@@ -201,22 +368,29 @@ export class NotificationService {
         .limit(20) // Limit to the 20 most recent unread messages
         .onSnapshot(
           snapshot => {
-            console.log(
-              `Message snapshot received. Changes: ${
-                snapshot.docChanges().length
-              }`,
-            );
-
             snapshot.docChanges().forEach(change => {
               // Only process newly added messages
               if (change.type === 'added') {
                 const message = change.doc.data() as Message;
+                const messageId = change.doc.id;
 
-                console.log(
-                  `New message detected: ${
-                    message.senderName
-                  }: ${message.text.substring(0, 20)}...`,
-                );
+                // Skip if this message has already been processed
+                if (this.processedMessageIds.has(messageId)) {
+                  console.log(
+                    `Skipping already processed message: ${messageId}`,
+                  );
+                  return;
+                }
+
+                // Add to processed messages set
+                this.processedMessageIds.add(messageId);
+
+                // Keep the set size manageable by limiting to the last 100 messages
+                if (this.processedMessageIds.size > 100) {
+                  // Convert to array, remove oldest entries, convert back to set
+                  const messagesArray = Array.from(this.processedMessageIds);
+                  this.processedMessageIds = new Set(messagesArray.slice(-100));
+                }
 
                 // Verify this is a new message (within the last minute)
                 const messageTime = message.timestamp;
@@ -224,23 +398,14 @@ export class NotificationService {
                 const ONE_MINUTE = 60000; // 60 seconds in milliseconds
                 const messageAge = now - messageTime;
 
-                console.log(
-                  `Message age: ${messageAge}ms (limit: ${ONE_MINUTE}ms)`,
-                );
-
                 // For POCO and other Chinese devices, let's be more lenient
                 // with the time window to improve notification reliability
                 const TIME_WINDOW =
                   Platform.OS === 'android' ? 300000 : ONE_MINUTE; // 5 minutes for Android
 
                 if (messageAge < TIME_WINDOW) {
-                  console.log('Message is recent, triggering notification');
-
                   // Only show notification if the sender is not the current user
                   if (message.senderId !== userId) {
-                    console.log(
-                      `Sender ${message.senderId} is not current user ${userId}, showing notification`,
-                    );
                     this.displayMessageNotification(
                       message.senderId,
                       message.senderName,
@@ -248,17 +413,10 @@ export class NotificationService {
                       message.conversationId,
                       message.recipientId,
                       message.senderPhoto,
-                    );
-                  } else {
-                    console.log(
-                      'Message is from current user, not showing notification',
+                      messageId,
                     );
                   }
-                } else {
-                  console.log('Message is too old, not showing notification');
                 }
-              } else {
-                console.log(`Ignoring message change of type: ${change.type}`);
               }
             });
           },
@@ -271,7 +429,6 @@ export class NotificationService {
 
       // Store the unsubscribe function
       this.messageListeners[userId] = unsubscribe;
-      console.log('Message listener setup complete for user', userId);
     } catch (error) {
       console.error('Failed to set up message listener:', error);
       // Try again with a delay
@@ -287,7 +444,6 @@ export class NotificationService {
     if (currentUser && this.messageListeners[currentUser.uid]) {
       this.messageListeners[currentUser.uid]();
       delete this.messageListeners[currentUser.uid];
-      console.log(`Removed message listener for user ${currentUser.uid}`);
     }
 
     // Stop the persistent service when logging out
@@ -303,6 +459,7 @@ export class NotificationService {
    * @param conversationId ID of the conversation
    * @param recipientId ID of the message recipient
    * @param senderPhoto Optional URL to the sender's profile image
+   * @param messageId Optional ID of the message (if available)
    * @returns Boolean indicating success
    */
   async displayMessageNotification(
@@ -312,6 +469,7 @@ export class NotificationService {
     conversationId: string,
     recipientId: string,
     senderPhoto?: string,
+    messageId?: string,
   ): Promise<boolean> {
     try {
       // Don't show notifications for your own messages
@@ -323,18 +481,27 @@ export class NotificationService {
       // Check if the sender is muted
       const isMuted = await this.isRecipientMuted(senderId);
       if (isMuted) {
-        console.log(`Sender ${senderId} is muted, skipping notification`);
         return false;
+      }
+
+      // If messageId is provided and it's already in the processed list, skip
+      if (messageId && this.processedMessageIds.has(messageId)) {
+        console.log(
+          `Skipping already processed notification for message: ${messageId}`,
+        );
+        return false;
+      }
+
+      // Add to processed messages if a messageId is provided
+      if (messageId) {
+        this.processedMessageIds.add(messageId);
       }
 
       // Check if user is already in the conversation to avoid unnecessary notifications
       // This would require more complex implementation with a service to track active screens
 
-      console.log(`Displaying notification: ${senderName}: ${message}`);
-
       // Validate the senderPhoto URL
       let largeIcon = undefined;
-      console.log('senderPhoto', senderPhoto);
       if (senderPhoto && senderPhoto.startsWith('http')) {
         // Only use the URL if it's a valid http(s) URL
         largeIcon = senderPhoto;
@@ -351,6 +518,7 @@ export class NotificationService {
           recipientId,
           senderName,
           senderPhoto: senderPhoto || '',
+          messageId: messageId || '', // Include the message ID in the notification data
         },
         android: {
           channelId: DM_CHANNEL_ID,
@@ -359,6 +527,7 @@ export class NotificationService {
             launchActivity: 'default',
           },
           // Add notification styling
+          smallIcon: 'ic_notification_logo',
           largeIcon: largeIcon,
           importance: AndroidImportance.HIGH,
           sound: 'default',
@@ -401,15 +570,46 @@ export class NotificationService {
               senderId: string;
               senderName: string;
               senderPhoto: string;
+              messageId?: string;
             };
 
-            // Navigate to the chat screen
-            navigation.navigate('Chat', {
-              conversationId: data.conversationId,
-              recipientId: data.senderId,
-              recipientName: data.senderName,
-              recipientPhoto: data.senderPhoto,
-            });
+            // Add the message ID to processed list if available
+            if (data.messageId && typeof data.messageId === 'string') {
+              console.log(
+                `Adding clicked message to processed list: ${data.messageId}`,
+              );
+              this.processedMessageIds.add(data.messageId);
+            }
+
+            // Try to use DeepLinkHandler first for consistent navigation
+            try {
+              const {
+                DeepLinkHandler,
+              } = require('../navigation/DeepLinkHandler');
+              console.log(
+                'Navigating to chat from foreground notification via DeepLinkHandler',
+              );
+
+              DeepLinkHandler.navigate('Chat', {
+                conversationId: data.conversationId,
+                recipientId: data.senderId,
+                recipientName: data.senderName,
+                recipientPhoto: data.senderPhoto || '',
+              });
+            } catch (error) {
+              console.log('Falling back to direct navigation', error);
+
+              // Fallback to direct navigation if DeepLinkHandler fails
+              navigation.navigate('Chat', {
+                conversationId: data.conversationId,
+                recipientId: data.senderId,
+                recipientName: data.senderName,
+                recipientPhoto: data.senderPhoto || '',
+              });
+            }
+          } else if (detail.notification?.data?.type === 'task_reminder') {
+            // Navigate to the tasks screen
+            navigation.navigate('Tasks');
           }
           break;
       }
@@ -423,14 +623,51 @@ export class NotificationService {
   setupBackgroundHandler(): void {
     // Register background handler
     notifee.onBackgroundEvent(async ({type, detail}) => {
-      if (
-        type === EventType.PRESS &&
-        detail.notification?.data?.type === 'direct_message'
-      ) {
-        // The navigation will be handled by the Firebase dynamic links or deep links
-        // We just need to ensure notification is cleared after click
-        if (detail.notification.id) {
-          await notifee.cancelNotification(detail.notification.id);
+      if (type === EventType.PRESS) {
+        if (detail.notification?.data?.type === 'direct_message') {
+          const data = detail.notification.data || {};
+
+          // Extract message ID if available and add to processed messages
+          const messageId = data.messageId;
+          if (messageId && typeof messageId === 'string') {
+            console.log(
+              `Adding clicked message to processed list: ${messageId}`,
+            );
+            this.processedMessageIds.add(messageId);
+          }
+
+          // Try to navigate to the conversation using DeepLinkHandler
+          try {
+            const {DeepLinkHandler} = require('../navigation/DeepLinkHandler');
+            console.log('Navigating to chat from Notifee background event:', {
+              conversationId: data.conversationId,
+              senderId: data.senderId,
+            });
+
+            // Use DeepLinkHandler to navigate
+            DeepLinkHandler.navigate('Chat', {
+              conversationId: data.conversationId,
+              recipientId: data.senderId,
+              recipientName: data.senderName,
+              recipientPhoto: data.senderPhoto || '',
+            });
+          } catch (error) {
+            console.error(
+              'Error navigating from Notifee background event:',
+              error,
+            );
+          }
+
+          // Clear the notification
+          if (detail.notification.id) {
+            await notifee.cancelNotification(detail.notification.id);
+          }
+        } else if (detail.notification?.data?.type === 'task_reminder') {
+          // Handle task reminder press
+          // Navigation will be handled separately
+          if (detail.notification.id) {
+            await notifee.cancelNotification(detail.notification.id);
+          }
         }
       }
     });
@@ -550,6 +787,308 @@ export class NotificationService {
       return true; // Now muted
     }
   }
+
+  /**
+   * Schedule a notification for a task
+   *
+   * @param task The task to schedule a notification for
+   * @returns The notification ID if scheduling was successful
+   */
+  async scheduleTaskNotification(task: Task): Promise<string | null> {
+    try {
+      console.log(
+        'Attempting to schedule notification for task:',
+        task.id,
+        task.title,
+      );
+
+      // If task doesn't have notify enabled or doesn't have a valid date/time, don't schedule
+      if (!task.notify || !task.dueDate || !task.dueTime) {
+        console.log(
+          'Task missing required notification fields:',
+          JSON.stringify({
+            id: task.id,
+            notify: task.notify,
+            dueDate: task.dueDate,
+            dueTime: task.dueTime,
+          }),
+        );
+        return null;
+      }
+
+      // Parse the due date and time manually
+      const [year, month, day] = task.dueDate
+        .split('-')
+        .map(num => parseInt(num, 10));
+      const [hours, minutes] = task.dueTime
+        .split(':')
+        .map(num => parseInt(num, 10));
+
+      console.log('Parsed date/time components:', {
+        year,
+        month,
+        day,
+        hours,
+        minutes,
+      });
+
+      // Create a local Date object solely for displaying logs
+      const dateForLogging = new Date(year, month - 1, day, hours, minutes, 0);
+      console.log('Due date for logging:', dateForLogging.toString());
+
+      // Calculate the timestamp directly using Indian time (UTC+5:30)
+      // Create timestamp using a direct calculation approach
+      // We'll create the date in Indian Standard Time directly
+      const date = new Date();
+      // Set the local date components
+      date.setFullYear(year);
+      date.setMonth(month - 1); // Month is 0-indexed
+      date.setDate(day);
+      date.setHours(hours);
+      date.setMinutes(minutes);
+      date.setSeconds(0);
+      date.setMilliseconds(0);
+
+      // Get the Unix timestamp in milliseconds
+      const dueTimestamp = date.getTime();
+      console.log('Calculated due timestamp:', dueTimestamp);
+
+      // Get current timestamp for comparison
+      const nowTimestamp = Date.now();
+      console.log('Current timestamp:', nowTimestamp);
+
+      // Validate if the timestamp is in the future
+      if (isNaN(dueTimestamp)) {
+        console.warn('Invalid timestamp calculated for task:', task.id);
+        return null;
+      }
+
+      if (dueTimestamp <= nowTimestamp) {
+        console.warn(
+          'Task due time is in the past:',
+          task.id,
+          'Due timestamp:',
+          dueTimestamp,
+          'Current timestamp:',
+          nowTimestamp,
+          'Difference in minutes:',
+          (nowTimestamp - dueTimestamp) / (1000 * 60),
+        );
+        return null;
+      }
+
+      // Create timestamp trigger directly without using Date objects
+      const trigger: TimestampTrigger = {
+        type: TriggerType.TIMESTAMP,
+        timestamp: dueTimestamp,
+        alarmManager:
+          Platform.OS === 'android'
+            ? {
+                allowWhileIdle: true, // Ensure delivery even in doze mode
+              }
+            : undefined,
+      };
+
+      console.log('Scheduling notification for timestamp:', dueTimestamp);
+      console.log(
+        'Time until notification:',
+        (dueTimestamp - nowTimestamp) / 1000,
+        'seconds',
+      );
+
+      // Schedule the notification with the trigger
+      const notificationId = await notifee.createTriggerNotification(
+        {
+          id: `task_${task.id}`,
+          title: `Task Due: ${task.title}`,
+          body: task.description || 'Your task is due now.',
+          android: {
+            channelId: TASK_CHANNEL_ID,
+            pressAction: {
+              id: 'open_task',
+              launchActivity: 'default',
+            },
+            smallIcon: 'ic_notification_logo',
+            importance: AndroidImportance.HIGH,
+            sound: 'default',
+            vibrationPattern: [300, 500],
+            category: AndroidCategory.ALARM, // Mark as alarm for better delivery
+            fullScreenAction: {
+              // Show even on lock screen
+              id: 'default',
+            },
+          },
+          ios: {
+            categoryId: 'task_reminder',
+            sound: 'default',
+            critical: true, // Mark as critical to boost delivery priority
+          },
+          data: {
+            type: 'task_reminder',
+            taskId: task.id,
+          },
+        },
+        trigger,
+      );
+
+      console.log('Task notification scheduled with ID:', notificationId);
+      return notificationId;
+    } catch (error) {
+      console.error('Failed to schedule task notification:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Cancel a scheduled task notification
+   *
+   * @param notificationId The ID of the notification to cancel
+   */
+  async cancelTaskNotification(notificationId: string): Promise<void> {
+    try {
+      if (notificationId) {
+        await notifee.cancelNotification(notificationId);
+      }
+    } catch (error) {
+      console.error('Failed to cancel task notification:', error);
+    }
+  }
+
+  /**
+   * Setup task notification listener for changed or new tasks
+   */
+  setupTaskNotificationListener(): void {
+    const currentUser = auth().currentUser;
+    if (!currentUser) {
+      console.warn(
+        'Cannot setup task notification listener: User not logged in',
+      );
+      return;
+    }
+
+    // Clear any existing listener
+    this.removeTaskListener();
+
+    const userId = currentUser.uid;
+    console.log('Setting up task notification listener for user:', userId);
+
+    try {
+      // Listen for tasks that have notifications enabled and are not completed
+      const unsubscribe = firestore()
+        .collection('tasks')
+        .where('userId', '==', userId)
+        .where('notify', '==', true)
+        .where('completed', '==', false)
+        .onSnapshot(
+          async snapshot => {
+            console.log(
+              `Task snapshot received with ${
+                snapshot.docChanges().length
+              } changes`,
+            );
+
+            snapshot.docChanges().forEach(async change => {
+              const task = {id: change.doc.id, ...change.doc.data()} as Task;
+              console.log(
+                `Task change detected: ${change.type} - Task: ${task.id}, ${task.title}`,
+              );
+
+              if (change.type === 'added' || change.type === 'modified') {
+                // If task already has a notification, cancel it first
+                if (task.notificationId) {
+                  console.log(
+                    `Cancelling existing notification for task: ${task.id}`,
+                  );
+                  await this.cancelTaskNotification(task.notificationId);
+                }
+
+                // Schedule a new notification if task is not completed
+                if (!task.completed) {
+                  console.log(
+                    `Scheduling notification for task: ${task.id}, ${task.title}`,
+                  );
+                  const notificationId = await this.scheduleTaskNotification(
+                    task,
+                  );
+
+                  // Update the task with the new notification ID
+                  if (notificationId) {
+                    console.log(
+                      `Updating task with new notification ID: ${notificationId}`,
+                    );
+                    await firestore().collection('tasks').doc(task.id).update({
+                      notificationId: notificationId,
+                    });
+                  } else {
+                    console.warn(
+                      `Failed to schedule notification for task: ${task.id}`,
+                    );
+                  }
+                }
+              } else if (change.type === 'removed') {
+                // If task is deleted, cancel its notification
+                if (task.notificationId) {
+                  console.log(
+                    `Cancelling notification for deleted task: ${task.id}`,
+                  );
+                  await this.cancelTaskNotification(task.notificationId);
+                }
+              }
+            });
+          },
+          error => {
+            console.error('Error listening for task notifications:', error);
+            // Try to reestablish the listener after a delay
+            setTimeout(() => this.setupTaskNotificationListener(), 5000);
+          },
+        );
+
+      // Store the unsubscribe function
+      this.taskListeners[userId] = unsubscribe;
+      console.log('Task notification listener setup complete');
+    } catch (error) {
+      console.error('Failed to set up task notification listener:', error);
+      // Try again with a delay
+      setTimeout(() => this.setupTaskNotificationListener(), 5000);
+    }
+  }
+
+  /**
+   * Remove task notification listener
+   */
+  removeTaskListener(): void {
+    const currentUser = auth().currentUser;
+    if (currentUser && this.taskListeners[currentUser.uid]) {
+      this.taskListeners[currentUser.uid]();
+      delete this.taskListeners[currentUser.uid];
+    }
+  }
+
+  /**
+   * Clean up FCM related listeners and tokens
+   * Call this when user logs out
+   */
+  async cleanupFCM(): Promise<void> {
+    try {
+      if (this.fcmToken) {
+        // We don't remove the token from Firestore anymore to ensure
+        // notifications can still be received when the app is closed
+        // Previously: await FCMTokenManager.removeToken(this.fcmToken);
+        console.log(
+          'FCM token preserved in Firestore for background notifications',
+        );
+
+        // Don't unregister or delete the token
+        // Previously: await PushNotificationHandler.unregister();
+
+        // Only clear the local reference to the token
+        this.fcmToken = null;
+      }
+    } catch (error) {
+      console.error('Error cleaning up FCM:', error);
+    }
+  }
+
 }
 
 // Create a singleton instance for use throughout the app

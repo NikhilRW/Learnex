@@ -8,6 +8,14 @@
   ],
   "routes": [
     {
+      "src": "/api/(.*)",
+      "dest": "api/index.py"
+    },
+    {
+      "src": "/(batch|v1|google|firebase|identitytoolkit)(.*)",
+      "continue": true
+    },
+    {
       "src": "/(.*)",
       "dest": "api/index.py"
     }

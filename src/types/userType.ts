@@ -6,6 +6,7 @@ export type userState = {
   theme: string;
   userNewlyOpenedApp: boolean | null;
   customColorPrefrence: boolean;
+  userPhoto: string | null;
 };
 
 export type MediaType = {

@@ -26,6 +26,7 @@ import { createStyles } from '../../../../styles/components/user/CommentModal.st
 import { Avatar } from 'react-native-elements';
 import { getUsernameForLogo } from '../../../../helpers/stringHelpers';
 import Snackbar from 'react-native-snackbar';
+import firestore from '@react-native-firebase/firestore';
 
 interface CommentModalProps {
     visible: boolean;
@@ -71,6 +72,49 @@ const CommentModal: React.FC<CommentModalProps> = ({
     const currentUser = firebase.currentUser();
     const styles = createStyles(isDark);
     const [localComments, setLocalComments] = useState(comments);
+    const [userProfileImages, setUserProfileImages] = useState<Record<string, string>>({});
+
+    // Track all unique user IDs in comments
+    const userIds = React.useMemo(() => {
+        const ids = new Set<string>();
+        localComments.forEach(comment => {
+            if (comment.userId) ids.add(comment.userId);
+            if (comment.replies) {
+                comment.replies.forEach(reply => {
+                    if (reply.userId) ids.add(reply.userId);
+                });
+            }
+        });
+        return Array.from(ids);
+    }, [localComments]);
+
+    // Listen for profile image updates for all users in comments
+    useEffect(() => {
+        if (!userIds.length) return;
+
+        // Create listeners for each user
+        const unsubscribers = userIds.map(userId =>
+            firestore()
+                .collection('users')
+                .doc(userId)
+                .onSnapshot(snapshot => {
+                    if (snapshot.exists) {
+                        const userData = snapshot.data();
+                        if (userData?.image) {
+                            setUserProfileImages(prev => ({
+                                ...prev,
+                                [userId]: userData.image
+                            }));
+                        }
+                    }
+                })
+        );
+
+        // Clean up listeners when component unmounts
+        return () => {
+            unsubscribers.forEach(unsubscribe => unsubscribe());
+        };
+    }, [userIds]);
 
     // Update local comments when props change
     useEffect(() => {
@@ -356,10 +400,14 @@ const CommentModal: React.FC<CommentModalProps> = ({
 
     // Render a single comment or reply
     const renderComment = (comment: Comment, isReply = false) => {
+        // Get potentially updated user image
+        const updatedUserImage = comment.userId ? userProfileImages[comment.userId] : null;
+        const displayImage = updatedUserImage || comment.userImage;
+
         return (
             <View key={comment.id} style={[styles.commentItem, isReply && styles.replyItem]}>
-                {comment.userImage ? (
-                    <Image source={{ uri: comment.userImage }} style={styles.commentAvatar} />
+                {displayImage ? (
+                    <Image source={{ uri: displayImage }} style={styles.commentAvatar} />
                 ) : (
                     <Avatar
                         rounded

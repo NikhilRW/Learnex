@@ -25,7 +25,7 @@ const App = () => {
       SplashScreen.hide();
     }
 
-    // Configure deep links
+    // Configure deep links with navigation reference
     DeepLinkHandler.configureDeepLinks(navigationRef);
 
     // Load hackathon data on app startup - always use 'India' as location
@@ -34,19 +34,37 @@ const App = () => {
     // Check for push notifications permission on startup
     PushNotificationHandler.checkPermissions();
 
+    // Configure notification channels right away
+    PushNotificationHandler.configureChannels();
+
+    // Set up message handlers for FCM
+    PushNotificationHandler.setupMessageHandlers();
+
     // Initialize notification service during app startup
     const initNotifications = async () => {
       try {
         const notificationService = require('./service/NotificationService').default;
         await notificationService.setupNotificationChannels();
 
-        // If user is already logged in, set up the message listener
+        // Set up background notification handlers
+        notificationService.setupBackgroundHandler();
+
+        // If user is already logged in, set up the message and task listeners
         const auth = require('@react-native-firebase/auth').default;
         if (auth().currentUser) {
-          console.log('User already logged in, setting up message listener');
+          console.log('User already logged in, setting up notification listeners');
           notificationService.setupMessageListener();
+          notificationService.setupTaskNotificationListener();
+
+          // Initialize FCM
+          const fcmInitialized = await notificationService.initializeFCM();
+          if (fcmInitialized) {
+            console.log('Firebase Cloud Messaging initialized successfully');
+          } else {
+            console.warn('Firebase Cloud Messaging initialization failed or permission denied');
+          }
         } else {
-          console.log('No user logged in yet, skipping message listener setup');
+          console.log('No user logged in yet, skipping notification setup');
         }
       } catch (error) {
         console.error('Failed to initialize notification service:', error);
@@ -91,6 +109,15 @@ const App = () => {
         // Older React Native with deprecated API
         Linking.removeEventListener('url', handleDeepLink);
       }
+
+      // Clean up notification listeners if needed
+      try {
+        const notificationService = require('./service/NotificationService').default;
+        notificationService.removeMessageListener();
+        notificationService.removeTaskListener();
+      } catch (error) {
+        console.error('Failed to clean up notification listeners:', error);
+      }
     };
   }, []);
 
@@ -101,7 +128,15 @@ const App = () => {
           <Provider store={store}>
             <PersistGate loading={<Loader />} persistor={persistor}>
               <ThemeListener />
-              <Route />
+              <NavigationContainer
+                ref={navigationRef}
+                onReady={() => {
+                  console.log('Navigation is ready');
+                  // Process any pending navigation from notifications
+                  DeepLinkHandler.checkPendingNavigation();
+                }}>
+                <Route />
+              </NavigationContainer>
             </PersistGate>
           </Provider>
         </SafeAreaProvider>

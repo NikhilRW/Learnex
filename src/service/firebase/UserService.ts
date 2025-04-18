@@ -48,7 +48,7 @@ export class UserService {
 
   async checkUsernameOrEmailRegistered(
     emailOrUsername: string,
-  ): Promise<{success: boolean,email?: string,error?:Error}> {
+  ): Promise<{success: boolean; email?: string; error?: Error}> {
     try {
       const email = await firestore()
         .collection('users')
@@ -107,6 +107,34 @@ export class UserService {
     } catch (error) {
       console.log('UserService :: getUserInfoById() ::', error);
       return {email: null, fullName: null, username: null};
+    }
+  }
+
+  async updateProfilePhoto(photoURI: string): Promise<AuthResponse> {
+    try {
+      // 1. Update auth user photoURL
+      const currentUser = auth().currentUser;
+      if (!currentUser) {
+        return {
+          success: false,
+          error: new Error('No authenticated user found'),
+        };
+      }
+
+      // 2. Update the profile
+      await currentUser.updateProfile({
+        photoURL: photoURI,
+      });
+
+      // 3. Update Firestore user document
+      await firestore().collection('users').doc(currentUser.uid).update({
+        image: photoURI,
+      });
+
+      return {success: true};
+    } catch (error) {
+      console.log('UserService :: updateProfilePhoto() ::', error);
+      return {success: false, error};
     }
   }
 }

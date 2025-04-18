@@ -22,7 +22,7 @@ import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { Task } from '../../types/taskTypes';
 import { TaskService } from '../../service/firebase/TaskService';
 import { styles } from '../../styles/screens/userscreens/Tasks.styles';
-import TaskModal from '../../components/TaskModal';
+import TaskModal from '../../components/Room/TaskModal';
 
 const Tasks = () => {
     const isDark = useTypedSelector((state) => state.user.theme) === "dark";
@@ -43,9 +43,11 @@ const Tasks = () => {
         title: '',
         description: '',
         dueDate: new Date().toISOString().split('T')[0],
+        dueTime: '12:00',
         priority: 'medium',
         completed: false,
-        category: ''
+        category: '',
+        notify: true
     });
 
     // Reset form helper
@@ -54,9 +56,11 @@ const Tasks = () => {
             title: '',
             description: '',
             dueDate: new Date().toISOString().split('T')[0],
+            dueTime: '12:00',
             priority: 'medium',
             completed: false,
-            category: ''
+            category: '',
+            notify: true
         });
     };
 
@@ -278,7 +282,7 @@ const Tasks = () => {
                     <View style={styles.taskMeta}>
                         <Icon name="calendar-outline" size={14} color={isDark ? '#8e8e8e' : '#666'} />
                         <Text style={[styles.taskMetaText, { color: isDark ? '#8e8e8e' : '#666', marginLeft: 5 }]}>
-                            {item.dueDate}
+                            {item.dueDate} {item.dueTime && `at ${item.dueTime}`}
                         </Text>
                     </View>
 
@@ -533,7 +537,6 @@ const Tasks = () => {
                     />
                 )}
             </View>
-
             <TaskModal
                 modalVisible={modalVisible}
                 isEditMode={isEditMode}

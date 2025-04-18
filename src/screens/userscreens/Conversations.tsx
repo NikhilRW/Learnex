@@ -30,11 +30,12 @@ import Snackbar from 'react-native-snackbar';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const ConversationsScreen: React.FC = () => {
-    const insets = useSafeAreaInsets();
     const navigation = useNavigation<NavigationProp<UserStackParamList>>();
+    const insets = useSafeAreaInsets();
     const isDark = useTypedSelector((state) => state.user.theme) === "dark";
     const firebase = useTypedSelector(state => state.firebase.firebase);
     const currentUser = firebase.currentUser();
+    const reduxUserPhoto = useTypedSelector(state => state.user.userPhoto);
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [filteredConversations, setFilteredConversations] = useState<Conversation[]>([]);
     const [loading, setLoading] = useState(true);
@@ -177,8 +178,7 @@ const ConversationsScreen: React.FC = () => {
         if (!otherParticipantId) return null;
 
         const otherParticipant = item.participantDetails[otherParticipantId];
-        console.log("otherParticipant", otherParticipant);
-        const isUnread = item.unreadCount && item.unreadCount > 0;
+        const isUnread = item.unreadCount && item.unreadCount[currentUser?.uid || ''] > 0;
         const lastMessageTime = item.lastMessage?.timestamp ?
             formatDistanceToNow(new Date(item.lastMessage.timestamp), { addSuffix: true }) : '';
 
@@ -188,7 +188,15 @@ const ConversationsScreen: React.FC = () => {
                     styles.conversationItem,
                     { backgroundColor: isDark ? (isUnread ? '#293b59' : '#1a1a1a') : (isUnread ? '#f0f7ff' : 'white') }
                 ]}
-                onPress={() => handleConversationPress(item)}
+                onPress={() => {
+                    navigation.navigate('Chat', {
+                        conversationId: item.id,
+                        recipientId: otherParticipantId,
+                        recipientName: otherParticipant.name,
+                        recipientPhoto: otherParticipant.image,
+                        currentUserPhoto: reduxUserPhoto,
+                    });
+                }}
             >
                 {otherParticipant.image ? (
                     <Avatar
@@ -249,7 +257,8 @@ const ConversationsScreen: React.FC = () => {
                         {isUnread && (
                             <View style={styles.unreadBadge}>
                                 <Text style={styles.unreadCount}>
-                                    {item.unreadCount}
+                                    {currentUser && item.unreadCount ?
+                                        item.unreadCount[currentUser.uid] || 0 : 0}
                                 </Text>
                             </View>
                         )}

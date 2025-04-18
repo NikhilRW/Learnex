@@ -876,5 +876,4 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
     },
 });
-
-export default RoomScreen; 
+export default RoomScreen;
