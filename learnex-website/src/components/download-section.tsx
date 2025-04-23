@@ -83,7 +83,7 @@ export function DownloadSection() {
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary mr-2 mt-1 shrink-0">
                                             <polyline points="20 6 9 17 4 12"></polyline>
                                         </svg>
-                                        <span>Version 1.2.0 (Latest Release)</span>
+                                        <span>Version 1.3.0 (Latest Release)</span>
                                     </li>
                                     <li className="flex items-start">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary mr-2 mt-1 shrink-0">
@@ -98,6 +98,23 @@ export function DownloadSection() {
                                         <span>Android 7.0+ required</span>
                                     </li>
                                 </ul>
+
+                                <details className="mb-4 text-sm">
+                                    <summary className="font-medium cursor-pointer text-primary hover:underline">What's New in v1.3.0</summary>
+                                    <div className="mt-2 pl-2 border-l-2 border-primary/20">
+                                        <p className="font-semibold mb-1">Major New Features:</p>
+                                        <ul className="space-y-1 mb-2">
+                                            <li>• LexAI: Your intelligent AI companion</li>
+                                            <li>• Group Tasks: Get things done together</li>
+                                            <li>• Room-Task Integration: Smart linking between study rooms and tasks</li>
+                                        </ul>
+                                        <p className="font-semibold mb-1">Improvements:</p>
+                                        <ul className="space-y-1">
+                                            <li>• Enhanced direct messages with sound notifications</li>
+                                            <li>• Multiple bug fixes and performance improvements</li>
+                                        </ul>
+                                    </div>
+                                </details>
 
                                 <a
                                     href="/app-release.apk"

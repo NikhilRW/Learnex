@@ -108,7 +108,7 @@ const Home = () => {
     },
   ]);
 
-  const renderPost = ({ item }: { item: PostType & { isLiked: boolean; likes: number; isSaved: boolean } }) => (
+  const renderPost = useCallback(({ item }: { item: PostType & { isLiked: boolean; likes: number; isSaved: boolean } }) => (
     <View style={styles.postContainer}>
       <Post
         key={item.id}
@@ -116,7 +116,7 @@ const Home = () => {
         isVisible={item.id === visibleVideoId}
       />
     </View>
-  );
+  ), [visibleVideoId]);
 
   // Add refresh function
   const onRefresh = useCallback(async () => {
@@ -350,8 +350,14 @@ const Home = () => {
             viewabilityConfigCallbackPairs={viewabilityConfigCallbackPairs.current}
             initialNumToRender={2}
             maxToRenderPerBatch={2}
-            windowSize={5}
+            // windowSize={5} // Causes Scrolling To Flicker
             removeClippedSubviews={true}
+            updateCellsBatchingPeriod={50}
+            getItemLayout={(data, index) => ({
+              length: 500, // Approximate height of each post
+              offset: 500 * index,
+              index,
+            })}
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}

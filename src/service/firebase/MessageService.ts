@@ -120,6 +120,7 @@ export class MessageService {
   async sendMessage(
     conversationId: string,
     message: Omit<Message, 'id'>,
+    isQrInitiated: boolean = false,
   ): Promise<Message> {
     try {
       // Check if conversation exists first
@@ -157,20 +158,62 @@ export class MessageService {
       // Trigger a notification through the local NotificationService
       // This works when the app is in foreground or background
       try {
-        // Check if the message is sent by the current user
-        const isSenderCurrentUser =
-          message.senderId === auth().currentUser?.uid;
+        // Check if the message is sent by the current user and
+        // is intended for someone else (not self-messages)
+        const currentUserId = auth().currentUser?.uid;
+        const isSenderCurrentUser = message.senderId === currentUserId;
+        const isRecipientDifferent = message.recipientId !== currentUserId;
 
-        if (!isSenderCurrentUser) {
+        // Only send notification if the current user is sending to someone else
+        if (isSenderCurrentUser && isRecipientDifferent) {
+          // Make sure we have sender information for the notification
+          let senderName = message.senderName;
+          let senderPhoto = message.senderPhoto;
+
+          // If sender info is missing, try to get it from the current user
+          if (!senderName || !senderPhoto) {
+            try {
+              // Get current user info from Firestore
+              const currentUserDoc = await firestore()
+                .collection('users')
+                .doc(currentUserId)
+                .get();
+
+              if (currentUserDoc.exists) {
+                const userData = currentUserDoc.data() || {};
+                senderName =
+                  senderName ||
+                  userData.fullName ||
+                  userData.username ||
+                  currentUserId;
+                senderPhoto =
+                  senderPhoto ||
+                  userData.photoURL ||
+                  userData.profilePicture ||
+                  userData.image;
+              }
+            } catch (err) {
+              console.log('Error getting current user data:', err);
+              // Continue with what we have
+            }
+          }
+
+          console.log('Sending notification with sender info:', {
+            senderName,
+            senderPhoto,
+            isQrInitiated,
+          });
+
           // Send notification to the recipient via local service
-          notificationService.displayMessageNotification(
+          await notificationService.displayMessageNotification(
             message.senderId,
-            message.senderName,
+            senderName || 'User',
             message.text,
             conversationId,
             message.recipientId,
-            message.senderPhoto,
+            senderPhoto,
             newMessage.id,
+            isQrInitiated,
           );
         }
       } catch (err) {
@@ -184,16 +227,56 @@ export class MessageService {
         const otherUserId = message.recipientId;
         const currentUser = auth().currentUser;
 
-        if (currentUser && otherUserId) {
-          // Add notification metadata for backend - match expected structure from backend API
+        if (currentUser && otherUserId && otherUserId !== currentUser.uid) {
+          // Get current user info to ensure we have correct sender details
+          let senderName = message.senderName;
+          let senderPhoto = message.senderPhoto;
+
+          // If sender info is missing, try to get it
+          if (!senderName || !senderPhoto) {
+            try {
+              const currentUserDoc = await firestore()
+                .collection('users')
+                .doc(currentUser.uid)
+                .get();
+
+              if (currentUserDoc.exists) {
+                const userData = currentUserDoc.data() || {};
+                senderName =
+                  senderName ||
+                  userData.fullName ||
+                  userData.username ||
+                  currentUser.uid;
+                senderPhoto =
+                  senderPhoto ||
+                  userData.photoURL ||
+                  userData.profilePicture ||
+                  userData.image;
+              }
+            } catch (err) {
+              console.log(
+                'Error getting current user data for backend notification:',
+                err,
+              );
+              // Continue with what we have
+            }
+          }
+
+          // Add notification metadata for backend with proper sender info
           const notificationPayload = {
             recipientId: otherUserId,
             senderId: currentUser.uid,
-            senderName: message.senderName || 'User',
-            senderPhoto: message.senderPhoto,
+            senderName: senderName || 'User',
+            senderPhoto: senderPhoto || '',
             message: message.text,
             conversationId: conversationId,
+            isQrInitiated: isQrInitiated,
           };
+
+          console.log(
+            'Sending backend notification with payload:',
+            notificationPayload,
+          );
 
           // Check for network connectivity before making the request
           const isConnected = await this.checkNetworkConnectivity();

@@ -20,7 +20,6 @@ const API_BASE_URL = 'http://10.0.2.2:5000/api';
  */
 export class HackathonService {
   private static baseUrl = API_BASE_URL;
-
   /**
    * Fetches all hackathons with optional location filter
    * @param location Optional location filter (defaults to India)

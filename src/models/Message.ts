@@ -10,6 +10,7 @@ export interface Message {
   read: boolean;
   edited?: boolean;
   editedAt?: number;
+  isQrInitiated?: boolean;
 }
 
 export interface Conversation {

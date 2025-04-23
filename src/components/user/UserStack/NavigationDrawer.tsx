@@ -19,7 +19,7 @@ import FontAwesome5Icon from 'react-native-vector-icons/FontAwesome5';
 import { launchCamera, launchImageLibrary, CameraOptions } from 'react-native-image-picker';
 import Config from 'react-native-config';
 import { MessageService } from '../../../service/firebase/MessageService';
-import { deleteOldProfilePhoto } from '../../../utils/Cloudinary';
+import { deleteOldProfilePhoto } from '../../../utils/cloudinary';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -437,11 +437,11 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
         {option === 'Toggle Theme' ? (
           <FontAwesome5Icon name={iconName} color={isDark ? '#2379C2' : '#2379C2'} size={Math.min(SCREEN_WIDTH * 0.045, 18)} />
         )
-         : option === 'LexAI' ? (
-          <Image source={require('../../../res/pngs/lexai.png')} style={{ width: Math.min(SCREEN_WIDTH * 0.045, 18), height: Math.min(SCREEN_WIDTH * 0.045, 18), tintColor: isDark ? '#2379C2' : '#2379C2' }} />
-        ) : (
-          <FontAwesome name={iconName} color={isDark ? '#2379C2' : '#2379C2'} size={Math.min(SCREEN_WIDTH * 0.045, 18)} />
-        )}
+          : option === 'LexAI' ? (
+            <Image source={require('../../../res/pngs/lexai.png')} style={{ width: Math.min(SCREEN_WIDTH * 0.045, 18), height: Math.min(SCREEN_WIDTH * 0.045, 18), tintColor: isDark ? '#2379C2' : '#2379C2' }} />
+          ) : (
+            <FontAwesome name={iconName} color={isDark ? '#2379C2' : '#2379C2'} size={Math.min(SCREEN_WIDTH * 0.045, 18)} />
+          )}
       </View>
     );
   };

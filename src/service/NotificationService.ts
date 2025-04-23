@@ -12,6 +12,7 @@ import {UserStackParamList} from '../routes/UserStack';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 import messaging from '@react-native-firebase/messaging';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {Message} from '../models/Message';
 import {Task} from '../types/taskTypes';
 import {PushNotificationHandler} from '../utils/PushNotificationHandler';
@@ -25,6 +26,8 @@ const PERSISTENCE_CHANNEL_ID = 'message_service_persistence';
 const TASK_CHANNEL_ID = 'task_reminders';
 // Channel ID for FCM notifications
 const FCM_CHANNEL_ID = 'fcm_notifications';
+// Storage key for processed messages
+const PROCESSED_MESSAGES_STORAGE_KEY = 'processed_message_ids';
 
 /**
  * NotificationService class handles all notification-related functionality
@@ -51,6 +54,95 @@ export class NotificationService {
   private keepAliveEventListener: (() => void) | undefined = undefined;
   // Store processed message IDs to avoid duplicate notifications
   private processedMessageIds: Set<string> = new Set();
+  // Flag to track if processedMessageIds has been loaded from storage
+  private hasLoadedProcessedMessages: boolean = false;
+
+  constructor() {
+    // Load processed message IDs from AsyncStorage when initializing
+    this.loadProcessedMessageIds();
+  }
+
+  /**
+   * Load processed message IDs from AsyncStorage
+   */
+  private async loadProcessedMessageIds(): Promise<void> {
+    try {
+      const storedIds = await AsyncStorage.getItem(
+        PROCESSED_MESSAGES_STORAGE_KEY,
+      );
+      if (storedIds) {
+        const idsArray = JSON.parse(storedIds);
+        this.processedMessageIds = new Set(idsArray);
+        console.log(
+          `Loaded ${this.processedMessageIds.size} processed message IDs from storage`,
+        );
+      }
+      this.hasLoadedProcessedMessages = true;
+    } catch (error) {
+      console.error(
+        'Failed to load processed message IDs from storage:',
+        error,
+      );
+      this.hasLoadedProcessedMessages = true;
+    }
+  }
+
+  /**
+   * Save processed message IDs to AsyncStorage
+   */
+  private async saveProcessedMessageIds(): Promise<void> {
+    try {
+      // Make sure we've loaded the existing IDs first
+      if (!this.hasLoadedProcessedMessages) {
+        await this.loadProcessedMessageIds();
+      }
+
+      const idsArray = Array.from(this.processedMessageIds);
+      // Only keep the last 100 message IDs to avoid storage growing too large
+      const recentIds = idsArray.slice(-100);
+      await AsyncStorage.setItem(
+        PROCESSED_MESSAGES_STORAGE_KEY,
+        JSON.stringify(recentIds),
+      );
+    } catch (error) {
+      console.error('Failed to save processed message IDs to storage:', error);
+    }
+  }
+
+  /**
+   * Check if a message has been processed
+   */
+  private async hasProcessedMessage(messageId: string): Promise<boolean> {
+    // Make sure we've loaded processed messages first
+    if (!this.hasLoadedProcessedMessages) {
+      await this.loadProcessedMessageIds();
+    }
+    return (
+      this.processedMessageIds.has(messageId) ||
+      PushNotificationHandler.hasProcessedMessage(messageId)
+    );
+  }
+
+  /**
+   * Mark a message as processed and save to storage
+   */
+  private async markMessageAsProcessed(messageId: string): Promise<void> {
+    // Make sure we've loaded processed messages first
+    if (!this.hasLoadedProcessedMessages) {
+      await this.loadProcessedMessageIds();
+    }
+    this.processedMessageIds.add(messageId);
+    PushNotificationHandler.markMessageAsProcessed(messageId);
+
+    // Maintain size limit and save to storage
+    if (this.processedMessageIds.size > 100) {
+      const messagesArray = Array.from(this.processedMessageIds);
+      this.processedMessageIds = new Set(messagesArray.slice(-100));
+    }
+
+    // Save to AsyncStorage for persistence between app sessions
+    this.saveProcessedMessageIds();
+  }
 
   /**
    * Initialize FCM and request permissions
@@ -116,6 +208,7 @@ export class NotificationService {
         body: 'Your Screen Is Being Shared On The Meeting....',
         android: {
           channelId,
+          sound:'notification',
           asForegroundService: true,
           smallIcon: 'ic_notification',
         },
@@ -153,6 +246,7 @@ export class NotificationService {
           description: 'Notifications for direct messages',
           lights: true,
           vibration: true,
+          sound:'notification',
           importance: AndroidImportance.HIGH,
           visibility: AndroidVisibility.PUBLIC,
         });
@@ -164,7 +258,7 @@ export class NotificationService {
           description: 'Keeps message service running',
           lights: false,
           vibration: false,
-          sound: 'none',
+          sound:'notification',
           importance: AndroidImportance.MIN,
           visibility: AndroidVisibility.SECRET,
         });
@@ -176,6 +270,7 @@ export class NotificationService {
           description: 'Notifications for task due dates',
           lights: true,
           vibration: true,
+          sound:'notification',
           importance: AndroidImportance.HIGH,
           visibility: AndroidVisibility.PUBLIC,
         });
@@ -187,6 +282,7 @@ export class NotificationService {
           description: 'Remote push notifications',
           lights: true,
           vibration: true,
+          sound:'notification',
           importance: AndroidImportance.HIGH,
           visibility: AndroidVisibility.PUBLIC,
         });
@@ -227,6 +323,7 @@ export class NotificationService {
         body: 'Keeping you connected',
         android: {
           channelId: PERSISTENCE_CHANNEL_ID,
+          sound:'notification',
           asForegroundService: true, // This is crucial for keeping the app alive
           ongoing: true, // Make it ongoing so it can't be dismissed
           autoCancel: false, // Don't allow it to be cancelled
@@ -368,56 +465,57 @@ export class NotificationService {
         .limit(20) // Limit to the 20 most recent unread messages
         .onSnapshot(
           snapshot => {
-            snapshot.docChanges().forEach(change => {
-              // Only process newly added messages
-              if (change.type === 'added') {
-                const message = change.doc.data() as Message;
-                const messageId = change.doc.id;
+            // Process changes in batches to avoid overwhelming the system
+            const processChanges = async () => {
+              for (const change of snapshot.docChanges()) {
+                // Only process newly added messages
+                if (change.type === 'added') {
+                  const message = change.doc.data() as Message;
+                  const messageId = change.doc.id;
 
-                // Skip if this message has already been processed
-                if (this.processedMessageIds.has(messageId)) {
-                  console.log(
-                    `Skipping already processed message: ${messageId}`,
-                  );
-                  return;
-                }
-
-                // Add to processed messages set
-                this.processedMessageIds.add(messageId);
-
-                // Keep the set size manageable by limiting to the last 100 messages
-                if (this.processedMessageIds.size > 100) {
-                  // Convert to array, remove oldest entries, convert back to set
-                  const messagesArray = Array.from(this.processedMessageIds);
-                  this.processedMessageIds = new Set(messagesArray.slice(-100));
-                }
-
-                // Verify this is a new message (within the last minute)
-                const messageTime = message.timestamp;
-                const now = Date.now();
-                const ONE_MINUTE = 60000; // 60 seconds in milliseconds
-                const messageAge = now - messageTime;
-
-                // For POCO and other Chinese devices, let's be more lenient
-                // with the time window to improve notification reliability
-                const TIME_WINDOW =
-                  Platform.OS === 'android' ? 300000 : ONE_MINUTE; // 5 minutes for Android
-
-                if (messageAge < TIME_WINDOW) {
-                  // Only show notification if the sender is not the current user
-                  if (message.senderId !== userId) {
-                    this.displayMessageNotification(
-                      message.senderId,
-                      message.senderName,
-                      message.text,
-                      message.conversationId,
-                      message.recipientId,
-                      message.senderPhoto,
-                      messageId,
+                  // Skip if this message has already been processed
+                  if (await this.hasProcessedMessage(messageId)) {
+                    console.log(
+                      `Skipping already processed message: ${messageId}`,
                     );
+                    continue;
+                  }
+
+                  // Mark as processed
+                  await this.markMessageAsProcessed(messageId);
+
+                  // Verify this is a new message (within the last minute)
+                  const messageTime = message.timestamp;
+                  const now = Date.now();
+                  const ONE_MINUTE = 60000; // 60 seconds in milliseconds
+                  const messageAge = now - messageTime;
+
+                  // For POCO and other Chinese devices, let's be more lenient
+                  // with the time window to improve notification reliability
+                  const TIME_WINDOW =
+                    Platform.OS === 'android' ? 300000 : ONE_MINUTE; // 5 minutes for Android
+
+                  if (messageAge < TIME_WINDOW) {
+                    // Only show notification if the sender is not the current user
+                    if (message.senderId !== userId) {
+                      await this.displayMessageNotification(
+                        message.senderId,
+                        message.senderName,
+                        message.text,
+                        message.conversationId,
+                        message.recipientId,
+                        message.senderPhoto,
+                        messageId,
+                      );
+                    }
                   }
                 }
               }
+            };
+
+            // Process the changes and catch any errors
+            processChanges().catch(error => {
+              console.error('Error processing message changes:', error);
             });
           },
           error => {
@@ -452,7 +550,6 @@ export class NotificationService {
 
   /**
    * Display a notification for a new direct message
-   *
    * @param senderId ID of the message sender
    * @param senderName Name of the message sender
    * @param message Message content
@@ -460,6 +557,7 @@ export class NotificationService {
    * @param recipientId ID of the message recipient
    * @param senderPhoto Optional URL to the sender's profile image
    * @param messageId Optional ID of the message (if available)
+   * @param forceNotify Optional flag to force notification for QR-initiated conversations
    * @returns Boolean indicating success
    */
   async displayMessageNotification(
@@ -470,6 +568,7 @@ export class NotificationService {
     recipientId: string,
     senderPhoto?: string,
     messageId?: string,
+    forceNotify: boolean = false, // Added parameter for QR-initiated conversations
   ): Promise<boolean> {
     try {
       // Don't show notifications for your own messages
@@ -484,21 +583,24 @@ export class NotificationService {
         return false;
       }
 
-      // If messageId is provided and it's already in the processed list, skip
-      if (messageId && this.processedMessageIds.has(messageId)) {
+      // Create a consistent ID for deduplication
+      const notificationDedupeId =
+        messageId || `${senderId}_${conversationId}_${Date.now()}`;
+
+      // Check if this message has already been processed
+      // Skip this check for QR-initiated conversations to ensure notification delivery
+      if (
+        !forceNotify &&
+        (await this.hasProcessedMessage(notificationDedupeId))
+      ) {
         console.log(
-          `Skipping already processed notification for message: ${messageId}`,
+          `Skipping already processed notification for message: ${notificationDedupeId}`,
         );
         return false;
       }
 
-      // Add to processed messages if a messageId is provided
-      if (messageId) {
-        this.processedMessageIds.add(messageId);
-      }
-
-      // Check if user is already in the conversation to avoid unnecessary notifications
-      // This would require more complex implementation with a service to track active screens
+      // Mark as processed
+      await this.markMessageAsProcessed(notificationDedupeId);
 
       // Validate the senderPhoto URL
       let largeIcon = undefined;
@@ -506,11 +608,25 @@ export class NotificationService {
         // Only use the URL if it's a valid http(s) URL
         largeIcon = senderPhoto;
       }
+
+      // Generate a stable notification ID based on the conversation and message
+      const notificationId = messageId
+        ? `message_${conversationId}_${messageId}`
+        : `message_${conversationId}_${Date.now()}`;
+
+      // Log notification creation for debugging
+      console.log('Creating notification for message:', {
+        notificationId,
+        conversationId,
+        senderId,
+        isQrInitiated: forceNotify,
+      });
+
       // Create the notification
       await notifee.displayNotification({
-        id: `message_${conversationId}_${Date.now()}`,
+        id: notificationId,
         title: senderName,
-        body: message,
+        body: message+"theone",
         data: {
           type: 'direct_message',
           conversationId,
@@ -518,7 +634,8 @@ export class NotificationService {
           recipientId,
           senderName,
           senderPhoto: senderPhoto || '',
-          messageId: messageId || '', // Include the message ID in the notification data
+          messageId: notificationDedupeId, // Use our generated ID if no messageId provided
+          isQrInitiated: forceNotify ? 'true' : 'false', // Convert boolean to string for notification data
         },
         android: {
           channelId: DM_CHANNEL_ID,
@@ -526,12 +643,15 @@ export class NotificationService {
             id: 'open_conversation',
             launchActivity: 'default',
           },
+          sound:'notification',
           // Add notification styling
           smallIcon: 'ic_notification_logo',
-          largeIcon: largeIcon,
+          largeIcon: senderPhoto,
           importance: AndroidImportance.HIGH,
-          sound: 'default',
           vibrationPattern: [300, 500],
+          // Group notifications from the same conversation
+          groupId: `conversation_${conversationId}`,
+          groupSummary: false,
         },
         ios: {
           // iOS configuration
@@ -560,7 +680,7 @@ export class NotificationService {
   setupNotificationHandlers(
     navigation: NavigationProp<UserStackParamList>,
   ): () => void {
-    return notifee.onForegroundEvent(({type, detail}) => {
+    return notifee.onForegroundEvent(async ({type, detail}) => {
       switch (type) {
         case EventType.PRESS:
           // Handle notification press - navigate to conversation
@@ -578,7 +698,7 @@ export class NotificationService {
               console.log(
                 `Adding clicked message to processed list: ${data.messageId}`,
               );
-              this.processedMessageIds.add(data.messageId);
+              await this.markMessageAsProcessed(data.messageId);
             }
 
             // Try to use DeepLinkHandler first for consistent navigation
@@ -600,12 +720,12 @@ export class NotificationService {
               console.log('Falling back to direct navigation', error);
 
               // Fallback to direct navigation if DeepLinkHandler fails
-              navigation.navigate('Chat', {
+              navigation.navigate('Chat',{
                 conversationId: data.conversationId,
                 recipientId: data.senderId,
                 recipientName: data.senderName,
                 recipientPhoto: data.senderPhoto || '',
-              });
+            });
             }
           } else if (detail.notification?.data?.type === 'task_reminder') {
             // Navigate to the tasks screen
@@ -633,7 +753,7 @@ export class NotificationService {
             console.log(
               `Adding clicked message to processed list: ${messageId}`,
             );
-            this.processedMessageIds.add(messageId);
+            await this.markMessageAsProcessed(messageId);
           }
 
           // Try to navigate to the conversation using DeepLinkHandler
@@ -1088,7 +1208,6 @@ export class NotificationService {
       console.error('Error cleaning up FCM:', error);
     }
   }
-
 }
 
 // Create a singleton instance for use throughout the app

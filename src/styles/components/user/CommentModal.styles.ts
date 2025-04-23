@@ -16,6 +16,8 @@ export const createStyles = (isDark: boolean) =>
       borderTopRightRadius: 20,
       overflow: 'hidden',
       backgroundColor: isDark ? '#1a1a1a' : 'white',
+      display: 'flex',
+      flexDirection: 'column',
     },
     header: {
       flexDirection: 'row',
@@ -43,7 +45,7 @@ export const createStyles = (isDark: boolean) =>
       paddingHorizontal: 16,
       backgroundColor: isDark ? '#1a1a1a' : 'white',
     },
-      commentItem: {
+    commentItem: {
       flexDirection: 'row',
       marginVertical: 12,
       alignItems: 'flex-start',
@@ -213,7 +215,7 @@ export const createStyles = (isDark: boolean) =>
     postButton: {
       padding: 8,
       backgroundColor: isDark ? '#1a9cd8' : '#3EB9F1',
-      borderRadius:20,
+      borderRadius: 20,
       opacity: 1,
       justifyContent: 'center',
       alignItems: 'center',

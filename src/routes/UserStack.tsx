@@ -8,6 +8,7 @@ import CreatePost from '../screens/userscreens/CreatePost';
 import Room from '../screens/userscreens/Room';
 import RoomScreen from '../screens/userscreens/RoomScreen';
 import Tasks from '../screens/userscreens/Tasks';
+import DuoTasks from '../screens/userscreens/DuoTasks';
 import EventsAndHackathons from '../screens/userscreens/EventsAndHackathons';
 import EventDetails from '../screens/userscreens/EventDetails';
 import ConversationsScreen from '../screens/userscreens/Conversations';
@@ -27,6 +28,7 @@ import QRCode from '../screens/userscreens/QRCode';
 import { MessageService } from '../service/firebase/MessageService';
 import { UserService } from '../service/firebase/UserService';
 import LexAI from '../screens/userscreens/LexAI';
+import firestore from '@react-native-firebase/firestore';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -38,24 +40,50 @@ export type UserStackParamList = {
   Search: { searchText?: string };
   Home: undefined;
   CreatePost: undefined;
-  Room: undefined;
+  Room: {
+    meetingData?: {
+      id: string;
+      title: string;
+      description: string;
+      duration: number;
+      isPrivate: boolean;
+      maxParticipants: number;
+      taskId?: string;
+      host: string;
+      status: string;
+      participants: string[];
+      roomCode: string;
+      settings: {
+        muteOnEntry: boolean;
+        allowChat: boolean;
+        allowScreenShare: boolean;
+        recordingEnabled: boolean;
+      };
+      createdAt: Date;
+      updatedAt: Date;
+    },
+    joinMode?: boolean;
+    roomCode?: string;
+  } | undefined;
   RoomScreen: {
     meeting: any;
     isHost: boolean;
   };
   Tasks: undefined;
+  DuoTasks: undefined;
   EventsAndHackathons: undefined;
   EventDetails: {
     id: string;
     source: string;
   };
-  LexAI:undefined;
+  LexAI: undefined;
   Conversations: undefined;
   Chat: {
     conversationId: string;
     recipientId: string;
     recipientName: string;
     recipientPhoto?: string | ImageSourcePropType;
+    isQrInitiated: boolean;
   };
   ContactList: undefined;
   SavedPosts: undefined;
@@ -208,15 +236,34 @@ const UserStack = () => {
             }
 
             // Get user details to show in the chat using UserService
-            const userData = await userService.getUserInfoById(userId);
+            // Getting complete user document to fetch photoURL as well
+            const userDoc = await firestore().collection('users').doc(userId).get();
+
+            if (!userDoc.exists) {
+              throw new Error('User not found');
+            }
+
+            const userData = userDoc.data() || {};
             const recipientName = userData.fullName || userData.username || 'User';
-            const recipientPhoto = null; // We don't have photoURL in the user info
+            const recipientPhoto = userData.photoURL || userData.profilePicture || userData.image || null;
+
+            console.log('Starting chat with user:', { recipientName, recipientPhoto });
 
             // Create or get a conversation between the two users
             const conversation = await messageService.getOrCreateConversation(
               currentUser.uid,
               userId
             );
+
+            // Set a flag in AsyncStorage to mark this as a QR-initiated conversation
+            try {
+              const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+              await AsyncStorage.setItem(`qr_conversation_${conversation.id}`, 'true');
+              console.log('Marked conversation as QR-initiated:', conversation.id);
+            } catch (storageError) {
+              console.error('Failed to mark QR conversation:', storageError);
+              // Continue even if storage fails
+            }
 
             // Navigate to the chat screen
             navigation.dispatch(
@@ -227,6 +274,7 @@ const UserStack = () => {
                   recipientId: userId,
                   recipientName,
                   recipientPhoto,
+                  isQrInitiated: true, // Pass QR flag to chat screen
                 },
               })
             );
@@ -322,8 +370,7 @@ const UserStack = () => {
 
   return (
     <Drawer.Navigator
-      initialRouteName="LexAI"
-      // initialRouteName="Tabs"
+      initialRouteName="Tabs"
       drawerContent={(props) => {
         return (
           <NavigationDrawer {...props} />
@@ -438,6 +485,14 @@ const UserStack = () => {
       <Drawer.Screen
         name="LexAI"
         component={LexAI}
+        options={{
+          headerShown: false, // Hide header for LexAI screen
+          drawerItemStyle: { display: 'none' }, // Hide from drawer
+        }}
+      />
+      <Drawer.Screen
+        name="DuoTasks"
+        component={DuoTasks}
         options={{
           headerShown: false, // Hide header for LexAI screen
           drawerItemStyle: { display: 'none' }, // Hide from drawer

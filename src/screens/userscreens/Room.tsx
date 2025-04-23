@@ -15,13 +15,42 @@ import {
     FlatList,
 } from 'react-native';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { userState } from '../../types/userType';
 import { MeetingService } from '../../service/firebase/MeetingService';
 import { UserStackParamList } from '../../routes/UserStack';
 import { TaskService } from '../../service/firebase/TaskService';
 import { Task } from '../../types/taskTypes';
+
+// Define room route params interface
+interface RoomParams {
+    meetingData?: {
+        id: string;
+        title: string;
+        description: string;
+        duration: number;
+        maxParticipants: number;
+        isPrivate: boolean;
+        taskId?: string;
+        host: string;
+        status: string;
+        participants: string[];
+        roomCode: string;
+        settings: {
+            muteOnEntry: boolean;
+            allowChat: boolean;
+            allowScreenShare: boolean;
+            recordingEnabled: boolean;
+        };
+        createdAt: Date;
+        updatedAt: Date;
+    },
+    joinMode?: boolean;
+    roomCode?: string;
+}
+
+type RoomScreenRouteProp = RouteProp<{ Room: RoomParams }, 'Room'>;
 
 interface MeetingRoom {
     id?: string;
@@ -41,6 +70,7 @@ const taskService = new TaskService();
 
 const Room = () => {
     const navigation = useNavigation<DrawerNavigationProp<UserStackParamList>>();
+    const route = useRoute<RoomScreenRouteProp>();
     const userTheme = useTypedSelector(state => state.user) as userState;
     const isDark = userTheme.theme === 'dark';
     const [activeTab, setActiveTab] = useState<'create' | 'join'>('create');
@@ -67,6 +97,87 @@ const Room = () => {
         taskId: '', // Initialize taskId field
     });
 
+    // Check for meeting data passed from LexAI
+    useEffect(() => {
+        const main = async () => {
+            // Handle meeting data if provided
+            if (route.params?.meetingData) {
+                const agenticMeetingData = route.params.meetingData;
+                console.log('Received meeting data from LexAI:', agenticMeetingData);
+                const meetingData = {
+                    title: agenticMeetingData.title || '',
+                    description: agenticMeetingData.description || '',
+                    duration: agenticMeetingData.duration || 60,
+                    maxParticipants: agenticMeetingData.maxParticipants || 10,
+                    isPrivate: agenticMeetingData.isPrivate || false,
+                    host: 'Current User', // Will be set during creation
+                    taskId: agenticMeetingData.taskId || '',
+                    settings: {
+                        muteOnEntry: true,
+                        allowChat: true,
+                        allowScreenShare: true,
+                        recordingEnabled: false,
+                    },
+                };
+                // If there's a taskId, try to find the corresponding task
+                if (agenticMeetingData.taskId) {
+                    const fetchTaskDetails = async () => {
+                        try {
+                            // Find task in the loaded tasks list
+                            const userTasks = await taskService.getTasks();
+                            const task = userTasks.find(t => t.id === agenticMeetingData.taskId);
+                            if (task) {
+                                setSelectedTask(task);
+                            }
+                        } catch (error) {
+                            console.error('Failed to fetch task details:', error);
+                        }
+                    };
+
+                    fetchTaskDetails();
+                }
+
+                // Optionally auto-create the meeting if fully specified
+                if (agenticMeetingData.title) {
+                    setActiveTab('create');
+                    const meetingId = await meetingService.createMeeting(meetingData);
+                    const meeting = await meetingService.getMeeting(meetingId);
+                    // Navigate to RoomScreen with meeting data
+                    navigation.navigate('RoomScreen', {
+                        meeting,
+                        isHost: true,
+                    });
+                }
+            }
+            // Handle join mode if provided
+            else if (route.params?.joinMode && route.params?.roomCode) {
+                console.log('Received join room request with code:', route.params.roomCode);
+                // Set active tab to join
+                setActiveTab('join');
+                // Set the room code
+                setRoomCode(route.params.roomCode);
+                try {
+                    setLoading(true);
+                    // Get meeting by room code
+                    const meeting = await meetingService.getMeetingByRoomCode(route.params.roomCode);
+                    // Navigate to RoomScreen with meeting data
+                    navigation.navigate('RoomScreen', {
+                        meeting,
+                        isHost: false,
+                    });
+                } catch (error) {
+                    console.error('Failed to join meeting:', error);
+                    Alert.alert(
+                        'Error',
+                        error instanceof Error ? error.message : 'Failed to join meeting'
+                    );
+                    setLoading(false);
+                }
+            }
+        }
+        main();
+    }, [route.params]);
+
     // Fetch tasks when component mounts and when screen is focused
     useEffect(() => {
         fetchTasks();
@@ -84,7 +195,8 @@ const Room = () => {
     const fetchTasks = async () => {
         try {
             setIsTasksLoading(true);
-            const userTasks = await taskService.getTasks();
+            // Get team/duo tasks instead of normal tasks
+            const userTasks = await taskService.getDuoTasks();
             // Filter out completed tasks
             const pendingTasks = userTasks.filter(task => !task.completed);
             setTasks(pendingTasks);
@@ -99,8 +211,8 @@ const Room = () => {
                 }
             }
         } catch (error) {
-            console.error('Error fetching tasks:', error);
-            Alert.alert('Error', 'Failed to load tasks');
+            console.error('Error fetching team tasks:', error);
+            Alert.alert('Error', 'Failed to load team tasks');
         } finally {
             setIsTasksLoading(false);
         }
@@ -194,7 +306,7 @@ const Room = () => {
                 ]}>
                     <View style={styles.modalHeader}>
                         <Text style={[styles.modalTitle, { color: isDark ? 'white' : 'black' }]}>
-                            Select a Task
+                            Select a Team Task
                         </Text>
                         <View style={{ flexDirection: 'row' }}>
                             <TouchableOpacity
@@ -219,13 +331,13 @@ const Room = () => {
 
                     {isTasksLoading ? (
                         <View style={styles.loadingContainer}>
-                            <Text style={{ color: isDark ? 'white' : 'black' }}>Loading tasks...</Text>
+                            <Text style={{ color: isDark ? 'white' : 'black' }}>Loading team tasks...</Text>
                         </View>
                     ) : tasks.length === 0 ? (
                         <View style={styles.emptyContainer}>
-                            <Text style={{ color: isDark ? 'white' : 'black' }}>No tasks found</Text>
+                            <Text style={{ color: isDark ? 'white' : 'black' }}>No team tasks found</Text>
                             <Text style={{ color: isDark ? '#aaa' : '#666', marginTop: 5 }}>
-                                Create tasks in the Tasks section first
+                                Create team tasks in the Team Tasks section first
                             </Text>
                         </View>
                     ) : (
@@ -256,20 +368,47 @@ const Room = () => {
                                                 {item.description}
                                             </Text>
                                         ) : null}
-                                        <View style={{ flexDirection: 'row', marginTop: 8 }}>
+                                        <View style={{ flexDirection: 'row', marginTop: 8, justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <View style={{ flexDirection: 'row' }}>
+                                                <Text style={{
+                                                    color: isDark ? '#aaa' : '#888',
+                                                    fontSize: 12,
+                                                    marginRight: 10
+                                                }}>
+                                                    {item.dueDate}
+                                                </Text>
+                                                <Text style={{
+                                                    color: getPriorityColor(item.priority),
+                                                    fontSize: 12
+                                                }}>
+                                                    {item.priority.toUpperCase()}
+                                                </Text>
+                                            </View>
                                             <Text style={{
-                                                color: isDark ? '#aaa' : '#888',
-                                                fontSize: 12,
-                                                marginRight: 10
+                                                fontSize: 11,
+                                                backgroundColor: '#1a9cd8',
+                                                color: 'white',
+                                                paddingHorizontal: 6,
+                                                paddingVertical: 2,
+                                                borderRadius: 10
                                             }}>
-                                                {item.dueDate}
+                                                {item.collaborators?.length || 0} Members
                                             </Text>
-                                            <Text style={{
-                                                color: getPriorityColor(item.priority),
-                                                fontSize: 12
-                                            }}>
-                                                {item.priority.toUpperCase()}
-                                            </Text>
+                                        </View>
+                                        {/* Add progress bar */}
+                                        <View style={{
+                                            height: 4,
+                                            backgroundColor: isDark ? '#404040' : '#e0e0e0',
+                                            borderRadius: 2,
+                                            marginTop: 8,
+                                            overflow: 'hidden'
+                                        }}>
+                                            <View style={{
+                                                height: '100%',
+                                                width: `${item.progress || 0}%`,
+                                                backgroundColor: item.completed ? '#34C759' : '#1a9cd8',
+                                                borderRadius: 2
+                                            }} />
                                         </View>
                                     </View>
                                 </TouchableOpacity>
@@ -368,7 +507,7 @@ const Room = () => {
             {/* Task selection */}
             <View style={styles.inputGroup}>
                 <Text style={[styles.label, isDark && styles.darkText]}>
-                    Associated Task (Optional)
+                    Associated Team Task (Optional)
                 </Text>
                 <View style={{ flexDirection: 'row' }}>
                     <TouchableOpacity
@@ -383,7 +522,7 @@ const Room = () => {
                         <Text style={[
                             selectedTask ? { color: isDark ? 'white' : 'black' } : { color: isDark ? '#888888' : '#666666' },
                         ]}>
-                            {selectedTask ? selectedTask.title : "Select a task for this meeting"}
+                            {selectedTask ? selectedTask.title : "Select a team task for this meeting"}
                         </Text>
                     </TouchableOpacity>
 
@@ -391,14 +530,14 @@ const Room = () => {
                         <TouchableOpacity
                             style={[
                                 styles.clearButton,
-                                { backgroundColor: isDark ? '#333' : '#f0f0f0',borderColor: isDark ? '#444' : '#ddd', }
+                                { backgroundColor: isDark ? '#333' : '#f0f0f0', borderColor: isDark ? '#444' : '#ddd', }
                             ]}
                             onPress={() => {
                                 setSelectedTask(null);
                                 setMeetingRoom(prev => ({ ...prev, taskId: '' }));
                             }}
                         >
-                            <Text style={{ color: isDark ? '#ff3b30' : '#ff3b30' ,marginVertical:'auto',fontSize:18,paddingBottom:3}}>✕</Text>
+                            <Text style={{ color: isDark ? '#ff3b30' : '#ff3b30', marginVertical: 'auto', fontSize: 18, paddingBottom: 3 }}>✕</Text>
                         </TouchableOpacity>
                     )}
                 </View>

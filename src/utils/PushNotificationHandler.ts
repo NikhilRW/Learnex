@@ -83,6 +83,9 @@ export class PushNotificationHandler {
     }
   }
 
+  // Add a static property to track processed message IDs
+  private static processedMessageIds: Set<string> = new Set();
+
   /**
    * Set up message handlers for foreground, background, and quit state messages
    */
@@ -90,6 +93,35 @@ export class PushNotificationHandler {
     // Handle foreground messages
     const unsubscribeForeground = messaging().onMessage(async remoteMessage => {
       console.log('Foreground notification received:', remoteMessage);
+
+      // Check if this message has already been processed to avoid duplicate notifications
+      const messageId =
+        remoteMessage.messageId ||
+        (remoteMessage.data && typeof remoteMessage.data.messageId === 'string'
+          ? remoteMessage.data.messageId
+          : null) ||
+        `${remoteMessage.sentTime}-${remoteMessage.from}`;
+
+      if (messageId) {
+        // If we've already processed this message, skip it
+        if (PushNotificationHandler.processedMessageIds.has(messageId)) {
+          console.log(`Skipping already processed FCM message: ${messageId}`);
+          return;
+        }
+
+        // Add to processed messages set
+        PushNotificationHandler.processedMessageIds.add(messageId);
+
+        // Keep the set size manageable
+        if (PushNotificationHandler.processedMessageIds.size > 100) {
+          const messagesArray = Array.from(
+            PushNotificationHandler.processedMessageIds,
+          );
+          PushNotificationHandler.processedMessageIds = new Set(
+            messagesArray.slice(-100),
+          );
+        }
+      }
 
       // Display the message using Notifee for foreground messages
       await PushNotificationHandler.displayForegroundNotification(
@@ -187,6 +219,29 @@ export class PushNotificationHandler {
     message: any,
   ): Promise<void> {
     try {
+      // Extract notification data
+      const notification = message.notification || {};
+      const data = message.data || {};
+
+      // Generate a notification ID that is consistent for the same message
+      // This helps prevent duplicate notifications
+      let notificationId = `fcm_${Date.now()}`;
+
+      // If there's a message ID, use it to create a consistent notification ID
+      if (message.messageId || (data && data.messageId)) {
+        const messageId = message.messageId || data.messageId;
+        notificationId = `fcm_${messageId}`;
+      } else if (data.conversationId && data.senderId) {
+        // For chat messages, create a notification ID based on conversation and sender
+        notificationId = `chat_${data.conversationId}_${
+          data.senderId
+        }_${Math.floor(Date.now() / 10000)}`;
+      }
+
+      // Check if there's already a notification with this ID
+      // Cancel it first to avoid duplicates and ensure the latest info is shown
+      await notifee.cancelNotification(notificationId);
+
       // Create a channel for the notification
       const channelId = await notifee.createChannel({
         id: 'fcm_foreground',
@@ -196,12 +251,9 @@ export class PushNotificationHandler {
         importance: 4, // High importance
       });
 
-      // Extract notification data
-      const notification = message.notification || {};
-      const data = message.data || {};
-
       // Display the notification
       await notifee.displayNotification({
+        id: notificationId,
         title: notification.title || 'New Notification',
         body: notification.body || '',
         data: data,
@@ -210,12 +262,15 @@ export class PushNotificationHandler {
           pressAction: {
             id: 'default',
           },
+          sound:'notification',
           smallIcon: 'ic_notification_logo', // Make sure this exists in your drawable folders
           largeIcon: data.senderPhoto || '',
           importance: 4, // High
-          sound: 'default',
           vibrationPattern: [300, 500],
           category: AndroidCategory.ALARM,
+          // Group similar notifications to prevent multiple notifications in tray
+          groupId: data.conversationId || 'default_group',
+          groupSummary: false, // Only set true for the summary notification
         },
         ios: {
           foregroundPresentationOptions: {
@@ -224,6 +279,8 @@ export class PushNotificationHandler {
             banner: true,
             list: true,
           },
+          // Thread ID groups similar notifications together
+          threadId: data.conversationId || 'default_thread',
         },
       });
     } catch (error) {
@@ -243,6 +300,7 @@ export class PushNotificationHandler {
         description: 'Notifications received from Firebase Cloud Messaging',
         lights: true,
         vibration: true,
+        sound:'notification',
         importance: 4, // High
       });
 
@@ -253,8 +311,8 @@ export class PushNotificationHandler {
         description: 'Notifications for task due dates',
         lights: true,
         vibration: true,
+        sound:'notification',
         importance: AndroidImportance.HIGH,
-        sound: 'default',
       });
 
       // Create test notification channel
@@ -265,7 +323,7 @@ export class PushNotificationHandler {
         lights: true,
         vibration: true,
         importance: AndroidImportance.HIGH,
-        sound: 'default',
+        sound:'notification',
       });
     }
   }
@@ -284,5 +342,19 @@ export class PushNotificationHandler {
     } catch (error) {
       console.error('Error handling push notification unregistration:', error);
     }
+  }
+
+  /**
+   * Check if a message has been processed (public method for other services to use)
+   */
+  public static hasProcessedMessage(messageId: string): boolean {
+    return PushNotificationHandler.processedMessageIds.has(messageId);
+  }
+
+  /**
+   * Mark a message as processed (public method for other services to use)
+   */
+  public static markMessageAsProcessed(messageId: string): void {
+    PushNotificationHandler.processedMessageIds.add(messageId);
   }
 }

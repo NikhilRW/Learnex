@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, BackHandler, View, StyleSheet, ActivityIndicator, Text, TouchableOpacity } from 'react-native';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp, CommonActions } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { MeetingService, Meeting } from '../../service/firebase/MeetingService';
 import { WebRTCService, ParticipantState } from '../../service/firebase/WebRTCService';
@@ -67,7 +67,8 @@ const RoomScreen: React.FC = () => {
     useEffect(() => {
         // Handle hardware back button
         const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-            handleEndCall();
+            // Show confirmation dialog instead of immediately ending call
+            confirmLeaveRoom();
             return true;
         });
 
@@ -177,6 +178,7 @@ const RoomScreen: React.FC = () => {
                                 isClapping: false,
                                 isWaving: false,
                                 isSpeaking: false,
+                                isScreenSharing: false,
                                 reactionTimestamp: null,
                                 lastUpdated: new Date()
                             });
@@ -424,7 +426,9 @@ const RoomScreen: React.FC = () => {
         // in the handleEndCall function, so we just navigate back
         if (isHost) {
             cleanup();
-            navigation.navigate('Home');
+            navigation.dispatch(CommonActions.navigate('Tabs', {
+                screen: 'Home',
+            }));
             return;
         }
 
@@ -433,7 +437,9 @@ const RoomScreen: React.FC = () => {
                 text: 'OK',
                 onPress: () => {
                     cleanup();
-                    navigation.navigate('Home');
+                    navigation.dispatch(CommonActions.navigate('Tabs', {
+                        screen: 'Home',
+                    }));
                 }
             }
         ]);
@@ -620,6 +626,36 @@ const RoomScreen: React.FC = () => {
         }
     };
 
+    // Add confirmation dialog for leaving the room
+    const confirmLeaveRoom = () => {
+        Alert.alert(
+            'Leave Meeting',
+            'Are you sure you want to leave this meeting?',
+            [
+                {
+                    text: 'Cancel',
+                    style: 'cancel'
+                },
+                {
+                    text: 'Leave',
+                    style: 'destructive',
+                    onPress: () => {
+                        if (isConnecting) {
+                            // If still connecting, just clean up and navigate back
+                            cleanup();
+                            navigation.dispatch(CommonActions.navigate('Tabs', {
+                                screen: 'Home',
+                            }));
+                        } else {
+                            // Otherwise use the normal end call flow
+                            handleEndCall();
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
     const handleEndCall = async () => {
         try {
             if (isHost) {
@@ -636,7 +672,9 @@ const RoomScreen: React.FC = () => {
                                 onPress: async () => {
                                     await meetingService.endMeeting(meeting.id);
                                     cleanup();
-                                    navigation.navigate('Home');
+                                    navigation.dispatch(CommonActions.navigate('Tabs', {
+                                        screen: 'Tasks',
+                                    }));
                                 },
                             },
                             {
@@ -647,13 +685,17 @@ const RoomScreen: React.FC = () => {
                                         await taskService.updateTask(meeting.taskId!, { completed: true });
                                         await meetingService.endMeeting(meeting.id);
                                         cleanup();
-                                        navigation.navigate('Home');
+                                        navigation.dispatch(CommonActions.navigate('Tabs', {
+                                            screen: 'Tasks',
+                                        }));
                                     } catch (error) {
                                         console.error('Failed to update task:', error);
                                         Alert.alert('Error', 'Failed to update task status');
                                         await meetingService.endMeeting(meeting.id);
                                         cleanup();
-                                        navigation.navigate('Home');
+                                        navigation.dispatch(CommonActions.navigate('Tabs', {
+                                            screen: 'Home',
+                                        }));
                                     }
                                 },
                             },
@@ -664,17 +706,23 @@ const RoomScreen: React.FC = () => {
                     // No associated task, end meeting normally
                     await meetingService.endMeeting(meeting.id);
                     cleanup();
-                    navigation.navigate('Home');
+                    navigation.dispatch(CommonActions.navigate('Tabs', {
+                        screen: 'Home',
+                    }));
                 }
             } else {
                 await meetingService.leaveMeeting(meeting.id);
                 cleanup();
-                navigation.navigate('Home');
+                navigation.dispatch(CommonActions.navigate('Tabs', {
+                    screen: 'Home'
+                }));
             }
         } catch (error) {
             console.error('Failed to end/leave meeting:', error);
             // Even if there's an error, try to navigate away
-            navigation.navigate('Home');
+            navigation.dispatch(CommonActions.navigate('Tabs', {
+                screen: 'Home'
+            }));
         }
     };
 
@@ -752,8 +800,7 @@ const RoomScreen: React.FC = () => {
                 <TouchableOpacity
                     style={styles.exitButton}
                     onPress={() => {
-                        cleanup();
-                        navigation.navigate('Home');
+                        confirmLeaveRoom();
                     }}
                 >
                     <Text style={styles.exitButtonText}>Exit Meeting</Text>
@@ -786,7 +833,7 @@ const RoomScreen: React.FC = () => {
                     remoteStreams={remoteStreams}
                     onToggleAudio={handleToggleAudio}
                     onToggleVideo={handleToggleVideo}
-                    onEndCall={handleEndCall}
+                    onEndCall={confirmLeaveRoom}
                     onSendMessage={sendMessage}
                     onMessageReaction={handleMessageReaction}
                     messages={messages}

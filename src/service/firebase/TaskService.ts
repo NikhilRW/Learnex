@@ -1,12 +1,12 @@
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
-import {Task} from '../../types/taskTypes';
+import {Task, SubTask} from '../../types/taskTypes';
 import notificationService from '../../service/NotificationService';
 
 export class TaskService {
   private tasksCollection = firestore().collection('tasks');
   /**
-   * Get all tasks for the current user
+   * Get all tasks for the current user (excluding team tasks)
    */
   async getTasks(): Promise<Task[]> {
     try {
@@ -17,6 +17,8 @@ export class TaskService {
 
       const tasksSnapshot = await this.tasksCollection
         .where('userId', '==', userId)
+        .where('isDuoTask', '!=', true) // Exclude team tasks
+        .orderBy('isDuoTask') // Required for using the != filter
         .orderBy('dueDate', 'asc')
         .get();
 
@@ -99,12 +101,13 @@ export class TaskService {
         userId,
         createdAt: firestore.FieldValue.serverTimestamp(),
         updatedAt: firestore.FieldValue.serverTimestamp(),
+        isDuoTask: task.isDuoTask !== undefined ? task.isDuoTask : false,
       };
 
       console.log(
         `TaskService :: addTask() :: Adding task to Firestore, notify: ${
           task.notify ? 'Yes' : 'No'
-        }`,
+        }, isDuoTask: ${taskWithUser.isDuoTask ? 'Yes' : 'No'}`,
       );
       const docRef = await this.tasksCollection.add(taskWithUser);
       console.log(
@@ -582,6 +585,902 @@ export class TaskService {
       );
     } catch (error) {
       console.log('TaskService :: toggleTaskCompletionByName() ::', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create a team task with multiple collaborators
+   * @param task The task data
+   * @returns The task ID
+   */
+  async createDuoTask(task: Omit<Task, 'id'>): Promise<string> {
+    try {
+      console.log(
+        `TaskService :: createDuoTask() :: Creating team task: "${task.title}"`,
+      );
+
+      const userId = auth().currentUser?.uid;
+      if (!userId) {
+        console.log('TaskService :: createDuoTask() :: User not authenticated');
+        throw new Error('User not authenticated');
+      }
+
+      // Check if collaborators is provided and valid
+      if (!task.collaborators || task.collaborators.length < 2) {
+        console.warn(
+          'TaskService :: createDuoTask() :: Missing or invalid collaborators',
+        );
+        throw new Error('Team task requires at least two collaborators');
+      }
+
+      // Verify current user is one of the collaborators
+      if (!task.collaborators.includes(userId)) {
+        console.warn(
+          'TaskService :: createDuoTask() :: Current user not in collaborators list',
+        );
+        throw new Error('Current user must be a collaborator');
+      }
+
+      // Create task with team task fields
+      const teamTask = {
+        ...task,
+        userId, // Main owner is current user
+        isDuoTask: true,
+        collaborationStatus: 'pending',
+        createdAt: firestore.FieldValue.serverTimestamp(),
+        updatedAt: firestore.FieldValue.serverTimestamp(),
+        lastUpdatedBy: userId,
+        progress:
+          task.subtasks && task.subtasks.length > 0
+            ? Math.round(
+                (task.subtasks.filter(s => s.completed).length /
+                  task.subtasks.length) *
+                  100,
+              )
+            : 0,
+      };
+
+      console.log(
+        `TaskService :: createDuoTask() :: Adding team task to Firestore`,
+      );
+      const docRef = await this.tasksCollection.add(teamTask);
+      console.log(
+        `TaskService :: createDuoTask() :: Team task added with ID: ${docRef.id}`,
+      );
+
+      // Create notifications for collaborators (except current user)
+      const otherCollaborators = task.collaborators.filter(id => id !== userId);
+
+      for (const collaboratorId of otherCollaborators) {
+        await firestore()
+          .collection('notifications')
+          .add({
+            userId: collaboratorId,
+            type: 'duo_task_invitation',
+            title: 'Team Task Invitation',
+            message: `${
+              auth().currentUser?.displayName || 'Someone'
+            } invited you to collaborate on "${task.title}"`,
+            taskId: docRef.id,
+            read: false,
+            createdAt: firestore.FieldValue.serverTimestamp(),
+          });
+        console.log(
+          `TaskService :: createDuoTask() :: Notification sent to collaborator: ${collaboratorId}`,
+        );
+      }
+
+      // Schedule notification if enabled
+      if (task.notify) {
+        const taskWithId = {...teamTask, id: docRef.id} as Task;
+        try {
+          console.log(
+            `TaskService :: createDuoTask() :: Scheduling notification for task: ${docRef.id}`,
+          );
+          const notificationId =
+            await notificationService.scheduleTaskNotification(taskWithId);
+
+          if (notificationId) {
+            console.log(
+              `TaskService :: createDuoTask() :: Notification scheduled successfully, ID: ${notificationId}`,
+            );
+            // Update the task with the notification ID
+            await this.tasksCollection.doc(docRef.id).update({
+              notificationId: notificationId,
+            });
+          } else {
+            console.warn(
+              `TaskService :: createDuoTask() :: Failed to schedule notification for task: ${docRef.id}`,
+            );
+          }
+        } catch (notificationError) {
+          console.error(
+            `TaskService :: createDuoTask() :: Error scheduling notification:`,
+            notificationError,
+          );
+        }
+      }
+
+      return docRef.id;
+    } catch (error) {
+      console.error('TaskService :: createDuoTask() ::', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update a team task
+   */
+  async updateDuoTask(taskId: string, task: Partial<Task>): Promise<Task> {
+    try {
+      console.log(
+        `TaskService :: updateDuoTask() :: Updating team task: "${task.title}" (ID: ${taskId})`,
+      );
+
+      const userId = auth().currentUser?.uid;
+      if (!userId) {
+        console.log('TaskService :: updateDuoTask() :: User not authenticated');
+        throw new Error('User not authenticated');
+      }
+
+      // Verify user is a collaborator
+      const taskDoc = await this.tasksCollection.doc(taskId).get();
+
+      if (!taskDoc.exists) {
+        throw new Error('Task not found');
+      }
+
+      const existingTask = taskDoc.data() as Task;
+
+      if (!existingTask.collaborators?.includes(userId)) {
+        throw new Error('User is not a collaborator on this task');
+      }
+
+      // Update the task
+      const updateData = {
+        ...task,
+        updatedAt: firestore.FieldValue.serverTimestamp(),
+        lastUpdatedBy: userId,
+      };
+
+      await this.tasksCollection.doc(taskId).update(updateData);
+      console.log(
+        `TaskService :: updateDuoTask() :: Team task updated successfully`,
+      );
+
+      // Handle notification updates
+      if (task.notify !== undefined && task.dueDate && task.dueTime) {
+        // Cancel existing notification
+        if (existingTask.notificationId) {
+          await notificationService.cancelTaskNotification(
+            existingTask.notificationId,
+          );
+        }
+
+        // Schedule new notification if enabled
+        if (task.notify) {
+          const updatedTask = {
+            ...existingTask,
+            ...task,
+            id: taskId,
+          } as Task;
+
+          const notificationId =
+            await notificationService.scheduleTaskNotification(updatedTask);
+
+          if (notificationId) {
+            await this.tasksCollection.doc(taskId).update({
+              notificationId: notificationId,
+            });
+            console.log(
+              `TaskService :: updateDuoTask() :: Updated notification`,
+            );
+          }
+        }
+      }
+
+      // Notify collaborators about the update (except current user)
+      const collaborators = existingTask.collaborators?.filter(
+        id => id !== userId,
+      );
+
+      if (collaborators && collaborators.length > 0) {
+        for (const collaboratorId of collaborators) {
+          await firestore()
+            .collection('notifications')
+            .add({
+              userId: collaboratorId,
+              type: 'duo_task_update',
+              title: 'Team Task Updated',
+              message: `${
+                auth().currentUser?.displayName || 'Your team member'
+              } updated task "${existingTask.title}"`,
+              taskId: taskId,
+              read: false,
+              createdAt: firestore.FieldValue.serverTimestamp(),
+            });
+        }
+        console.log(
+          `TaskService :: updateDuoTask() :: Notifications sent to collaborators`,
+        );
+      }
+
+      // Return the updated task
+      const updatedTaskDoc = await this.tasksCollection.doc(taskId).get();
+      return {
+        id: taskId,
+        ...updatedTaskDoc.data(),
+      } as Task;
+    } catch (error) {
+      console.error('TaskService :: updateDuoTask() ::', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get team tasks where the current user is a collaborator
+   */
+  async getDuoTasks(): Promise<Task[]> {
+    try {
+      const userId = auth().currentUser?.uid;
+      if (!userId) {
+        throw new Error('User not authenticated');
+      }
+
+      console.log(
+        `TaskService :: getDuoTasks() :: Fetching team tasks for user: ${userId}`,
+      );
+      const teamTasksSnapshot = await this.tasksCollection
+        .where('collaborators', 'array-contains', userId)
+        .where('isDuoTask', '==', true)
+        .orderBy('dueDate', 'asc')
+        .get();
+
+      console.log(
+        `TaskService :: getDuoTasks() :: Found ${teamTasksSnapshot.size} team tasks`,
+      );
+      return teamTasksSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Task[];
+    } catch (error) {
+      console.log('TaskService :: getDuoTasks() ::', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get team task invitations pending for the current user
+   */
+  async getPendingDuoTaskInvitations(): Promise<Task[]> {
+    try {
+      const userId = auth().currentUser?.uid;
+      if (!userId) {
+        throw new Error('User not authenticated');
+      }
+
+      // Get notifications for this user that are team task invitations and unread
+      const notificationsSnapshot = await firestore()
+        .collection('notifications')
+        .where('userId', '==', userId)
+        .where('type', '==', 'duo_task_invitation')
+        .where('read', '==', false)
+        .get();
+
+      if (notificationsSnapshot.empty) {
+        return [];
+      }
+
+      // Extract task IDs from notifications
+      const taskIds = notificationsSnapshot.docs.map(
+        doc => doc.data().taskId as string,
+      );
+
+      // If no task IDs, return empty array
+      if (taskIds.length === 0) {
+        return [];
+      }
+
+      // Get the tasks
+      const tasks: Task[] = [];
+      for (const chunkIds of this.chunkArray(taskIds, 10)) {
+        // Firestore "in" queries are limited to 10 values
+        const tasksSnapshot = await this.tasksCollection
+          .where(firestore.FieldPath.documentId(), 'in', chunkIds)
+          .get();
+
+        tasks.push(
+          ...tasksSnapshot.docs.map(
+            doc => ({id: doc.id, ...doc.data()} as Task),
+          ),
+        );
+      }
+
+      return tasks;
+    } catch (error) {
+      console.error('TaskService :: getPendingDuoTaskInvitations() ::', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Accept a team task invitation
+   */
+  async acceptDuoTaskInvitation(taskId: string): Promise<void> {
+    try {
+      const userId = auth().currentUser?.uid;
+      if (!userId) {
+        throw new Error('User not authenticated');
+      }
+
+      console.log(
+        `TaskService :: acceptDuoTaskInvitation() :: User ${userId} accepting task ${taskId}`,
+      );
+
+      // Get the task to verify user is a collaborator
+      const taskDoc = await this.tasksCollection.doc(taskId).get();
+
+      if (!taskDoc.exists) {
+        throw new Error('Task not found');
+      }
+
+      const task = taskDoc.data() as Task;
+
+      if (!task.collaborators?.includes(userId)) {
+        throw new Error('User is not a collaborator on this task');
+      }
+
+      // Update task status
+      await this.tasksCollection.doc(taskId).update({
+        collaborationStatus: 'active',
+        updatedAt: firestore.FieldValue.serverTimestamp(),
+      });
+
+      console.log(
+        `TaskService :: acceptDuoTaskInvitation() :: Updated task status to active`,
+      );
+
+      // Update notification as read
+      const notificationsSnapshot = await firestore()
+        .collection('notifications')
+        .where('userId', '==', userId)
+        .where('taskId', '==', taskId)
+        .where('type', '==', 'duo_task_invitation')
+        .get();
+
+      if (!notificationsSnapshot.empty) {
+        const batch = firestore().batch();
+        notificationsSnapshot.docs.forEach(doc => {
+          batch.update(doc.ref, {read: true});
+        });
+        await batch.commit();
+        console.log(
+          `TaskService :: acceptDuoTaskInvitation() :: Updated notifications as read`,
+        );
+      }
+
+      // Notify the task creator
+      const notifyUserId = task.userId;
+      if (notifyUserId !== userId) {
+        await firestore()
+          .collection('notifications')
+          .add({
+            userId: notifyUserId,
+            type: 'duo_task_accepted',
+            title: 'Team Task Accepted',
+            message: `${
+              auth().currentUser?.displayName || 'A team member'
+            } accepted your invitation to task "${task.title}"`,
+            taskId: taskId,
+            read: false,
+            createdAt: firestore.FieldValue.serverTimestamp(),
+          });
+        console.log(
+          `TaskService :: acceptDuoTaskInvitation() :: Notification sent to task creator: ${notifyUserId}`,
+        );
+      }
+    } catch (error) {
+      console.error('TaskService :: acceptDuoTaskInvitation() ::', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Decline a team task invitation
+   */
+  async rejectDuoTaskInvitation(taskId: string): Promise<void> {
+    try {
+      const userId = auth().currentUser?.uid;
+      if (!userId) {
+        throw new Error('User not authenticated');
+      }
+
+      console.log(
+        `TaskService :: rejectDuoTaskInvitation() :: User ${userId} declining task ${taskId}`,
+      );
+
+      // Get the task
+      const taskDoc = await this.tasksCollection.doc(taskId).get();
+
+      if (!taskDoc.exists) {
+        throw new Error('Task not found');
+      }
+
+      const task = taskDoc.data() as Task;
+
+      // Remove the user from collaborators
+      const updatedCollaborators =
+        task.collaborators?.filter(id => id !== userId) || [];
+
+      // If only one collaborator left, convert back to regular task
+      if (updatedCollaborators.length <= 1) {
+        await this.tasksCollection.doc(taskId).update({
+          isDuoTask: false,
+          collaborators: firestore.FieldValue.delete(),
+          collaborationStatus: firestore.FieldValue.delete(),
+          updatedAt: firestore.FieldValue.serverTimestamp(),
+          lastUpdatedBy: userId,
+        });
+        console.log(
+          `TaskService :: rejectDuoTaskInvitation() :: Converted task to regular task`,
+        );
+      } else {
+        // Update collaborators list
+        await this.tasksCollection.doc(taskId).update({
+          collaborators: updatedCollaborators,
+          updatedAt: firestore.FieldValue.serverTimestamp(),
+          lastUpdatedBy: userId,
+        });
+        console.log(
+          `TaskService :: rejectDuoTaskInvitation() :: Removed user from collaborators`,
+        );
+      }
+
+      // Update notification as read
+      const notificationsSnapshot = await firestore()
+        .collection('notifications')
+        .where('userId', '==', userId)
+        .where('taskId', '==', taskId)
+        .where('type', '==', 'duo_task_invitation')
+        .get();
+
+      if (!notificationsSnapshot.empty) {
+        const batch = firestore().batch();
+        notificationsSnapshot.docs.forEach(doc => {
+          batch.update(doc.ref, {read: true});
+        });
+        await batch.commit();
+        console.log(
+          `TaskService :: rejectDuoTaskInvitation() :: Updated notifications as read`,
+        );
+      }
+
+      // Notify the task creator
+      const notifyUserId = task.userId;
+      if (notifyUserId !== userId) {
+        await firestore()
+          .collection('notifications')
+          .add({
+            userId: notifyUserId,
+            type: 'duo_task_declined',
+            title: 'Team Task Declined',
+            message: `${
+              auth().currentUser?.displayName || 'A team member'
+            } declined your invitation to task "${task.title}"`,
+            taskId: taskId,
+            read: false,
+            createdAt: firestore.FieldValue.serverTimestamp(),
+          });
+        console.log(
+          `TaskService :: rejectDuoTaskInvitation() :: Notification sent to task creator: ${notifyUserId}`,
+        );
+      }
+    } catch (error) {
+      console.error('TaskService :: rejectDuoTaskInvitation() ::', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Helper method to chunk an array into smaller arrays
+   * @private
+   */
+  private chunkArray<T>(array: T[], size: number): T[][] {
+    const chunked: T[][] = [];
+    let index = 0;
+    while (index < array.length) {
+      chunked.push(array.slice(index, size + index));
+      index += size;
+    }
+    return chunked;
+  }
+
+  /**
+   * Update a subtask in a duo/team task
+   * @param taskId The ID of the task
+   * @param subtaskId The ID of the subtask to update
+   * @param updates The updates to apply to the subtask
+   * @returns Promise that resolves when the subtask is updated
+   */
+  async updateDuoTaskSubtask(
+    taskId: string,
+    subtaskId: string,
+    updates: Partial<SubTask>,
+  ): Promise<void> {
+    try {
+      const userId = auth().currentUser?.uid;
+      if (!userId) {
+        throw new Error('User not authenticated');
+      }
+
+      // Verify the task exists and user is a collaborator
+      const taskDoc = await this.tasksCollection.doc(taskId).get();
+      if (!taskDoc.exists) {
+        throw new Error('Task not found');
+      }
+
+      const task = taskDoc.data() as Task;
+      if (!task.collaborators?.includes(userId)) {
+        throw new Error('User is not a collaborator on this task');
+      }
+
+      // Find the subtask to update
+      if (!task.subtasks || task.subtasks.length === 0) {
+        throw new Error('Task has no subtasks');
+      }
+
+      const subtaskIndex = task.subtasks.findIndex(s => s.id === subtaskId);
+      if (subtaskIndex === -1) {
+        throw new Error('Subtask not found');
+      }
+
+      // Create a new Date object for timestamps instead of using serverTimestamp()
+      // since serverTimestamp() is not supported in arrays
+      const now = new Date();
+
+      // Update the subtask
+      const updatedSubtasks = [...task.subtasks];
+      updatedSubtasks[subtaskIndex] = {
+        ...updatedSubtasks[subtaskIndex],
+        ...updates,
+        completedBy: updates.completed ? userId : undefined,
+        completedAt: updates.completed ? now : undefined,
+        updatedAt: firestore.Timestamp.fromDate(now),
+      };
+
+      // Calculate the new progress
+      const completedCount = updatedSubtasks.filter(s => s.completed).length;
+      const progress = Math.round(
+        (completedCount / updatedSubtasks.length) * 100,
+      );
+
+      // Update the task
+      await this.tasksCollection.doc(taskId).update({
+        subtasks: updatedSubtasks,
+        progress,
+        updatedAt: firestore.FieldValue.serverTimestamp(),
+        lastUpdatedBy: userId,
+      });
+
+      // Create a notification for other collaborators
+      const otherCollaborators = task.collaborators.filter(id => id !== userId);
+      if (otherCollaborators.length > 0) {
+        const batch = firestore().batch();
+        const currentUserName =
+          auth().currentUser?.displayName || 'A team member';
+        const subtaskTitle = updatedSubtasks[subtaskIndex].title;
+
+        for (const collaboratorId of otherCollaborators) {
+          const notificationRef = firestore().collection('notifications').doc();
+          batch.set(notificationRef, {
+            userId: collaboratorId,
+            type: 'subtask_update',
+            title: 'Subtask Update',
+            message: `${currentUserName} ${
+              updates.completed ? 'completed' : 'updated'
+            } the subtask "${subtaskTitle}"`,
+            taskId: taskId,
+            subtaskId: subtaskId,
+            read: false,
+            createdAt: firestore.FieldValue.serverTimestamp(),
+          });
+        }
+
+        await batch.commit();
+      }
+
+      console.log(
+        `TaskService :: updateDuoTaskSubtask() :: Subtask ${subtaskId} updated successfully`,
+      );
+    } catch (error) {
+      console.error('TaskService :: updateDuoTaskSubtask() ::', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Add a subtask to a duo/team task
+   * @param taskId The ID of the task
+   * @param subtask The subtask to add
+   * @returns Promise that resolves when the subtask is added
+   */
+  async addDuoTaskSubtask(
+    taskId: string,
+    subtask: Omit<SubTask, 'id' | 'createdAt' | 'updatedAt'>,
+  ): Promise<void> {
+    try {
+      const userId = auth().currentUser?.uid;
+      if (!userId) {
+        throw new Error('User not authenticated');
+      }
+
+      // Verify the task exists and user is a collaborator
+      const taskDoc = await this.tasksCollection.doc(taskId).get();
+      if (!taskDoc.exists) {
+        throw new Error('Task not found');
+      }
+
+      const task = taskDoc.data() as Task;
+      if (!task.collaborators?.includes(userId)) {
+        throw new Error('User is not a collaborator on this task');
+      }
+
+      // Create a new Date object for timestamps
+      const now = new Date();
+
+      // Create a new subtask with ID and timestamps
+      const newSubtask: SubTask = {
+        id: this.generateUUID(),
+        ...subtask,
+        createdAt: firestore.Timestamp.fromDate(now),
+        updatedAt: firestore.Timestamp.fromDate(now),
+      };
+
+      // Add the subtask to the task
+      const updatedSubtasks = task.subtasks
+        ? [...task.subtasks, newSubtask]
+        : [newSubtask];
+
+      // Calculate the new progress
+      const completedCount = updatedSubtasks.filter(s => s.completed).length;
+      const progress = Math.round(
+        (completedCount / updatedSubtasks.length) * 100,
+      );
+
+      // Update the task
+      await this.tasksCollection.doc(taskId).update({
+        subtasks: updatedSubtasks,
+        progress,
+        updatedAt: firestore.FieldValue.serverTimestamp(),
+        lastUpdatedBy: userId,
+      });
+
+      // Create a notification for other collaborators
+      const otherCollaborators = task.collaborators.filter(id => id !== userId);
+      if (otherCollaborators.length > 0) {
+        const batch = firestore().batch();
+        const currentUserName =
+          auth().currentUser?.displayName || 'A team member';
+
+        for (const collaboratorId of otherCollaborators) {
+          const notificationRef = firestore().collection('notifications').doc();
+          batch.set(notificationRef, {
+            userId: collaboratorId,
+            type: 'subtask_added',
+            title: 'New Subtask',
+            message: `${currentUserName} added a new subtask "${newSubtask.title}"`,
+            taskId: taskId,
+            subtaskId: newSubtask.id,
+            read: false,
+            createdAt: firestore.FieldValue.serverTimestamp(),
+          });
+        }
+
+        await batch.commit();
+      }
+
+      console.log(
+        `TaskService :: addDuoTaskSubtask() :: Subtask added successfully to task ${taskId}`,
+      );
+    } catch (error) {
+      console.error('TaskService :: addDuoTaskSubtask() ::', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get messages for a duo/team task
+   * @param taskId The ID of the task
+   * @returns Promise that resolves with the messages
+   */
+  async getDuoTaskMessages(taskId: string): Promise<any[]> {
+    try {
+      const userId = auth().currentUser?.uid;
+      if (!userId) {
+        throw new Error('User not authenticated');
+      }
+
+      // Verify the task exists and user is a collaborator
+      const taskDoc = await this.tasksCollection.doc(taskId).get();
+      if (!taskDoc.exists) {
+        throw new Error('Task not found');
+      }
+
+      const task = taskDoc.data() as Task;
+      if (!task.collaborators?.includes(userId)) {
+        throw new Error('User is not a collaborator on this task');
+      }
+
+      // Get the messages for this task
+      const messagesSnapshot = await firestore()
+        .collection('taskMessages')
+        .where('taskId', '==', taskId)
+        .orderBy('createdAt', 'asc')
+        .get();
+
+      // Process the messages with user info
+      const messages = [];
+      for (const doc of messagesSnapshot.docs) {
+        const messageData = doc.data();
+        let userData = {displayName: 'Unknown User'};
+
+        try {
+          const userDoc = await firestore()
+            .collection('users')
+            .doc(messageData.userId)
+            .get();
+          if (userDoc.exists) {
+            userData = userDoc.data() || userData;
+          }
+        } catch (e) {
+          console.error('Error fetching user data for message:', e);
+        }
+
+        messages.push({
+          id: doc.id,
+          ...messageData,
+          user: {
+            id: messageData.userId,
+            displayName:
+              userData.displayName || userData.email || 'Unknown User',
+            photoURL: userData.photoURL || null,
+          },
+          isCurrentUser: messageData.userId === userId,
+        });
+      }
+
+      return messages;
+    } catch (error) {
+      console.error('TaskService :: getDuoTaskMessages() ::', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Send a message for a duo/team task
+   * @param taskId The ID of the task
+   * @param message The message to send
+   * @returns Promise that resolves when the message is sent
+   */
+  async sendDuoTaskMessage(taskId: string, message: string): Promise<void> {
+    try {
+      const userId = auth().currentUser?.uid;
+      if (!userId) {
+        throw new Error('User not authenticated');
+      }
+
+      // Verify the task exists and user is a collaborator
+      const taskDoc = await this.tasksCollection.doc(taskId).get();
+      if (!taskDoc.exists) {
+        throw new Error('Task not found');
+      }
+
+      const task = taskDoc.data() as Task;
+      if (!task.collaborators?.includes(userId)) {
+        throw new Error('User is not a collaborator on this task');
+      }
+
+      // Add the message
+      await firestore().collection('taskMessages').add({
+        taskId,
+        userId,
+        message,
+        createdAt: firestore.FieldValue.serverTimestamp(),
+      });
+
+      // Create notifications for other collaborators
+      const otherCollaborators = task.collaborators.filter(id => id !== userId);
+      if (otherCollaborators.length > 0) {
+        const batch = firestore().batch();
+        const currentUserName =
+          auth().currentUser?.displayName || 'A team member';
+
+        for (const collaboratorId of otherCollaborators) {
+          const notificationRef = firestore().collection('notifications').doc();
+          batch.set(notificationRef, {
+            userId: collaboratorId,
+            type: 'task_message',
+            title: 'New Message',
+            message: `${currentUserName} sent a message in task "${task.title}"`,
+            taskId: taskId,
+            read: false,
+            createdAt: firestore.FieldValue.serverTimestamp(),
+          });
+        }
+
+        await batch.commit();
+      }
+
+      console.log(
+        `TaskService :: sendDuoTaskMessage() :: Message sent successfully for task ${taskId}`,
+      );
+    } catch (error) {
+      console.error('TaskService :: sendDuoTaskMessage() ::', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Helper method to generate a UUID
+   * @private
+   */
+  private generateUUID(): string {
+    // Use a timestamp-based prefix to ensure uniqueness
+    const timestamp = Date.now().toString(36);
+
+    // Generate random segments
+    const randomSegment1 = Math.random().toString(36).substring(2, 15);
+    const randomSegment2 = Math.random().toString(36).substring(2, 15);
+
+    // Combine timestamp and random segments to form a UUID-like string
+    return `${timestamp}-${randomSegment1}-${randomSegment2}`;
+  }
+
+  /**
+   * Get a single task by ID
+   */
+  async getTaskById(taskId: string): Promise<Task | null> {
+    try {
+      const userId = auth().currentUser?.uid;
+      if (!userId) {
+        throw new Error('User not authenticated');
+      }
+
+      console.log(
+        `TaskService :: getTaskById() :: Fetching task with ID: ${taskId}`,
+      );
+
+      const taskDoc = await this.tasksCollection.doc(taskId).get();
+
+      if (!taskDoc.exists) {
+        console.log(
+          `TaskService :: getTaskById() :: Task not found: ${taskId}`,
+        );
+        return null;
+      }
+
+      const task = {
+        id: taskId,
+        ...taskDoc.data(),
+      } as Task;
+
+      // Verify user has access to this task
+      if (!task.isDuoTask || !task.collaborators?.includes(userId)) {
+        if (task.userId !== userId) {
+          console.log(
+            `TaskService :: getTaskById() :: User does not have access to task: ${taskId}`,
+          );
+          return null;
+        }
+      }
+
+      console.log(
+        `TaskService :: getTaskById() :: Successfully retrieved task: ${taskId}`,
+      );
+      return task;
+    } catch (error) {
+      console.error('TaskService :: getTaskById() ::', error);
       throw error;
     }
   }

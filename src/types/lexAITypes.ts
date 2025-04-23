@@ -12,6 +12,11 @@ export interface LexAIMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: number;
+  metadata?: {
+    navigationType?: 'createRoom' | 'joinRoom' | 'webSearch' | 'navigation';
+    navigationId?: string;
+    isNavigationMessage?: boolean;
+  };
 }
 
 // Types for conversations with the AI

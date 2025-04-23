@@ -192,7 +192,7 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
                     (firstImage as ImageURISource).uri;
                 if (imageUri) {
                     Image.getSize(imageUri, (width, height) => {
-                        const screenWidth = Dimensions.get('window').width - 24;
+                        const screenWidth = Dimensions.get('window').width;
                         const scaledHeight = (height / width) * screenWidth;
                         setImageHeight(scaledHeight || (post.isVertical ? 480 : 300));
                     }, (error) => {
@@ -254,7 +254,7 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
 
         // For multiple media items (either multiple images or video + images)
         return (
-            <View style={styles.mediaContainer}>
+            <View style={[styles.mediaContainer]}>
                 {/* Current media item (video or image) */}
                 {allMedia[currentMediaIndex].type === 'video'
                     ? renderVideoContent(allMedia[currentMediaIndex].source)
@@ -330,11 +330,13 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
         return (
             <TouchableWithoutFeedback onPress={handleVideoPress}>
                 <View style={{
-                    // width: screenWidth - 24,
+                    width: screenWidth - 24,
                     height: imageHeight,
                     alignItems: 'center',
                     justifyContent: 'center',
-                    backgroundColor: '#000'
+                    backgroundColor: '#000',
+                    padding: 0,
+                    margin: 0
                 }}>
                     <Video
                         ref={videoRef}
@@ -379,7 +381,7 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
                     style={[
                         styles.postImage,
                         {
-                            width: screenWidth,
+                            width: "100%",
                             height: imageHeight || (post.isVertical ? 480 : 300)
                         }
                     ]}
@@ -420,7 +422,8 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
                 conversationId: conversation.id,
                 recipientId: post.user.id,
                 recipientName: post.user.username,
-                recipientPhoto: post.user.image
+                recipientPhoto: post.user.image,
+                isQrInitiated: false
             });
         } catch (error) {
             console.error('Error starting conversation:', error);
@@ -966,8 +969,14 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
 
                     <ScrollView
                         style={styles.fullPostScrollView}
-                        showsVerticalScrollIndicator={false}
+                        showsVerticalScrollIndicator={true}
+                        persistentScrollbar={true}
+                        alwaysBounceVertical={true}
+                        indicatorStyle={isDark ? "white" : "black"}
                         bounces={true}
+                        bouncesZoom={true}
+                        scrollEventThrottle={16}
+                        decelerationRate="normal"
                         contentContainerStyle={styles.fullPostScrollContent}
                     >
                         <View style={styles.fullPostMediaContainer}>
@@ -975,7 +984,9 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
                             <View style={{
                                 width: screenWidth,
                                 height: imageHeight,
-                                backgroundColor: '#000'
+                                backgroundColor: '#000',
+                                padding: 0,
+                                margin: 0
                             }}>
                                 {currentMediaContent}
                             </View>
@@ -1249,12 +1260,15 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.25,
         shadowRadius: 3.84,
         elevation: 4,
+        width: '100%',
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: 12,
+        paddingHorizontal: 12,
+        paddingTop: 12,
+        paddingBottom: 6,
     },
     userInfo: {
         flexDirection: 'row',
@@ -1461,10 +1475,14 @@ const styles = StyleSheet.create({
     fullPostScrollView: {
         flex: 1,
         width: '100%',
+        height: '100%', // Ensure it takes full height
+        marginBottom: 10, // Add margin at bottom
+        overflow: 'scroll', // Force scrolling to be enabled
     },
     fullPostScrollContent: {
         flexGrow: 1,
-        paddingBottom: 20, // Add padding at the bottom for better scrolling
+        paddingBottom: 60, // Increase padding at the bottom for better scrolling
+        minHeight: '100%',
     },
     fullPostHeader: {
         flexDirection: 'row',
@@ -1493,7 +1511,10 @@ const styles = StyleSheet.create({
         backgroundColor: '#000',
         alignItems: 'center',
         justifyContent: 'center',
-        minHeight: 200, // Ensure a minimum height even if content is loading
+        minHeight: 200,
+        overflow: 'hidden',
+        padding: 0,
+        margin: 0,
     },
     fullPostActions: {
         flexDirection: 'row',
@@ -1510,14 +1531,15 @@ const styles = StyleSheet.create({
     },
     fullPostDescriptionContainer: {
         marginVertical: 12,
-        flexDirection: 'row',
+        flexDirection: 'column',
         flexWrap: 'wrap',
         width: '100%',
     },
     fullPostDescription: {
         fontSize: 16,
         lineHeight: 22,
-        flex: 1,
+        width: "100%",
+        textAlign: "justify",
         letterSpacing: 0.3,
     },
     fullPostCommentsSection: {

@@ -226,7 +226,6 @@ const ContactListScreen: React.FC = () => {
             styles.container,
             {
                 backgroundColor: isDark ? '#1a1a1a' : '#f9f9f9',
-                paddingTop: insets.top > 0 ? 0 : StatusBar.currentHeight ?? 0
             }
         ]}>
             <View style={[
@@ -356,10 +355,10 @@ const styles = StyleSheet.create({
         marginVertical: 6,
         alignItems: 'center',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-        elevation: 2,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.,
+        shadowRadius: 20,
+        elevation: 8,
     },
     avatar: {
         marginRight: 16,

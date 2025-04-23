@@ -47,7 +47,8 @@ const Tasks = () => {
         priority: 'medium',
         completed: false,
         category: '',
-        notify: true
+        notify: true,
+        isDuoTask: false
     });
 
     // Reset form helper
@@ -60,7 +61,8 @@ const Tasks = () => {
             priority: 'medium',
             completed: false,
             category: '',
-            notify: true
+            notify: true,
+            isDuoTask: false
         });
     };
 
@@ -74,6 +76,13 @@ const Tasks = () => {
             setIsLoading(true);
             // Get all tasks first
             const allTasks = await taskService.getTasks();
+
+            console.log('Tasks :: fetchTasks() :: All tasks count:', allTasks.length);
+            // Add debug log to show tasks and their isDuoTask status
+            console.log('Tasks :: fetchTasks() :: Task details:');
+            allTasks.forEach(task => {
+                console.log(`Task: ${task.title}, isDuoTask: ${task.isDuoTask}, ID: ${task.id}`);
+            });
 
             // Extract unique categories for filter chips
             const uniqueCategories = [...new Set(allTasks.map(task => task.category))].filter(Boolean);
@@ -160,15 +169,18 @@ const Tasks = () => {
             } else {
                 await taskService.addTask({
                     ...newTask,
-                    userId: 'placeholder'
+                    isDuoTask: false // Explicitly mark as a regular task
                 });
+                Alert.alert('Success', 'Task added successfully');
             }
 
             closeModal();
             await fetchTasks(selectedFilter);
         } catch (error) {
             console.error('Error updating task:', error);
-            Alert.alert('Error', 'Failed to save task. Please try again.');
+            // Show more specific error message if available
+            const errorMessage = error.message || 'Failed to save task. Please try again.';
+            Alert.alert('Error', errorMessage);
         }
     };
 
@@ -300,13 +312,17 @@ const Tasks = () => {
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
         try {
+            // Clear any existing searches or filters to get fresh data
+            setSearchQuery('');
             await fetchTasks(selectedFilter);
+            console.log('Tasks refreshed successfully');
         } catch (error) {
             console.error('Error refreshing tasks:', error);
+            Alert.alert('Refresh Error', 'Failed to refresh tasks. Please try again.');
         } finally {
             setRefreshing(false);
         }
-    }, [fetchTasks, selectedFilter]);
+    }, [selectedFilter]);
 
     return (
         <SafeAreaView style={[
@@ -365,6 +381,15 @@ const Tasks = () => {
                     >
                         <MaterialIcons name="add-circle" size={24} color="#1a9cd8" />
                         <Text style={styles.addTaskButtonText}>Add Task</Text>
+                    </TouchableOpacity>
+
+                    {/* Add a button to navigate to Team Tasks */}
+                    <TouchableOpacity
+                        style={[styles.addTaskButton, { marginLeft: 10 }]}
+                        onPress={() => navigation.navigate('DuoTasks')}
+                    >
+                        <MaterialIcons name="people" size={24} color="#1a9cd8" />
+                        <Text style={styles.addTaskButtonText}>Team Tasks</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -532,6 +557,9 @@ const Tasks = () => {
                                 colors={['#1a9cd8']}
                                 tintColor={isDark ? 'white' : '#1a9cd8'}
                                 progressBackgroundColor={isDark ? '#2a2a2a' : '#f0f0f0'}
+                                size="large"
+                                title="Refreshing Tasks..."
+                                titleColor={isDark ? 'white' : 'black'}
                             />
                         }
                     />

@@ -552,6 +552,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
                                 colors={[primaryColor]}
                             />
                         }
+                        showsVerticalScrollIndicator={true}
                     >
                         {localComments.length > 0 ? (
                             localComments.map(comment => (

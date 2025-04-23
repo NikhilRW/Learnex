@@ -137,4 +137,110 @@ export class UserService {
       return {success: false, error};
     }
   }
+
+  /**
+   * Search for users by username or email
+   * @param searchQuery The search query to match against username or email
+   * @returns Array of user objects containing id, username, fullName, email, and image
+   */
+  async searchUsers(searchQuery: string): Promise<
+    Array<{
+      id: string;
+      username: string;
+      fullName: string;
+      email: string;
+      image?: string;
+    }>
+  > {
+    try {
+      if (!searchQuery || searchQuery.trim() === '') {
+        return [];
+      }
+
+      const currentUserId = auth().currentUser?.uid;
+      if (!currentUserId) {
+        throw new Error('User not authenticated');
+      }
+
+      // Search by email or username containing the query
+      const searchQueryLower = searchQuery.toLowerCase();
+
+      // Get users where email contains the search query
+      const emailResults = await firestore()
+        .collection('users')
+        .where('email', '>=', searchQueryLower)
+        .where('email', '<=', searchQueryLower + '\uf8ff')
+        .limit(10)
+        .get();
+
+      // Get users where username contains the search query
+      const usernameResults = await firestore()
+        .collection('users')
+        .where('username', '>=', searchQueryLower)
+        .where('username', '<=', searchQueryLower + '\uf8ff')
+        .limit(10)
+        .get();
+
+      // Get users where fullName contains the search query
+      const nameResults = await firestore()
+        .collection('users')
+        .where('fullName', '>=', searchQueryLower)
+        .where('fullName', '<=', searchQueryLower + '\uf8ff')
+        .limit(10)
+        .get();
+
+      // Combine and deduplicate results
+      const userMap = new Map();
+
+      // Process email results
+      emailResults.docs.forEach(doc => {
+        const userData = doc.data();
+        if (doc.id !== currentUserId) {
+          // Exclude current user
+          userMap.set(doc.id, {
+            id: doc.id,
+            username: userData.username || '',
+            fullName: userData.fullName || '',
+            email: userData.email || '',
+            image: userData.image || null,
+          });
+        }
+      });
+
+      // Process username results
+      usernameResults.docs.forEach(doc => {
+        const userData = doc.data();
+        if (doc.id !== currentUserId) {
+          // Exclude current user
+          userMap.set(doc.id, {
+            id: doc.id,
+            username: userData.username || '',
+            fullName: userData.fullName || '',
+            email: userData.email || '',
+            image: userData.image || null,
+          });
+        }
+      });
+
+      // Process name results
+      nameResults.docs.forEach(doc => {
+        const userData = doc.data();
+        if (doc.id !== currentUserId) {
+          // Exclude current user
+          userMap.set(doc.id, {
+            id: doc.id,
+            username: userData.username || '',
+            fullName: userData.fullName || '',
+            email: userData.email || '',
+            image: userData.image || null,
+          });
+        }
+      });
+
+      return Array.from(userMap.values());
+    } catch (error) {
+      console.log('UserService :: searchUsers() ::', error);
+      return [];
+    }
+  }
 }

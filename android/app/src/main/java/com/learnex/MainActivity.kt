@@ -17,7 +17,6 @@ class MainActivity : ReactActivity() {
         SplashScreen.show(this)
         
         super.onCreate(savedInstanceState)
-        
         // Initialize Firebase
         FirebaseApp.initializeApp(this)
         

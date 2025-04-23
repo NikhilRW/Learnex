@@ -38,6 +38,8 @@ import { setLexAIMode, setActiveConversation } from '../../reducers/LexAI';
 import { DispatchType } from '../../store/store';
 import axios from 'axios';
 import Config from 'react-native-config';
+import { MeetingService, Meeting } from '../../service/firebase/MeetingService';
+import { useTypedSelector } from '../../hooks/useTypedSelector';
 
 // Define search result interface
 interface SearchResult {
@@ -191,6 +193,7 @@ const LexAI = () => {
     const [conversation, setConversation] = useState<LexAIConversation | null>(null);
     const [inputMessage, setInputMessage] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [isStreaming, setIsStreaming] = useState(false);
     const [showSuggestions, setShowSuggestions] = useState(true);
     const [debugMode, setDebugMode] = useState(false);
     const [attemptCount, setAttemptCount] = useState(0);
@@ -201,6 +204,10 @@ const LexAI = () => {
     const [historyTranslateX] = useState(new Animated.Value(300));
     const inputRef = useRef<TextInput>(null);
     const isButtonDisabled = !inputMessage.trim() || isLoading;
+
+    const firebase = useTypedSelector(state => state.firebase.firebase);
+    const currentUser = firebase.currentUser();
+    const [userName, setUserName] = useState<string>('');
 
     // Get suggestions based on current mode
     const suggestions = currentMode === LexAIMode.AGENT ? AGENT_SUGGESTIONS : CHAT_SUGGESTIONS;
@@ -285,17 +292,33 @@ const LexAI = () => {
         outputRange: [0.5, 1, 0.5]
     });
 
+    // Add vertical position interpolation for bounce effect
+    const dot1TranslateY = dot1Anim.interpolate({
+        inputRange: [0, 0.5, 1],
+        outputRange: [0, -3, 0]
+    });
+
+    const dot2TranslateY = dot2Anim.interpolate({
+        inputRange: [0, 0.5, 1],
+        outputRange: [0, -3, 0]
+    });
+
+    const dot3TranslateY = dot3Anim.interpolate({
+        inputRange: [0, 0.5, 1],
+        outputRange: [0, -3, 0]
+    });
+
     // Animate loading dots when isLoading is true
     useEffect(() => {
         let dotAnimation: Animated.CompositeAnimation;
 
-        if (isLoading) {
+        if (isLoading || isStreaming) {
             // Reset animation values
             dot1Anim.setValue(0);
             dot2Anim.setValue(0);
             dot3Anim.setValue(0);
 
-            // Create a staggered sequence animation
+            // Create a continuous looping animation
             dotAnimation = Animated.loop(
                 Animated.stagger(200, [
                     Animated.timing(dot1Anim, {
@@ -316,7 +339,8 @@ const LexAI = () => {
                         useNativeDriver: true,
                         easing: Easing.inOut(Easing.ease)
                     })
-                ])
+                ]),
+                { iterations: 5 } // This ensures the animation repeats indefinitely
             );
 
             // Start the animation
@@ -329,7 +353,7 @@ const LexAI = () => {
                 dotAnimation.stop();
             }
         };
-    }, [isLoading, dot1Anim, dot2Anim, dot3Anim]);
+    }, [isLoading, isStreaming, dot1Anim, dot2Anim, dot3Anim]);
 
     // Add effect to animate button when input changes from empty to filled
     useEffect(() => {
@@ -677,6 +701,7 @@ const LexAI = () => {
 
         // Set loading state for AI response
         setIsLoading(true);
+        logDebug('Loading state activated', { isLoading: true });
 
         logDebug('Created user message', { messageId, content: messageToSend.substring(0, 20) + (messageToSend.length > 20 ? '...' : '') });
 
@@ -770,6 +795,7 @@ const LexAI = () => {
                     await handleToolExecution(directSearchToolCall);
                 }
 
+                setIsStreaming(true);
                 setIsLoading(false);
                 return;
             }
@@ -825,12 +851,18 @@ const LexAI = () => {
                     );
                 }, 500); // Brief delay to show the message before navigation
 
+                setIsStreaming(true);
                 setIsLoading(false);
                 return;
             }
 
             // Process message with LexAI service
             logDebug('Calling LexAI service to process message');
+
+            // Continue animation while API request is in progress
+            setIsStreaming(true);
+            setIsLoading(false);
+            logDebug('Switched to streaming state', { isLoading: false, isStreaming: true });
 
             const response = await LexAIService.processMessage(messageToSend, updatedConversation);
 
@@ -876,7 +908,7 @@ const LexAI = () => {
                     // Execute component-level tool calls
                     for (const toolCall of response.toolCalls) {
                         // Process tools that need direct component access
-                        if (['navigate', 'webSearch', 'openUrl'].includes(toolCall.toolName)) {
+                        if (['navigate', 'webSearch', 'openUrl', 'createRoom', 'joinRoom'].includes(toolCall.toolName)) {
                             await handleToolExecution(toolCall);
                         }
                     }
@@ -928,7 +960,9 @@ const LexAI = () => {
                 await LexAIService.saveConversation(errorConversation);
             }
         } finally {
+            setIsStreaming(false);
             setIsLoading(false);
+            logDebug('Animation states reset', { isLoading: false, isStreaming: false });
             logDebug('Message handling completed');
         }
     };
@@ -966,9 +1000,24 @@ const LexAI = () => {
             Alert.alert(
                 'Debug Mode Enabled',
                 `Current conversation ID: ${conversation?.id}\nMessage count: ${conversation?.messages.length}\nMode: ${currentMode}\nAttempt count: ${attemptCount}`,
-                [{ text: 'OK' }]
+                [
+                    { text: 'Test Loading', onPress: () => toggleLoadingTest() },
+                    { text: 'OK' }
+                ]
             );
         }
+    };
+
+    // Test loading animation
+    const toggleLoadingTest = () => {
+        setIsStreaming(true);
+        logDebug('Testing loading animation', { isStreaming: true });
+
+        // Reset after 5 seconds
+        setTimeout(() => {
+            setIsStreaming(false);
+            logDebug('Finished loading test', { isStreaming: false });
+        }, 5000);
     };
 
     // Show history drawer with animation
@@ -1293,7 +1342,6 @@ const LexAI = () => {
                                                 shadowOffset: { width: 0, height: 2 },
                                                 shadowOpacity: isActive ? 0.2 : 0,
                                                 shadowRadius: 4,
-                                                elevation: isActive ? 2 : 0,
                                             }
                                         ]}
                                         onPress={() => {
@@ -1378,7 +1426,6 @@ const LexAI = () => {
                                             shadowOffset: { width: 0, height: 1 },
                                             shadowOpacity: 0.2,
                                             shadowRadius: 2,
-                                            elevation: 2,
                                         }}
                                         onPress={() => handleDeleteConversation(item)}
                                         activeOpacity={0.7}
@@ -1593,73 +1640,62 @@ const LexAI = () => {
         return (
             <View style={[styles.suggestionsContainer, {
                 backgroundColor: isDarkMode ? 'rgba(30, 30, 30, 0.9)' : 'rgba(255, 255, 255, 0.9)',
-                borderTopColor: isDarkMode ? '#3A3A3C' : '#E5E7EB'
+                borderTopColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'
             }]}>
-                <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.suggestionsScrollContent}
-                >
-                    {suggestions.map((suggestion, index) => (
-                        <TouchableOpacity
-                            key={index}
-                            style={[styles.suggestionChip, {
-                                backgroundColor: isDarkMode ? 'rgba(10, 132, 255, 0.2)' : '#EFF6FF',
-                                borderColor: isDarkMode ? 'rgba(10, 132, 255, 0.3)' : '#DBEAFE'
-                            }]}
-                            onPress={() => handleSuggestionClick(suggestion)}
-                        >
-                            <Text style={[styles.suggestionText, { color: colors.primary }]}>{suggestion}</Text>
-                        </TouchableOpacity>
-                    ))}
-                </ScrollView>
+                {suggestions.map((suggestion, index) => (
+                    <TouchableOpacity
+                        key={index}
+                        style={[styles.suggestionChip, {
+                            backgroundColor: isDarkMode ? 'rgba(10, 132, 255, 0.15)' : '#EFF6FF',
+                            borderColor: isDarkMode ? 'rgba(62, 123, 250, 0.3)' : '#DBEAFE',
+                        }]}
+                        onPress={() => handleSuggestionClick(suggestion)}
+                    >
+                        <Text style={[styles.suggestionText, { color: colors.primary }]}>{suggestion}</Text>
+                    </TouchableOpacity>
+                ))}
             </View>
         );
     };
 
-    // Render a loading indicator
-    const renderLoading = () => {
-        if (!isLoading) return null;
-
-        return (
-            <View style={styles.loadingContainer}>
-                <View style={[styles.loadingBubble, { backgroundColor: isDarkMode ? colors.aiBubble : 'rgba(255, 255, 255, 0.9)' }]}>
-                    <View style={styles.loadingDots}>
-                        <Animated.View
-                            style={[
-                                styles.dot,
-                                {
-                                    backgroundColor: colors.primary,
-                                    opacity: dot1Opacity,
-                                    transform: [{ scale: dot1Scale }]
-                                }
-                            ]}
-                        />
-                        <Animated.View
-                            style={[
-                                styles.dot,
-                                {
-                                    backgroundColor: colors.primary,
-                                    opacity: dot2Opacity,
-                                    transform: [{ scale: dot2Scale }]
-                                }
-                            ]}
-                        />
-                        <Animated.View
-                            style={[
-                                styles.dot,
-                                {
-                                    backgroundColor: colors.primary,
-                                    opacity: dot3Opacity,
-                                    transform: [{ scale: dot3Scale }]
-                                }
-                            ]}
-                        />
-                    </View>
-                </View>
-            </View>
-        );
-    };
+    // Rendering loading dots animation
+    const LoadingDots = () => (
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', height: 20 }}>
+            <Animated.View style={[
+                styles.loadingDot,
+                {
+                    backgroundColor: colors.primary,
+                    opacity: dot1Opacity,
+                    transform: [
+                        { scale: dot1Scale },
+                        { translateY: dot1TranslateY }
+                    ]
+                }
+            ]} />
+            <Animated.View style={[
+                styles.loadingDot,
+                {
+                    backgroundColor: colors.primary,
+                    opacity: dot2Opacity,
+                    transform: [
+                        { scale: dot2Scale },
+                        { translateY: dot2TranslateY }
+                    ]
+                }
+            ]} />
+            <Animated.View style={[
+                styles.loadingDot,
+                {
+                    backgroundColor: colors.primary,
+                    opacity: dot3Opacity,
+                    transform: [
+                        { scale: dot3Scale },
+                        { translateY: dot3TranslateY }
+                    ]
+                }
+            ]} />
+        </View>
+    );
 
     // Extra spacer component to ensure proper spacing at the end of the list
     const renderFooterSpacer = () => {
@@ -1668,12 +1704,46 @@ const LexAI = () => {
         );
     };
 
+    // Render loading bubble with animated dots
+    const renderLoading = () => {
+        if (!isLoading && !isStreaming) return null;
+
+        return (
+            <View style={styles.loadingContainer}>
+                <View style={[
+                    styles.loadingBubble,
+                    {
+                        backgroundColor: colors.aiBubble,
+                        borderColor: colors.primary,
+                        borderWidth: 1
+                    }
+                ]}>
+                    <LoadingDots />
+                </View>
+            </View>
+        );
+    };
+
     // Helper functions for suggestions and greetings
     const getGreeting = () => {
-        if (currentMode === LexAIMode.AGENT) {
-            return "Hello! I'm LexAI in Agent Mode. I can help with questions, tasks, navigation, searching posts, and more. How can I assist you today?";
+        // Get the current hour to determine time of day
+        const currentHour = new Date().getHours();
+
+        // Create time-based greeting
+        let timeGreeting = '';
+        if (currentHour >= 5 && currentHour < 12) {
+            timeGreeting = `Good morning, ${userName}!`;
+        } else if (currentHour >= 12 && currentHour < 18) {
+            timeGreeting = `Good afternoon, ${userName}!`;
         } else {
-            return "Hello! I'm LexAI in Simple Chat Mode. I'm here to answer your questions and have a conversation. What would you like to talk about?";
+            timeGreeting = `Good evening, ${userName}!`;
+        }
+
+        // Add mode-specific message after the time greeting
+        if (currentMode === LexAIMode.AGENT) {
+            return `${timeGreeting} I'm LexAI in Agent Mode. I can help with questions, tasks, navigation, searching posts, and more. How can I assist you today?`;
+        } else {
+            return `${timeGreeting} I'm LexAI in Simple Chat Mode. I'm here to answer your questions and have a conversation. What would you like to talk about?`;
         }
     };
 
@@ -1766,7 +1836,7 @@ const LexAI = () => {
 
                 case 'webSearch':
                     // Handle web search requests
-                    if (toolCall.parameters?.query) {
+                    if (toolCall.parameters?.query && currentMode === LexAIMode.AGENT) {
                         logDebug(`Performing web search: ${toolCall.parameters.query}`);
 
                         // Store the original query for reference
@@ -1889,6 +1959,23 @@ const LexAI = () => {
                                 await LexAIService.saveConversation(errorConv);
                             }
                         }
+                    } else if (currentMode === LexAIMode.SIMPLE_CHAT && conversation) {
+                        // In simple chat mode, explain that we're using internal knowledge
+                        const infoMessage: LexAIMessage = {
+                            id: generateUUID(),
+                            role: 'assistant',
+                            content: `I'll do my best to answer your question based on my built-in knowledge. I don't have the ability to search the web in Simple Chat mode, but I'll share what I know about this topic.`,
+                            timestamp: Date.now()
+                        };
+
+                        const updatedConv = {
+                            ...conversation,
+                            messages: [...conversation.messages, infoMessage],
+                            updatedAt: Date.now()
+                        };
+
+                        setConversation(updatedConv);
+                        await LexAIService.saveConversation(updatedConv);
                     }
                     break;
 
@@ -1924,9 +2011,224 @@ const LexAI = () => {
                     }
                     break;
 
-                // Add cases for any other tools that need direct component access
-                // e.g., camera access, location, etc.
+                case 'createRoom':
+                    // Handle creating a meeting room
+                    logDebug('Creating meeting room', { params: toolCall.parameters });
 
+                    try {
+                        // Extract parameters from the tool call
+                        const {
+                            title,
+                            description = '',
+                            duration = 60,
+                            capacity = 10,
+                            isPrivate = false,
+                            taskId = ''
+                        } = toolCall.parameters;
+
+                        // Validate required parameter
+                        if (!title) {
+                            const errorMessage: LexAIMessage = {
+                                id: generateUUID(),
+                                role: 'assistant',
+                                content: 'I need a title to create a meeting room.',
+                                timestamp: Date.now()
+                            };
+
+                            if (conversation) {
+                                const updatedConv = {
+                                    ...conversation,
+                                    messages: [...conversation.messages, errorMessage],
+                                    updatedAt: Date.now()
+                                };
+
+                                setConversation(updatedConv);
+                                await LexAIService.saveConversation(updatedConv);
+                            }
+                            break;
+                        }
+
+                        // Show creating message
+                        const creatingMessage: LexAIMessage = {
+                            id: generateUUID(),
+                            role: 'assistant',
+                            content: `Preparing meeting room: "${title}"...`,
+                            timestamp: Date.now()
+                        };
+
+                        if (conversation) {
+                            const updatedConv = {
+                                ...conversation,
+                                messages: [...conversation.messages, creatingMessage],
+                                updatedAt: Date.now()
+                            };
+
+                            setConversation(updatedConv);
+                            await LexAIService.saveConversation(updatedConv);
+                        }
+
+                        // Prepare meeting data structure (will be used on Room)
+                        // Note: The Room component now uses team tasks instead of normal tasks
+                        // so taskId will be associated with a team task if provided
+                        const meetingData = {
+                            id: generateUUID(), // Generate temporary ID
+                            title,
+                            description,
+                            duration: parseInt(duration) || 60,
+                            isPrivate: Boolean(isPrivate),
+                            maxParticipants: parseInt(capacity) || 10,
+                            taskId: taskId || undefined, // This now associates a team task, not a normal task
+                            host: '',  // Will be populated on Room
+                            status: 'scheduled',
+                            participants: [],
+                            roomCode: Math.random().toString(36).substring(2, 8).toUpperCase(), // Generate temporary room code
+                            settings: {
+                                muteOnEntry: true,
+                                allowChat: true,
+                                allowScreenShare: true,
+                                recordingEnabled: false,
+                            },
+                            createdAt: new Date(),
+                            updatedAt: new Date()
+                        };
+
+                        // Success message before navigation
+                        const successMessage: LexAIMessage = {
+                            id: generateUUID(),
+                            role: 'assistant',
+                            content: taskId
+                                ? `Taking you to the meeting room "${title}" linked with your team task...`
+                                : `Taking you to the meeting room "${title}"...`,
+                            timestamp: Date.now(),
+                            metadata: {
+                                navigationType: 'createRoom',
+                                navigationId: meetingData.id,
+                                isNavigationMessage: true
+                            }
+                        };
+
+                        if (conversation) {
+                            const updatedConv = {
+                                ...conversation,
+                                messages: [...conversation.messages, successMessage],
+                                updatedAt: Date.now()
+                            };
+
+                            setConversation(updatedConv);
+                            await LexAIService.saveConversation(updatedConv);
+                        }
+
+                        // Navigate directly to Room with the meeting data
+                        setTimeout(() => {
+                            navigation.navigate('Room', { meetingData });
+                            logDebug('Navigated to Room with meeting data', { meetingData });
+                        }, 500);
+
+                    } catch (error) {
+                        logDebug('Error preparing meeting room', { error: String(error) });
+
+                        // Add error message
+                        const errorMessage: LexAIMessage = {
+                            id: generateUUID(),
+                            role: 'assistant',
+                            content: `I encountered an error while preparing the meeting room: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                            timestamp: Date.now()
+                        };
+
+                        if (conversation) {
+                            const updatedConv = {
+                                ...conversation,
+                                messages: [...conversation.messages, errorMessage],
+                                updatedAt: Date.now()
+                            };
+
+                            setConversation(updatedConv);
+                            await LexAIService.saveConversation(updatedConv);
+                        }
+                    }
+                    break;
+
+                case 'joinRoom':
+                    // Handle joining a meeting room
+                    logDebug('Joining meeting room', { params: toolCall.parameters });
+
+                    try {
+                        // Extract parameters from the tool call
+                        const { roomCode } = toolCall.parameters;
+
+                        // Validate required parameter
+                        if (!roomCode) {
+                            const errorMessage: LexAIMessage = {
+                                id: generateUUID(),
+                                role: 'assistant',
+                                content: 'I need a room code to join a meeting room.',
+                                timestamp: Date.now()
+                            };
+
+                            if (conversation) {
+                                const updatedConv = {
+                                    ...conversation,
+                                    messages: [...conversation.messages, errorMessage],
+                                    updatedAt: Date.now()
+                                };
+
+                                setConversation(updatedConv);
+                                await LexAIService.saveConversation(updatedConv);
+                            }
+                            break;
+                        }
+
+                        // Show joining message
+                        const joiningMessage: LexAIMessage = {
+                            id: generateUUID(),
+                            role: 'assistant',
+                            content: `Joining meeting room with code: "${roomCode}"...`,
+                            timestamp: Date.now()
+                        };
+
+                        if (conversation) {
+                            const updatedConv = {
+                                ...conversation,
+                                messages: [...conversation.messages, joiningMessage],
+                                updatedAt: Date.now()
+                            };
+
+                            setConversation(updatedConv);
+                            await LexAIService.saveConversation(updatedConv);
+                        }
+
+                        // Navigate to Room's join tab with the room code
+                        setTimeout(() => {
+                            navigation.navigate('Room', {
+                                joinMode: true,
+                                roomCode: roomCode
+                            });
+                            logDebug('Navigated to Room with join mode and room code', { roomCode });
+                        }, 500);
+
+                    } catch (error) {
+                        logDebug('Error joining meeting room', { error: String(error) });
+
+                        // Add error message
+                        const errorMessage: LexAIMessage = {
+                            id: generateUUID(),
+                            role: 'assistant',
+                            content: `I encountered an error while joining the meeting room: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                            timestamp: Date.now()
+                        };
+
+                        if (conversation) {
+                            const updatedConv = {
+                                ...conversation,
+                                messages: [...conversation.messages, errorMessage],
+                                updatedAt: Date.now()
+                            };
+
+                            setConversation(updatedConv);
+                            await LexAIService.saveConversation(updatedConv);
+                        }
+                    }
+                    break;
                 default:
                     logDebug(`Tool call ${toolCall.toolName} will be handled by LexAIService`);
                     // Let the LexAIService handle other tool calls
@@ -2051,6 +2353,23 @@ const LexAI = () => {
         }
     };
 
+    // Fetch user's name when component loads
+    useEffect(() => {
+        const fetchUserName = async () => {
+            try {
+                if (currentUser) {
+                    const { fullName } = await firebase.user.getNameUsernamestring();
+                    setUserName(fullName || 'User');
+                }
+            } catch (error) {
+                console.error('Error fetching user name:', error);
+                setUserName('User');
+            }
+        };
+
+        fetchUserName();
+    }, [currentUser, firebase]);
+
     return (
         <SafeAreaView style={[styles.container]}>
             <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
@@ -2142,11 +2461,19 @@ const LexAI = () => {
                             <Text style={[styles.emptyText, { color: colors.text }]}>
                                 {getGreeting()}
                             </Text>
-                            <View style={styles.suggestionsContainer}>
+                            <View style={[styles.suggestionsContainer, {
+                                borderTopColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'
+                            }]}>
                                 {getSuggestions().map((suggestion, index) => (
                                     <TouchableOpacity
                                         key={`suggestion-${index}`}
-                                        style={[styles.suggestionChip, { borderColor: colors.inputBorder }]}
+                                        style={[
+                                            styles.suggestionChip,
+                                            {
+                                                backgroundColor: isDarkMode ? 'rgba(10, 132, 255, 0.15)' : '#EFF6FF',
+                                                borderColor: isDarkMode ? 'rgba(62, 123, 250, 0.3)' : '#DBEAFE',
+                                            }
+                                        ]}
                                         onPress={() => handleSuggestionPress(suggestion)}
                                     >
                                         <Text style={[styles.suggestionText, { color: colors.primary }]}>
@@ -2326,10 +2653,15 @@ const styles = StyleSheet.create({
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        marginTop: 100,
+        marginTop: 60, // Reduced from 100 to allow more screen space for content
+        padding: 20,
     },
     emptyText: {
-        fontSize: 16,
+        fontSize: 24, // Increased from 16 to make greetings more prominent
+        fontWeight: '600',
+        textAlign: 'center',
+        marginBottom: 30, // Added spacing between greeting and suggestions
+        lineHeight: 32, // Added line height for better readability
     },
     messageBubble: {
         maxWidth: '85%',
@@ -2366,8 +2698,8 @@ const styles = StyleSheet.create({
         paddingBottom: 8,
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.12,
-        shadowRadius: 2,
-        elevation: 2,
+        shadowRadius: 18,
+        elevation: 15,
     },
     userMessageContent: {
         borderTopRightRadius: 4,
@@ -2543,8 +2875,9 @@ const styles = StyleSheet.create({
         marginLeft: 8,
     },
     loadingContainer: {
-        marginVertical: 8,
+        marginVertical: 10,
         alignItems: 'flex-start',
+        width: '100%',
     },
     loadingBubble: {
         padding: 12,
@@ -2552,16 +2885,21 @@ const styles = StyleSheet.create({
         borderTopLeftRadius: 4,
         width: 70,
         alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.2,
+        shadowRadius: 2,
+        elevation: 2,
     },
     loadingDots: {
         flexDirection: 'row',
         alignItems: 'center',
     },
     dot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        margin: 2,
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        margin: 3,
     },
     dot1: {
         opacity: 0.5,
@@ -2576,26 +2914,34 @@ const styles = StyleSheet.create({
         transform: [{ scale: 1 }],
     },
     suggestionsContainer: {
-        paddingVertical: 12,
+        paddingVertical: 16, // Increased from 12 for more space
+        marginTop: 10,
+        width: '100%',
+        flexDirection: 'row', // Changed from default to allow flex wrap
+        flexWrap: 'wrap', // Allow wrapping to multiple lines
+        justifyContent: 'center', // Center the suggestions
+        alignItems: 'center',
         borderTopWidth: 1,
     },
     suggestionsScrollContent: {
-        paddingHorizontal: 12,
+        paddingHorizontal: 16, // Increased from 12
     },
     suggestionChip: {
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 16,
-        marginRight: 8,
+        paddingHorizontal: 16, // Increased from 12
+        paddingVertical: 12, // Increased from 8
+        borderRadius: 20, // Increased from 16
+        marginRight: 12,
+        marginBottom: 12, // Added bottom margin for vertical spacing between rows
         borderWidth: 1,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 1,
-        elevation: 1,
+        shadowOffset: { width: 0, height: 2 }, // Slightly more pronounced shadow
+        shadowOpacity: 0.1, // Increased from 0.05
+        shadowRadius: 4, // Increased from 1
+        elevation: 2, // Increased from 1
     },
     suggestionText: {
-        fontSize: 14,
+        fontSize: 16, // Increased from 14
+        fontWeight: '500', // Added font weight for better visibility
     },
     searchResultItem: {
         flexDirection: 'row',
@@ -2620,5 +2966,11 @@ const styles = StyleSheet.create({
     },
     searchResultSnippet: {
         fontSize: 12,
+    },
+    loadingDot: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        margin: 3,
     },
 });

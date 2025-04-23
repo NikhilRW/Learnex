@@ -852,6 +852,20 @@ const Room: React.FC<RoomProps> = ({
                                         <TouchableOpacity
                                             style={[
                                                 styles.controlButton,
+                                                styles.backControlsButton
+                                            ]}
+                                            onPress={() => setShowMoreControls(false)}
+                                        >
+                                            <Icon
+                                                name="arrow-back"
+                                                size={24}
+                                                color="white"
+                                            />
+                                        </TouchableOpacity>
+
+                                        <TouchableOpacity
+                                            style={[
+                                                styles.controlButton,
                                                 showReactions && styles.controlButtonActive,
                                             ]}
                                             onPress={toggleReactionsMenu}
@@ -1869,7 +1883,9 @@ const styles = StyleSheet.create({
         backgroundColor: '#8ab4f8',
     },
     backControlsButton: {
-        backgroundColor: '#8ab4f8',
+        backgroundColor: '#4285f4',
+        borderColor: '#ffffff',
+        borderWidth: 1,
     },
     participantInfoBar: {
         flex: 1,

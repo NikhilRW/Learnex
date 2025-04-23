@@ -39,6 +39,7 @@ type ChatScreenRouteParams = {
     recipientPhoto: string;
     isLoading?: boolean;
     fromPost?: boolean;
+    isQrInitiated?: boolean;
 };
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -46,7 +47,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const ChatScreen: React.FC = () => {
     const insets = useSafeAreaInsets();
     const route = useRoute<RouteProp<Record<string, ChatScreenRouteParams>, string>>();
-    const { conversationId, recipientId, recipientName, recipientPhoto, isLoading, fromPost } = route.params;
+    const { conversationId, recipientId, recipientName, recipientPhoto, isLoading, fromPost, isQrInitiated } = route.params;
     const navigation = useNavigation();
 
     const isDark = useTypedSelector((state) => state.user.theme) === "dark";
@@ -284,35 +285,41 @@ const ChatScreen: React.FC = () => {
 
     // Send message function
     const sendMessage = async () => {
-        if (!currentUser || !newMessage.trim()) return;
+        if (!newMessage.trim() || sending) return;
 
         try {
             setSending(true);
-            const { fullName } = await firebase.user.getNameUsernamestring();
+            setShowSuggestions(false);
 
-            // Determine the best profile photo to use
-            const profilePhoto = reduxUserPhoto || currentUser.photoURL ||
-                "https://avatar.iran.liara.run/username?username=" +
-                encodeURIComponent(currentUser.displayName || fullName || 'User');
+            if (!currentUser) {
+                Snackbar.show({
+                    text: 'You must be logged in to send messages',
+                    duration: Snackbar.LENGTH_LONG,
+                    textColor: 'white',
+                    backgroundColor: '#ff3b30',
+                });
+                return;
+            }
 
-            // Prepare message data with no undefined values
+            // Create message object
             const messageData = {
                 conversationId,
                 senderId: currentUser.uid,
-                senderName: currentUser.displayName || fullName || 'User',
-                senderPhoto: profilePhoto,
+                senderName: currentUser.displayName || 'You',
+                senderPhoto: reduxUserPhoto || currentUser.photoURL,
                 recipientId,
                 text: newMessage.trim(),
                 timestamp: new Date().getTime(),
                 read: false
             };
 
-            await messageService.sendMessage(conversationId, messageData);
+            // Send the message with QR flag if this is a QR-initiated conversation
+            await messageService.sendMessage(conversationId, messageData, isQrInitiated);
 
+            // Clear the message input
             setNewMessage('');
-            setSending(false);
 
-            // Scroll to bottom after sending a message
+            // Scroll to the bottom
             setTimeout(() => {
                 if (flatListRef.current) {
                     flatListRef.current.scrollToEnd({ animated: true });
@@ -320,13 +327,14 @@ const ChatScreen: React.FC = () => {
             }, 100);
         } catch (error) {
             console.error('Error sending message:', error);
-            setSending(false);
             Snackbar.show({
                 text: 'Failed to send message',
                 duration: Snackbar.LENGTH_LONG,
                 textColor: 'white',
                 backgroundColor: '#ff3b30',
             });
+        } finally {
+            setSending(false);
         }
     };
 
