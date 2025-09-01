@@ -3,8 +3,7 @@ import firestore from '@react-native-firebase/firestore';
 import {Task, SubTask} from '../../types/taskTypes';
 import notificationService from '../../service/NotificationService';
 import axios from 'axios';
-import {GROQ_API_KEY} from '../../config/index';
-import {GEMINI_API_URL} from '../../constants/gemini';
+import Config from 'react-native-config';
 
 export class TaskService {
   private tasksCollection = firestore().collection('tasks');
@@ -64,7 +63,7 @@ export class TaskService {
         {
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${GROQ_API_KEY}`,
+            Authorization: `Bearer ${Config.GROQ_API_KEY}`,
           },
         },
       );
