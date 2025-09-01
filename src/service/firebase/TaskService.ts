@@ -2,11 +2,15 @@ import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 import {Task, SubTask} from '../../types/taskTypes';
 import notificationService from '../../service/NotificationService';
+import axios from 'axios';
+import {GROQ_API_KEY} from '../../config/index';
+import {GEMINI_API_URL} from '../../constants/gemini';
 
 export class TaskService {
   private tasksCollection = firestore().collection('tasks');
   /**
    * Get all tasks for the current user (excluding team tasks)
+   *
    */
   async getTasks(): Promise<Task[]> {
     try {
@@ -28,6 +32,46 @@ export class TaskService {
       })) as Task[];
     } catch (error) {
       console.log('TaskService :: getTasks() ::', error);
+      throw error;
+    }
+  }
+
+  async getTaskSuggestion() {
+    try {
+      const tasks = await this.getTasks();
+      const tasksTitles = tasks.map(task => task.title);
+      const payload = {
+        messages: [
+          {
+            role: 'user',
+            content: `You Are AI Task Suggestor You Will Get Multiple Tasks Title And Use Them To Predict New One So Here Are The Task Titles ${tasksTitles.join(' ')}
+        Now Give Text Of The Next Task Only Nothing Else And If Task Is Not Given Try To Give Any Random But Great Sugesstion Because The person is using app to improve His Carrier Mostly Software Engineer One Give Task Title And Description Separated By | And Make Sure Title Is Small In Length 3 to 7 Words
+        `,
+          },
+        ],
+        model: 'openai/gpt-oss-20b',
+        temperature: 1,
+        max_completion_tokens: 8192,
+        top_p: 1,
+        stream: false,
+        reasoning_effort: 'medium',
+        stop: null,
+      };
+      console.log('payload', payload);
+      const response = await axios.post(
+        `https://api.groq.com/openai/v1/chat/completions`,
+        payload,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${GROQ_API_KEY}`,
+          },
+        },
+      );
+      const aiSuggestedTask = response.data.choices[0].message.content;
+      return aiSuggestedTask;
+    } catch (error) {
+      console.log('TaskService :: getTaskSugesstions() ::', error);
       throw error;
     }
   }
@@ -892,7 +936,7 @@ export class TaskService {
 
         tasks.push(
           ...tasksSnapshot.docs.map(
-            doc => ({id: doc.id, ...doc.data()} as Task),
+            doc => ({id: doc.id, ...doc.data()}) as Task,
           ),
         );
       }

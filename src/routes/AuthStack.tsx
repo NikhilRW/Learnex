@@ -27,9 +27,11 @@ const AuthStack = () => {
   }, []);
   return (
     <Stack.Navigator
-      initialRouteName={`${
-        isNewInstalled == null ? 'GettingStarted' : 'SignIn'
-      }`}>
+      // initialRouteName={`${
+      //   isNewInstalled == null ? 'GettingStarted' : 'SignIn'
+      // }`}
+      initialRouteName='GettingStarted'
+      >
       <Stack.Screen
         component={GettingStarted}
         options={{headerShown: false}}

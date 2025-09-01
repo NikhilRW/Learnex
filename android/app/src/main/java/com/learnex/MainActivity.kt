@@ -8,7 +8,8 @@ import com.facebook.react.defaults.DefaultReactActivityDelegate
 import com.google.firebase.FirebaseApp
 import com.google.firebase.appcheck.FirebaseAppCheck
 import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory
-import org.devio.rn.splashscreen.SplashScreen // Import the splash screen package
+import org.devio.rn.splashscreen.SplashScreen 
+// Import the splash screen package
 
 class MainActivity : ReactActivity() {
 

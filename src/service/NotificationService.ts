@@ -192,46 +192,6 @@ export class NotificationService {
   }
 
   /**
-   * Create a notification channel for screen capture
-   */
-  async createAndSendScreenCaptureNotification(): Promise<boolean> {
-    try {
-      const channelId = await notifee.createChannel({
-        id: 'screen_capture',
-        name: 'Screen Capture',
-        lights: false,
-        vibration: false,
-        importance: AndroidImportance.DEFAULT,
-      });
-      await notifee.displayNotification({
-        title: 'Screen Capture',
-        body: 'Your Screen Is Being Shared On The Meeting....',
-        android: {
-          channelId,
-          sound:'notification',
-          asForegroundService: true,
-          smallIcon: 'ic_notification',
-        },
-      });
-      return true;
-    } catch (err) {
-      ToastAndroid.show(String(err), ToastAndroid.LONG);
-      return false;
-    }
-  }
-
-  /**
-   * Stop the foreground notification service
-   */
-  async stopForegroundService(): Promise<void> {
-    try {
-      await notifee.stopForegroundService();
-    } catch (err) {
-      ToastAndroid.show(String(err), ToastAndroid.LONG);
-    }
-  }
-
-  /**
    * Create all notification channels
    * This should be called during app initialization
    */
@@ -246,7 +206,7 @@ export class NotificationService {
           description: 'Notifications for direct messages',
           lights: true,
           vibration: true,
-          sound:'notification',
+          sound: 'notification',
           importance: AndroidImportance.HIGH,
           visibility: AndroidVisibility.PUBLIC,
         });
@@ -258,7 +218,7 @@ export class NotificationService {
           description: 'Keeps message service running',
           lights: false,
           vibration: false,
-          sound:'notification',
+          sound: 'notification',
           importance: AndroidImportance.MIN,
           visibility: AndroidVisibility.SECRET,
         });
@@ -270,7 +230,7 @@ export class NotificationService {
           description: 'Notifications for task due dates',
           lights: true,
           vibration: true,
-          sound:'notification',
+          sound: 'notification',
           importance: AndroidImportance.HIGH,
           visibility: AndroidVisibility.PUBLIC,
         });
@@ -282,7 +242,7 @@ export class NotificationService {
           description: 'Remote push notifications',
           lights: true,
           vibration: true,
-          sound:'notification',
+          sound: 'notification',
           importance: AndroidImportance.HIGH,
           visibility: AndroidVisibility.PUBLIC,
         });
@@ -323,7 +283,7 @@ export class NotificationService {
         body: 'Keeping you connected',
         android: {
           channelId: PERSISTENCE_CHANNEL_ID,
-          sound:'notification',
+          sound: 'notification',
           asForegroundService: true, // This is crucial for keeping the app alive
           ongoing: true, // Make it ongoing so it can't be dismissed
           autoCancel: false, // Don't allow it to be cancelled
@@ -626,7 +586,7 @@ export class NotificationService {
       await notifee.displayNotification({
         id: notificationId,
         title: senderName,
-        body: message+"theone",
+        body: message + 'theone',
         data: {
           type: 'direct_message',
           conversationId,
@@ -643,7 +603,7 @@ export class NotificationService {
             id: 'open_conversation',
             launchActivity: 'default',
           },
-          sound:'notification',
+          sound: 'notification',
           // Add notification styling
           smallIcon: 'ic_notification_logo',
           largeIcon: senderPhoto,
@@ -715,17 +675,19 @@ export class NotificationService {
                 recipientId: data.senderId,
                 recipientName: data.senderName,
                 recipientPhoto: data.senderPhoto || '',
+                isQrInitiated: false,
               });
             } catch (error) {
               console.log('Falling back to direct navigation', error);
 
               // Fallback to direct navigation if DeepLinkHandler fails
-              navigation.navigate('Chat',{
+              navigation.navigate('Chat', {
                 conversationId: data.conversationId,
                 recipientId: data.senderId,
                 recipientName: data.senderName,
                 recipientPhoto: data.senderPhoto || '',
-            });
+                isQrInitiated: false,
+              });
             }
           } else if (detail.notification?.data?.type === 'task_reminder') {
             // Navigate to the tasks screen
@@ -770,6 +732,7 @@ export class NotificationService {
               recipientId: data.senderId,
               recipientName: data.senderName,
               recipientPhoto: data.senderPhoto || '',
+              isQrInitiated: false,
             });
           } catch (error) {
             console.error(

@@ -42,7 +42,7 @@ const Search = ({ route }: { route: SearchScreenRouteProp }) => {
 
         if (isMounted) {
           if (response.success) {
-            setPosts(response.posts);
+            setPosts(response.posts!);
             setLoading(false);
           } else if (retryCount < maxRetries) {
             // If no posts yet and within retry limit, try again after delay
@@ -94,7 +94,7 @@ const Search = ({ route }: { route: SearchScreenRouteProp }) => {
       setRefreshing(true);
       const response = await firebase.posts.getPostsBySearch(searchText!);
       if (response.success) {
-        setPosts(response.posts);
+        setPosts(response.posts!);
       }
     } catch (error) {
       console.error('Error refreshing search results:', error);
@@ -114,7 +114,7 @@ const Search = ({ route }: { route: SearchScreenRouteProp }) => {
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? '#1a1a1a' : '#ffffff' }]}>
+    <View style={[styles.container, { backgroundColor: isDark ? '#1a1a1a' : '#fff' }]}>
       {loading ? (
         <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
           <ActivityIndicator size="large" color={primaryColor} />

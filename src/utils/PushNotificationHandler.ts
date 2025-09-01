@@ -3,8 +3,6 @@ import messaging from '@react-native-firebase/messaging';
 import notifee, {
   AndroidImportance,
   AndroidCategory,
-  TriggerType,
-  TimestampTrigger,
 } from '@notifee/react-native';
 
 /**
@@ -91,7 +89,7 @@ export class PushNotificationHandler {
    */
   public static setupMessageHandlers(): void {
     // Handle foreground messages
-    const unsubscribeForeground = messaging().onMessage(async remoteMessage => {
+    messaging().onMessage(async remoteMessage => {
       console.log('Foreground notification received:', remoteMessage);
 
       // Check if this message has already been processed to avoid duplicate notifications

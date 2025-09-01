@@ -25,7 +25,6 @@ import { primaryColor } from '../../../../res/strings/eng';
 import { createStyles } from '../../../../styles/components/user/CommentModal.styles';
 import { Avatar } from 'react-native-elements';
 import { getUsernameForLogo } from '../../../../helpers/stringHelpers';
-import Snackbar from 'react-native-snackbar';
 import firestore from '@react-native-firebase/firestore';
 
 interface CommentModalProps {

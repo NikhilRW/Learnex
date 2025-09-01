@@ -2617,7 +2617,7 @@ IMPORTANT INSTRUCTIONS:
           }
 
           // Remove "task" suffix if present
-          if (extractedTaskName.endsWith(' task')) {
+          if (extractedTaskName.endsWith('task')) {
             console.log(
               `LexAI :: isConfirmationMessage() :: Removing 'task' suffix`,
             );

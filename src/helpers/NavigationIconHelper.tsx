@@ -2,9 +2,11 @@ import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import HomeIcon from '../components/user/UserStack/HomeIcon';
 import AnnouncementIcon from '../components/user/UserStack/AnnouncementIcon';
-import { Dimensions, Image } from 'react-native';
+import {Dimensions, Image} from 'react-native';
+import {JSX} from 'react';
+import {Text} from 'react-native';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const {width: SCREEN_WIDTH} = Dimensions.get('window');
 
 export default function navigationIconHelper(
   route: any,
@@ -13,7 +15,7 @@ export default function navigationIconHelper(
   color: string,
   isDark: boolean,
 ): JSX.Element {
-  const iconSize = Math.min(SCREEN_WIDTH * 0.06, size);
+  const iconSize = Math.min(SCREEN_WIDTH * 0.062, size);
 
   if (route.name === 'Home') {
     return <HomeIcon focused={focused} size={iconSize} color={color} />;
@@ -22,23 +24,23 @@ export default function navigationIconHelper(
       <Ionicons
         name="search"
         size={iconSize}
-        color={focused ? color : isDark ? 'white' : color}
+        color={color}
+        onTextLayout={() => <Text>{route.name}</Text>}
       />
     );
   } else if (route.name === 'CreatePost') {
-    return (
-      <Ionicons
-        name="create"
-        size={iconSize}
-        color={focused ? color : isDark ? 'white' : color}
-      />
-    );
+    return <Ionicons name="create" size={iconSize} color={color} />;
   } else if (route.name === 'HashTrends') {
     return <FontAwesome5 name="hashtag" size={iconSize} color={color} />;
   } else if (route.name === 'Announcements') {
     return <AnnouncementIcon focused={focused} size={iconSize} color={color} />;
   } else if (route.name === 'LexAI') {
-    return <Image source={require('../res/pngs/lexai.png')} style={{ width: iconSize, height: iconSize, tintColor: color }} />;
+    return (
+      <Image
+        source={require('../res/pngs/lexai.png')}
+        style={{width: iconSize, height: iconSize, tintColor: color}}
+      />
+    );
   }
   return <></>;
 }

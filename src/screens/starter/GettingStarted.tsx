@@ -23,11 +23,11 @@ const GettingStarted = () => {
         style={styles.circle2}
       />
       <View className="flex flex-col justify-between items-center gap-14 w-full">
-        <View className="w-full flex justify-center items-center">
+        <View className="w-full  flex justify-center items-center">
           <Image
             source={require('../../res/pngs/gettingStarted01.png')}
             resizeMode="contain"
-            style={{width: 400, height: 350, zIndex: -1}}
+            style={{width: 400, height: 350,}}
           />
           <View className="flex flex-col items-start ">
             <Text className="font-[Kufam-Bold] text-black text-4xl mr-10">

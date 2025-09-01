@@ -1,5 +1,4 @@
-import {StyleSheet, Dimensions} from 'react-native';
-import {primaryColor} from '../../../res/strings/eng';
+import {StyleSheet} from 'react-native';
 
 export const createStyles = (isDark: boolean) =>
   StyleSheet.create({

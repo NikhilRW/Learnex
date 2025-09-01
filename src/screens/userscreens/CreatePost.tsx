@@ -936,6 +936,7 @@ const styles = StyleSheet.create({
     padding: 16,
     alignItems: 'center',
     marginTop: 20,
+    marginBottom: 40,
   },
   submitButtonDisabled: {
     opacity: 0.6,

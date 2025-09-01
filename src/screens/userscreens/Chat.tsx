@@ -45,7 +45,6 @@ type ChatScreenRouteParams = {
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const ChatScreen: React.FC = () => {
-    const insets = useSafeAreaInsets();
     const route = useRoute<RouteProp<Record<string, ChatScreenRouteParams>, string>>();
     const { conversationId, recipientId, recipientName, recipientPhoto, isLoading, fromPost, isQrInitiated } = route.params;
     const navigation = useNavigation();

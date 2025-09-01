@@ -1,25 +1,33 @@
-import { KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View, Keyboard } from 'react-native';
-import React, { useState } from 'react';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+  Keyboard,
+} from 'react-native';
+import React, {useState} from 'react';
 import FeatherIcon from 'react-native-vector-icons/Feather';
 import BouncyCheckbox from 'react-native-bouncy-checkbox';
-import { Image, Input } from 'react-native-elements';
+import {Image, Input} from 'react-native-elements';
 import MaterialsIcon from 'react-native-vector-icons/MaterialIcons';
-import { useNavigation } from '@react-navigation/native';
-import { AuthNavigationProps } from '../../routes/AuthStack';
-import { Formik } from 'formik';
-import { signInData } from '../../types/authTypes';
-import { useTypedSelector } from '../../hooks/useTypedSelector';
+import {useNavigation} from '@react-navigation/native';
+import {AuthNavigationProps} from '../../routes/AuthStack';
+import {Formik} from 'formik';
+import {signInData} from '../../types/authTypes';
+import {useTypedSelector} from '../../hooks/useTypedSelector';
 import useIsKeyboardVisible from '../../hooks/useKeyBoardVisible';
-import { signInSchema } from '../../service/yupSchemas';
+import {signInSchema} from '../../service/yupSchemas';
 import ErrorMessage from '../../components/auth/ErrorMessage';
 import Snackbar from 'react-native-snackbar';
-import { changeIsLoggedIn, changeProfileColor } from '../../reducers/User';
-import { useTypedDispatch } from '../../hooks/useTypedDispatch';
-import { getRandomColors } from '../../helpers/stringHelpers';
+import {changeIsLoggedIn, changeProfileColor} from '../../reducers/User';
+import {useTypedDispatch} from '../../hooks/useTypedDispatch';
+import {getRandomColors} from '../../helpers/stringHelpers';
 import Loader from '../../components/auth/Loader';
 import ButtonLoader from '../../components/auth/ButtonLoader';
-import { primaryColor, primaryDarkColor } from '../../res/strings/eng';
-import { styles } from '../../styles/screens/auth/SignIn.styles';
+import {primaryColor, primaryDarkColor} from '../../res/strings/eng';
+import {styles} from '../../styles/screens/auth/SignIn.styles';
 
 const SignIn = () => {
   const theme = useTypedSelector(state => state.user.theme);
@@ -44,8 +52,7 @@ const SignIn = () => {
       if (response.success) {
         dispatch(changeProfileColor(getRandomColors()));
         dispatch(changeIsLoggedIn(true));
-      }
-      else {
+      } else {
         Snackbar.show({
           text: 'Login Unsuccessful Due To : ' + response.error,
           duration: Snackbar.LENGTH_LONG,
@@ -64,7 +71,7 @@ const SignIn = () => {
     } finally {
       setIsGoogleLoading(false);
     }
-  }
+  };
   const handleGithubSignIn = async () => {
     try {
       setIsGithubLoading(true);
@@ -72,8 +79,7 @@ const SignIn = () => {
       if (response.success) {
         dispatch(changeProfileColor(getRandomColors()));
         dispatch(changeIsLoggedIn(true));
-      }
-      else {
+      } else {
         Snackbar.show({
           text: 'Login Unsuccessful Due To : ' + response.error,
           duration: Snackbar.LENGTH_LONG,
@@ -93,12 +99,11 @@ const SignIn = () => {
       setIsGithubLoading(false);
     }
   };
-  const signInUser = async ({ usernameOrEmail, password }: signInData) => {
-    const response = await firebase.user.checkUsernameOrEmailRegistered(
-      usernameOrEmail,
-    );
+  const signInUser = async ({usernameOrEmail, password}: signInData) => {
+    const response =
+      await firebase.user.checkUsernameOrEmailRegistered(usernameOrEmail);
     if (response.success) {
-      const { success, error } = await firebase.auth.loginWithEmailAndPassword(
+      const {success, error} = await firebase.auth.loginWithEmailAndPassword(
         response.email!,
         password,
       );
@@ -135,33 +140,17 @@ const SignIn = () => {
 
     try {
       setIsForgotPasswordLoading(true);
-      const { success, email } = await firebase.user.checkUsernameOrEmailRegistered(
-        usernameOrEmail,
-      );
+      const {email, success} =
+        await firebase.user.checkUsernameOrEmailRegistered(usernameOrEmail);
       if (success) {
-        if ((await firebase.auth.sendPasswordResetEmail(email!)).success) {
-          Snackbar.show({
-            text: 'Password reset email sent successfully',
-            duration: Snackbar.LENGTH_LONG,
-            textColor: 'white',
-            backgroundColor: '#007cb5',
-          });
-        } else {
-          Snackbar.show({
-            text: 'Failed to send password reset email',
-            duration: Snackbar.LENGTH_LONG,
-            textColor: 'white',
-            backgroundColor: '#ff3b30',
-          });
-        }
-      } else {
-        Snackbar.show({
-          text: 'Username or email is not registered',
-          duration: Snackbar.LENGTH_LONG,
-          textColor: 'white',
-          backgroundColor: '#ff3b30',
-        });
+        await firebase.auth.sendPasswordResetEmail(email!);
       }
+      Snackbar.show({
+        text: 'Password reset sended link sended to email if it is registered ',
+        duration: Snackbar.LENGTH_LONG,
+        textColor: 'white',
+        backgroundColor: '#007cb5',
+      });
     } catch (error) {
       console.error('Forgot password error:', error);
       Snackbar.show({
@@ -177,7 +166,7 @@ const SignIn = () => {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={{ flex: 1 }}
+      style={{flex: 1}}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       enabled
       className={`${isDark ? 'bg-[#1a1a1a]' : 'bg-white'}`}>
@@ -226,8 +215,9 @@ const SignIn = () => {
                   <View className="w-full gap-y-4 items-center justify-center ">
                     <View className="mb-[5%] w-full justify-center items-center">
                       <Text
-                        className={`font-[Kufam-Bold] text-black text-[9vw] ${isDark ? ' text-white' : 'text-black'
-                          }`}>
+                        className={`font-[Kufam-Bold] text-black text-[9vw] ${
+                          isDark ? ' text-white' : 'text-black'
+                        }`}>
                         Welcome Back!
                       </Text>
                       <Image
@@ -242,10 +232,10 @@ const SignIn = () => {
                     </View>
                     <View className="rounded-lg border-gray-400 border-2 w-full h-12">
                       <Input
-                        inputContainerStyle={{ borderBottomWidth: 0 }}
+                        inputContainerStyle={{borderBottomWidth: 0}}
                         placeholder="Enter Username or Email"
                         placeholderTextColor={`${isDark ? '#b5b5b5' : '#545454'}`}
-                        style={{ color: isDark ? "white" : "#1a1a1a" }}
+                        style={{color: isDark ? 'white' : '#1a1a1a'}}
                         onChangeText={handleChange('usernameOrEmail')}
                         value={values.usernameOrEmail}
                       />
@@ -257,22 +247,26 @@ const SignIn = () => {
                       <Input
                         placeholder="Password"
                         secureTextEntry={isPasswordHidden}
-                        inputContainerStyle={{ borderBottomWidth: 0 }}
+                        inputContainerStyle={{borderBottomWidth: 0}}
                         placeholderTextColor={`${isDark ? '#b5b5b5' : '#545454'}`}
-                        style={{ color: `${isDark ? 'white' : 'black'}` }}
+                        style={{color: `${isDark ? 'white' : 'black'}`}}
                         onChangeText={handleChange('password')}
                         value={values.password}
                         rightIcon={
                           <FeatherIcon
                             color={isDark ? 'white' : 'black'}
                             name={isPasswordHidden ? 'eye-off' : 'eye'}
-                            onPress={() => setisPasswordHidden(!isPasswordHidden)}
+                            onPress={() =>
+                              setisPasswordHidden(!isPasswordHidden)
+                            }
                             size={20}
                           />
                         }
                       />
                     </View>
-                    {errors.password && <ErrorMessage error={errors.password} />}
+                    {errors.password && (
+                      <ErrorMessage error={errors.password} />
+                    )}
                     <View className="flex-row justify-between w-full items-center">
                       <BouncyCheckbox
                         size={28}
@@ -281,13 +275,14 @@ const SignIn = () => {
                         unFillColor={`${isDark ? '#1a1a1a' : '#fff'}`}
                         textComponent={
                           <Text
-                            className={`mx-3 ${isDark ? 'text-white' : 'text-gray-600'
-                              } `}>
+                            className={`mx-3 ${
+                              isDark ? 'text-white' : 'text-gray-600'
+                            } `}>
                             Keep Me Logged In
                           </Text>
                         }
-                        iconStyle={{ borderColor: primaryColor, borderRadius: 8 }}
-                        innerIconStyle={{ borderWidth: 2, borderRadius: 8 }}
+                        iconStyle={{borderColor: primaryColor, borderRadius: 8}}
+                        innerIconStyle={{borderWidth: 2, borderRadius: 8}}
                         textStyle={{
                           fontFamily: 'JosefinSans-Regular',
                           fontSize: 14,
@@ -303,29 +298,36 @@ const SignIn = () => {
                           }
                         }}
                         className="text-[#3EB9F1] font-bold text-[3.5vw]">
-                        {isForgotPasswordLoading ? 'Sending...' : 'Forgot Password ?'}
+                        {isForgotPasswordLoading
+                          ? 'Sending...'
+                          : 'Forgot Password ?'}
                       </Text>
                     </View>
                     <TouchableOpacity
                       activeOpacity={0.65}
                       onPress={e => handleSubmit()}
-                      className={`${isDark ? 'bg-[#1a9cd8]' : 'bg-[#3EB9F1]'
-                        }  px-[14%] py-[4%] rounded-2xl w-full`}>
-                      {
-                        isSubmitting ? <ButtonLoader /> : <Text className="text-white text-center text-[5vw] font-bold">
+                      className={`${
+                        isDark ? 'bg-[#1a9cd8]' : 'bg-[#3EB9F1]'
+                      }  px-[14%] py-[4%] rounded-2xl w-full`}>
+                      {isSubmitting ? (
+                        <ButtonLoader />
+                      ) : (
+                        <Text className="text-white text-center text-[5vw] font-bold">
                           Sign In
                         </Text>
-                      }
+                      )}
                     </TouchableOpacity>
                     <View className="w-full">
                       <Text
-                        className={`w-full font-semibold text-[3.5vw]  ${isDark ? 'text-white' : 'text-gray-600'
-                          }`}>
+                        className={`w-full font-normal text-[3.5vw]  ${
+                          isDark ? 'text-white' : 'text-gray-600'
+                        }`}>
                         Don't Have An Account?{' '}
                         <Text
                           onPress={() => navigation.navigate('SignUp')}
-                          className={`${isDark ? 'text-[#3EB9F1]' : 'text-[#1a9cd8]'
-                            } font-bold text-[3.5vw]`}>
+                          className={`${
+                            isDark ? 'text-[#3EB9F1]' : 'text-[#1a9cd8]'
+                          } font-medium text-[3.5vw]`}>
                           Sign Up
                         </Text>
                       </Text>
@@ -333,27 +335,35 @@ const SignIn = () => {
                   </View>
                   <View className="w-full ">
                     <View className="flex flex-row justify-start items-center gap-[4%]">
-                      <View className="h-0.5 w-[30%] bg-gray-500"></View>
+                      <View className="h-0.5 w-[25%] bg-gray-500"></View>
                       <Text
-                        className={`font-semibold text-[3.5vw] ${isDark ? 'text-white' : 'text-gray-600'
-                          } `}>
+                        className={`font-semibold text-[3.5vw] ${
+                          isDark ? 'text-white' : 'text-gray-600'
+                        } `}>
                         Or Continue With
                       </Text>
-                      <View className="h-0.5 w-[30%] bg-gray-500"></View>
+                      <View className="h-0.5 w-[25%] bg-gray-500"></View>
                     </View>
-                    <View className="flex flex-row gap-3 justify-center py-[3%] items-center">
+                    <View className="flex flex-row mx-auto w-full gap-3 justify-center py-[3%] items-center">
                       <TouchableOpacity
                         disabled={isGoogleLoading || isSubmitting}
                         onPress={handleGoogleSignIn}
-                        style={{ width: 55, height: 55, justifyContent: 'center', alignItems: 'center' }}
-                      >
+                        style={{
+                          width: 55,
+                          height: 55,
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                        }}>
                         {isGoogleLoading ? (
-                          <ButtonLoader size="small" color={isDark ? '#ffffff' : '#1a9cd8'} />
+                          <ButtonLoader
+                            size="small"
+                            color={isDark ? '#ffffff' : '#1a9cd8'}
+                          />
                         ) : (
                           <Image
                             source={require('../../res/pngs/google.png')}
                             className="w-50 h-50"
-                            style={{ width: 55, height: 55 }}
+                            style={{width: 55, height: 55}}
                           />
                         )}
                       </TouchableOpacity>
@@ -361,14 +371,22 @@ const SignIn = () => {
                       <TouchableOpacity
                         disabled={isGithubLoading || isSubmitting}
                         onPress={handleGithubSignIn}
-                        style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'center', borderRadius: 30 }}
-                      >
+                        style={{
+                          width: 40,
+                          height: 40,
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          borderRadius: 30,
+                        }}>
                         {isGithubLoading ? (
-                          <ButtonLoader size="small" color={isDark ? '#ffffff' : '#000000'} />
+                          <ButtonLoader
+                            size="small"
+                            color={isDark ? '#ffffff' : '#000000'}
+                          />
                         ) : (
                           <Image
                             source={require('../../res/jpgs/github.jpg')}
-                            style={{ width: 40, height: 40, borderRadius: 30 }}
+                            style={{width: 40, height: 40, borderRadius: 30}}
                           />
                         )}
                       </TouchableOpacity>

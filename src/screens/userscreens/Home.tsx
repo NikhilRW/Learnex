@@ -1,5 +1,5 @@
 import { Image, SafeAreaView, ScrollView, Text, TouchableOpacity, View, FlatList, ViewToken, ImageSourcePropType, RefreshControl } from 'react-native';
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, JSX } from 'react';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
 import { useTypedDispatch } from '../../hooks/useTypedDispatch';
 import { changeIsLoggedIn } from '../../reducers/User';
@@ -13,7 +13,6 @@ const Home = () => {
   const firebase = useTypedSelector(state => state.firebase.firebase);
   const theme = useTypedSelector(state => state.user.theme);
   const isDark = theme === 'dark';
-  console.log("isDark", isDark);
 
   const [isLoaded, setIsLoaded] = useState(false);
   const [posts, setPosts] = useState<(PostType & { isLiked: boolean; likes: number; isSaved: boolean })[]>([]);
@@ -235,17 +234,12 @@ const Home = () => {
           });
 
           const hashtagEntries = Array.from(hashtagStats.entries());
-          console.log('Hashtag stats:', hashtagEntries);
 
           const topTags = hashtagEntries
             .sort((a, b) => b[1] - a[1])
             .slice(0, 10)
             .map(([tag]) => tag);
-
-          console.log('Setting trending tags:', topTags);
-          setTrendingTags(topTags);
         } else {
-          console.log('No trending posts found or API call failed, extracting tags from posts');
           // Extract tags from available posts instead of using fallback tags
           const extractTagsFromPosts = () => {
             const allTags = new Set<string>();
@@ -264,7 +258,6 @@ const Home = () => {
           };
 
           const extractedTags = extractTagsFromPosts();
-          console.log('Extracted tags from posts:', extractedTags);
 
           if (extractedTags.length > 0) {
             setTrendingTags(extractedTags);
@@ -310,15 +303,8 @@ const Home = () => {
 
   // Optimize tag filtering
   const handleTagPress = useCallback((tag: string) => {
-    console.log('Tag pressed:', tag);
-    console.log('All posts hashtags:', posts.map(post => ({
-      id: post.id,
-      hashtags: post.hashtags || [],
-      has_hashtags_field: post.hashtags !== undefined
-    })));
 
     if (selectedTag === tag) {
-      console.log('Clearing tag filter');
       setSelectedTag(null);
       setFilteredPosts([]);
     } else {
@@ -328,16 +314,14 @@ const Home = () => {
         // Ensure hashtags exists and is an array
         const hashtags = post.hashtags || [];
         const hasTag = Array.isArray(hashtags) && hashtags.includes(tag);
-        console.log(`Post ${post.id} has hashtags:`, hashtags, `includes "${tag}"?`, hasTag);
         return hasTag;
       });
-      console.log('Filtered posts:', filtered.length);
       setFilteredPosts(filtered);
     }
   }, [selectedTag, posts]);
 
   return (
-    <SafeAreaView className={` justify-start items-center ${isDark ? 'bg-[#1a1a1a]' : 'bg-white'}`}>
+    <SafeAreaView className={`justify-start items-center ${isDark ? 'bg-[#1a1a1a]' : 'bg-white'}`}>
       {isLoaded ? (
         <>
           <FlatList
@@ -350,7 +334,7 @@ const Home = () => {
             viewabilityConfigCallbackPairs={viewabilityConfigCallbackPairs.current}
             initialNumToRender={2}
             maxToRenderPerBatch={2}
-            // windowSize={5} // Causes Scrolling To Flicker
+            windowSize={5} // Causes Scrolling To Flicker
             removeClippedSubviews={true}
             updateCellsBatchingPeriod={50}
             getItemLayout={(data, index) => ({
@@ -361,7 +345,7 @@ const Home = () => {
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
-                onRefresh={onRefresh}
+                // onRefresh={onRefresh}
                 tintColor={isDark ? '#ffffff' : '#000000'}
                 colors={[primaryColor]}
                 progressBackgroundColor={isDark ? '#1a1a1a' : '#ffffff'}

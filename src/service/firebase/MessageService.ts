@@ -6,6 +6,7 @@ import {FirebaseErrorHandler} from '../../helpers/FirebaseErrorHandler';
 import notificationService from '../../service/NotificationService';
 import Config from 'react-native-config';
 
+
 // Configure backend URL for sending push notifications
 const BACKEND_URL = Config.BACKEND_URL || 'https://learnex-backend.vercel.app';
 
@@ -76,6 +77,7 @@ export class MessageService {
 
       const user1Data = user1Doc.data() || {};
       const user2Data = user2Doc.data() || {};
+
 
       // Create participant details
       const participantDetails: Conversation['participantDetails'] = {
