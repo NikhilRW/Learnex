@@ -477,19 +477,17 @@ const EventsAndHackathons: React.FC = () => {
                                     : item.mode === EventMode.IN_PERSON
                                         ? styles.inPersonTag
                                         : styles.hybridTag,
-                                status.type === 'ended' && { opacity: 0.7 }
+                                status.type === 'ended' && styles.endedOpacity
                             ]}
                         >
                             <Text style={[
                                 styles.eventTypeText,
-                                {
-                                    color: item.mode === EventMode.ONLINE
-                                        ? '#0288d1'
-                                        : item.mode === EventMode.IN_PERSON
-                                            ? '#2e7d32'
-                                            : '#e65100'
-                                },
-                                status.type === 'ended' && { opacity: 0.7 }
+                                item.mode === EventMode.ONLINE
+                                    ? styles.onlineEventTypeText
+                                    : item.mode === EventMode.IN_PERSON
+                                        ? styles.inPersonEventTypeText
+                                        : styles.hybridEventTypeText,
+                                status.type === 'ended' && styles.endedOpacity
                             ]}>
                                 {item.mode === EventMode.ONLINE
                                     ? 'Online'
@@ -505,7 +503,7 @@ const EventsAndHackathons: React.FC = () => {
                             name="location-outline"
                             size={14}
                             color={isDark ? '#aaa' : '#666'}
-                            style={{ opacity: status.type === 'ended' ? 0.7 : 1 }}
+                            style={[status.type === 'ended' && styles.endedOpacity]}
                         />
                         <Text
                             style={[
@@ -530,7 +528,7 @@ const EventsAndHackathons: React.FC = () => {
             return (
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color="#2379C2" />
-                    <Text style={{ marginTop: 16, color: isDark ? '#ddd' : '#555' }}>
+                    <Text style={styles.loadingText}>
                         Loading events...
                     </Text>
                 </View>
@@ -600,9 +598,9 @@ const EventsAndHackathons: React.FC = () => {
                     <Ionicons name="arrow-back" size={24} color={isDark ? 'white' : 'black'} />
                 </TouchableOpacity>
 
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={styles.headerTitleContainer}>
                     <FontAwesome5Icon name='calendar-alt' size={24} color={isDark ? 'white' : 'black'} />
-                    <Text style={[styles.headerTitle, { marginLeft: 10 }]}>Open Hackathons</Text>
+                    <Text style={[styles.headerTitle, styles.headerTitleMargin]}>Open Hackathons</Text>
                 </View>
 
                 <TouchableOpacity
@@ -614,7 +612,7 @@ const EventsAndHackathons: React.FC = () => {
                         name="refresh"
                         size={24}
                         color={isDark ? 'white' : 'black'}
-                        style={{ opacity: loading ? 0.5 : 1 }}
+                        style={[loading && styles.refreshButtonDisabled]}
                     />
                 </TouchableOpacity>
             </LinearGradient>
@@ -679,4 +677,4 @@ const EventsAndHackathons: React.FC = () => {
     );
 };
 
-export default EventsAndHackathons; 
+export default EventsAndHackathons;

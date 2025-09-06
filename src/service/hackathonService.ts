@@ -7,10 +7,10 @@ import {
 import {StorageService} from './storageService';
 
 // Base URL for the API For Vercel
-// const API_BASE_URL = 'https://learnex-backend.vercel.app/api';
+const API_BASE_URL = 'https://learnex-backend.vercel.app/api';
 
 // Base URL for the API For Localhost (Android Emulator)
-const API_BASE_URL = 'http://10.0.2.2:5000/api';
+// const API_BASE_URL = 'http://10.0.2.2:5000/api';
 
 // Base URL for the API For Localhost (Physical Device)
 // const API_BASE_URL = 'http://192.168.1.10:5000/api';
@@ -66,7 +66,6 @@ export class HackathonService {
 
       // Cache the fetched data
       await StorageService.cacheHackathons(hackathons, finalLocation);
-
       return hackathons;
     } catch (error) {
       console.error('Error fetching hackathons:', error);

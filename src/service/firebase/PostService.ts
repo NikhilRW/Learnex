@@ -30,7 +30,7 @@ export class PostService {
       const postRef = firestore().collection('posts').doc(postId);
       const postDoc = await postRef.get();
 
-      if (!postDoc.exists) {
+      if (!postDoc.exists()) {
         return {success: false, error: 'Post not found'};
       }
 
@@ -108,7 +108,7 @@ export class PostService {
       const postRef = firestore().collection('posts').doc(postId);
       const postDoc = await postRef.get();
 
-      if (!postDoc.exists) {
+      if (!postDoc.exists()) {
         return {success: false, error: 'Post not found'};
       }
 
@@ -207,11 +207,11 @@ export class PostService {
         postRef.get(),
       ]);
 
-      if (!userDoc.exists) {
+      if (!userDoc.exists()) {
         return {success: false, error: 'User document not found'};
       }
 
-      if (!postDoc.exists) {
+      if (!postDoc.exists()) {
         return {success: false, error: 'Post not found'};
       }
 
@@ -319,11 +319,11 @@ export class PostService {
         postRef.get(),
       ]);
 
-      if (!userDoc.exists) {
+      if (!userDoc.exists()) {
         return {success: false, error: 'User document not found'};
       }
 
-      if (!postDoc.exists) {
+      if (!postDoc.exists()) {
         return {success: false, error: 'Post not found'};
       }
 
@@ -362,7 +362,7 @@ export class PostService {
       const userRef = firestore().collection('users').doc(currentUser.uid);
       const userDoc = await userRef.get();
 
-      if (!userDoc.exists) return false;
+      if (!userDoc.exists()) return false;
 
       const userData = userDoc.data();
       const blockedPostIds = userData?.blockedPostIds || [];
@@ -392,7 +392,7 @@ export class PostService {
       const userRef = firestore().collection('users').doc(currentUser.uid);
       const userDoc = await userRef.get();
 
-      if (!userDoc.exists) {
+      if (!userDoc.exists()) {
         return {success: false, error: 'User document not found'};
       }
 

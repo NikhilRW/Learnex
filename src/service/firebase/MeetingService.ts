@@ -139,7 +139,7 @@ export class MeetingService {
       const meetingRef = this.meetingsCollection.doc(meetingId);
       const meetingDoc = await meetingRef.get();
 
-      if (!meetingDoc.exists) {
+      if (!meetingDoc.exists()) {
         throw this.createError('Meeting not found');
       }
 
@@ -189,7 +189,7 @@ export class MeetingService {
       const meetingRef = this.meetingsCollection.doc(meetingId);
       const meetingDoc = await meetingRef.get();
 
-      if (!meetingDoc.exists) {
+      if (!meetingDoc.exists()) {
         throw this.createError('Meeting not found');
       }
 
@@ -236,7 +236,7 @@ export class MeetingService {
       const meetingRef = this.meetingsCollection.doc(meetingId);
       const meetingDoc = await meetingRef.get();
 
-      if (!meetingDoc.exists) {
+      if (!meetingDoc.exists()) {
         throw this.createError('Meeting not found');
       }
 
@@ -290,7 +290,7 @@ export class MeetingService {
       const meetingRef = this.meetingsCollection.doc(meetingId);
       const meetingDoc = await meetingRef.get();
 
-      if (!meetingDoc.exists) {
+      if (!meetingDoc.exists()) {
         throw this.createError('Meeting not found');
       }
 
@@ -312,7 +312,7 @@ export class MeetingService {
   private async checkMeetingEndTime(meetingId: string): Promise<boolean> {
     try {
       const meetingDoc = await this.meetingsCollection.doc(meetingId).get();
-      if (!meetingDoc.exists) return false;
+      if (!meetingDoc.exists()) return false;
 
       const meetingData = meetingDoc.data() as Meeting;
       const now = new Date();
@@ -388,7 +388,7 @@ export class MeetingService {
             }
 
             try {
-              if (snapshot.exists) {
+              if (snapshot.exists()) {
                 const meeting = {
                   id: snapshot.id,
                   ...snapshot.data(),
@@ -450,7 +450,7 @@ export class MeetingService {
   async getMeeting(meetingId: string): Promise<Meeting> {
     return this.retryOperation(async () => {
       const meetingDoc = await this.meetingsCollection.doc(meetingId).get();
-      if (!meetingDoc.exists) {
+      if (!meetingDoc.exists()) {
         throw this.createError('Meeting not found');
       }
 

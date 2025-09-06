@@ -153,7 +153,7 @@ export class AuthService {
           .doc(user.uid)
           .get();
 
-        if (!userDoc.exists) {
+        if (!userDoc.exists()) {
           // First time user - create new document
           await firestore()
             .collection('users')
@@ -231,7 +231,7 @@ export class AuthService {
           .doc(user.uid)
           .get();
 
-        if (!userDoc.exists) {
+        if (!userDoc.exists()) {
           // First time user - create new document
           await firestore()
             .collection('users')
@@ -262,6 +262,59 @@ export class AuthService {
       return {success: true};
     } catch (error) {
       console.log('AuthService :: githubSignIn() ::', error);
+      return {success: false, error};
+    }
+  }
+
+  async linkedinSignIn(accessToken: string): Promise<AuthResponse> {
+    try {
+      const linkedinCredential = auth.OIDCAuthProvider.credential(
+        'azure-test',
+        accessToken,
+      );
+      console.log('accessToken', accessToken);
+      await auth().signInWithCredential(linkedinCredential);
+
+      // Handle user document (create or update)
+      const user = auth().currentUser;
+      if (user) {
+        const userDoc = await firestore()
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+        if (!userDoc.exists()) {
+          // First time user - create new document
+          await firestore()
+            .collection('users')
+            .doc(user.uid)
+            .set({
+              email: user.email,
+              username:
+                user.displayName ||
+                user.email?.split('@')[0] ||
+                'LinkedIn User',
+              fullName: user.displayName || 'LinkedIn User',
+              isLoggedIn: true,
+              savedPosts: [],
+              createdAt: firestore.FieldValue.serverTimestamp(),
+              image:
+                user.photoURL ||
+                `https://avatar.iran.liara.run/username?username=${encodeURIComponent(
+                  user.displayName || 'Anonymous',
+                )}`,
+            });
+        } else {
+          // Returning user - update isLoggedIn status
+          await firestore().collection('users').doc(user.uid).update({
+            isLoggedIn: true,
+            lastLogin: firestore.FieldValue.serverTimestamp(),
+          });
+        }
+      }
+      return {success: true};
+    } catch (error) {
+      console.log('AuthService :: linkedinSignIn() ::', error);
       return {success: false, error};
     }
   }

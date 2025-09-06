@@ -1,4 +1,4 @@
-import {Text, TouchableOpacity, View, Dimensions} from 'react-native';
+import {TouchableOpacity, View, Dimensions} from 'react-native';
 import React, {useEffect, useState, useCallback, memo} from 'react';
 import {Image} from 'react-native';
 import {ParamListBase} from '@react-navigation/native';
@@ -6,20 +6,14 @@ import {DrawerNavigationProp} from '@react-navigation/drawer';
 import {useTypedSelector} from '../../../hooks/useTypedSelector';
 import Icon from 'react-native-vector-icons/Feather';
 import {TextInput} from 'react-native-gesture-handler';
-import {styles} from '../../../styles/components/user/UserStack/NavigationDrawerButton.styles';
 import {Avatar} from 'react-native-elements';
 import {getUsernameForLogo} from '../../../helpers/stringHelpers';
+import {getStyles} from '../../../styles/components/user/UserStack/NavigationDrawerButton.styles';
 
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
 
 const NavigationDrawerButton = memo(
-  ({
-    tintColor,
-    navigation,
-  }: {
-    tintColor: string;
-    navigation: DrawerNavigationProp<ParamListBase, string, undefined>;
-  }) => {
+  ({navigation}: {navigation: DrawerNavigationProp<ParamListBase>}) => {
     const theme = useTypedSelector(state => state.user.theme);
     const isDark = theme === 'dark';
     const firebase = useTypedSelector(state => state.firebase.firebase);
@@ -28,7 +22,6 @@ const NavigationDrawerButton = memo(
       username: string;
     } | null>(null);
     const [photoURL, setPhotoURL] = useState<string | null>(null);
-    const [isTyping, setIsTyping] = useState(false);
     const [searchText, setSearchText] = useState('');
     const profileColor = useTypedSelector(state => state.user.userProfileColor);
     const reduxPhotoURL = useTypedSelector(state => state.user.userPhoto);
@@ -88,33 +81,23 @@ const NavigationDrawerButton = memo(
       }
     }, [reduxPhotoURL]);
 
-    useEffect(() => {
-      if (searchText.length > 0) {
-        setIsTyping(true);
-      }
-    }, [searchText]);
-
     const handleOpenDrawer = useCallback(() => {
       navigation.openDrawer();
     }, [navigation]);
 
-    const handleSearchFocus = useCallback(() => {
-      setIsTyping(true);
-    }, []);
-
     const handleSearchChange = useCallback((text: string) => {
       setSearchText(text);
-      if (text.length > 0) {
-        setIsTyping(true);
-      } else {
-        setIsTyping(false);
+      if (searchText.trim().length > 0) {
+        navigation.navigate('Tabs', {
+          screen: 'Search',
+          params: {
+            searchText: searchText,
+          },
+        });
       }
     }, []);
 
-    const handleSearchPress = useCallback(() => {
-      setIsTyping(true);
-      navigation.navigate('Search', {searchText: searchText});
-    }, [navigation, searchText]);
+    const styles = getStyles(isDark, profileColor!);
 
     return (
       <View
@@ -122,94 +105,55 @@ const NavigationDrawerButton = memo(
         <TouchableOpacity onPress={handleOpenDrawer}>
           <Image
             source={require('../../../res/pngs/menu.png')}
-            style={{
-              width: Math.min(SCREEN_WIDTH * 0.08, 32),
-              height: Math.min(SCREEN_WIDTH * 0.08, 32),
-              marginVertical: 'auto',
-              marginLeft: '3%',
-              marginTop: '2%',
-              tintColor: isDark ? 'white' : 'black',
-            }}
+            style={styles.menuIcon}
           />
         </TouchableOpacity>
         <View style={styles.header}>
-          <View
-            style={{
-              ...styles.searchBar,
-              backgroundColor: isDark ? '#2a2a2a' : '#F0F0F0',
-            }}>
+          <View style={styles.searchBar}>
             <Icon
               name="search"
               size={Math.min(SCREEN_WIDTH * 0.05, 20)}
-              style={{marginRight: '2%'}}
+              style={styles.searchIconMarginRight}
               color="#666"
             />
             <TextInput
-              onFocus={handleSearchFocus}
-              style={{
-                color: isDark ? 'white' : 'black',
-                backgroundColor: isDark ? '#2a2a2a' : '#F0F0F0',
-                flex: 1,
-                padding: 1,
-                marginRight: '2%',
-                width: '100%',
-                fontSize: Math.min(SCREEN_WIDTH * 0.04, 16),
-              }}
+              style={styles.searchInputStyle}
               onChangeText={handleSearchChange}
               value={searchText}
               placeholder="Search Posts"
               placeholderTextColor={isDark ? '#999' : '#666'}
               returnKeyType="search"
-              onSubmitEditing={() => {
-                if (searchText.trim().length > 0) {
-                  navigation.navigate('Tabs', {
-                    screen: 'Search',
-                    params: {
-                      searchText: searchText,
-                    },
-                  });
-                }
-              }}
             />
           </View>
-          {photoURL ? (
-            <Image
-              source={{uri: photoURL}}
-              style={[
-                styles.container,
-                {borderColor: isDark ? `#2379C2` : `#2379C2`},
-              ]}
-              onError={e => {
-                console.log(
-                  'Profile image loading error:',
-                  e.nativeEvent.error,
-                );
-                setPhotoURL(null);
-              }}
-            />
-          ) : (
-            <Avatar
-              size={Math.min(SCREEN_WIDTH * 0.0625, 25)}
-              titleStyle={{
-                textAlign: 'center',
-                fontSize: Math.min(SCREEN_WIDTH * 0.0375, 15),
-                fontFamily: 'Kufam-Thin',
-              }}
-              title={getUsernameForLogo(userData!?.username || 'Anonymous')}
-              containerStyle={[
-                styles.container,
-                {
-                  borderColor: isDark ? '#2379C2' : '#2379C2',
-                  backgroundColor: profileColor!,
-                },
-              ]}
-              activeOpacity={0.7}
-            />
-          )}
+          <TouchableOpacity onPress={handleOpenDrawer} activeOpacity={0.7}>
+            {photoURL ? (
+              <Image
+                source={{uri: photoURL}}
+                style={[
+                  styles.container,
+                  {borderColor: isDark ? `#2379C2` : `#2379C2`},
+                ]}
+                onError={e => {
+                  console.log(
+                    'Profile image loading error:',
+                    e.nativeEvent.error,
+                  );
+                  setPhotoURL(null);
+                }}
+              />
+            ) : (
+              <Avatar
+                size={Math.min(SCREEN_WIDTH * 0.0625, 25)}
+                titleStyle={styles.avatarTitleStyle}
+                title={getUsernameForLogo(userData!?.username || 'Anonymous')}
+                containerStyle={[styles.container]}
+                activeOpacity={0.7}
+              />
+            )}
+          </TouchableOpacity>
         </View>
       </View>
     );
   },
 );
-
 export default NavigationDrawerButton;

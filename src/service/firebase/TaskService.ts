@@ -227,7 +227,7 @@ export class TaskService {
       );
       const taskDoc = await this.tasksCollection.doc(taskId).get();
 
-      if (!taskDoc.exists) {
+      if (!taskDoc.exists()) {
         console.log(
           `TaskService :: updateTask() :: Task does not exist: ${taskId}`,
         );
@@ -358,7 +358,7 @@ export class TaskService {
       );
       const taskDoc = await this.tasksCollection.doc(taskId).get();
 
-      if (!taskDoc.exists) {
+      if (!taskDoc.exists()) {
         console.log(
           `TaskService :: toggleTaskCompletion() :: Task does not exist: ${taskId}`,
         );
@@ -432,7 +432,7 @@ export class TaskService {
       );
       const taskDoc = await this.tasksCollection.doc(taskId).get();
 
-      if (!taskDoc.exists) {
+      if (!taskDoc.exists()) {
         console.log(
           `TaskService :: deleteTask() :: Task does not exist: ${taskId}`,
         );
@@ -770,7 +770,7 @@ export class TaskService {
       // Verify user is a collaborator
       const taskDoc = await this.tasksCollection.doc(taskId).get();
 
-      if (!taskDoc.exists) {
+      if (!taskDoc.exists()) {
         throw new Error('Task not found');
       }
 
@@ -964,7 +964,7 @@ export class TaskService {
       // Get the task to verify user is a collaborator
       const taskDoc = await this.tasksCollection.doc(taskId).get();
 
-      if (!taskDoc.exists) {
+      if (!taskDoc.exists()) {
         throw new Error('Task not found');
       }
 
@@ -1046,7 +1046,7 @@ export class TaskService {
       // Get the task
       const taskDoc = await this.tasksCollection.doc(taskId).get();
 
-      if (!taskDoc.exists) {
+      if (!taskDoc.exists()) {
         throw new Error('Task not found');
       }
 
@@ -1159,7 +1159,7 @@ export class TaskService {
 
       // Verify the task exists and user is a collaborator
       const taskDoc = await this.tasksCollection.doc(taskId).get();
-      if (!taskDoc.exists) {
+      if (!taskDoc.exists()) {
         throw new Error('Task not found');
       }
 
@@ -1260,7 +1260,7 @@ export class TaskService {
 
       // Verify the task exists and user is a collaborator
       const taskDoc = await this.tasksCollection.doc(taskId).get();
-      if (!taskDoc.exists) {
+      if (!taskDoc.exists()) {
         throw new Error('Task not found');
       }
 
@@ -1346,7 +1346,7 @@ export class TaskService {
 
       // Verify the task exists and user is a collaborator
       const taskDoc = await this.tasksCollection.doc(taskId).get();
-      if (!taskDoc.exists) {
+      if (!taskDoc.exists()) {
         throw new Error('Task not found');
       }
 
@@ -1373,7 +1373,7 @@ export class TaskService {
             .collection('users')
             .doc(messageData.userId)
             .get();
-          if (userDoc.exists) {
+          if (userDoc.exists()) {
             userData = userDoc.data() || userData;
           }
         } catch (e) {
@@ -1415,7 +1415,7 @@ export class TaskService {
 
       // Verify the task exists and user is a collaborator
       const taskDoc = await this.tasksCollection.doc(taskId).get();
-      if (!taskDoc.exists) {
+      if (!taskDoc.exists()) {
         throw new Error('Task not found');
       }
 
@@ -1496,7 +1496,7 @@ export class TaskService {
 
       const taskDoc = await this.tasksCollection.doc(taskId).get();
 
-      if (!taskDoc.exists) {
+      if (!taskDoc.exists()) {
         console.log(
           `TaskService :: getTaskById() :: Task not found: ${taskId}`,
         );

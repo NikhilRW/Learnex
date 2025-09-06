@@ -27,7 +27,7 @@ const GettingStarted = () => {
           <Image
             source={require('../../res/pngs/gettingStarted01.png')}
             resizeMode="contain"
-            style={{width: 400, height: 350,}}
+            style={styles.gettingStartedImage}
           />
           <View className="flex flex-col items-start ">
             <Text className="font-[Kufam-Bold] text-black text-4xl mr-10">

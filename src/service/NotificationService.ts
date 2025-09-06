@@ -771,7 +771,7 @@ export class NotificationService {
         .doc(currentUser.uid)
         .get();
 
-      if (!prefsDoc.exists) return false;
+      if (!prefsDoc.exists()) return false;
 
       const prefs = prefsDoc.data();
       return prefs?.mutedRecipients?.includes(recipientId) ?? false;
@@ -798,7 +798,7 @@ export class NotificationService {
       // Get current preferences
       const prefsDoc = await userPrefsRef.get();
 
-      if (prefsDoc.exists) {
+      if (prefsDoc.exists()) {
         // Update existing preferences
         await userPrefsRef.update({
           mutedRecipients: firestore.FieldValue.arrayUnion(recipientId),
@@ -838,7 +838,7 @@ export class NotificationService {
       // Get current preferences
       const prefsDoc = await userPrefsRef.get();
 
-      if (prefsDoc.exists) {
+      if (prefsDoc.exists()){
         // Remove the recipient from the muted list
         await userPrefsRef.update({
           mutedRecipients: firestore.FieldValue.arrayRemove(recipientId),

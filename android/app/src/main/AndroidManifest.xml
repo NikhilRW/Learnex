@@ -1,6 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-    
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
@@ -26,7 +25,6 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
-    
     <application
         android:name=".MainApplication"
         android:label="@string/app_name"
@@ -66,6 +64,12 @@
                 <data android:scheme="https" />
                 <data android:host="learnex-web.vercel.app" />
                 <data android:pathPattern="/join/.*" />
+            </intent-filter>
+               <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="learnex-web.vercel.app" android:pathPrefix="/auth/linkedin/sign-in" />
             </intent-filter>
         </activity>
         <!-- Firebase Messaging Service -->

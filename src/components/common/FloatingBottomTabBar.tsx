@@ -1,4 +1,4 @@
-import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
+import {View, TouchableOpacity, StyleSheet} from 'react-native';
 import React from 'react';
 import {FloatingBottomTabBarPropsType} from '../../types/bottomTabBarTypes';
 import navigationIconHelper from '../../helpers/NavigationIconHelper';
@@ -8,9 +8,6 @@ import {useTheme} from '../../hooks/useTheme';
 import Animated, {
   FadeIn,
   FadingTransition,
-  JumpingTransition,
-  LinearTransition,
-  runOnJS,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
@@ -20,11 +17,10 @@ import {useTypedSelector} from '../../hooks/useTypedSelector';
 
 const BUTTON_SIZE = 48;
 
-const AnimtedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
+const AnimtedTouchableOpacity =
+  Animated.createAnimatedComponent(TouchableOpacity);
 
 const FloatingBottomTabBar = ({
-  descriptors,
-  insets,
   navigation,
   state,
 }: FloatingBottomTabBarPropsType) => {
@@ -32,7 +28,7 @@ const FloatingBottomTabBar = ({
   const onPress = (route: NavigationRoute<ParamListBase, string>) => {
     navigation.navigate(route.name);
   };
-  const tabsButton = getTabsButton(state.routes, state.index, onPress);
+  const tabsButton = TabsButton(state.routes, state.index, onPress);
   const backgroundHighlightX = useSharedValue(18);
   useDerivedValue(() => {
     const gapAdjustment = state.index * 60;
@@ -51,29 +47,26 @@ const FloatingBottomTabBar = ({
 
   return (
     <View
-      style={{
-        backgroundColor: '#121212',
-        justifyContent: 'center',
-        alignItems: 'center',
-      }}>
+      style={[styles.mainContainer]}
+      className="bg-neutral-300 dark:bg-neutral-600">
       <View
         style={[
           styles.floatingTabBarContainer,
           {
-            backgroundColor: isDark ? '#2A2A2A' : 'white',
+            backgroundColor: isDark ? '#2A2A2A' : '#FFFFFF',
           },
         ]}>
         <View className="flex-row gap-[60]">
           <Animated.View
             style={[
               {
-                backgroundColor: 'white',
+                backgroundColor: isDark ? 'white' : '#0987C1',
                 width: BUTTON_SIZE,
-                height: 8,
+                height: 5,
                 borderRadius: 10,
                 position: 'absolute',
-                zIndex: -10,
-                bottom: -15,
+                zIndex: -8,
+                bottom: -5,
               },
               animatedStyleBackgroundHighlight,
             ]}
@@ -87,7 +80,7 @@ const FloatingBottomTabBar = ({
 
 export default FloatingBottomTabBar;
 
-const getTabsButton = (
+const TabsButton = (
   routes: NavigationRoute<ParamListBase, string>[],
   focusedIndex: number,
   onPress: (route: NavigationRoute<ParamListBase, string>) => void,
@@ -111,14 +104,14 @@ const getTabsButton = (
           route,
           isFocused,
           24,
-          isFocused ? 'white' : primaryColor,
+          isFocused ? (isDark ? 'white' : '#0987C1') : primaryColor,
           true,
         )}
         {isFocused && (
           <Animated.Text
             entering={FadeIn}
             numberOfLines={1}
-            style={[{color: isDark ? 'white' : 'black'}, styles.tabIconText]}>
+            style={[{color: isDark ? 'white' : '#0987C1'}, styles.tabIconText]}>
             {route.name === 'CreatePost' ? 'Post' : route.name}
           </Animated.Text>
         )}
@@ -135,11 +128,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     left: '50%',
     alignItems: 'center',
-    bottom:-1,
+    bottom: -1,
     gap: 60,
-    // flex: 1,
     width: '100%',
-    paddingVertical: 11,
+    paddingVertical: 4,
     paddingHorizontal: 48,
   },
   tabIconText: {
@@ -148,5 +140,9 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: 300,
     textTransform: 'capitalize',
+  },
+  mainContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

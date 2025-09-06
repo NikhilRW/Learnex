@@ -1,6 +1,5 @@
 import React, {useState, useEffect, useCallback} from 'react';
 import {
-  StyleSheet,
   Text,
   View,
   FlatList,
@@ -13,6 +12,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   Pressable,
+  Image,
 } from 'react-native';
 import {useTypedSelector} from '../../hooks/useTypedSelector';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -24,6 +24,10 @@ import {Task} from '../../types/taskTypes';
 import {TaskService} from '../../service/firebase/TaskService';
 import {styles} from '../../styles/screens/userscreens/Tasks.styles';
 import TaskModal from '../../components/Room/TaskModal';
+import AIGeneratedTaskSVG from '../../res/svgs/ai_generated_task.svg';
+import {SvgXml} from 'react-native-svg';
+import {AIGeneratedSVGXML} from '../../constants/svg';
+import auth from '@react-native-firebase/auth';
 
 const Tasks = () => {
   const isDark = useTypedSelector(state => state.user.theme) === 'dark';
@@ -39,6 +43,7 @@ const Tasks = () => {
   const taskService = new TaskService();
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [isAIGeneratingTask, setIsAIGeneratingTask] = useState<boolean>(false);
 
   const [newTask, setNewTask] = useState<
     Omit<Task, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
@@ -175,11 +180,17 @@ const Tasks = () => {
         await taskService.updateTask(currentTaskId, newTask);
         Alert.alert('Success', 'Task updated successfully');
       } else {
-        await taskService.addTask({
-          ...newTask,
-          isDuoTask: false, // Explicitly mark as a regular task
-        });
-        Alert.alert('Success', 'Task added successfully');
+        const userId = auth().currentUser?.uid;
+        if (userId) {
+          await taskService.addTask({
+            userId,
+            ...newTask,
+            isDuoTask: false, // Explicitly mark as a regular task
+          });
+          Alert.alert('Success', 'Task added successfully');
+        } else {
+          Alert.alert('Some Error Occured Please Try Again');
+        }
       }
 
       closeModal();
@@ -202,13 +213,18 @@ const Tasks = () => {
   };
 
   const getAITaskSuggestion = async () => {
+    if (isAIGeneratingTask) {
+      return;
+    }
+    setIsAIGeneratingTask(true);
     const newTask = await taskService.getTaskSuggestion();
     const newTaskTitleAndDescription = newTask.split('|');
     setNewTask(prev => ({
       ...prev,
-      description: newTaskTitleAndDescription[0],
-      title: newTaskTitleAndDescription[1],
+      title: newTaskTitleAndDescription[0],
+      description: newTaskTitleAndDescription[1],
     }));
+    setIsAIGeneratingTask(false);
     setModalVisible(true);
   };
 
@@ -648,10 +664,24 @@ const Tasks = () => {
         getPriorityColor={getPriorityColor}
       />
       {/* Floating AI Suggestion Button */}
+      {isAIGeneratingTask && (
+        <View
+          className="w-screen absolute justify-center items-center h-screen"
+          style={{
+            zIndex: 500,
+            backgroundColor: isDark ? '#00000060' : '#00000030',
+          }}>
+          <ActivityIndicator size={50} color={'#1a9cd8'} />
+        </View>
+      )}
       <Pressable
         onPress={getAITaskSuggestion}
         className="absolute bottom-4 right-4 bg-[#1A9CD81A] p-3 rounded-2xl">
-        <FontAwesome name="magic" color={'#1a9cd8'} size={30} />
+        <SvgXml
+          xml={AIGeneratedSVGXML[isDark ? 'dark' : 'light']}
+          width={36}
+          height={36}
+        />
       </Pressable>
     </SafeAreaView>
   );

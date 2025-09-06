@@ -70,6 +70,10 @@ export const createStyles = (isDark: boolean) =>
       borderWidth: 2,
       borderColor: isDark ? '#121212' : 'white',
     },
+    usernameEditIcon: {
+      marginLeft: 5,
+      marginTop: 1,
+    },
     usernameContainer: {
       marginLeft: Math.min(SCREEN_WIDTH * 0.04, 16),
       flex: 1,
@@ -237,5 +241,110 @@ export const createStyles = (isDark: boolean) =>
     photoPickerCancelText: {
       fontSize: 16,
       fontWeight: '600',
+    },
+    activityIndicatorContainer: {
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    avatarTitle: {
+      fontSize: Math.min(SCREEN_WIDTH * 0.06, 24),
+      fontFamily: 'Kufam-Thin',
+    },
+    avatarContainerStyle: {
+      backgroundColor: '#2379C2',
+    },
+    modalPhotoPickerContainerDark: {
+      backgroundColor: '#222',
+    },
+    modalPhotoPickerContainerLight: {
+      backgroundColor: 'white',
+    },
+    modalPhotoPickerTitleDark: {
+      color: 'white',
+    },
+    modalPhotoPickerTitleLight: {
+      color: '#333',
+    },
+    modalPhotoPickerOptionTextDark: {
+      color: 'white',
+    },
+    modalPhotoPickerOptionTextLight: {
+      color: '#333',
+    },
+    modalPhotoPickerCancelButtonDark: {
+      borderTopColor: '#444',
+    },
+    modalPhotoPickerCancelButtonLight: {
+      borderTopColor: '#eee',
+    },
+    // Add these new styles for the username edit modal
+    usernameInput: {
+      borderWidth: 1,
+      borderColor: '#ddd',
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      marginVertical: 10,
+      fontSize: 13,
+      justifyContent: 'center',
+      alignItems: 'center',
+      fontFamily: '',
+    },
+    usernameInputDark: {
+      borderColor: '#555',
+      backgroundColor: '#333',
+      color: 'white',
+    },
+    usernameInputLight: {
+      borderColor: '#ddd',
+      backgroundColor: 'white',
+      color: 'black',
+    },
+    usernameHint: {
+      fontSize: 12,
+      marginBottom: 15,
+      textAlign: 'center',
+      fontFamily: 'Kufam-Regular',
+    },
+    usernameHintDark: {
+      color: '#999',
+    },
+    usernameHintLight: {
+      color: '#666',
+    },
+    usernameButtonContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginTop: 10,
+    },
+    usernameButton: {
+      flex: 1,
+      paddingVertical: 12,
+      paddingHorizontal: 20,
+      borderRadius: 8,
+      marginHorizontal: 5,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    usernameCancelButton: {
+      backgroundColor: 'transparent',
+      borderWidth: 1,
+      borderColor: '#FF3B30',
+    },
+    usernameCancelButtonDark: {
+      borderColor: '#FF3B30',
+    },
+    usernameCancelButtonLight: {
+      borderColor: '#FF3B30',
+    },
+    usernameUpdateButton: {
+      backgroundColor: '#2379C2',
+    },
+    usernameButtonDisabled: {
+      backgroundColor: '#999',
+    },
+    usernameButtonText: {
+      color: 'white',
+      fontSize: 16,
+      fontWeight: 600,
     },
   });

@@ -1,34 +1,52 @@
-import { ScrollView } from 'react-native-gesture-handler';
-import { Text, TouchableOpacity, View, Dimensions, Linking, Modal, ActivityIndicator, Platform, PermissionsAndroid } from 'react-native';
-import React, { useEffect, useState } from 'react';
-import { useTypedSelector } from '../../../hooks/useTypedSelector';
-import { useTypedDispatch } from '../../../hooks/useTypedDispatch';
-import { changeIsLoggedIn, changeThemeColor, changeProfileColor, updateUserPhoto } from '../../../reducers/User';
-import { Avatar, Image } from 'react-native-elements';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { getUsernameForLogo } from '../../../helpers/stringHelpers';
+import {
+  Text,
+  TouchableOpacity,
+  View,
+  Dimensions,
+  Linking,
+  Modal,
+  ActivityIndicator,
+  Platform,
+  PermissionsAndroid,
+  TextInput,
+  ScrollView,
+} from 'react-native';
+import React, {useEffect, useState} from 'react';
+import {useTypedSelector} from '../../../hooks/useTypedSelector';
+import {useTypedDispatch} from '../../../hooks/useTypedDispatch';
+import {
+  changeIsLoggedIn,
+  changeThemeColor,
+  updateUserPhoto,
+} from '../../../reducers/User';
+import {Avatar, Image} from 'react-native-elements';
+import {getUsernameForLogo} from '../../../helpers/stringHelpers';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
+import AntDesign from 'react-native-vector-icons/AntDesign';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { navigationDrawerOptions } from '../../../constants/navigation';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { createStyles } from '../../../styles/components/user/UserStack/NavigationDrawer.styles';
-import Snackbar from 'react-native-snackbar';
-import { DrawerContentComponentProps } from '@react-navigation/drawer';
-import FontAwesome5Icon from 'react-native-vector-icons/FontAwesome5';
-import { launchCamera, launchImageLibrary, CameraOptions } from 'react-native-image-picker';
-import Config from 'react-native-config';
-import { MessageService } from '../../../service/firebase/MessageService';
-import { deleteOldProfilePhoto } from '../../../utils/cloudinary';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {createStyles} from '../../../styles/components/user/UserStack/NavigationDrawer.styles';
+import Snackbar from 'react-native-snackbar';
+import {DrawerContentComponentProps} from '@react-navigation/drawer';
+import FontAwesome5Icon from 'react-native-vector-icons/FontAwesome5';
+import {
+  launchCamera,
+  launchImageLibrary,
+  CameraOptions,
+} from 'react-native-image-picker';
+import Config from 'react-native-config';
+import {MessageService} from '../../../service/firebase/MessageService';
+import {deleteOldProfilePhoto} from '../../../utils/Cloudinary';
+
+const {width: SCREEN_WIDTH} = Dimensions.get('window');
 
 const NavigationDrawer = (props: DrawerContentComponentProps) => {
   const firebase = useTypedSelector(state => state.firebase.firebase);
   const insets = useSafeAreaInsets();
   const currentUser = firebase.currentUser();
-  const isDark = useTypedSelector((state) => state.user.theme) === "dark";
-  const [fullName, setFullName] = useState<string>('');
+  const isDark = useTypedSelector(state => state.user.theme) === 'dark';
   const [username, setUsername] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [photoURL, setPhotoURL] = useState<string | null>(null);
@@ -43,11 +61,18 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
   const [photoPickerVisible, setPhotoPickerVisible] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
+  // Add state for username edit modal
+  const [usernameEditVisible, setUsernameEditVisible] = useState(false);
+  const [newUsername, setNewUsername] = useState('');
+  const [isUpdatingUsername, setIsUpdatingUsername] = useState(false);
+
   // Check for Cloudinary configuration
   useEffect(() => {
     // Check if Cloudinary config values are available
     if (!Config.CLOUDINARY_CLOUD_NAME || !Config.CLOUDINARY_UPLOAD_PRESET) {
-      console.warn('Cloudinary config values missing. Make sure CLOUDINARY_CLOUD_NAME and CLOUDINARY_UPLOAD_PRESET are set in your .env file');
+      console.warn(
+        'Cloudinary config values missing. Make sure CLOUDINARY_CLOUD_NAME and CLOUDINARY_UPLOAD_PRESET are set in your .env file',
+      );
     }
   }, []);
 
@@ -63,33 +88,34 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
     main: ['Room', 'Tasks', 'Direct Messages'],
     tools: ['Generate QR', 'Events & Hackathons', 'LexAI'],
     account: ['Saved'],
-    support: ['About us', 'Toggle Theme']
+    support: ['About us', 'Toggle Theme'],
   };
 
   // Map of navigation options to their respective icons
   const optionIcons = {
-    'Room': 'video-camera',
-    'Tasks': 'tasks',
-    'Insights': 'bar-chart',
+    Room: 'video-camera',
+    Tasks: 'tasks',
+    Insights: 'bar-chart',
     'Direct Messages': 'comments',
     'Generate QR': 'qrcode',
     'Feed News': 'newspaper-o',
     'Events & Hackathons': 'calendar',
-    'Rewards': 'trophy',
-    'Saved': 'bookmark',
+    Rewards: 'trophy',
+    Saved: 'bookmark',
     'Help and FAQs': 'question-circle',
     'Contact us': 'envelope',
-    'Setting': 'cog',
+    Setting: 'cog',
     'About us': 'info-circle',
     'Toggle Theme': isDark ? 'moon' : 'sun',
-    'LexAI': 'robot'
+    LexAI: 'robot',
   };
 
   const handleLogOutPress = async () => {
     try {
-      const { success, error } = await firebase.auth.signOut();
+      const {success, error} = await firebase.auth.signOut();
       if (success) {
         dispatch(changeIsLoggedIn(false));
+        navigation.getParent()?.navigate('AuthStack');
       } else {
         Snackbar.show({
           text: 'Failed to sign out: ' + error,
@@ -169,12 +195,17 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
         }
         // If not, check Firebase user photo URL
         else if (currentUser?.photoURL) {
-          console.log('NavigationDrawer: User photo URL:', currentUser.photoURL);
+          console.log(
+            'NavigationDrawer: User photo URL:',
+            currentUser.photoURL,
+          );
           // Validate URL format
-          if (typeof currentUser.photoURL === 'string' &&
+          if (
+            typeof currentUser.photoURL === 'string' &&
             (currentUser.photoURL.startsWith('http://') ||
               currentUser.photoURL.startsWith('https://') ||
-              currentUser.photoURL.startsWith('data:'))) {
+              currentUser.photoURL.startsWith('data:'))
+          ) {
             setPhotoURL(currentUser.photoURL);
             // Also update Redux store
             dispatch(updateUserPhoto(currentUser.photoURL));
@@ -187,9 +218,9 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
           setPhotoURL(null);
         }
 
-        const { fullName, username } = await firebase.user.getNameUsernamestring();
+        const {username} = await firebase.user.getNameUsernamestring();
         setUsername(username);
-        setFullName(fullName);
+        setNewUsername(username); // Initialize new username
 
         // Set the user's email
         if (currentUser?.email) {
@@ -199,17 +230,118 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
         console.error('Error fetching user data:', err);
         // Set default values in case of error
         setUsername('User');
-        setFullName('User');
+        setNewUsername('User');
         setPhotoURL(null);
         setEmail('');
       }
     };
     fetchUserData();
-  }, [currentUser, dispatch, reduxPhotoURL]);
+  }, [currentUser, dispatch, reduxPhotoURL, firebase.user]);
 
   // Add functions to handle profile photo changes
   const handleAvatarPress = () => {
     setPhotoPickerVisible(true);
+  };
+
+  // Add functions to handle username editing
+  const handleEditUsername = () => {
+    setNewUsername(username);
+    setUsernameEditVisible(true);
+  };
+
+  const handleUsernameChange = (text: string) => {
+    // Remove spaces and special characters, keep only alphanumeric and underscores
+    const cleanedText = text.replace(/[^a-zA-Z0-9_]/g, '');
+    setNewUsername(cleanedText);
+  };
+
+  const validateUsername = (un: string) => {
+    if (un.length < 3) {
+      return 'Username must be at least 3 characters long';
+    }
+    if (un.length > 20) {
+      return 'Username must be less than 20 characters';
+    }
+    if (!/^[a-zA-Z0-9_]+$/.test(un)) {
+      return 'Username can only contain letters, numbers, and underscores';
+    }
+    return null;
+  };
+
+  const checkUsernameAvailability = async (user_name: string) => {
+    try {
+      // Check if username is available using Firebase
+      const {success} = await firebase.user.checkUsernameIsAvailable(user_name);
+      return success;
+    } catch (err) {
+      console.error('Error checking username availability:', err);
+      return false;
+    }
+  };
+
+  const handleUpdateUsername = async () => {
+    const validationError = validateUsername(newUsername);
+    if (validationError) {
+      Snackbar.show({
+        text: validationError,
+        duration: Snackbar.LENGTH_SHORT,
+        textColor: 'white',
+        backgroundColor: '#ff3b30',
+      });
+      return;
+    }
+
+    if (newUsername === username) {
+      setUsernameEditVisible(false);
+      return;
+    }
+
+    try {
+      setIsUpdatingUsername(true);
+
+      // Check if username is available
+      const isAvailable = await checkUsernameAvailability(newUsername);
+      if (!isAvailable) {
+        Snackbar.show({
+          text: 'Username is already taken. Please choose another one.',
+          duration: Snackbar.LENGTH_SHORT,
+          textColor: 'white',
+          backgroundColor: '#ff3b30',
+        });
+        return;
+      }
+
+      // Update username
+      const result = await firebase.user.updateUsername(newUsername);
+      if (result.success) {
+        setUsername(newUsername);
+        setUsernameEditVisible(false);
+
+        Snackbar.show({
+          text: 'Username updated successfully',
+          duration: Snackbar.LENGTH_SHORT,
+          textColor: 'white',
+          backgroundColor: '#4CAF50',
+        });
+      } else {
+        Snackbar.show({
+          text: 'Failed to update username: ' + result.error,
+          duration: Snackbar.LENGTH_SHORT,
+          textColor: 'white',
+          backgroundColor: '#ff3b30',
+        });
+      }
+    } catch (error) {
+      console.error('Error updating username:', error);
+      Snackbar.show({
+        text: 'An error occurred while updating username',
+        duration: Snackbar.LENGTH_SHORT,
+        textColor: 'white',
+        backgroundColor: '#ff3b30',
+      });
+    } finally {
+      setIsUpdatingUsername(false);
+    }
   };
 
   const handleTakePhoto = async () => {
@@ -304,11 +436,14 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
       formData.append('file', {
         uri: photoUri,
         type: 'image/jpeg',
-        name: `profile-photo-${username}-${Date.now()}.jpg`
+        name: `profile-photo-${username}-${Date.now()}.jpg`,
       });
 
       // Add upload preset
-      formData.append('upload_preset', Config.CLOUDINARY_UPLOAD_PRESET || 'default_preset');
+      formData.append(
+        'upload_preset',
+        Config.CLOUDINARY_UPLOAD_PRESET || 'default_preset',
+      );
 
       // Check if we have the required configuration
       if (!Config.CLOUDINARY_CLOUD_NAME) {
@@ -322,10 +457,10 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
           method: 'POST',
           body: formData,
           headers: {
-            'Accept': 'application/json',
+            Accept: 'application/json',
             'Content-Type': 'multipart/form-data',
           },
-        }
+        },
       );
 
       const data = await response.json();
@@ -343,10 +478,13 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
           if (currentUser) {
             try {
               await messageService.updateParticipantDetails(currentUser.uid, {
-                image: data.secure_url
+                image: data.secure_url,
               });
             } catch (error) {
-              console.error('Error updating conversation participant details:', error);
+              console.error(
+                'Error updating conversation participant details:',
+                error,
+              );
               // Continue even if this fails - the profile photo will still be updated in the system
             }
           }
@@ -396,15 +534,19 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
       <TouchableOpacity
         onPress={handleAvatarPress}
         disabled={isUploading}
-        style={styles.avatarContainer}
-      >
+        style={styles.avatarContainer}>
         {isUploading ? (
-          <View style={[styles.avatar, { justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? '#333' : '#eee' }]}>
+          <View
+            style={[
+              styles.avatar,
+              styles.activityIndicatorContainer,
+              {backgroundColor: isDark ? '#333' : '#eee'},
+            ]}>
             <ActivityIndicator color="#2379C2" size="small" />
           </View>
         ) : photoURL && photoURL.length > 0 ? (
           <Image
-            source={{ uri: photoURL }}
+            source={{uri: photoURL}}
             containerStyle={styles.avatar}
             onError={() => {
               console.log('NavigationDrawer: Profile image loading error');
@@ -415,11 +557,12 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
           <Avatar
             size={60}
             title={getUsernameForLogo(username || 'User')}
-            titleStyle={{
-              fontSize: Math.min(SCREEN_WIDTH * 0.06, 24),
-              fontFamily: 'Kufam-Thin'
-            }}
-            containerStyle={[styles.avatar, { backgroundColor: profileColor || '#2379C2' }]}
+            titleStyle={styles.avatarTitle}
+            containerStyle={[
+              styles.avatar,
+              styles.avatarContainerStyle,
+              {backgroundColor: profileColor || '#2379C2'},
+            ]}
             activeOpacity={0.7}
           />
         )}
@@ -431,17 +574,32 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
   };
 
   const renderOptionIcon = (option: string) => {
-    const iconName = optionIcons[option as keyof typeof optionIcons] || 'circle';
+    const iconName =
+      optionIcons[option as keyof typeof optionIcons] || 'circle';
     return (
       <View style={styles.iconContainer}>
         {option === 'Toggle Theme' ? (
-          <FontAwesome5Icon name={iconName} color={isDark ? '#2379C2' : '#2379C2'} size={Math.min(SCREEN_WIDTH * 0.045, 18)} />
-        )
-          : option === 'LexAI' ? (
-            <Image source={require('../../../res/pngs/lexai.png')} style={{ width: Math.min(SCREEN_WIDTH * 0.045, 18), height: Math.min(SCREEN_WIDTH * 0.045, 18), tintColor: isDark ? '#2379C2' : '#2379C2' }} />
-          ) : (
-            <FontAwesome name={iconName} color={isDark ? '#2379C2' : '#2379C2'} size={Math.min(SCREEN_WIDTH * 0.045, 18)} />
-          )}
+          <FontAwesome5Icon
+            name={iconName}
+            color={isDark ? '#2379C2' : '#2379C2'}
+            size={Math.min(SCREEN_WIDTH * 0.045, 18)}
+          />
+        ) : option === 'LexAI' ? (
+          <Image
+            source={require('../../../res/pngs/lexai.png')}
+            style={{
+              width: Math.min(SCREEN_WIDTH * 0.045, 18),
+              height: Math.min(SCREEN_WIDTH * 0.045, 18),
+              tintColor: isDark ? '#2379C2' : '#2379C2',
+            }}
+          />
+        ) : (
+          <FontAwesome
+            name={iconName}
+            color={isDark ? '#2379C2' : '#2379C2'}
+            size={Math.min(SCREEN_WIDTH * 0.045, 18)}
+          />
+        )}
       </View>
     );
   };
@@ -454,10 +612,12 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
           <TouchableOpacity
             key={index}
             style={styles.optionItem}
-            onPress={() => handleOptionPress(option)}
-          >
+            onPress={() => handleOptionPress(option)}>
             {renderOptionIcon(option)}
-            <Text style={styles.optionText} numberOfLines={2} ellipsizeMode="tail">
+            <Text
+              style={styles.optionText}
+              numberOfLines={2}
+              ellipsizeMode="tail">
               {option}
             </Text>
           </TouchableOpacity>
@@ -467,15 +627,32 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+    <View
+      style={[
+        styles.container,
+        {paddingTop: insets.top, paddingBottom: insets.bottom},
+      ]}>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}>
         <View style={styles.contentContainer}>
           <View style={styles.profileContainer}>
             {renderAvatar()}
+
             <View style={styles.usernameContainer}>
-              <Text style={styles.username} numberOfLines={1} ellipsizeMode="tail">
-                {username}
-              </Text>
+              <View className="flex-row items-center">
+                <Text
+                  style={styles.username}
+                  numberOfLines={1}
+                  ellipsizeMode="tail">
+                  {username}
+                </Text>
+                <TouchableOpacity
+                  onPress={handleEditUsername}
+                  style={styles.usernameEditIcon}>
+                  <AntDesign name="edit" size={20} color="#ffffff80" />
+                </TouchableOpacity>
+              </View>
               <Text style={styles.email} numberOfLines={1} ellipsizeMode="tail">
                 {email}
               </Text>
@@ -494,9 +671,12 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
             <View style={styles.signOutButtonContainer}>
               <TouchableOpacity
                 onPress={handleLogOutPress}
-                style={styles.signOutButton}
-              >
-                <Ionicons name="exit-outline" color="white" size={Math.min(SCREEN_WIDTH * 0.055, 22)} />
+                style={styles.signOutButton}>
+                <Ionicons
+                  name="exit-outline"
+                  color="white"
+                  size={Math.min(SCREEN_WIDTH * 0.055, 22)}
+                />
                 <Text style={styles.signOutText}>Sign Out</Text>
               </TouchableOpacity>
             </View>
@@ -509,69 +689,163 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
         visible={photoPickerVisible}
         transparent={true}
         animationType="fade"
-        onRequestClose={() => setPhotoPickerVisible(false)}
-      >
+        onRequestClose={() => setPhotoPickerVisible(false)}>
         <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
-          onPress={() => setPhotoPickerVisible(false)}
-        >
-          <View style={[
-            styles.photoPickerContainer,
-            { backgroundColor: isDark ? '#222' : 'white' }
-          ]}>
-            <Text style={[
-              styles.photoPickerTitle,
-              { color: isDark ? 'white' : '#333' }
+          onPress={() => setPhotoPickerVisible(false)}>
+          <View
+            style={[
+              styles.photoPickerContainer,
+              isDark
+                ? styles.modalPhotoPickerContainerDark
+                : styles.modalPhotoPickerContainerLight,
             ]}>
+            <Text
+              style={[
+                styles.photoPickerTitle,
+                isDark
+                  ? styles.modalPhotoPickerTitleDark
+                  : styles.modalPhotoPickerTitleLight,
+              ]}>
               Change Profile Photo
             </Text>
 
             <TouchableOpacity
               style={styles.photoPickerOption}
-              onPress={handleTakePhoto}
-            >
+              onPress={handleTakePhoto}>
               <Ionicons
                 name="camera"
                 size={24}
                 color={isDark ? '#2379C2' : '#2379C2'}
               />
-              <Text style={[
-                styles.photoPickerOptionText,
-                { color: isDark ? 'white' : '#333' }
-              ]}>
+              <Text
+                style={[
+                  styles.photoPickerOptionText,
+                  isDark
+                    ? styles.modalPhotoPickerOptionTextDark
+                    : styles.modalPhotoPickerOptionTextLight,
+                ]}>
                 Take Photo
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.photoPickerOption}
-              onPress={handleChooseFromLibrary}
-            >
+              onPress={handleChooseFromLibrary}>
               <MaterialIcons
                 name="photo-library"
                 size={24}
                 color={isDark ? '#2379C2' : '#2379C2'}
               />
-              <Text style={[
-                styles.photoPickerOptionText,
-                { color: isDark ? 'white' : '#333' }
-              ]}>
+              <Text
+                style={[
+                  styles.photoPickerOptionText,
+                  isDark
+                    ? styles.modalPhotoPickerOptionTextDark
+                    : styles.modalPhotoPickerOptionTextLight,
+                ]}>
                 Choose from Library
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.photoPickerCancelButton, { borderTopColor: isDark ? '#444' : '#eee' }]}
-              onPress={() => setPhotoPickerVisible(false)}
-            >
-              <Text style={[
-                styles.photoPickerCancelText,
-                { color: '#FF3B30' }
-              ]}>
+              style={[
+                styles.photoPickerCancelButton,
+                isDark
+                  ? styles.modalPhotoPickerCancelButtonDark
+                  : styles.modalPhotoPickerCancelButtonLight,
+              ]}
+              onPress={() => setPhotoPickerVisible(false)}>
+              <Text style={[styles.photoPickerCancelText, {color: '#FF3B30'}]}>
                 Cancel
               </Text>
             </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Username Edit Modal */}
+      <Modal
+        visible={usernameEditVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setUsernameEditVisible(false)}>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setUsernameEditVisible(false)}>
+          <View
+            style={[
+              styles.photoPickerContainer,
+              isDark
+                ? styles.modalPhotoPickerContainerDark
+                : styles.modalPhotoPickerContainerLight,
+              {padding: 10},
+            ]}>
+            <Text
+              style={[
+                styles.photoPickerTitle,
+                isDark
+                  ? styles.modalPhotoPickerTitleDark
+                  : styles.modalPhotoPickerTitleLight,
+              ]}>
+              Change Username
+            </Text>
+
+            <TextInput
+              style={[
+                styles.usernameInput,
+                isDark ? styles.usernameInputDark : styles.usernameInputLight,
+              ]}
+              value={newUsername}
+              onChangeText={handleUsernameChange}
+              placeholder="Enter new username"
+              placeholderTextColor={isDark ? '#999' : '#666'}
+              maxLength={20}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+
+            <Text
+              style={[
+                styles.usernameHint,
+                isDark ? styles.usernameHintDark : styles.usernameHintLight,
+              ]}>
+              Username must be 3-20 characters, letters, numbers, and
+              underscores only
+            </Text>
+
+            <View style={styles.usernameButtonContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.usernameButton,
+                  styles.usernameCancelButton,
+                  isDark
+                    ? styles.usernameCancelButtonDark
+                    : styles.usernameCancelButtonLight,
+                ]}
+                onPress={() => setUsernameEditVisible(false)}>
+                <Text style={[styles.usernameButtonText, {color: '#FF3B30'}]}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.usernameButton,
+                  styles.usernameUpdateButton,
+                  isUpdatingUsername && styles.usernameButtonDisabled,
+                ]}
+                onPress={handleUpdateUsername}
+                disabled={isUpdatingUsername}>
+                {isUpdatingUsername ? (
+                  <ActivityIndicator color="white" size="small" />
+                ) : (
+                  <Text style={styles.usernameButtonText}>Update</Text>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         </TouchableOpacity>
       </Modal>

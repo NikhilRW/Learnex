@@ -77,13 +77,28 @@ export class UserService {
     try {
       const userDoc = await firestore().collection('users').doc(userId).get();
 
-      if (userDoc.exists && userDoc.data()?.email) {
+      if (userDoc.exists() && userDoc.data()?.email) {
         return userDoc.data()?.email;
       }
       return null;
     } catch (error) {
       console.log('UserService :: getUserEmailById() ::', error);
       return null;
+    }
+  }
+
+  async updateUsername(newUsername: string) {
+    try {
+      const currentUserId = auth().currentUser?.uid;
+      const currentUserDoc = await firestore()
+        .collection('users')
+        .doc(currentUserId)
+        .get();
+      await currentUserDoc.ref.update({username: newUsername});
+      return {success: true};
+    } catch (error) {
+      console.log('UserService :: checkUsernameIsAvailable() ::', error);
+      return {success: false, error};
     }
   }
 
@@ -95,7 +110,7 @@ export class UserService {
     try {
       const userDoc = await firestore().collection('users').doc(userId).get();
 
-      if (userDoc.exists) {
+      if (userDoc.exists()) {
         const userData = userDoc.data();
         return {
           email: userData?.email || null,

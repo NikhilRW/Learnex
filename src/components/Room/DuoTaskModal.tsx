@@ -294,53 +294,58 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
             <View style={styles.modalOverlay}>
                 <View style={[
                     styles.modalContent,
-                    { backgroundColor: isDark ? '#1a1a1a' : 'white' }
+                    duoTaskModalStyles.modalContent,
+                    isDark ? duoTaskModalStyles.modalContentDark : duoTaskModalStyles.modalContentLight
                 ]}>
                     <View style={styles.modalHeader}>
-                        <Text style={[styles.modalTitle, { color: isDark ? 'white' : 'black' }]}>
+                        <Text style={[styles.modalTitle, duoTaskModalStyles.modalTitle, isDark ? duoTaskModalStyles.modalTitleDark : duoTaskModalStyles.modalTitleLight]}>
                             {isEditMode ? 'Edit Team Task' : 'Create Team Task'}
                         </Text>
-                        <TouchableOpacity onPress={onClose}>
-                            <Icon name="close" size={24} color={isDark ? 'white' : 'black'} />
+                        <TouchableOpacity style={duoTaskModalStyles.closeButton} onPress={onClose}>
+                            <Icon name="close" size={24} color={isDark ? duoTaskModalStyles.tabTextDark.color : duoTaskModalStyles.tabTextLight.color} />
                         </TouchableOpacity>
                     </View>
 
                     {/* Tabs */}
-                    <View style={{
-                        flexDirection: 'row',
-                        borderBottomWidth: 1,
-                        borderColor: isDark ? '#404040' : '#e0e0e0',
-                        marginBottom: 10
-                    }}>
+                    <View style={[
+                        duoTaskModalStyles.tabsContainer,
+                        isDark ? duoTaskModalStyles.tabsContainerDark : duoTaskModalStyles.tabsContainerLight
+                    ]}>
                         <TouchableOpacity
-                            style={{
-                                padding: 10,
-                                borderBottomWidth: 2,
-                                borderBottomColor: activeTab === 'details' ? '#1a9cd8' : 'transparent'
-                            }}
+                            style={[
+                                duoTaskModalStyles.tab,
+                                activeTab === 'details' ? duoTaskModalStyles.tabActive : duoTaskModalStyles.tabInactive
+                            ]}
                             onPress={() => setActiveTab('details')}
                         >
-                            <Text style={{ color: isDark ? 'white' : 'black' }}>Task Details</Text>
+                            <Text style={[
+                                duoTaskModalStyles.tabText,
+                                isDark ? duoTaskModalStyles.tabTextDark : duoTaskModalStyles.tabTextLight
+                            ]}>Task Details</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                            style={{
-                                padding: 10,
-                                borderBottomWidth: 2,
-                                borderBottomColor: activeTab === 'subtasks' ? '#1a9cd8' : 'transparent'
-                            }}
+                            style={[
+                                duoTaskModalStyles.tab,
+                                activeTab === 'subtasks' ? duoTaskModalStyles.tabActive : duoTaskModalStyles.tabInactive
+                            ]}
                             onPress={() => setActiveTab('subtasks')}
                         >
-                            <Text style={{ color: isDark ? 'white' : 'black' }}>Subtasks</Text>
+                            <Text style={[
+                                duoTaskModalStyles.tabText,
+                                isDark ? duoTaskModalStyles.tabTextDark : duoTaskModalStyles.tabTextLight
+                            ]}>Subtasks</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                            style={{
-                                padding: 10,
-                                borderBottomWidth: 2,
-                                borderBottomColor: activeTab === 'collaboration' ? '#1a9cd8' : 'transparent'
-                            }}
+                            style={[
+                                duoTaskModalStyles.tab,
+                                activeTab === 'collaboration' ? duoTaskModalStyles.tabActive : duoTaskModalStyles.tabInactive
+                            ]}
                             onPress={() => setActiveTab('collaboration')}
                         >
-                            <Text style={{ color: isDark ? 'white' : 'black' }}>Team Members</Text>
+                            <Text style={[
+                                duoTaskModalStyles.tabText,
+                                isDark ? duoTaskModalStyles.tabTextDark : duoTaskModalStyles.tabTextLight
+                            ]}>Team Members</Text>
                         </TouchableOpacity>
                     </View>
 
@@ -349,37 +354,31 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
                         {activeTab === 'details' && (
                             <>
                                 <View style={styles.inputGroup}>
-                                    <Text style={[styles.inputLabel, { color: isDark ? 'white' : 'black' }]}>Title *</Text>
+                                    <Text style={[styles.inputLabel, duoTaskModalStyles.inputLabel, isDark ? duoTaskModalStyles.inputLabelDark : duoTaskModalStyles.inputLabelLight]}>Title *</Text>
                                     <TextInput
                                         style={[
                                             styles.input,
-                                            {
-                                                backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5',
-                                                color: isDark ? 'white' : 'black',
-                                                borderColor: isDark ? '#404040' : '#e0e0e0'
-                                            }
+                                            duoTaskModalStyles.input,
+                                            isDark ? duoTaskModalStyles.inputDark : duoTaskModalStyles.inputLight
                                         ]}
                                         placeholder="Task title"
-                                        placeholderTextColor={isDark ? '#8e8e8e' : '#999'}
+                                        placeholderTextColor={isDark ? duoTaskModalStyles.placeholderDark.color : duoTaskModalStyles.placeholderLight.color}
                                         value={task.title}
                                         onChangeText={(text) => onChangeTask({ ...task, title: text })}
                                     />
                                 </View>
 
                                 <View style={styles.inputGroup}>
-                                    <Text style={[styles.inputLabel, { color: isDark ? 'white' : 'black' }]}>Description</Text>
+                                    <Text style={[styles.inputLabel, duoTaskModalStyles.inputLabel, isDark ? duoTaskModalStyles.inputLabelDark : duoTaskModalStyles.inputLabelLight]}>Description</Text>
                                     <TextInput
                                         style={[
                                             styles.input,
-                                            styles.textArea,
-                                            {
-                                                backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5',
-                                                color: isDark ? 'white' : 'black',
-                                                borderColor: isDark ? '#404040' : '#e0e0e0'
-                                            }
+                                            duoTaskModalStyles.input,
+                                            duoTaskModalStyles.descriptionInput,
+                                            isDark ? duoTaskModalStyles.inputDark : duoTaskModalStyles.inputLight
                                         ]}
                                         placeholder="Task description"
-                                        placeholderTextColor={isDark ? '#8e8e8e' : '#999'}
+                                        placeholderTextColor={isDark ? duoTaskModalStyles.placeholderDark.color : duoTaskModalStyles.placeholderLight.color}
                                         value={task.description}
                                         onChangeText={(text) => onChangeTask({ ...task, description: text })}
                                         multiline
@@ -388,18 +387,15 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
                                 </View>
 
                                 <View style={styles.inputGroup}>
-                                    <Text style={[styles.inputLabel, { color: isDark ? 'white' : 'black' }]}>Due Date</Text>
+                                    <Text style={[styles.inputLabel, duoTaskModalStyles.inputLabel, isDark ? duoTaskModalStyles.inputLabelDark : duoTaskModalStyles.inputLabelLight]}>Due Date</Text>
                                     <TextInput
                                         style={[
                                             styles.input,
-                                            {
-                                                backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5',
-                                                color: isDark ? 'white' : 'black',
-                                                borderColor: isDark ? '#404040' : '#e0e0e0'
-                                            }
+                                            duoTaskModalStyles.input,
+                                            isDark ? duoTaskModalStyles.inputDark : duoTaskModalStyles.inputLight
                                         ]}
-                                        placeholder="YYYY-MM-DD"
-                                        placeholderTextColor={isDark ? '#8e8e8e' : '#999'}
+                                        placeholder="Select due date"
+                                        placeholderTextColor={isDark ? duoTaskModalStyles.placeholderDark.color : duoTaskModalStyles.placeholderLight.color}
                                         value={task.dueDate}
                                         onChangeText={(text) => onChangeTask({ ...task, dueDate: text })}
                                     />
@@ -424,47 +420,37 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
                                 </View>
 
                                 <View style={styles.inputGroup}>
-                                    <Text style={[styles.inputLabel, { color: isDark ? 'white' : 'black' }]}>Category</Text>
+                                    <Text style={[styles.inputLabel, duoTaskModalStyles.inputLabel, isDark ? duoTaskModalStyles.inputLabelDark : duoTaskModalStyles.inputLabelLight]}>Status</Text>
                                     <TextInput
                                         style={[
                                             styles.input,
-                                            {
-                                                backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5',
-                                                color: isDark ? 'white' : 'black',
-                                                borderColor: isDark ? '#404040' : '#e0e0e0'
-                                            }
+                                            duoTaskModalStyles.input,
+                                            isDark ? duoTaskModalStyles.inputDark : duoTaskModalStyles.inputLight
                                         ]}
                                         placeholder="e.g. Work, Personal, Health"
-                                        placeholderTextColor={isDark ? '#8e8e8e' : '#999'}
+                                        placeholderTextColor={isDark ? duoTaskModalStyles.placeholderDark.color : duoTaskModalStyles.placeholderLight.color}
                                         value={task.category}
                                         onChangeText={(text) => onChangeTask({ ...task, category: text })}
                                     />
                                 </View>
 
                                 <View style={styles.inputGroup}>
-                                    <Text style={[styles.inputLabel, { color: isDark ? 'white' : 'black' }]}>Priority</Text>
+                                    <Text style={[styles.inputLabel, duoTaskModalStyles.inputLabel, isDark ? duoTaskModalStyles.inputLabelDark : duoTaskModalStyles.inputLabelLight]}>Priority</Text>
                                     <View style={styles.prioritySelector}>
                                         {['low', 'medium', 'high'].map((priority) => (
                                             <TouchableOpacity
                                                 key={priority}
                                                 style={[
-                                                    styles.priorityOption,
-                                                    {
-                                                        backgroundColor: task.priority === priority
-                                                            ? getPriorityColor(priority)
-                                                            : isDark ? '#2a2a2a' : '#f5f5f5',
-                                                        borderColor: isDark ? '#404040' : '#e0e0e0'
-                                                    }
-                                                ]}
+                                                styles.priorityOption,
+                                                duoTaskModalStyles.priorityButton,
+                                                isDark ? duoTaskModalStyles.priorityButtonDark : duoTaskModalStyles.priorityButtonLight,
+                                                task.priority === priority && duoTaskModalStyles.priorityButtonActive
+                                            ]}
                                                 onPress={() => onChangeTask({ ...task, priority: priority as 'low' | 'medium' | 'high' })}
                                             >
                                                 <Text style={[
-                                                    styles.priorityText,
-                                                    {
-                                                        color: task.priority === priority
-                                                            ? 'white'
-                                                            : isDark ? 'white' : 'black'
-                                                    }
+                                                    duoTaskModalStyles.priorityButtonText,
+                                                    task.priority === priority ? duoTaskModalStyles.priorityButtonTextActive : (isDark ? duoTaskModalStyles.priorityButtonTextDark : duoTaskModalStyles.priorityButtonTextLight)
                                                 ]}>
                                                     {priority.charAt(0).toUpperCase() + priority.slice(1)}
                                                 </Text>
@@ -475,11 +461,14 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
 
                                 <View style={styles.inputGroup}>
                                     <View style={styles.notifyContainer}>
-                                        <Text style={[styles.inputLabel, { color: isDark ? 'white' : 'black' }]}>Send Notification</Text>
+                                        <Text style={[styles.inputLabel, duoTaskModalStyles.inputLabel, isDark ? duoTaskModalStyles.inputLabelDark : duoTaskModalStyles.inputLabelLight]}>Send Notification</Text>
                                         <Switch
-                                            trackColor={{ false: isDark ? '#555' : '#ccc', true: '#34C759' }}
-                                            thumbColor={task.notify ? '#fff' : isDark ? '#888' : '#f4f3f4'}
-                                            ios_backgroundColor={isDark ? '#555' : '#ccc'}
+                                            trackColor={{
+                                            false: isDark ? duoTaskModalStyles.switchTrackDark.backgroundColor : duoTaskModalStyles.switchTrackLight.backgroundColor,
+                                            true: duoTaskModalStyles.switchTrackActive.backgroundColor
+                                        }}
+                                            thumbColor={task.notify ? duoTaskModalStyles.switchThumbActive.backgroundColor : (isDark ? duoTaskModalStyles.switchThumbDark.backgroundColor : duoTaskModalStyles.switchThumbLight.backgroundColor)}
+                                        ios_backgroundColor={isDark ? duoTaskModalStyles.switchTrackDark.backgroundColor : duoTaskModalStyles.switchTrackLight.backgroundColor}
                                             onValueChange={(value) => onChangeTask({ ...task, notify: value })}
                                             value={task.notify}
                                         />
@@ -492,25 +481,22 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
                         {activeTab === 'subtasks' && (
                             <>
                                 <View style={styles.inputGroup}>
-                                    <Text style={[styles.inputLabel, { color: isDark ? 'white' : 'black' }]}>
+                                    <Text style={[styles.inputLabel, duoTaskModalStyles.inputLabel, isDark ? duoTaskModalStyles.inputLabelDark : duoTaskModalStyles.inputLabelLight]}>
                                         Add Subtasks
                                     </Text>
-                                    <Text style={[{ color: isDark ? '#8e8e8e' : '#666', marginBottom: 10, fontSize: 12 }]}>
+                                    <Text style={[duoTaskModalStyles.descriptionText, isDark ? duoTaskModalStyles.descriptionTextDark : duoTaskModalStyles.descriptionTextLight]}>
                                         Break down your task into smaller, manageable subtasks
                                     </Text>
 
                                     <TextInput
                                         style={[
                                             styles.input,
-                                            {
-                                                backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5',
-                                                color: isDark ? 'white' : 'black',
-                                                borderColor: isDark ? '#404040' : '#e0e0e0',
-                                                marginBottom: 5
-                                            }
+                                            duoTaskModalStyles.input,
+                                            duoTaskModalStyles.subtaskInput,
+                                            isDark ? duoTaskModalStyles.inputDark : duoTaskModalStyles.inputLight
                                         ]}
                                         placeholder="Subtask title"
-                                        placeholderTextColor={isDark ? '#8e8e8e' : '#999'}
+                                        placeholderTextColor={isDark ? duoTaskModalStyles.placeholderDark.color : duoTaskModalStyles.placeholderLight.color}
                                         value={newSubtaskTitle}
                                         onChangeText={setNewSubtaskTitle}
                                     />
@@ -518,35 +504,26 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
                                     <TextInput
                                         style={[
                                             styles.input,
-                                            {
-                                                backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5',
-                                                color: isDark ? 'white' : 'black',
-                                                borderColor: isDark ? '#404040' : '#e0e0e0',
-                                                marginBottom: 10
-                                            }
+                                            duoTaskModalStyles.input,
+                                            duoTaskModalStyles.subtaskDescriptionInput,
+                                            isDark ? duoTaskModalStyles.inputDark : duoTaskModalStyles.inputLight
                                         ]}
                                         placeholder="Description (optional)"
-                                        placeholderTextColor={isDark ? '#8e8e8e' : '#999'}
+                                        placeholderTextColor={isDark ? duoTaskModalStyles.placeholderDark.color : duoTaskModalStyles.placeholderLight.color}
                                         value={newSubtaskDescription}
                                         onChangeText={setNewSubtaskDescription}
                                     />
 
                                     <TouchableOpacity
-                                        style={{
-                                            backgroundColor: '#1a9cd8',
-                                            padding: 10,
-                                            borderRadius: 5,
-                                            alignItems: 'center',
-                                            marginBottom: 20
-                                        }}
+                                        style={duoTaskModalStyles.addButton}
                                         onPress={addSubtask}
                                     >
-                                        <Text style={{ color: 'white' }}>Add Subtask</Text>
+                                        <Text style={duoTaskModalStyles.addButtonText}>Add Subtask</Text>
                                     </TouchableOpacity>
                                 </View>
 
                                 <View style={styles.inputGroup}>
-                                    <Text style={[styles.inputLabel, { color: isDark ? 'white' : 'black', marginBottom: 10 }]}>
+                                    <Text style={[styles.inputLabel, duoTaskModalStyles.inputLabel, isDark ? duoTaskModalStyles.inputLabelDark : duoTaskModalStyles.inputLabelLight, duoTaskModalStyles.subtasksCount]}>
                                         Subtasks ({subtasks.length})
                                     </Text>
 
@@ -751,4 +728,4 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
     );
 };
 
-export default TeamTaskModal; 
+export default TeamTaskModal;

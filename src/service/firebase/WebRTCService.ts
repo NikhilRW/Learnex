@@ -1544,7 +1544,7 @@ export class WebRTCService {
     try {
       const userDoc = await firestore().collection('users').doc(userId).get();
 
-      if (userDoc.exists) {
+      if (userDoc.exists()) {
         const userData = userDoc.data();
         return {
           displayName: userData?.fullName || userData?.username,

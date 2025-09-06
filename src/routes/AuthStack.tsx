@@ -9,11 +9,13 @@ import SignIn from '../screens/auth/SignIn';
 import {useTypedSelector} from '../hooks/useTypedSelector';
 import {useTypedDispatch} from '../hooks/useTypedDispatch';
 import {changeUserNewlyOpenedApp} from '../reducers/User';
+import LinkedInAuth from '../screens/auth/LinkedInAuth';
 
 export type AuthStackParamList = {
   GettingStarted: undefined;
   SignUp: undefined;
   SignIn: undefined;
+  LinkedInAuth: undefined;
 };
 export type AuthNavigationProps = NativeStackNavigationProp<AuthStackParamList>;
 const AuthStack = () => {
@@ -27,11 +29,9 @@ const AuthStack = () => {
   }, []);
   return (
     <Stack.Navigator
-      // initialRouteName={`${
-      //   isNewInstalled == null ? 'GettingStarted' : 'SignIn'
-      // }`}
-      initialRouteName='GettingStarted'
-      >
+      initialRouteName={`${
+        isNewInstalled == null ? 'GettingStarted' : 'SignIn'
+      }`}>
       <Stack.Screen
         component={GettingStarted}
         options={{headerShown: false}}
@@ -44,6 +44,10 @@ const AuthStack = () => {
         component={SignIn}
         options={{headerShown: false}}
         name="SignIn"></Stack.Screen>
+      <Stack.Screen
+        component={LinkedInAuth}
+        options={{headerShown: false}}
+        name="LinkedInAuth"></Stack.Screen>
     </Stack.Navigator>
   );
 };

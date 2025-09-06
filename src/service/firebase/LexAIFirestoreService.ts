@@ -117,7 +117,7 @@ export class LexAIFirestoreService {
 
       // Store active conversation ID in the user's document
       const userDoc = await firestore().collection('users').doc(userId).get();
-      if (userDoc.exists) {
+      if (userDoc.exists()) {
         return userDoc.data()?.lexai_active_conversation || null;
       }
       return null;

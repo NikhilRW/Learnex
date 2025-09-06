@@ -109,6 +109,14 @@ export const createStyles = (isDark: boolean) =>
       justifyContent: 'center',
       alignItems: 'center',
     },
+    loadingText: {
+      marginTop: 16,
+      color: isDark ? '#ddd' : '#555',
+    },
+    headerTitleContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
     errorContainer: {
       flex: 1,
       justifyContent: 'center',
@@ -236,6 +244,24 @@ export const createStyles = (isDark: boolean) =>
     },
     endedEventSubText: {
       color: isDark ? '#666' : '#999',
+    },
+    endedOpacity: {
+      opacity: 0.7,
+    },
+    onlineEventTypeText: {
+      color: '#0288d1',
+    },
+    inPersonEventTypeText: {
+      color: '#2e7d32',
+    },
+    hybridEventTypeText: {
+      color: '#e65100',
+    },
+    headerTitleMargin: {
+      marginLeft: 10,
+    },
+    refreshButtonDisabled: {
+      opacity: 0.5,
     },
     eventFooter: {
       flexDirection: 'row',

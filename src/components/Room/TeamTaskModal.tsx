@@ -300,41 +300,36 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
                     </View>
 
                     {/* Tabs */}
-                    <View style={{
-                        flexDirection: 'row',
-                        borderBottomWidth: 1,
-                        borderColor: isDark ? '#404040' : '#e0e0e0',
-                        marginBottom: 10
-                    }}>
+                    <View style={[
+                        styles.tabsContainer,
+                        isDark ? styles.darkTabsContainer : styles.lightTabsContainer
+                    ]}>
                         <TouchableOpacity
-                            style={{
-                                padding: 10,
-                                borderBottomWidth: 2,
-                                borderBottomColor: activeTab === 'details' ? '#1a9cd8' : 'transparent'
-                            }}
+                            style={[
+                                styles.tabButton,
+                                activeTab === 'details' ? styles.tabButtonActive : styles.tabButtonInactive
+                            ]}
                             onPress={() => setActiveTab('details')}
                         >
-                            <Text style={{ color: isDark ? 'white' : 'black' }}>Task Details</Text>
+                            <Text style={isDark ? styles.darkTabText : styles.tabText}>Task Details</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                            style={{
-                                padding: 10,
-                                borderBottomWidth: 2,
-                                borderBottomColor: activeTab === 'subtasks' ? '#1a9cd8' : 'transparent'
-                            }}
+                            style={[
+                                styles.tabButton,
+                                activeTab === 'subtasks' ? styles.tabButtonActive : styles.tabButtonInactive
+                            ]}
                             onPress={() => setActiveTab('subtasks')}
                         >
-                            <Text style={{ color: isDark ? 'white' : 'black' }}>Subtasks</Text>
+                            <Text style={isDark ? styles.darkTabText : styles.tabText}>Subtasks</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                            style={{
-                                padding: 10,
-                                borderBottomWidth: 2,
-                                borderBottomColor: activeTab === 'collaboration' ? '#1a9cd8' : 'transparent'
-                            }}
+                            style={[
+                                styles.tabButton,
+                                activeTab === 'collaboration' ? styles.tabButtonActive : styles.tabButtonInactive
+                            ]}
                             onPress={() => setActiveTab('collaboration')}
                         >
-                            <Text style={{ color: isDark ? 'white' : 'black' }}>Team Members</Text>
+                            <Text style={isDark ? styles.darkTabText : styles.tabText}>Team Members</Text>
                         </TouchableOpacity>
                     </View>
 
@@ -347,14 +342,10 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
                                     <TextInput
                                         style={[
                                             styles.input,
-                                            {
-                                                backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5',
-                                                color: isDark ? 'white' : 'black',
-                                                borderColor: isDark ? '#404040' : '#e0e0e0'
-                                            }
+                                            isDark ? styles.inputDark : styles.inputLight
                                         ]}
                                         placeholder="Task title"
-                                        placeholderTextColor={isDark ? '#8e8e8e' : '#999'}
+                                        placeholderTextColor={isDark ? styles.placeholderDark.color : styles.placeholderLight.color}
                                         value={task.title}
                                         onChangeText={(text) => onChangeTask({ ...task, title: text })}
                                     />
@@ -366,14 +357,10 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
                                         style={[
                                             styles.input,
                                             styles.textArea,
-                                            {
-                                                backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5',
-                                                color: isDark ? 'white' : 'black',
-                                                borderColor: isDark ? '#404040' : '#e0e0e0'
-                                            }
+                                            isDark ? styles.inputDark : styles.inputLight
                                         ]}
                                         placeholder="Task description"
-                                        placeholderTextColor={isDark ? '#8e8e8e' : '#999'}
+                                        placeholderTextColor={isDark ? styles.placeholderDark.color : styles.placeholderLight.color}
                                         value={task.description}
                                         onChangeText={(text) => onChangeTask({ ...task, description: text })}
                                         multiline
@@ -386,14 +373,10 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
                                     <TextInput
                                         style={[
                                             styles.input,
-                                            {
-                                                backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5',
-                                                color: isDark ? 'white' : 'black',
-                                                borderColor: isDark ? '#404040' : '#e0e0e0'
-                                            }
+                                            isDark ? styles.inputDark : styles.inputLight
                                         ]}
                                         placeholder="YYYY-MM-DD"
-                                        placeholderTextColor={isDark ? '#8e8e8e' : '#999'}
+                                        placeholderTextColor={isDark ? styles.placeholderDark.color : styles.placeholderLight.color}
                                         value={task.dueDate}
                                         onChangeText={(text) => onChangeTask({ ...task, dueDate: text })}
                                     />
@@ -404,14 +387,10 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
                                     <TextInput
                                         style={[
                                             styles.input,
-                                            {
-                                                backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5',
-                                                color: isDark ? 'white' : 'black',
-                                                borderColor: isDark ? '#404040' : '#e0e0e0'
-                                            }
+                                            isDark ? styles.inputDark : styles.inputLight
                                         ]}
                                         placeholder="HH:MM (24-hour format)"
-                                        placeholderTextColor={isDark ? '#8e8e8e' : '#999'}
+                                        placeholderTextColor={isDark ? styles.placeholderDark.color : styles.placeholderLight.color}
                                         value={task.dueTime}
                                         onChangeText={(text) => onChangeTask({ ...task, dueTime: text })}
                                     />
@@ -422,14 +401,10 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
                                     <TextInput
                                         style={[
                                             styles.input,
-                                            {
-                                                backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5',
-                                                color: isDark ? 'white' : 'black',
-                                                borderColor: isDark ? '#404040' : '#e0e0e0'
-                                            }
+                                            isDark ? styles.inputDark : styles.inputLight
                                         ]}
                                         placeholder="e.g. Work, Personal, Health"
-                                        placeholderTextColor={isDark ? '#8e8e8e' : '#999'}
+                                        placeholderTextColor={isDark ? styles.placeholderDark.color : styles.placeholderLight.color}
                                         value={task.category}
                                         onChangeText={(text) => onChangeTask({ ...task, category: text })}
                                     />
@@ -489,22 +464,18 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
                                     <Text style={[styles.inputLabel, { color: isDark ? 'white' : 'black' }]}>
                                         Add Subtasks
                                     </Text>
-                                    <Text style={[{ color: isDark ? '#8e8e8e' : '#666', marginBottom: 10, fontSize: 12 }]}>
+                                    <Text style={isDark ? styles.darkSubtaskDescription : styles.subtaskDescription}>
                                         Break down your task into smaller, manageable subtasks
                                     </Text>
 
                                     <TextInput
                                         style={[
                                             styles.input,
-                                            {
-                                                backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5',
-                                                color: isDark ? 'white' : 'black',
-                                                borderColor: isDark ? '#404040' : '#e0e0e0',
-                                                marginBottom: 5
-                                            }
+                                            isDark ? styles.inputDark : styles.inputLight,
+                                            { marginBottom: 5 }
                                         ]}
                                         placeholder="Subtask title"
-                                        placeholderTextColor={isDark ? '#8e8e8e' : '#999'}
+                                        placeholderTextColor={isDark ? styles.placeholderDark.color : styles.placeholderLight.color}
                                         value={newSubtaskTitle}
                                         onChangeText={setNewSubtaskTitle}
                                     />
@@ -745,4 +716,4 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
     );
 };
 
-export default TeamTaskModal; 
+export default TeamTaskModal;

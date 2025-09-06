@@ -284,7 +284,6 @@ const App = () => {
                 ref={navigationRef}
                 onReady={() => {
                   console.log('Navigation is ready');
-                  // Process any pending navigation from notifications
                   DeepLinkHandler.checkPendingNavigation();
                 }}>
                 <Route />

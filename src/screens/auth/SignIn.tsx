@@ -12,28 +12,27 @@ import FeatherIcon from 'react-native-vector-icons/Feather';
 import BouncyCheckbox from 'react-native-bouncy-checkbox';
 import {Image, Input} from 'react-native-elements';
 import MaterialsIcon from 'react-native-vector-icons/MaterialIcons';
-import {useNavigation} from '@react-navigation/native';
-import {AuthNavigationProps} from '../../routes/AuthStack';
+import {NavigationProp, useNavigation} from '@react-navigation/native';
 import {Formik} from 'formik';
 import {signInData} from '../../types/authTypes';
 import {useTypedSelector} from '../../hooks/useTypedSelector';
-import useIsKeyboardVisible from '../../hooks/useKeyBoardVisible';
 import {signInSchema} from '../../service/yupSchemas';
 import ErrorMessage from '../../components/auth/ErrorMessage';
 import Snackbar from 'react-native-snackbar';
 import {changeIsLoggedIn, changeProfileColor} from '../../reducers/User';
 import {useTypedDispatch} from '../../hooks/useTypedDispatch';
 import {getRandomColors} from '../../helpers/stringHelpers';
-import Loader from '../../components/auth/Loader';
 import ButtonLoader from '../../components/auth/ButtonLoader';
 import {primaryColor, primaryDarkColor} from '../../res/strings/eng';
-import {styles} from '../../styles/screens/auth/SignIn.styles';
+import {getStyles} from '../../styles/screens/auth/SignIn.styles';
+import {RootStackParamList} from '../../routes/Route';
+import OAuthButton from '../../components/auth/OAuthButton';
 
 const SignIn = () => {
   const theme = useTypedSelector(state => state.user.theme);
   const isDark = theme === 'dark';
-  const isKeyboardVisible = useIsKeyboardVisible();
-  const navigation = useNavigation<AuthNavigationProps>();
+  const navigation =
+    useNavigation<NavigationProp<RootStackParamList,'AuthStack'>>();
   const firebase = useTypedSelector(state => state.firebase.firebase);
   const dispatch = useTypedDispatch();
   const [isPasswordHidden, setisPasswordHidden] = useState(false);
@@ -48,10 +47,11 @@ const SignIn = () => {
     try {
       setIsGoogleLoading(true);
       const response = await firebase.auth.googleSignIn();
-      console.log(response);
+      console.log("response",response);
       if (response.success) {
         dispatch(changeProfileColor(getRandomColors()));
         dispatch(changeIsLoggedIn(true));
+        navigation.getParent()?.navigate("UserStack")
       } else {
         Snackbar.show({
           text: 'Login Unsuccessful Due To : ' + response.error,
@@ -72,6 +72,7 @@ const SignIn = () => {
       setIsGoogleLoading(false);
     }
   };
+
   const handleGithubSignIn = async () => {
     try {
       setIsGithubLoading(true);
@@ -99,6 +100,25 @@ const SignIn = () => {
       setIsGithubLoading(false);
     }
   };
+
+  // After Firebase Spark Plan
+  // const handleLinkedInSignIn = async () => {
+  //   try {
+  //     setIsLinkedInLoading(true);
+  //     navigation.navigate('LinkedInAuth', undefined);
+  //   } catch (error) {
+  //     console.error('LinkedIn sign in error:', error);
+  //     Snackbar.show({
+  //       text: 'Failed to sign in with LinkedIn',
+  //       duration: Snackbar.LENGTH_LONG,
+  //       textColor: 'white',
+  //       backgroundColor: '#ff3b30',
+  //     });
+  //   } finally {
+  //     setIsLinkedInLoading(false);
+  //   }
+  // };
+
   const signInUser = async ({usernameOrEmail, password}: signInData) => {
     const response =
       await firebase.user.checkUsernameOrEmailRegistered(usernameOrEmail);
@@ -110,6 +130,7 @@ const SignIn = () => {
       if (success) {
         dispatch(changeProfileColor(getRandomColors()));
         dispatch(changeIsLoggedIn(true));
+        navigation.getParent()?.navigate("UserStack")
       } else {
         Snackbar.show({
           text: 'Login Unsuccessful Due To : ' + error,
@@ -163,10 +184,13 @@ const SignIn = () => {
       setIsForgotPasswordLoading(false);
     }
   };
+
+  const styles = getStyles(isDark);
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={{flex: 1}}
+      style={styles.flex1}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       enabled
       className={`${isDark ? 'bg-[#1a1a1a]' : 'bg-white'}`}>
@@ -198,18 +222,11 @@ const SignIn = () => {
             initialValues={userData}
             validationSchema={signInSchema}
             onSubmit={(values: signInData) => signInUser(values)}>
-            {({
-              handleChange,
-              handleBlur,
-              handleSubmit,
-              values,
-              errors,
-              isSubmitting,
-            }) => (
+            {({handleChange, handleSubmit, values, errors, isSubmitting}) => (
               <>
                 {/* 
-                feature : Loading Effect Center
-                {false && <Loader />} 
+                  feature : Loading Effect Center
+                  {false && <Loader />} 
                 */}
                 <View className="w-full h-full justify-center gap-y-[10%] flex items-center px-[6%]">
                   <View className="w-full gap-y-4 items-center justify-center ">
@@ -222,20 +239,17 @@ const SignIn = () => {
                       </Text>
                       <Image
                         source={require('../../res/pngs/signInHero-removebg.png')}
-                        style={{
-                          width: 220,
-                          height: 220,
-                          marginTop: 25,
-                          marginRight: 20,
-                        }}
+                        style={styles.heroImage}
                       />
                     </View>
                     <View className="rounded-lg border-gray-400 border-2 w-full h-12">
                       <Input
-                        inputContainerStyle={{borderBottomWidth: 0}}
+                        inputContainerStyle={
+                          styles.usernameOrEmailInputContainerStyle
+                        }
                         placeholder="Enter Username or Email"
                         placeholderTextColor={`${isDark ? '#b5b5b5' : '#545454'}`}
-                        style={{color: isDark ? 'white' : '#1a1a1a'}}
+                        style={styles.usernameOrEmailInput}
                         onChangeText={handleChange('usernameOrEmail')}
                         value={values.usernameOrEmail}
                       />
@@ -247,7 +261,9 @@ const SignIn = () => {
                       <Input
                         placeholder="Password"
                         secureTextEntry={isPasswordHidden}
-                        inputContainerStyle={{borderBottomWidth: 0}}
+                        inputContainerStyle={
+                          styles.usernameOrEmailInputContainerStyle
+                        }
                         placeholderTextColor={`${isDark ? '#b5b5b5' : '#545454'}`}
                         style={{color: `${isDark ? 'white' : 'black'}`}}
                         onChangeText={handleChange('password')}
@@ -281,15 +297,9 @@ const SignIn = () => {
                             Keep Me Logged In
                           </Text>
                         }
-                        iconStyle={{borderColor: primaryColor, borderRadius: 8}}
-                        innerIconStyle={{borderWidth: 2, borderRadius: 8}}
-                        textStyle={{
-                          fontFamily: 'JosefinSans-Regular',
-                          fontSize: 14,
-                          fontWeight: 'semibold',
-                          textAlign: 'left',
-                          textDecorationLine: 'none',
-                        }}
+                        iconStyle={styles.checkBoxIconStyle}
+                        innerIconStyle={styles.checkBoxInnerIconStyle}
+                        textStyle={styles.agreeCheckboxTextStyle}
                       />
                       <Text
                         onPress={async () => {
@@ -305,7 +315,7 @@ const SignIn = () => {
                     </View>
                     <TouchableOpacity
                       activeOpacity={0.65}
-                      onPress={e => handleSubmit()}
+                      onPress={() => handleSubmit()}
                       className={`${
                         isDark ? 'bg-[#1a9cd8]' : 'bg-[#3EB9F1]'
                       }  px-[14%] py-[4%] rounded-2xl w-full`}>
@@ -333,63 +343,34 @@ const SignIn = () => {
                       </Text>
                     </View>
                   </View>
-                  <View className="w-full ">
+                  <View className="w-full justify-center items-center">
                     <View className="flex flex-row justify-start items-center gap-[4%]">
-                      <View className="h-0.5 w-[25%] bg-gray-500"></View>
+                      <View className="h-0.5 w-[27%] bg-gray-500" />
                       <Text
                         className={`font-semibold text-[3.5vw] ${
                           isDark ? 'text-white' : 'text-gray-600'
                         } `}>
                         Or Continue With
                       </Text>
-                      <View className="h-0.5 w-[25%] bg-gray-500"></View>
+                      <View className="h-0.5 w-[27%] bg-gray-500" />
                     </View>
-                    <View className="flex flex-row mx-auto w-full gap-3 justify-center py-[3%] items-center">
-                      <TouchableOpacity
-                        disabled={isGoogleLoading || isSubmitting}
-                        onPress={handleGoogleSignIn}
-                        style={{
-                          width: 55,
-                          height: 55,
-                          justifyContent: 'center',
-                          alignItems: 'center',
-                        }}>
-                        {isGoogleLoading ? (
-                          <ButtonLoader
-                            size="small"
-                            color={isDark ? '#ffffff' : '#1a9cd8'}
-                          />
-                        ) : (
-                          <Image
-                            source={require('../../res/pngs/google.png')}
-                            className="w-50 h-50"
-                            style={{width: 55, height: 55}}
-                          />
-                        )}
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        disabled={isGithubLoading || isSubmitting}
-                        onPress={handleGithubSignIn}
-                        style={{
-                          width: 40,
-                          height: 40,
-                          justifyContent: 'center',
-                          alignItems: 'center',
-                          borderRadius: 30,
-                        }}>
-                        {isGithubLoading ? (
-                          <ButtonLoader
-                            size="small"
-                            color={isDark ? '#ffffff' : '#000000'}
-                          />
-                        ) : (
-                          <Image
-                            source={require('../../res/jpgs/github.jpg')}
-                            style={{width: 40, height: 40, borderRadius: 30}}
-                          />
-                        )}
-                      </TouchableOpacity>
+                    <View
+                      className="flex flex-row mx-auto w-full justify-center py-[3%] items-center"
+                      style={{gap: 5, marginTop: 1}}>
+                      <OAuthButton
+                        isOAuthLoading={isGoogleLoading}
+                        isSubmitting={isSubmitting}
+                        oauthImage={require('../../res/pngs/google.png')}
+                        handleOAuthSignIn={handleGoogleSignIn}
+                        isGitHub={false}
+                      />
+                      <OAuthButton
+                        isOAuthLoading={isGithubLoading}
+                        isSubmitting={isSubmitting}
+                        oauthImage={require('../../res/jpgs/github.jpg')}
+                        handleOAuthSignIn={handleGithubSignIn}
+                        isGitHub={true}
+                      />
                     </View>
                   </View>
                 </View>

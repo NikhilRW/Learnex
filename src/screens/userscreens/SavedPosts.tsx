@@ -52,7 +52,7 @@ const SavedPosts: React.FC = () => {
                 .doc(currentUser.uid)
                 .get();
 
-            if (!userDoc.exists) {
+            if (!userDoc.exists()) {
                 setLoading(false);
                 return;
             }
@@ -74,7 +74,7 @@ const SavedPosts: React.FC = () => {
                         .doc(postId)
                         .get();
 
-                    if (!postDoc.exists) return null;
+                    if (!postDoc.exists()) return null;
 
                     // Get post data and comments
                     const postData = { id: postId, ...postDoc.data() } as FirestorePost;

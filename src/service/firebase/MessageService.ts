@@ -6,7 +6,6 @@ import {FirebaseErrorHandler} from '../../helpers/FirebaseErrorHandler';
 import notificationService from '../../service/NotificationService';
 import Config from 'react-native-config';
 
-
 // Configure backend URL for sending push notifications
 const BACKEND_URL = Config.BACKEND_URL || 'https://learnex-backend.vercel.app';
 
@@ -78,7 +77,6 @@ export class MessageService {
       const user1Data = user1Doc.data() || {};
       const user2Data = user2Doc.data() || {};
 
-
       // Create participant details
       const participantDetails: Conversation['participantDetails'] = {
         [userId1]: {
@@ -129,7 +127,7 @@ export class MessageService {
       const conversationDoc = await this.conversationsCollection
         .doc(conversationId)
         .get();
-      if (!conversationDoc.exists) {
+      if (!conversationDoc.exists()) {
         throw new Error(
           `Conversation ${conversationId} not found. Cannot send message.`,
         );
@@ -181,7 +179,7 @@ export class MessageService {
                 .doc(currentUserId)
                 .get();
 
-              if (currentUserDoc.exists) {
+              if (currentUserDoc.exists()) {
                 const userData = currentUserDoc.data() || {};
                 senderName =
                   senderName ||
@@ -242,7 +240,7 @@ export class MessageService {
                 .doc(currentUser.uid)
                 .get();
 
-              if (currentUserDoc.exists) {
+              if (currentUserDoc.exists()) {
                 const userData = currentUserDoc.data() || {};
                 senderName =
                   senderName ||
@@ -467,7 +465,7 @@ export class MessageService {
       const conversationDoc = await this.conversationsCollection
         .doc(conversationId)
         .get();
-      if (!conversationDoc.exists) {
+      if (!conversationDoc.exists()) {
         console.warn(
           `Conversation ${conversationId} not found. Cannot mark messages as read.`,
         );
@@ -506,7 +504,7 @@ export class MessageService {
     try {
       // Check if the message exists
       const messageDoc = await this.messagesCollection.doc(messageId).get();
-      if (!messageDoc.exists) {
+      if (!messageDoc.exists()) {
         console.warn(`Message ${messageId} not found. Cannot delete message.`);
         return;
       }
@@ -524,7 +522,7 @@ export class MessageService {
       const messageDocRef = this.messagesCollection.doc(messageId);
       const messageDocSnapshot = await messageDocRef.get();
 
-      if (!messageDocSnapshot.exists) {
+      if (!messageDocSnapshot.exists()) {
         console.warn(`Message ${messageId} not found. Cannot edit message.`);
         return;
       }
@@ -546,7 +544,7 @@ export class MessageService {
         );
         const conversationDocSnapshot = await conversationDocRef.get();
 
-        if (!conversationDocSnapshot.exists) {
+        if (!conversationDocSnapshot.exists()) {
           console.warn(
             `Conversation ${messageData.conversationId} not found. Cannot update last message.`,
           );
@@ -581,7 +579,7 @@ export class MessageService {
       const conversationDoc = await this.conversationsCollection
         .doc(conversationId)
         .get();
-      if (!conversationDoc.exists) {
+      if (!conversationDoc.exists()) {
         console.warn(
           `Conversation ${conversationId} not found. Cannot update typing status.`,
         );
@@ -606,7 +604,7 @@ export class MessageService {
       const conversationDoc = await this.conversationsCollection
         .doc(conversationId)
         .get();
-      if (!conversationDoc.exists) {
+      if (!conversationDoc.exists()) {
         console.warn(
           `Conversation ${conversationId} not found. Cannot delete conversation.`,
         );

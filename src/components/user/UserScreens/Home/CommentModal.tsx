@@ -9,8 +9,6 @@ import {
     TextInput,
     ActivityIndicator,
     Alert,
-    AlertButton,
-    Clipboard,
     RefreshControl,
     TouchableWithoutFeedback,
 } from 'react-native';
@@ -468,7 +466,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
                                 {!isReply && (
                                     <TouchableOpacity
                                         onPress={() => setReplyingTo(comment)}
-                                        style={{ marginRight: 16 }}
+                                        style={styles.replyButtonContainer}
                                     >
                                         <Text style={styles.commentLikes}>Reply</Text>
                                     </TouchableOpacity>
@@ -490,7 +488,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                    style={{ padding: 4 }}
+                    style={styles.optionsButtonContainer}
                     onPress={() => {
                         setSelectedComment(comment);
                         setShowOptions(true);

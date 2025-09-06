@@ -1,4 +1,13 @@
 module.exports = {
   root: true,
-  extends: '@react-native',
+  env: {
+    'jest/globals': true,
+  },
+  extends: [
+    '@react-native',
+    'plugin:jest/recommended', 
+  ],
+  plugins: [
+    'jest', 
+  ],
 };

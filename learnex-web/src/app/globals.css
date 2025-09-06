@@ -17,12 +17,14 @@
 
     --border: hsl(215, 16%, 25%);
     --muted: hsl(215, 16%, 15%);
+    --swiper-navigation-size: 64px
 }
 
 @layer base {
     body {
         @apply bg-background text-foreground;
         font-feature-settings: "rlig" 1, "calt" 1;
+        
     }
 }
 

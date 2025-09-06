@@ -1,10 +1,19 @@
 import React, {useEffect} from 'react';
-import AuthStack from './AuthStack';
-import UserStack from './UserStack';
+import AuthStack, {AuthStackParamList} from './AuthStack';
+import UserStack, {UserStackParamList} from './UserStack';
 import {useTypedSelector} from '../hooks/useTypedSelector';
 import {useTypedDispatch} from '../hooks/useTypedDispatch';
 import {changeIsLoggedIn} from '../reducers/User';
+import {
+  createNativeStackNavigator,
+  NativeStackNavigationProp,
+} from '@react-navigation/native-stack';
 
+export type RootStackParamList = {
+  UserStack: UserStackParamList;
+  AuthStack: AuthStackParamList;
+};
+export type RootNavigationProps = NativeStackNavigationProp<RootStackParamList>;
 /**
  * Root navigation component that handles authentication flow
  * Switches between AuthStack and UserStack based on login state
@@ -14,6 +23,7 @@ const Route = () => {
   let isLoggedIn = useTypedSelector(state => state.user.isLoggedIn);
   const firebase = useTypedSelector(state => state.firebase.firebase);
   const dispatch = useTypedDispatch();
+  const Stack = createNativeStackNavigator<RootStackParamList>();
 
   // Check authentication state on mount
   useEffect(() => {
@@ -25,7 +35,11 @@ const Route = () => {
   }, [dispatch, firebase.auth]); // Empty dependency array means this runs once on mount
 
   // Directly render appropriate stack without NavigationContainer
-  return isLoggedIn ? <UserStack /> : <AuthStack />;
+
+  return <Stack.Navigator initialRouteName={isLoggedIn ? 'UserStack' : 'AuthStack'} screenOptions={{headerShown:false}}>
+    <Stack.Screen name="AuthStack" component={AuthStack} />
+    <Stack.Screen name="UserStack" component={UserStack} />
+  </Stack.Navigator>;
 };
 
 export default Route;

@@ -22,7 +22,7 @@ export class CommentService {
       const postRef = firestore().collection('posts').doc(postId);
       const postDoc = await postRef.get();
 
-      if (!postDoc.exists) {
+      if (!postDoc.exists()) {
         return {success: false, error: 'Post not found'};
       }
 
@@ -32,7 +32,7 @@ export class CommentService {
         .doc(currentUser.uid)
         .get();
 
-      if (!userDoc.exists) {
+      if (!userDoc.exists()) {
         return {success: false, error: 'User data not found'};
       }
 
@@ -113,7 +113,7 @@ export class CommentService {
 
       // Check if post exists
       const postDoc = await postRef.get();
-      if (!postDoc.exists) {
+      if (!postDoc.exists()) {
         console.error(`Post with ID ${postId} does not exist`);
         return null;
       }
@@ -122,7 +122,7 @@ export class CommentService {
       const commentRef = postRef.collection('comments').doc(commentId);
       const commentDoc = await commentRef.get();
 
-      if (commentDoc.exists) {
+      if (commentDoc.exists()) {
         console.log(`Found main comment with ID ${commentId}`);
         return {
           type: 'main',
@@ -149,7 +149,7 @@ export class CommentService {
         const replyRef = mainCommentRef.collection('replies').doc(commentId);
         const replyDoc = await replyRef.get();
 
-        if (replyDoc.exists) {
+        if (replyDoc.exists()) {
           console.log(
             `Found reply with ID ${commentId} under main comment ${mainComment.id}`,
           );
@@ -327,7 +327,7 @@ export class CommentService {
       // Verify the post exists
       const postRef = firestore().collection('posts').doc(postId);
       const postDoc = await postRef.get();
-      if (!postDoc.exists) {
+      if (!postDoc.exists()) {
         console.error(`Post with ID ${postId} does not exist`);
         return {success: false, error: 'Post not found'};
       }
@@ -338,7 +338,7 @@ export class CommentService {
         .doc(parentCommentId);
       const parentCommentDoc = await parentCommentRef.get();
 
-      if (!parentCommentDoc.exists) {
+      if (!parentCommentDoc.exists()) {
         console.error(
           `Parent comment with ID ${parentCommentId} does not exist`,
         );
@@ -351,7 +351,7 @@ export class CommentService {
         .doc(currentUser.uid)
         .get();
 
-      if (!userDoc.exists) {
+      if (!userDoc.exists()) {
         console.log('User data not found for ID:', currentUser.uid);
         return {success: false, error: 'User data not found'};
       }

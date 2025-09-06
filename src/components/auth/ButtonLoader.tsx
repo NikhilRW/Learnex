@@ -1,5 +1,6 @@
 import {ActivityIndicator} from 'react-native';
 import React from 'react';
+import {styles} from '../../styles/components/auth/ButtonLoader.styles';
 const ButtonLoader = () => {
   return (
     <ActivityIndicator
@@ -7,10 +8,7 @@ const ButtonLoader = () => {
       size={38}
       animating={true}
       children
-      style={{
-        justifyContent: 'center',
-        alignItems: 'center',
-      }}
+      style={styles.activityIndicator}
     />
   );
 };

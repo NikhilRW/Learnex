@@ -99,7 +99,7 @@ class AuthModule {
           .collection('users')
           .doc(user.uid)
           .get();
-        if (!userDoc.exists) {
+        if (!userDoc.exists()) {
           await firestore()
             .collection('users')
             .doc(user.uid)
@@ -158,7 +158,7 @@ class AuthModule {
           .collection('users')
           .doc(user.uid)
           .get();
-        if (!userDoc.exists) {
+        if (!userDoc.exists()) {
           await firestore()
             .collection('users')
             .doc(user.uid)
@@ -437,7 +437,7 @@ class PostsModule {
 
       await firestore().runTransaction(async transaction => {
         const likeDoc = await transaction.get(likeDocRef);
-        if (likeDoc.exists) {
+        if (likeDoc.exists()) {
           transaction.delete(likeDocRef);
           transaction.update(postRef, {
             likes: firestore.FieldValue.increment(-1),
@@ -482,7 +482,7 @@ class PostsModule {
 
       // Get post data first to verify it exists
       const postDoc = await postRef.get();
-      if (!postDoc.exists) {
+      if (!postDoc.exists()) {
         throw new Error('Post not found');
       }
 
@@ -548,7 +548,7 @@ class PostsModule {
 
       // Check if post exists
       const postDoc = await firestore().collection('posts').doc(postId).get();
-      if (!postDoc.exists) {
+      if (!postDoc.exists()) {
         return {success: false, error: 'Post not found'};
       }
 
@@ -557,7 +557,7 @@ class PostsModule {
       const userDoc = await userRef.get();
 
       // If user document doesn't exist, create it with savedPosts field
-      if (!userDoc.exists) {
+      if (!userDoc.exists()) {
         await userRef.set({
           savedPosts: [postId],
           updatedAt: firestore.FieldValue.serverTimestamp(),
@@ -599,7 +599,7 @@ class PostsModule {
       const postRef = firestore().collection('posts').doc(postId);
       const postDoc = await postRef.get();
 
-      if (!postDoc.exists) {
+      if (!postDoc.exists()) {
         return {success: false, error: 'Post not found'};
       }
 

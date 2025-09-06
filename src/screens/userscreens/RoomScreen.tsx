@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   BackHandler,
@@ -14,20 +14,20 @@ import {
   RouteProp,
   CommonActions,
 } from '@react-navigation/native';
-import {DrawerNavigationProp} from '@react-navigation/drawer';
-import {MeetingService, Meeting} from '../../service/firebase/MeetingService';
+import { DrawerNavigationProp } from '@react-navigation/drawer';
+import { MeetingService, Meeting } from '../../service/firebase/MeetingService';
 import {
   WebRTCService,
   ParticipantState,
 } from '../../service/firebase/WebRTCService';
-import {MediaStream} from 'react-native-webrtc';
+import { MediaStream } from 'react-native-webrtc';
 import Room from '../../components/Room/Room';
-import {useTypedSelector} from '../../hooks/useTypedSelector';
-import {UserStackParamList} from '../../routes/UserStack';
+import { useTypedSelector } from '../../hooks/useTypedSelector';
+import { UserStackParamList } from '../../routes/UserStack';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import {TaskService} from '../../service/firebase/TaskService';
+import { TaskService } from '../../service/firebase/TaskService';
 
 type RoomScreenRouteProp = RouteProp<UserStackParamList, 'RoomScreen'>;
 type RoomScreenNavigationProp = DrawerNavigationProp<UserStackParamList>;
@@ -55,7 +55,7 @@ const taskService = new TaskService();
 const RoomScreen: React.FC = () => {
   const navigation = useNavigation<RoomScreenNavigationProp>();
   const route = useRoute<RoomScreenRouteProp>();
-  const {meeting, isHost} = route.params;
+  const { meeting, isHost } = route.params;
   const userTheme = useTypedSelector(state => state.user);
   const isDark = userTheme.theme === 'dark';
   const [username, setUsername] = useState('');
@@ -323,7 +323,7 @@ const RoomScreen: React.FC = () => {
           Alert.alert(
             'Connection Error',
             'Failed to join meeting after multiple attempts. Please try again later.',
-            [{text: 'OK', onPress: () => navigation.goBack()}],
+            [{ text: 'OK', onPress: () => navigation.goBack() }],
           );
         }
       }
@@ -660,7 +660,7 @@ const RoomScreen: React.FC = () => {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const {fullName, username} =
+        const { fullName, username } =
           await firebase.firebase.user.getNameUsernamestring();
         console.log(fullName, username);
         setUsername(username);
@@ -688,7 +688,7 @@ const RoomScreen: React.FC = () => {
 
       // Get current message data
       const messageDoc = await messageRef.get();
-      if (!messageDoc.exists) return;
+      if (!messageDoc.exists()) return;
 
       const messageData = messageDoc.data();
       const reactions = messageData?.reactions || {};
@@ -703,7 +703,7 @@ const RoomScreen: React.FC = () => {
       }
 
       // Update message with new reactions
-      await messageRef.update({reactions});
+      await messageRef.update({ reactions });
     } catch (error) {
       console.error('Error adding reaction to message:', error);
     }
@@ -793,7 +793,7 @@ const RoomScreen: React.FC = () => {
                 },
               },
             ],
-            {cancelable: false},
+            { cancelable: false },
           );
         } else {
           // No associated task, end meeting normally
@@ -911,7 +911,7 @@ const RoomScreen: React.FC = () => {
   }
 
   return (
-    <View style={{flex: 1}}>
+    <View style={{ flex: 1 }}>
       {connectionState === 'failed' ? (
         <View style={styles.errorContainer}>
           <Icon name="error" size={64} color="#EA4335" />
