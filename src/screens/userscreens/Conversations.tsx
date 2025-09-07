@@ -178,7 +178,7 @@ const ConversationsScreen: React.FC = () => {
             style={[styles.newMessageButton, {marginTop: 20}]}
             onPress={handleNewMessage}>
             <Text style={styles.newMessageButtonText}>
-              Start New Conversation
+              Start New Chat
             </Text>
           </TouchableOpacity>
         </>
@@ -413,7 +413,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#2379C2',
     width: 200,
     height: 40,
-    padding: 10,
+    padding: 5,
     borderRadius: 100,
     alignItems: 'center',
     justifyContent: 'center',
@@ -421,7 +421,7 @@ const styles = StyleSheet.create({
   newMessageButtonText: {
     color: 'white',
     fontWeight: '600',
-    fontSize: 16,
+    fontSize: 14,
     textAlign: 'center',
   },
   searchContainer: {

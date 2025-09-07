@@ -12,7 +12,7 @@ import Animated, {
 const MessageReactionIcon = ({text}: {text: string}) => {
   return (
     <Animated.Text
-      className={'text-sm font-bold'}
+      className={'text-[11px] font-bold'}
       entering={FadeIn}
       exiting={FadeOut}>
       {text}

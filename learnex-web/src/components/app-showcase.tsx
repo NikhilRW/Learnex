@@ -1,9 +1,9 @@
-import React, {useRef} from 'react';
-import {motion} from 'framer-motion';
+import React, { useRef } from 'react';
+import { motion } from 'framer-motion';
 import Image from 'next/image';
 
 // Swiper components and modules
-import {Swiper, SwiperRef, SwiperSlide} from 'swiper/react';
+import { Swiper, SwiperRef, SwiperSlide } from 'swiper/react';
 import {
   EffectCoverflow,
   Pagination,
@@ -63,6 +63,13 @@ export function AppShowcase() {
         'Explore events, hackathons and competitions in your region and participate directly',
       gradient: 'from-red-600/30 to-rose-400/10',
     },
+    {
+      image: '/lex-ai-2.png',
+      title: 'Lex AI Assistant',
+      description:
+        'Get instant help with your studies using our intelligent AI assistant for personalized learning support',
+      gradient: 'from-indigo-600/30 to-indigo-400/10',
+    },
   ];
 
   return (
@@ -81,7 +88,7 @@ export function AppShowcase() {
             y: [0, 15, 0],
             rotate: [12, 20, 12],
           }}
-          transition={{duration: 5, repeat: Infinity, ease: 'easeInOut'}}
+          transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
         />
       </div>
 
@@ -90,26 +97,26 @@ export function AppShowcase() {
         <div className="text-center mb-10">
           <motion.div
             className="inline-block bg-primary/10 text-primary px-3 py-1 rounded-full mb-2 font-medium text-xs"
-            initial={{opacity: 0, y: 10}}
-            whileInView={{opacity: 1, y: 0}}
-            viewport={{once: true}}
-            transition={{duration: 0.5}}>
+            initial={{ opacity: 0, y: 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}>
             APP SHOWCASE
           </motion.div>
           <motion.h2
             className="text-2xl sm:text-4xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-600"
-            initial={{opacity: 0, y: 10}}
-            whileInView={{opacity: 1, y: 0}}
-            viewport={{once: true}}
-            transition={{duration: 0.5, delay: 0.1}}>
+            initial={{ opacity: 0, y: 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.1 }}>
             Discover the Learnex Experience
           </motion.h2>
           <motion.p
             className="text-foreground/70 max-w-2xl mx-auto text-base"
-            initial={{opacity: 0, y: 10}}
-            whileInView={{opacity: 1, y: 0}}
-            viewport={{once: true}}
-            transition={{duration: 0.5, delay: 0.2}}>
+            initial={{ opacity: 0, y: 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.2 }}>
             See how Learnex helps students connect, collaborate, and learn
             together
           </motion.p>
@@ -118,10 +125,10 @@ export function AppShowcase() {
         {/* Phone frame wrapper */}
         <motion.div
           className="relative max-w-2xl mx-auto mb-12"
-          initial={{opacity: 0}}
-          whileInView={{opacity: 1}}
-          viewport={{once: true}}
-          transition={{duration: 0.8, delay: 0.3}}>
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8, delay: 0.3 }}>
           {/* Android phone frame */}
           <div className="relative mx-auto">
             <Swiper
@@ -300,10 +307,10 @@ export function AppShowcase() {
             <motion.div
               key={index}
               className={`bg-gradient-to-br ${feature.gradient} backdrop-blur-sm border border-border rounded-lg p-5 shadow hover:shadow-lg transition-all duration-300 hover:scale-[1.02]`}
-              initial={{opacity: 0, y: 20}}
-              whileInView={{opacity: 1, y: 0}}
-              viewport={{once: true}}
-              transition={{duration: 0.5, delay: index * 0.1}}>
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}>
               <div className="p-3 rounded-full w-10 h-10 bg-primary/10 flex items-center justify-center text-primary mb-3">
                 {feature.icon}
               </div>
@@ -320,8 +327,8 @@ export function AppShowcase() {
           <motion.a
             href="#download"
             className="inline-flex items-center px-6 py-3 rounded-lg bg-gradient-to-r from-primary to-blue-600 text-white font-medium hover:shadow-lg hover:shadow-primary/20 transition-all hover:scale-105"
-            whileHover={{y: -3}}
-            whileTap={{scale: 0.98}}>
+            whileHover={{ y: -3 }}
+            whileTap={{ scale: 0.98 }}>
             Download Now
             <svg
               xmlns="http://www.w3.org/2000/svg"

@@ -20,6 +20,7 @@ import {
 import {DeepLinkHandler} from './navigation/DeepLinkHandler';
 import {PushNotificationHandler} from './utils/PushNotificationHandler';
 import {styles} from './styles/common/App';
+import messaging from '@react-native-firebase/messaging';
 
 // Interface definition for deep link event
 interface DeepLinkEvent {
@@ -271,7 +272,8 @@ const App = () => {
         }
       }
     };
-  }, [navigationRef, permissionsGranted]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigationRef, permissionsGranted, messaging]);
 
   return (
     <>

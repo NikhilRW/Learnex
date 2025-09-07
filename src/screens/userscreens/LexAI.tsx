@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
-    StyleSheet,
     Text,
     View,
     TextInput,
@@ -8,38 +7,38 @@ import {
     FlatList,
     KeyboardAvoidingView,
     Platform,
-    ActivityIndicator,
     Keyboard,
     Linking,
-    ScrollView,
     Dimensions,
-    SafeAreaView,
     Image,
     Switch,
     StatusBar,
-    LogBox,
     Alert,
     useColorScheme,
     Modal,
     Animated,
-    Easing
+    Easing,
 } from 'react-native';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { UserStackParamList } from '../../routes/UserStack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import LinearGradient from 'react-native-linear-gradient';
 import LexAIService from '../../service/LexAIService';
-import { LexAIMessage, LexAIConversation, LexAIPersonality, LexAIMode } from '../../types/lexAITypes';
+import {
+    LexAIMessage,
+    LexAIConversation,
+    LexAIMode,
+} from '../../types/lexAITypes';
 import { useSelector, useDispatch } from 'react-redux';
 import LexAIFirestoreService from '../../service/firebase/LexAIFirestoreService';
 import { setLexAIMode, setActiveConversation } from '../../reducers/LexAI';
 import { DispatchType } from '../../store/store';
 import axios from 'axios';
 import Config from 'react-native-config';
-import { MeetingService, Meeting } from '../../service/firebase/MeetingService';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
+import { styles } from '../../styles/screens/userscreens/LexAI.styles';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 // Define search result interface
 interface SearchResult {
@@ -61,10 +60,10 @@ interface RootState {
         conversations: Record<string, LexAIConversation>;
         activeConversationId: string | null;
         mode: LexAIMode;
-    },
+    };
     user: {
         theme: 'light' | 'dark' | 'system';
-    }
+    };
 }
 
 // Define ThemeColors type
@@ -106,7 +105,7 @@ const lightColors: ThemeColors = {
     userText: '#FFFFFF',
     aiText: '#1F1F1F',
     inputBackground: '#F3F4F6',
-    controlsBackground: 'rgba(255, 255, 255, 0.8)'
+    controlsBackground: 'rgba(255, 255, 255, 0.8)',
 };
 
 const darkColors: ThemeColors = {
@@ -126,10 +125,8 @@ const darkColors: ThemeColors = {
     userText: '#FFFFFF',
     aiText: '#F5F5F5',
     inputBackground: '#1A2436',
-    controlsBackground: 'rgba(28, 39, 57, 0.8)'
+    controlsBackground: 'rgba(28, 39, 57, 0.8)',
 };
-
-const { width, height } = Dimensions.get('window');
 
 // Debug function
 const logDebug = (message: string, data?: any) => {
@@ -143,19 +140,19 @@ const logDebug = (message: string, data?: any) => {
 
 // Suggestions for common queries
 const AGENT_SUGGESTIONS = [
-    "What can you help me with?",
-    "Find posts about React Native",
-    "Search for posts about coding",
-    "Look for posts by topic",
-    "Can you search the web for latest AI trends?"
+    'What can you help me with?',
+    'Find posts about React Native',
+    'Search for posts about coding',
+    'Look for posts by topic',
+    'Can you search the web for latest AI trends?',
 ];
 
 const CHAT_SUGGESTIONS = [
-    "What can you help me with?",
-    "Explain how React hooks work",
-    "Tell me about machine learning",
+    'What can you help me with?',
+    'Explain how React hooks work',
+    'Tell me about machine learning',
     "What's the difference between var, let, and const?",
-    "Search the web for latest AI trends"
+    'Search the web for latest AI trends',
 ];
 
 // Custom UUID generator that doesn't rely on crypto.getRandomValues()
@@ -181,25 +178,30 @@ const LexAI = () => {
 
     // Get user theme preference from Redux
     const userTheme = useSelector((state: RootState) => state.user.theme);
-    const isDarkMode = userTheme === 'dark' || (userTheme === 'system' && systemColorScheme === 'dark');
+    const isDarkMode =
+        userTheme === 'dark' ||
+        (userTheme === 'system' && systemColorScheme === 'dark');
 
     // Set theme colors based on dark mode
     const colors: ThemeColors = isDarkMode ? darkColors : lightColors;
 
     // Access the lexAI state from Redux with proper typing
-    const lexAIState = useSelector((state: RootState) => state.lexAI);
     const currentMode = useSelector((state: RootState) => state.lexAI.mode);
 
-    const [conversation, setConversation] = useState<LexAIConversation | null>(null);
+    const [conversation, setConversation] = useState<LexAIConversation | null>(
+        null,
+    );
     const [inputMessage, setInputMessage] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isStreaming, setIsStreaming] = useState(false);
     const [showSuggestions, setShowSuggestions] = useState(true);
-    const [debugMode, setDebugMode] = useState(false);
-    const [attemptCount, setAttemptCount] = useState(0);
+    const [debugMode] = useState(false);
+    const [, setAttemptCount] = useState(0);
     const flatListRef = useRef<FlatList>(null);
     const [showHistory, setShowHistory] = useState(false);
-    const [allConversations, setAllConversations] = useState<LexAIConversation[]>([]);
+    const [allConversations, setAllConversations] = useState<LexAIConversation[]>(
+        [],
+    );
     const [historyOpacity] = useState(new Animated.Value(0));
     const [historyTranslateX] = useState(new Animated.Value(300));
     const inputRef = useRef<TextInput>(null);
@@ -210,7 +212,8 @@ const LexAI = () => {
     const [userName, setUserName] = useState<string>('');
 
     // Get suggestions based on current mode
-    const suggestions = currentMode === LexAIMode.AGENT ? AGENT_SUGGESTIONS : CHAT_SUGGESTIONS;
+    const suggestions =
+        currentMode === LexAIMode.AGENT ? AGENT_SUGGESTIONS : CHAT_SUGGESTIONS;
 
     // Add animation values for header icon
     const [iconRotate] = useState(new Animated.Value(0));
@@ -222,18 +225,18 @@ const LexAI = () => {
             Animated.timing(iconScale, {
                 toValue: 1.2,
                 duration: 200,
-                useNativeDriver: true
+                useNativeDriver: true,
             }),
             Animated.timing(iconScale, {
                 toValue: 1,
                 duration: 200,
-                useNativeDriver: true
+                useNativeDriver: true,
             }),
             Animated.timing(iconRotate, {
                 toValue: 1,
                 duration: 300,
-                useNativeDriver: true
-            })
+                useNativeDriver: true,
+            }),
         ]).start(() => {
             iconRotate.setValue(0);
         });
@@ -242,7 +245,7 @@ const LexAI = () => {
     // Create rotation interpolation
     const spin = iconRotate.interpolate({
         inputRange: [0, 1],
-        outputRange: ['0deg', '360deg']
+        outputRange: ['0deg', '360deg'],
     });
 
     // Add rotation animation value for the send button
@@ -258,54 +261,54 @@ const LexAI = () => {
     // Create interpolated rotation value
     const sendRotation = sendButtonRotate.interpolate({
         inputRange: [0, 1],
-        outputRange: ['0deg', '30deg']
+        outputRange: ['0deg', '30deg'],
     });
 
     // Create interpolated values for loading dots
     const dot1Scale = dot1Anim.interpolate({
         inputRange: [0, 0.5, 1],
-        outputRange: [1, 1.5, 1]
+        outputRange: [1, 1.5, 1],
     });
 
     const dot2Scale = dot2Anim.interpolate({
         inputRange: [0, 0.5, 1],
-        outputRange: [1, 1.5, 1]
+        outputRange: [1, 1.5, 1],
     });
 
     const dot3Scale = dot3Anim.interpolate({
         inputRange: [0, 0.5, 1],
-        outputRange: [1, 1.5, 1]
+        outputRange: [1, 1.5, 1],
     });
 
     const dot1Opacity = dot1Anim.interpolate({
         inputRange: [0, 0.5, 1],
-        outputRange: [0.5, 1, 0.5]
+        outputRange: [0.5, 1, 0.5],
     });
 
     const dot2Opacity = dot2Anim.interpolate({
         inputRange: [0, 0.5, 1],
-        outputRange: [0.5, 1, 0.5]
+        outputRange: [0.5, 1, 0.5],
     });
 
     const dot3Opacity = dot3Anim.interpolate({
         inputRange: [0, 0.5, 1],
-        outputRange: [0.5, 1, 0.5]
+        outputRange: [0.5, 1, 0.5],
     });
 
     // Add vertical position interpolation for bounce effect
     const dot1TranslateY = dot1Anim.interpolate({
         inputRange: [0, 0.5, 1],
-        outputRange: [0, -3, 0]
+        outputRange: [0, -3, 0],
     });
 
     const dot2TranslateY = dot2Anim.interpolate({
         inputRange: [0, 0.5, 1],
-        outputRange: [0, -3, 0]
+        outputRange: [0, -3, 0],
     });
 
     const dot3TranslateY = dot3Anim.interpolate({
         inputRange: [0, 0.5, 1],
-        outputRange: [0, -3, 0]
+        outputRange: [0, -3, 0],
     });
 
     // Animate loading dots when isLoading is true
@@ -325,22 +328,22 @@ const LexAI = () => {
                         toValue: 1,
                         duration: 600,
                         useNativeDriver: true,
-                        easing: Easing.inOut(Easing.ease)
+                        easing: Easing.inOut(Easing.ease),
                     }),
                     Animated.timing(dot2Anim, {
                         toValue: 1,
                         duration: 600,
                         useNativeDriver: true,
-                        easing: Easing.inOut(Easing.ease)
+                        easing: Easing.inOut(Easing.ease),
                     }),
                     Animated.timing(dot3Anim, {
                         toValue: 1,
                         duration: 600,
                         useNativeDriver: true,
-                        easing: Easing.inOut(Easing.ease)
-                    })
+                        easing: Easing.inOut(Easing.ease),
+                    }),
                 ]),
-                { iterations: 5 } // This ensures the animation repeats indefinitely
+                { iterations: 5 }, // This ensures the animation repeats indefinitely
             );
 
             // Start the animation
@@ -368,13 +371,13 @@ const LexAI = () => {
                     toValue: 1.1,
                     duration: 150,
                     useNativeDriver: true,
-                    easing: Easing.out(Easing.back(1.5))
+                    easing: Easing.out(Easing.back(1.5)),
                 }),
                 Animated.timing(sendButtonScale, {
                     toValue: 1,
                     duration: 150,
-                    useNativeDriver: true
-                })
+                    useNativeDriver: true,
+                }),
             ]).start();
 
             // Add subtle rotation
@@ -383,17 +386,17 @@ const LexAI = () => {
                     toValue: 1,
                     duration: 200,
                     useNativeDriver: true,
-                    easing: Easing.out(Easing.cubic)
+                    easing: Easing.out(Easing.cubic),
                 }),
                 Animated.timing(sendButtonRotate, {
                     toValue: 0,
                     duration: 200,
                     useNativeDriver: true,
-                    easing: Easing.inOut(Easing.cubic)
-                })
+                    easing: Easing.inOut(Easing.cubic),
+                }),
             ]).start();
         }
-    }, [inputMessage]);
+    }, [inputMessage, sendButtonRotate, sendButtonScale]);
 
     // Create a more sophisticated animation for the send button
     const animateSendButton = () => {
@@ -409,21 +412,21 @@ const LexAI = () => {
                     toValue: 0.92,
                     duration: 80,
                     useNativeDriver: true,
-                    easing: Easing.inOut(Easing.ease)
+                    easing: Easing.inOut(Easing.ease),
                 }),
                 Animated.timing(sendButtonScale, {
                     toValue: 1,
                     duration: 120,
                     useNativeDriver: true,
-                    easing: Easing.inOut(Easing.ease)
-                })
+                    easing: Easing.inOut(Easing.ease),
+                }),
             ]),
             // Glow animation
             Animated.timing(sendButtonGlow, {
                 toValue: 1,
                 duration: 400,
                 useNativeDriver: false,
-                easing: Easing.out(Easing.ease)
+                easing: Easing.out(Easing.ease),
             }),
             // Subtle rotation on click
             Animated.sequence([
@@ -431,22 +434,22 @@ const LexAI = () => {
                     toValue: 1,
                     duration: 120,
                     useNativeDriver: true,
-                    easing: Easing.inOut(Easing.cubic)
+                    easing: Easing.inOut(Easing.cubic),
                 }),
                 Animated.timing(sendButtonRotate, {
                     toValue: 0,
                     duration: 200,
                     useNativeDriver: true,
-                    easing: Easing.inOut(Easing.cubic)
-                })
-            ])
+                    easing: Easing.inOut(Easing.cubic),
+                }),
+            ]),
         ]).start();
     };
 
     // Create interpolated values for the glow effect
     const glowOpacity = sendButtonGlow.interpolate({
         inputRange: [0, 0.5, 1],
-        outputRange: [0, 0.4, 0]
+        outputRange: [0, 0.4, 0],
     });
 
     // Initialize conversation
@@ -457,7 +460,8 @@ const LexAI = () => {
             try {
                 logDebug('Loading active conversation ID from Firestore');
                 // Check if there's an active conversation in Firestore
-                const activeConvId = await LexAIFirestoreService.getActiveConversationId();
+                const activeConvId =
+                    await LexAIFirestoreService.getActiveConversationId();
                 logDebug('Active conversation ID:', activeConvId);
 
                 if (activeConvId) {
@@ -468,7 +472,9 @@ const LexAI = () => {
                     const existingConv = conversations.find(c => c.id === activeConvId);
 
                     if (existingConv) {
-                        logDebug('Found existing conversation, setting as active', { id: existingConv.id });
+                        logDebug('Found existing conversation, setting as active', {
+                            id: existingConv.id,
+                        });
                         setConversation(existingConv);
                         // Set the mode to match the conversation's mode
                         dispatch(setLexAIMode(existingConv.mode));
@@ -480,8 +486,14 @@ const LexAI = () => {
 
                 logDebug('Creating new conversation');
                 // If no active conversation, create a new one
-                const newConversation = LexAIService.initConversation('New Conversation', currentMode);
-                logDebug('New conversation created', { id: newConversation.id, mode: newConversation.mode });
+                const newConversation = LexAIService.initConversation(
+                    'New Conversation',
+                    currentMode,
+                );
+                logDebug('New conversation created', {
+                    id: newConversation.id,
+                    mode: newConversation.mode,
+                });
 
                 setConversation(newConversation);
                 await LexAIService.saveConversation(newConversation);
@@ -491,7 +503,10 @@ const LexAI = () => {
             } catch (error) {
                 console.error('Error initializing conversation:', error);
                 // Fallback to creating a new conversation if there's an error
-                const newConversation = LexAIService.initConversation('New Conversation', currentMode);
+                const newConversation = LexAIService.initConversation(
+                    'New Conversation',
+                    currentMode,
+                );
                 setConversation(newConversation);
                 await LexAIService.saveConversation(newConversation);
                 dispatch(setActiveConversation(newConversation.id));
@@ -499,32 +514,38 @@ const LexAI = () => {
         };
 
         initializeConversation();
-    }, []);
+    }, [currentMode, dispatch]);
 
     // Load all conversations for history
     useEffect(() => {
         const loadAllConversations = async () => {
             try {
                 logDebug('Loading all conversations for history');
-                const conversations = await LexAIService.loadConversations().catch(err => {
-                    logDebug('Error in loadConversations', { error: String(err) });
-                    return []; // Return empty array on error
-                });
+                const conversations = await LexAIService.loadConversations().catch(
+                    err => {
+                        logDebug('Error in loadConversations', { error: String(err) });
+                        return []; // Return empty array on error
+                    },
+                );
 
                 if (!Array.isArray(conversations)) {
-                    logDebug('Conversations is not an array', { type: typeof conversations });
+                    logDebug('Conversations is not an array', {
+                        type: typeof conversations,
+                    });
                     setAllConversations([]);
                     return;
                 }
 
                 // Sort by most recent first
-                const sortedConversations = conversations.sort((a, b) =>
-                    b.updatedAt - a.updatedAt
+                const sortedConversations = conversations.sort(
+                    (a, b) => b.updatedAt - a.updatedAt,
                 );
                 setAllConversations(sortedConversations);
                 logDebug(`Loaded ${conversations.length} conversations for history`);
             } catch (error: any) {
-                logDebug('Error loading conversations history', { error: error?.message || String(error) });
+                logDebug('Error loading conversations history', {
+                    error: error?.message || String(error),
+                });
                 console.error('Error loading conversations history:', error);
                 // Set empty array to prevent UI issues
                 setAllConversations([]);
@@ -536,7 +557,8 @@ const LexAI = () => {
 
     // Toggle between agent and simple chat modes
     const toggleMode = async () => {
-        const newMode = currentMode === LexAIMode.AGENT ? LexAIMode.SIMPLE_CHAT : LexAIMode.AGENT;
+        const newMode =
+            currentMode === LexAIMode.AGENT ? LexAIMode.SIMPLE_CHAT : LexAIMode.AGENT;
         logDebug(`Toggling mode from ${currentMode} to ${newMode}`);
 
         dispatch(setLexAIMode(newMode));
@@ -544,7 +566,10 @@ const LexAI = () => {
         // Create a new conversation with the new mode if no active conversation
         if (!conversation) {
             logDebug('No active conversation, creating new one with new mode');
-            const newConversation = LexAIService.initConversation('New Conversation', newMode);
+            const newConversation = LexAIService.initConversation(
+                'New Conversation',
+                newMode,
+            );
             setConversation(newConversation);
             await LexAIService.saveConversation(newConversation);
             dispatch(setActiveConversation(newConversation.id));
@@ -554,7 +579,7 @@ const LexAI = () => {
             logDebug('Updating existing conversation mode', { id: conversation.id });
             const updatedConversation = {
                 ...conversation,
-                mode: newMode
+                mode: newMode,
             };
             setConversation(updatedConversation);
             await LexAIService.saveConversation(updatedConversation);
@@ -563,16 +588,17 @@ const LexAI = () => {
             const transitionMessage: LexAIMessage = {
                 id: generateUUID(),
                 role: 'assistant',
-                content: newMode === LexAIMode.AGENT
-                    ? "I've switched to Agent Mode. I can now help you with tasks, navigation, and more."
-                    : "I've switched to Simple Chat Mode. I'll focus on conversation and answering questions.",
-                timestamp: Date.now()
+                content:
+                    newMode === LexAIMode.AGENT
+                        ? "I've switched to Agent Mode. I can now help you with tasks, navigation, and more."
+                        : "I've switched to Simple Chat Mode. I'll focus on conversation and answering questions.",
+                timestamp: Date.now(),
             };
 
             const finalConversation = {
                 ...updatedConversation,
                 messages: [...updatedConversation.messages, transitionMessage],
-                updatedAt: Date.now()
+                updatedAt: Date.now(),
             };
 
             setConversation(finalConversation);
@@ -597,28 +623,32 @@ const LexAI = () => {
         setIsLoading(true);
 
         try {
-            let initialMessage = "";
+            let initialMessage = '';
 
             if (conv.mode === LexAIMode.AGENT) {
-                initialMessage = "Hello! I'm LexAI in Agent Mode. I can help with questions, tasks, navigation, searching posts, and more. How can I assist you today?";
+                initialMessage =
+                    "Hello! I'm LexAI in Agent Mode. I can help with questions, tasks, navigation, searching posts, and more. How can I assist you today?";
             } else {
-                initialMessage = "Hello! I'm LexAI in Simple Chat Mode. I'm here to answer your questions and have a conversation. What would you like to talk about?";
+                initialMessage =
+                    "Hello! I'm LexAI in Simple Chat Mode. I'm here to answer your questions and have a conversation. What would you like to talk about?";
             }
 
             const assistantMessage: LexAIMessage = {
                 id: generateUUID(),
                 role: 'assistant',
                 content: initialMessage,
-                timestamp: Date.now()
+                timestamp: Date.now(),
             };
 
             const updatedConversation = {
                 ...conv,
                 messages: [...conv.messages, assistantMessage],
-                updatedAt: Date.now()
+                updatedAt: Date.now(),
             };
 
-            logDebug('Setting initial greeting in conversation', { messageId: assistantMessage.id });
+            logDebug('Setting initial greeting in conversation', {
+                messageId: assistantMessage.id,
+            });
             setConversation(updatedConversation);
             await LexAIService.saveConversation(updatedConversation);
             logDebug('Initial greeting saved to conversation');
@@ -638,7 +668,7 @@ const LexAI = () => {
             hasConversation: !!conversation,
             conversationId: conversation?.id,
             isLoading: isLoading,
-            messageCount: conversation?.messages.length
+            messageCount: conversation?.messages.length,
         });
 
         // Skip if any of these conditions are true
@@ -650,7 +680,10 @@ const LexAI = () => {
         if (!conversation) {
             logDebug('Message send skipped - no active conversation, creating one');
             // Create a new conversation if one doesn't exist
-            const newConversation = LexAIService.initConversation('New Conversation', currentMode);
+            const newConversation = LexAIService.initConversation(
+                'New Conversation',
+                currentMode,
+            );
             setConversation(newConversation);
             await LexAIService.saveConversation(newConversation);
             dispatch(setActiveConversation(newConversation.id));
@@ -667,19 +700,27 @@ const LexAI = () => {
             return;
         }
 
-        logDebug('Proceeding with message send', { messageLength: inputMessage.trim().length });
+        logDebug('Proceeding with message send', {
+            messageLength: inputMessage.trim().length,
+        });
 
         // Store message before we clear the input
         const messageToSend = inputMessage.trim();
 
         // Check if it's a direct search command
-        const isDirectSearch = messageToSend.toLowerCase().startsWith('search ') ||
+        const isDirectSearch =
+            messageToSend.toLowerCase().startsWith('search ') ||
             messageToSend.toLowerCase().startsWith('find ') ||
             messageToSend.toLowerCase().startsWith('look up ') ||
-            messageToSend.toLowerCase().match(/^(what|who|how|when|where|why)\s+(is|are|were|was|do|does|can|could)\s+.+/);
+            messageToSend
+                .toLowerCase()
+                .match(
+                    /^(what|who|how|when|where|why)\s+(is|are|were|was|do|does|can|could)\s+.+/,
+                );
 
         // Check if it's a post search request
-        const isPostSearch = messageToSend.toLowerCase().startsWith('find posts ') ||
+        const isPostSearch =
+            messageToSend.toLowerCase().startsWith('find posts ') ||
             messageToSend.toLowerCase().startsWith('search posts ') ||
             messageToSend.toLowerCase().startsWith('look for posts ') ||
             messageToSend.toLowerCase().includes(' posts about ') ||
@@ -691,7 +732,7 @@ const LexAI = () => {
             id: messageId,
             role: 'user',
             content: messageToSend,
-            timestamp: Date.now()
+            timestamp: Date.now(),
         };
 
         // Clear input and update UI state immediately
@@ -703,14 +744,19 @@ const LexAI = () => {
         setIsLoading(true);
         logDebug('Loading state activated', { isLoading: true });
 
-        logDebug('Created user message', { messageId, content: messageToSend.substring(0, 20) + (messageToSend.length > 20 ? '...' : '') });
+        logDebug('Created user message', {
+            messageId,
+            content:
+                messageToSend.substring(0, 20) +
+                (messageToSend.length > 20 ? '...' : ''),
+        });
 
         try {
             // Create updated conversation with user message
             const updatedConversation: LexAIConversation = {
                 ...conversation,
                 messages: [...conversation.messages, userMessage],
-                updatedAt: Date.now()
+                updatedAt: Date.now(),
             };
 
             // Update state immediately to show user message
@@ -746,9 +792,16 @@ const LexAI = () => {
                 }
 
                 // Check if it contains post-related keywords, which would indicate a post search
-                const postKeywords = ['post', 'posts', 'article', 'articles', 'tutorial', 'content'];
+                const postKeywords = [
+                    'post',
+                    'posts',
+                    'article',
+                    'articles',
+                    'tutorial',
+                    'content',
+                ];
                 const isLikelyPostSearch = postKeywords.some(keyword =>
-                    searchQuery.toLowerCase().includes(keyword)
+                    searchQuery.toLowerCase().includes(keyword),
                 );
 
                 // Choose the appropriate action based on content
@@ -758,13 +811,13 @@ const LexAI = () => {
                         id: generateUUID(),
                         role: 'assistant',
                         content: `Searching for posts about "${searchQuery.trim()}". Taking you to the search results...`,
-                        timestamp: Date.now()
+                        timestamp: Date.now(),
                     };
 
                     const searchingConversation: LexAIConversation = {
                         ...updatedConversation,
                         messages: [...updatedConversation.messages, searchingMessage],
-                        updatedAt: Date.now()
+                        updatedAt: Date.now(),
                     };
 
                     // Update conversation with the search message
@@ -778,9 +831,9 @@ const LexAI = () => {
                                 name: 'Tabs',
                                 params: {
                                     screen: 'Search',
-                                    params: { searchText: searchQuery.trim() }
-                                }
-                            })
+                                    params: { searchText: searchQuery.trim() },
+                                },
+                            }),
                         );
                     }, 500); // Brief delay to show the message before navigation
                 } else {
@@ -788,7 +841,7 @@ const LexAI = () => {
                     const directSearchToolCall = {
                         id: generateUUID(),
                         toolName: 'webSearch',
-                        parameters: { query: searchQuery }
+                        parameters: { query: searchQuery },
                     };
 
                     // Execute the web search
@@ -802,7 +855,9 @@ const LexAI = () => {
 
             // If it's a post search request, execute post search directly
             if (isPostSearch && currentMode === LexAIMode.AGENT) {
-                logDebug('Post search detected, executing direct navigation to Search screen');
+                logDebug(
+                    'Post search detected, executing direct navigation to Search screen',
+                );
 
                 // Extract the search query from the message
                 let searchQuery = messageToSend;
@@ -815,9 +870,13 @@ const LexAI = () => {
                 } else if (searchQuery.toLowerCase().startsWith('look for posts ')) {
                     searchQuery = searchQuery.substring(15);
                 } else if (searchQuery.toLowerCase().includes(' posts about ')) {
-                    searchQuery = searchQuery.substring(searchQuery.toLowerCase().indexOf(' posts about ') + 13);
+                    searchQuery = searchQuery.substring(
+                        searchQuery.toLowerCase().indexOf(' posts about ') + 13,
+                    );
                 } else if (searchQuery.toLowerCase().includes('post with ')) {
-                    searchQuery = searchQuery.substring(searchQuery.toLowerCase().indexOf('post with ') + 10);
+                    searchQuery = searchQuery.substring(
+                        searchQuery.toLowerCase().indexOf('post with ') + 10,
+                    );
                 }
 
                 // Add an assistant response about searching
@@ -825,13 +884,13 @@ const LexAI = () => {
                     id: generateUUID(),
                     role: 'assistant',
                     content: `Searching for posts about "${searchQuery.trim()}". Taking you to the search results...`,
-                    timestamp: Date.now()
+                    timestamp: Date.now(),
                 };
 
                 const searchingConversation: LexAIConversation = {
                     ...updatedConversation,
                     messages: [...updatedConversation.messages, searchingMessage],
-                    updatedAt: Date.now()
+                    updatedAt: Date.now(),
                 };
 
                 // Update conversation with the search message
@@ -845,9 +904,9 @@ const LexAI = () => {
                             name: 'Tabs',
                             params: {
                                 screen: 'Search',
-                                params: { searchText: searchQuery.trim() }
-                            }
-                        })
+                                params: { searchText: searchQuery.trim() },
+                            },
+                        }),
                     );
                 }, 500); // Brief delay to show the message before navigation
 
@@ -862,15 +921,21 @@ const LexAI = () => {
             // Continue animation while API request is in progress
             setIsStreaming(true);
             setIsLoading(false);
-            logDebug('Switched to streaming state', { isLoading: false, isStreaming: true });
+            logDebug('Switched to streaming state', {
+                isLoading: false,
+                isStreaming: true,
+            });
 
-            const response = await LexAIService.processMessage(messageToSend, updatedConversation);
+            const response = await LexAIService.processMessage(
+                messageToSend,
+                updatedConversation,
+            );
 
             logDebug('Received response from LexAI service', {
                 hasMessage: !!response.message,
                 messageId: response.message?.id,
                 responseLength: response.message?.content?.length,
-                hasToolCalls: !!response.toolCalls && response.toolCalls.length > 0
+                hasToolCalls: !!response.toolCalls && response.toolCalls.length > 0,
             });
 
             // Check if we received a message
@@ -878,10 +943,12 @@ const LexAI = () => {
                 const finalConversation: LexAIConversation = {
                     ...updatedConversation,
                     messages: [...updatedConversation.messages, response.message],
-                    updatedAt: Date.now()
+                    updatedAt: Date.now(),
                 };
 
-                logDebug('Updating conversation with AI response', { responseId: response.message.id });
+                logDebug('Updating conversation with AI response', {
+                    responseId: response.message.id,
+                });
 
                 // Update state with AI response
                 setConversation(finalConversation);
@@ -902,13 +969,21 @@ const LexAI = () => {
                 if (response.toolCalls && response.toolCalls.length > 0) {
                     logDebug('Received tool calls to execute', {
                         count: response.toolCalls.length,
-                        tools: response.toolCalls.map(t => t.toolName)
+                        tools: response.toolCalls.map(t => t.toolName),
                     });
 
                     // Execute component-level tool calls
                     for (const toolCall of response.toolCalls) {
                         // Process tools that need direct component access
-                        if (['navigate', 'webSearch', 'openUrl', 'createRoom', 'joinRoom'].includes(toolCall.toolName)) {
+                        if (
+                            [
+                                'navigate',
+                                'webSearch',
+                                'openUrl',
+                                'createRoom',
+                                'joinRoom',
+                            ].includes(toolCall.toolName)
+                        ) {
                             await handleToolExecution(toolCall);
                         }
                     }
@@ -920,14 +995,15 @@ const LexAI = () => {
                 const errorMessage: LexAIMessage = {
                     id: generateUUID(),
                     role: 'assistant',
-                    content: 'I processed your request but couldn\'t generate a proper response. Please try again.',
-                    timestamp: Date.now()
+                    content:
+                        "I processed your request but couldn't generate a proper response. Please try again.",
+                    timestamp: Date.now(),
                 };
 
                 const errorConversation: LexAIConversation = {
                     ...updatedConversation,
                     messages: [...updatedConversation.messages, errorMessage],
-                    updatedAt: Date.now()
+                    updatedAt: Date.now(),
                 };
 
                 setConversation(errorConversation);
@@ -936,7 +1012,7 @@ const LexAI = () => {
         } catch (error: any) {
             logDebug('Error processing message', {
                 errorMessage: error?.message || 'Unknown error',
-                errorString: String(error)
+                errorString: String(error),
             });
             console.error('Error processing message:', error);
 
@@ -944,8 +1020,9 @@ const LexAI = () => {
             const errorMessage: LexAIMessage = {
                 id: generateUUID(),
                 role: 'assistant',
-                content: 'Sorry, I encountered an error processing your request. Please try again.',
-                timestamp: Date.now()
+                content:
+                    'Sorry, I encountered an error processing your request. Please try again.',
+                timestamp: Date.now(),
             };
 
             // Make sure we have a valid conversation to update
@@ -953,7 +1030,7 @@ const LexAI = () => {
                 const errorConversation: LexAIConversation = {
                     ...conversation,
                     messages: [...conversation.messages, userMessage, errorMessage],
-                    updatedAt: Date.now()
+                    updatedAt: Date.now(),
                 };
 
                 setConversation(errorConversation);
@@ -962,7 +1039,10 @@ const LexAI = () => {
         } finally {
             setIsStreaming(false);
             setIsLoading(false);
-            logDebug('Animation states reset', { isLoading: false, isStreaming: false });
+            logDebug('Animation states reset', {
+                isLoading: false,
+                isStreaming: false,
+            });
             logDebug('Message handling completed');
         }
     };
@@ -982,42 +1062,16 @@ const LexAI = () => {
     // Clear conversation
     const handleClearConversation = async () => {
         logDebug('Clearing conversation');
-        const newConversation = LexAIService.initConversation('New Conversation', currentMode);
+        const newConversation = LexAIService.initConversation(
+            'New Conversation',
+            currentMode,
+        );
         logDebug('Created new conversation', { id: newConversation.id });
 
         setConversation(newConversation);
         await LexAIService.saveConversation(newConversation);
         dispatch(setActiveConversation(newConversation.id));
         handleInitialMessage(newConversation);
-    };
-
-    // Toggle debug mode
-    const toggleDebugMode = () => {
-        setDebugMode(!debugMode);
-        logDebug(`Debug mode ${!debugMode ? 'enabled' : 'disabled'}`);
-
-        if (!debugMode) {
-            Alert.alert(
-                'Debug Mode Enabled',
-                `Current conversation ID: ${conversation?.id}\nMessage count: ${conversation?.messages.length}\nMode: ${currentMode}\nAttempt count: ${attemptCount}`,
-                [
-                    { text: 'Test Loading', onPress: () => toggleLoadingTest() },
-                    { text: 'OK' }
-                ]
-            );
-        }
-    };
-
-    // Test loading animation
-    const toggleLoadingTest = () => {
-        setIsStreaming(true);
-        logDebug('Testing loading animation', { isStreaming: true });
-
-        // Reset after 5 seconds
-        setTimeout(() => {
-            setIsStreaming(false);
-            logDebug('Finished loading test', { isStreaming: false });
-        }, 5000);
     };
 
     // Show history drawer with animation
@@ -1058,7 +1112,9 @@ const LexAI = () => {
     };
 
     // Switch to a different conversation
-    const handleSelectConversation = async (selectedConversation: LexAIConversation) => {
+    const handleSelectConversation = async (
+        selectedConversation: LexAIConversation,
+    ) => {
         if (selectedConversation.id === conversation?.id) {
             handleHideHistory();
             return;
@@ -1066,7 +1122,7 @@ const LexAI = () => {
 
         logDebug('Switching to different conversation', {
             from: conversation?.id,
-            to: selectedConversation.id
+            to: selectedConversation.id,
         });
 
         // Set the selected conversation as active
@@ -1087,7 +1143,9 @@ const LexAI = () => {
     };
 
     // Delete a conversation
-    const handleDeleteConversation = async (conversationToDelete: LexAIConversation) => {
+    const handleDeleteConversation = async (
+        conversationToDelete: LexAIConversation,
+    ) => {
         // Confirm delete
         Alert.alert(
             'Delete Conversation',
@@ -1109,7 +1167,7 @@ const LexAI = () => {
 
                             // Update history list
                             setAllConversations(prev =>
-                                prev.filter(c => c.id !== conversationToDelete.id)
+                                prev.filter(c => c.id !== conversationToDelete.id),
                             );
 
                             // If deleting active conversation, create a new one
@@ -1129,7 +1187,7 @@ const LexAI = () => {
                     },
                 },
             ],
-            { cancelable: true }
+            { cancelable: true },
         );
     };
 
@@ -1149,7 +1207,7 @@ const LexAI = () => {
                 month: 'short',
                 day: 'numeric',
                 hour: '2-digit',
-                minute: '2-digit'
+                minute: '2-digit',
             });
         }
     };
@@ -1178,7 +1236,7 @@ const LexAI = () => {
                     animations.set(id, {
                         scale: new Animated.Value(1),
                         opacity: new Animated.Value(1),
-                        translateX: new Animated.Value(0)
+                        translateX: new Animated.Value(0),
                     });
                 }
                 return animations.get(id);
@@ -1191,14 +1249,14 @@ const LexAI = () => {
                             toValue: 0.97,
                             duration: 100,
                             useNativeDriver: true,
-                            easing: Easing.out(Easing.ease)
+                            easing: Easing.out(Easing.ease),
                         }),
                         Animated.timing(anim.scale, {
                             toValue: 1,
                             duration: 250,
                             useNativeDriver: true,
-                            easing: Easing.elastic(1.2)
-                        })
+                            easing: Easing.elastic(1.2),
+                        }),
                     ]).start();
 
                     // Add a subtle horizontal animation
@@ -1212,11 +1270,11 @@ const LexAI = () => {
                             toValue: 0,
                             duration: 250,
                             useNativeDriver: true,
-                            easing: Easing.elastic(1.2)
-                        })
+                            easing: Easing.elastic(1.2),
+                        }),
                     ]).start();
                 }
-            }
+            },
         };
     }, []);
 
@@ -1226,8 +1284,7 @@ const LexAI = () => {
             visible={showHistory}
             transparent={true}
             animationType="none"
-            onRequestClose={handleHideHistory}
-        >
+            onRequestClose={handleHideHistory}>
             <View style={styles.historyModalContainer}>
                 <TouchableOpacity
                     style={[
@@ -1235,8 +1292,8 @@ const LexAI = () => {
                         {
                             backgroundColor: isDarkMode
                                 ? 'rgba(10, 20, 35, 0.7)'
-                                : 'rgba(0, 0, 0, 0.5)'
-                        }
+                                : 'rgba(0, 0, 0, 0.5)',
+                        },
                     ]}
                     activeOpacity={1}
                     onPress={handleHideHistory}
@@ -1250,58 +1307,66 @@ const LexAI = () => {
                             opacity: historyOpacity,
                             borderTopLeftRadius: 16,
                             borderBottomLeftRadius: 16,
-                        }
-                    ]}
-                >
+                        },
+                    ]}>
                     <LinearGradient
-                        colors={isDarkMode ?
-                            ['#1A2740', '#15213A'] :
-                            ['#E9F2FF', '#DAEAFF']}
+                        colors={
+                            isDarkMode ? ['#1A2740', '#15213A'] : ['#E9F2FF', '#DAEAFF']
+                        }
                         style={[
                             styles.historyHeader,
                             {
                                 borderBottomWidth: 0,
                                 paddingVertical: 18,
-                                borderTopLeftRadius: 16
-                            }
+                                borderTopLeftRadius: 16,
+                            },
                         ]}
                         start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                    >
+                        end={{ x: 1, y: 1 }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                             <LinearGradient
-                                colors={isDarkMode ?
-                                    ['#4E7CF6', '#6A5AE0'] :
-                                    ['#3E7BFA', '#6A5AE0']}
+                                colors={
+                                    isDarkMode ? ['#4E7CF6', '#6A5AE0'] : ['#3E7BFA', '#6A5AE0']
+                                }
                                 style={{
                                     width: 32,
                                     height: 32,
                                     borderRadius: 16,
                                     justifyContent: 'center',
                                     alignItems: 'center',
-                                    marginRight: 12
-                                }}
-                            >
+                                    marginRight: 12,
+                                }}>
                                 <Ionicons name="time-outline" size={18} color="#FFFFFF" />
                             </LinearGradient>
-                            <Text style={[styles.historyTitle, {
-                                color: isDarkMode ? '#FFFFFF' : '#16213E',
-                                fontSize: 20,
-                                fontWeight: '600'
-                            }]}>Chat History</Text>
+                            <Text
+                                style={[
+                                    styles.historyTitle,
+                                    {
+                                        color: isDarkMode ? '#FFFFFF' : '#16213E',
+                                        fontSize: 20,
+                                        fontWeight: '600',
+                                    },
+                                ]}>
+                                Chat History
+                            </Text>
                         </View>
                         <TouchableOpacity
                             style={{
                                 width: 36,
                                 height: 36,
                                 borderRadius: 18,
-                                backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+                                backgroundColor: isDarkMode
+                                    ? 'rgba(255,255,255,0.1)'
+                                    : 'rgba(0,0,0,0.05)',
                                 justifyContent: 'center',
-                                alignItems: 'center'
+                                alignItems: 'center',
                             }}
-                            onPress={handleHideHistory}
-                        >
-                            <Ionicons name="close" size={20} color={isDarkMode ? '#FFFFFF' : '#16213E'} />
+                            onPress={handleHideHistory}>
+                            <Ionicons
+                                name="close"
+                                size={20}
+                                color={isDarkMode ? '#FFFFFF' : '#16213E'}
+                            />
                         </TouchableOpacity>
                     </LinearGradient>
 
@@ -1318,45 +1383,56 @@ const LexAI = () => {
                                         {
                                             transform: [
                                                 { scale: animation.scale },
-                                                { translateX: animation.translateX }
+                                                { translateX: animation.translateX },
                                             ],
                                             borderBottomWidth: isDarkMode ? 1 : 0,
-                                            borderBottomColor: isDarkMode ? 'rgba(255,255,255,0.07)' : 'transparent',
+                                            borderBottomColor: isDarkMode
+                                                ? 'rgba(255,255,255,0.07)'
+                                                : 'transparent',
                                             marginHorizontal: 8,
-                                            marginVertical: 4
-                                        }
-                                    ]}
-                                >
+                                            marginVertical: 4,
+                                        },
+                                    ]}>
                                     <TouchableOpacity
                                         style={[
                                             styles.historyItem,
                                             {
                                                 backgroundColor: isActive
-                                                    ? (isDarkMode ? 'rgba(62, 123, 250, 0.2)' : 'rgba(62, 123, 250, 0.1)')
-                                                    : (isDarkMode ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.7)'),
+                                                    ? isDarkMode
+                                                        ? 'rgba(62, 123, 250, 0.2)'
+                                                        : 'rgba(62, 123, 250, 0.1)'
+                                                    : isDarkMode
+                                                        ? 'rgba(255, 255, 255, 0.03)'
+                                                        : 'rgba(255, 255, 255, 0.7)',
                                                 borderRadius: 12,
                                                 padding: 14,
                                                 borderLeftWidth: isActive ? 3 : 0,
-                                                borderLeftColor: item.mode === LexAIMode.AGENT ? '#3E7BFA' : '#FF375F',
+                                                borderLeftColor:
+                                                    item.mode === LexAIMode.AGENT ? '#3E7BFA' : '#FF375F',
                                                 shadowColor: isActive ? '#3E7BFA' : 'transparent',
                                                 shadowOffset: { width: 0, height: 2 },
                                                 shadowOpacity: isActive ? 0.2 : 0,
                                                 shadowRadius: 4,
-                                            }
+                                            },
                                         ]}
                                         onPress={() => {
                                             historyItemAnimations.animateItem(item.id);
                                             handleSelectConversation(item);
                                         }}
-                                        activeOpacity={0.7}
-                                    >
+                                        activeOpacity={0.7}>
                                         <View style={styles.historyItemContent}>
                                             <View style={styles.historyItemHeader}>
-                                                <Text style={[styles.historyItemDate, {
-                                                    color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)',
-                                                    fontSize: 12,
-                                                    fontWeight: isActive ? '500' : 'normal'
-                                                }]}>
+                                                <Text
+                                                    style={[
+                                                        styles.historyItemDate,
+                                                        {
+                                                            color: isDarkMode
+                                                                ? 'rgba(255,255,255,0.7)'
+                                                                : 'rgba(0,0,0,0.6)',
+                                                            fontSize: 12,
+                                                            fontWeight: isActive ? '500' : 'normal',
+                                                        },
+                                                    ]}>
                                                     {formatDate(item.updatedAt)}
                                                 </Text>
                                                 <LinearGradient
@@ -1370,44 +1446,65 @@ const LexAI = () => {
                                                         paddingVertical: 4,
                                                         borderRadius: 12,
                                                         flexDirection: 'row',
-                                                        alignItems: 'center'
+                                                        alignItems: 'center',
                                                     }}
                                                     start={{ x: 0, y: 0 }}
-                                                    end={{ x: 1, y: 0 }}
-                                                >
-                                                    <Text style={{
-                                                        color: '#FFFFFF',
-                                                        fontSize: 11,
-                                                        fontWeight: '600'
-                                                    }}>
+                                                    end={{ x: 1, y: 0 }}>
+                                                    <Text
+                                                        style={{
+                                                            color: '#FFFFFF',
+                                                            fontSize: 11,
+                                                            fontWeight: '600',
+                                                        }}>
                                                         {item.mode === LexAIMode.AGENT ? 'Agent' : 'Chat'}
                                                     </Text>
                                                 </LinearGradient>
                                             </View>
                                             <Text
-                                                style={[styles.historyItemPreview, {
-                                                    color: isDarkMode ? colors.text : '#16213E',
-                                                    fontWeight: isActive ? '500' : 'normal',
-                                                    fontSize: 14,
-                                                    marginTop: 6,
-                                                    opacity: isActive ? 1 : 0.85
-                                                }]}
-                                                numberOfLines={2}
-                                            >
+                                                style={[
+                                                    styles.historyItemPreview,
+                                                    {
+                                                        color: isDarkMode ? colors.text : '#16213E',
+                                                        fontWeight: isActive ? '500' : 'normal',
+                                                        fontSize: 14,
+                                                        marginTop: 6,
+                                                        opacity: isActive ? 1 : 0.85,
+                                                    },
+                                                ]}
+                                                numberOfLines={2}>
                                                 {getConversationPreview(item)}
                                             </Text>
-                                            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6 }}>
+                                            <View
+                                                style={{
+                                                    flexDirection: 'row',
+                                                    alignItems: 'center',
+                                                    marginTop: 6,
+                                                }}>
                                                 <Ionicons
                                                     name="chatbubble-outline"
                                                     size={12}
-                                                    color={isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)'}
+                                                    color={
+                                                        isDarkMode
+                                                            ? 'rgba(255,255,255,0.6)'
+                                                            : 'rgba(0,0,0,0.5)'
+                                                    }
                                                     style={{ marginRight: 4 }}
                                                 />
-                                                <Text style={[styles.historyItemCount, {
-                                                    color: isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)',
-                                                    fontSize: 12
-                                                }]}>
-                                                    {item.messages.filter(m => m.role !== 'system').length} messages
+                                                <Text
+                                                    style={[
+                                                        styles.historyItemCount,
+                                                        {
+                                                            color: isDarkMode
+                                                                ? 'rgba(255,255,255,0.6)'
+                                                                : 'rgba(0,0,0,0.5)',
+                                                            fontSize: 12,
+                                                        },
+                                                    ]}>
+                                                    {
+                                                        item.messages.filter(m => m.role !== 'system')
+                                                            .length
+                                                    }{' '}
+                                                    messages
                                                 </Text>
                                             </View>
                                         </View>
@@ -1415,7 +1512,9 @@ const LexAI = () => {
 
                                     <TouchableOpacity
                                         style={{
-                                            backgroundColor: isDarkMode ? 'rgba(28, 39, 57, 0.8)' : 'rgba(243, 244, 246, 0.8)',
+                                            backgroundColor: isDarkMode
+                                                ? 'rgba(28, 39, 57, 0.8)'
+                                                : 'rgba(243, 244, 246, 0.8)',
                                             borderRadius: 22,
                                             width: 38,
                                             height: 38,
@@ -1428,8 +1527,7 @@ const LexAI = () => {
                                             shadowRadius: 2,
                                         }}
                                         onPress={() => handleDeleteConversation(item)}
-                                        activeOpacity={0.7}
-                                    >
+                                        activeOpacity={0.7}>
                                         <Ionicons
                                             name="trash-outline"
                                             size={18}
@@ -1439,22 +1537,31 @@ const LexAI = () => {
                                 </Animated.View>
                             );
                         }}
-                        contentContainerStyle={[styles.historyList, {
-                            padding: 12,
-                            paddingTop: 16
-                        }]}
+                        contentContainerStyle={[
+                            styles.historyList,
+                            {
+                                padding: 12,
+                                paddingTop: 16,
+                            },
+                        ]}
                         showsVerticalScrollIndicator={false}
                         ListEmptyComponent={() => (
-                            <View style={[styles.emptyHistoryContainer, {
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                padding: 30,
-                                marginTop: 30,
-                            }]}>
+                            <View
+                                style={[
+                                    styles.emptyHistoryContainer,
+                                    {
+                                        justifyContent: 'center',
+                                        alignItems: 'center',
+                                        padding: 30,
+                                        marginTop: 30,
+                                    },
+                                ]}>
                                 <LinearGradient
-                                    colors={isDarkMode ?
-                                        ['rgba(62, 123, 250, 0.15)', 'rgba(62, 123, 250, 0.05)'] :
-                                        ['rgba(62, 123, 250, 0.1)', 'rgba(62, 123, 250, 0.03)']}
+                                    colors={
+                                        isDarkMode
+                                            ? ['rgba(62, 123, 250, 0.15)', 'rgba(62, 123, 250, 0.05)']
+                                            : ['rgba(62, 123, 250, 0.1)', 'rgba(62, 123, 250, 0.03)']
+                                    }
                                     style={{
                                         width: 80,
                                         height: 80,
@@ -1462,30 +1569,41 @@ const LexAI = () => {
                                         justifyContent: 'center',
                                         alignItems: 'center',
                                         marginBottom: 20,
-                                    }}
-                                >
+                                    }}>
                                     <Ionicons
                                         name="chatbubbles-outline"
                                         size={40}
-                                        color={isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(62,123,250,0.5)'}
+                                        color={
+                                            isDarkMode
+                                                ? 'rgba(255,255,255,0.3)'
+                                                : 'rgba(62,123,250,0.5)'
+                                        }
                                     />
                                 </LinearGradient>
-                                <Text style={[styles.emptyHistoryText, {
-                                    color: isDarkMode ? 'rgba(255,255,255,0.8)' : '#16213E',
-                                    fontSize: 18,
-                                    fontWeight: '600',
-                                    marginBottom: 8,
-                                }]}>
+                                <Text
+                                    style={[
+                                        styles.emptyHistoryText,
+                                        {
+                                            color: isDarkMode ? 'rgba(255,255,255,0.8)' : '#16213E',
+                                            fontSize: 18,
+                                            fontWeight: '600',
+                                            marginBottom: 8,
+                                        },
+                                    ]}>
                                     No conversations yet
                                 </Text>
-                                <Text style={{
-                                    color: isDarkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)',
-                                    fontSize: 14,
-                                    textAlign: 'center',
-                                    lineHeight: 20,
-                                    maxWidth: '80%'
-                                }}>
-                                    Start a new conversation with LexAI to see your chat history here
+                                <Text
+                                    style={{
+                                        color: isDarkMode
+                                            ? 'rgba(255,255,255,0.5)'
+                                            : 'rgba(0,0,0,0.5)',
+                                        fontSize: 14,
+                                        textAlign: 'center',
+                                        lineHeight: 20,
+                                        maxWidth: '80%',
+                                    }}>
+                                    Start a new conversation with LexAI to see your chat history
+                                    here
                                 </Text>
                             </View>
                         )}
@@ -1503,8 +1621,7 @@ const LexAI = () => {
                             elevation: 5,
                         }}
                         start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                    >
+                        end={{ x: 1, y: 0 }}>
                         <TouchableOpacity
                             style={{
                                 width: '100%',
@@ -1514,24 +1631,27 @@ const LexAI = () => {
                                 padding: 16,
                             }}
                             onPress={handleClearConversation}
-                            activeOpacity={0.8}
-                        >
-                            <View style={{
-                                width: 28,
-                                height: 28,
-                                borderRadius: 14,
-                                backgroundColor: 'rgba(255,255,255,0.25)',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                marginRight: 12
-                            }}>
+                            activeOpacity={0.8}>
+                            <View
+                                style={{
+                                    width: 28,
+                                    height: 28,
+                                    borderRadius: 14,
+                                    backgroundColor: 'rgba(255,255,255,0.25)',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    marginRight: 12,
+                                }}>
                                 <Ionicons name="add" size={20} color="#FFFFFF" />
                             </View>
-                            <Text style={{
-                                color: '#FFFFFF',
-                                fontSize: 16,
-                                fontWeight: '600'
-                            }}>New Conversation</Text>
+                            <Text
+                                style={{
+                                    color: '#FFFFFF',
+                                    fontSize: 16,
+                                    fontWeight: '600',
+                                }}>
+                                New Conversation
+                            </Text>
                         </TouchableOpacity>
                     </LinearGradient>
                 </Animated.View>
@@ -1540,7 +1660,11 @@ const LexAI = () => {
     );
 
     // Render a message bubble
-    const renderMessage = ({ item }: { item: LexAIMessage | LexAIMessageWithLinks }) => {
+    const renderMessage = ({
+        item,
+    }: {
+        item: LexAIMessage | LexAIMessageWithLinks;
+    }) => {
         const isUser = item.role === 'user';
 
         // Check if message has links (for search results)
@@ -1550,82 +1674,131 @@ const LexAI = () => {
             <View
                 style={[
                     styles.messageBubble,
-                    isUser ? styles.userMessage : styles.assistantMessage
-                ]}
-            >
+                    isUser ? styles.userMessage : styles.assistantMessage,
+                ]}>
                 {!isUser && (
                     <View style={styles.avatarContainer}>
                         <LinearGradient
                             colors={['#3E7BFA', '#6A5AE0']}
                             style={styles.avatar}
                             start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                        >
-                            <Image source={require('../../res/pngs/lexai.png')} style={{ width: Math.min(SCREEN_WIDTH * 0.045, 18), height: Math.min(SCREEN_WIDTH * 0.045, 18), tintColor: "white" }}
+                            end={{ x: 1, y: 1 }}>
+                            <Image
+                                source={require('../../res/pngs/lexai.png')}
+                                style={{
+                                    width: Math.min(SCREEN_WIDTH * 0.045, 18),
+                                    height: Math.min(SCREEN_WIDTH * 0.045, 18),
+                                    tintColor: 'white',
+                                }}
                             />
                         </LinearGradient>
                     </View>
                 )}
-                <View style={[
-                    styles.messageContent,
-                    isUser ?
-                        [styles.userMessageContent, { backgroundColor: colors.userBubble }] :
-                        [styles.assistantMessageContent, { backgroundColor: isDarkMode ? colors.aiBubble : 'rgba(255, 255, 255, 0.9)' }]
-                ]}>
+                <View
+                    style={[
+                        styles.messageContent,
+                        isUser
+                            ? [
+                                styles.userMessageContent,
+                                { backgroundColor: colors.userBubble },
+                            ]
+                            : [
+                                styles.assistantMessageContent,
+                                {
+                                    backgroundColor: isDarkMode
+                                        ? colors.aiBubble
+                                        : 'rgba(255, 255, 255, 0.9)',
+                                },
+                            ],
+                    ]}>
                     {hasLinks ? (
                         // Render message with clickable links
                         <View>
-                            <Text style={[
-                                styles.messageText,
-                                isUser ?
-                                    styles.userMessageText :
-                                    { color: colors.text }
-                            ]}>
+                            <Text
+                                style={[
+                                    styles.messageText,
+                                    isUser ? styles.userMessageText : { color: colors.text },
+                                ]}>
                                 {item.content.split('\n\n')[0]} {/* Show the header text */}
                             </Text>
 
                             {/* Render each search result as a clickable link */}
-                            {(item as LexAIMessageWithLinks).links?.map((link: SearchResult, index: number) => (
-                                <View key={index} style={styles.searchResultItem}>
-                                    <Text style={[styles.searchResultIndex, { color: isUser ? 'rgba(255,255,255,0.8)' : colors.primary }]}>
-                                        {index + 1}.
-                                    </Text>
-                                    <View style={styles.searchResultContent}>
-                                        <TouchableOpacity
-                                            onPress={() => {
-                                                logDebug(`Opening URL: ${link.url}`);
-                                                Linking.openURL(link.url);
-                                            }}
-                                        >
-                                            <Text style={[styles.searchResultTitle, { color: colors.primary }]}>
-                                                {link.title}
-                                            </Text>
-                                            <Text style={[styles.searchResultUrl, { color: isUser ? 'rgba(255,255,255,0.6)' : colors.subtext }]}>
-                                                {link.url}
-                                            </Text>
-                                            {link.snippet && (
-                                                <Text style={[styles.searchResultSnippet, { color: isUser ? 'rgba(255,255,255,0.8)' : colors.text }]}>
-                                                    {link.snippet}
+                            {(item as LexAIMessageWithLinks).links?.map(
+                                (link: SearchResult, index: number) => (
+                                    <View key={index} style={styles.searchResultItem}>
+                                        <Text
+                                            style={[
+                                                styles.searchResultIndex,
+                                                {
+                                                    color: isUser
+                                                        ? 'rgba(255,255,255,0.8)'
+                                                        : colors.primary,
+                                                },
+                                            ]}>
+                                            {index + 1}.
+                                        </Text>
+                                        <View style={styles.searchResultContent}>
+                                            <TouchableOpacity
+                                                onPress={() => {
+                                                    logDebug(`Opening URL: ${link.url}`);
+                                                    Linking.openURL(link.url);
+                                                }}>
+                                                <Text
+                                                    style={[
+                                                        styles.searchResultTitle,
+                                                        { color: colors.primary },
+                                                    ]}>
+                                                    {link.title}
                                                 </Text>
-                                            )}
-                                        </TouchableOpacity>
+                                                <Text
+                                                    style={[
+                                                        styles.searchResultUrl,
+                                                        {
+                                                            color: isUser
+                                                                ? 'rgba(255,255,255,0.6)'
+                                                                : colors.subtext,
+                                                        },
+                                                    ]}>
+                                                    {link.url}
+                                                </Text>
+                                                {link.snippet && (
+                                                    <Text
+                                                        style={[
+                                                            styles.searchResultSnippet,
+                                                            {
+                                                                color: isUser
+                                                                    ? 'rgba(255,255,255,0.8)'
+                                                                    : colors.text,
+                                                            },
+                                                        ]}>
+                                                        {link.snippet}
+                                                    </Text>
+                                                )}
+                                            </TouchableOpacity>
+                                        </View>
                                     </View>
-                                </View>
-                            ))}
+                                ),
+                            )}
                         </View>
                     ) : (
                         // Render regular message
-                        <Text style={[
-                            styles.messageText,
-                            isUser ?
-                                styles.userMessageText :
-                                { color: colors.text }
-                        ]}>
+                        <Text
+                            style={[
+                                styles.messageText,
+                                isUser ? styles.userMessageText : { color: colors.text },
+                            ]}>
                             {item.content}
                         </Text>
                     )}
-                    <Text style={[styles.timestamp, { color: isUser ? 'rgba(255,255,255,0.7)' : colors.subtext }]}>
-                        {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    <Text
+                        style={[
+                            styles.timestamp,
+                            { color: isUser ? 'rgba(255,255,255,0.7)' : colors.subtext },
+                        ]}>
+                        {new Date(item.timestamp).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                        })}
                         {debugMode && ` [ID: ${item.id.slice(0, 4)}]`}
                     </Text>
                 </View>
@@ -1638,20 +1811,34 @@ const LexAI = () => {
         if (!showSuggestions) return null;
 
         return (
-            <View style={[styles.suggestionsContainer, {
-                backgroundColor: isDarkMode ? 'rgba(30, 30, 30, 0.9)' : 'rgba(255, 255, 255, 0.9)',
-                borderTopColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'
-            }]}>
+            <View
+                style={[
+                    styles.suggestionsContainer,
+                    {
+                        backgroundColor: isDarkMode
+                            ? 'rgba(30, 30, 30, 0.9)'
+                            : 'rgba(255, 255, 255, 0.9)',
+                        borderTopColor: isDarkMode
+                            ? 'rgba(255,255,255,0.1)'
+                            : 'rgba(0,0,0,0.05)',
+                    },
+                ]}>
                 {suggestions.map((suggestion, index) => (
                     <TouchableOpacity
                         key={index}
-                        style={[styles.suggestionChip, {
-                            backgroundColor: isDarkMode ? 'rgba(10, 132, 255, 0.15)' : '#EFF6FF',
-                            borderColor: isDarkMode ? 'rgba(62, 123, 250, 0.3)' : '#DBEAFE',
-                        }]}
-                        onPress={() => handleSuggestionClick(suggestion)}
-                    >
-                        <Text style={[styles.suggestionText, { color: colors.primary }]}>{suggestion}</Text>
+                        style={[
+                            styles.suggestionChip,
+                            {
+                                backgroundColor: isDarkMode
+                                    ? 'rgba(10, 132, 255, 0.15)'
+                                    : '#EFF6FF',
+                                borderColor: isDarkMode ? 'rgba(62, 123, 250, 0.3)' : '#DBEAFE',
+                            },
+                        ]}
+                        onPress={() => handleSuggestionClick(suggestion)}>
+                        <Text style={[styles.suggestionText, { color: colors.primary }]}>
+                            {suggestion}
+                        </Text>
                     </TouchableOpacity>
                 ))}
             </View>
@@ -1660,48 +1847,49 @@ const LexAI = () => {
 
     // Rendering loading dots animation
     const LoadingDots = () => (
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', height: 20 }}>
-            <Animated.View style={[
-                styles.loadingDot,
-                {
-                    backgroundColor: colors.primary,
-                    opacity: dot1Opacity,
-                    transform: [
-                        { scale: dot1Scale },
-                        { translateY: dot1TranslateY }
-                    ]
-                }
-            ]} />
-            <Animated.View style={[
-                styles.loadingDot,
-                {
-                    backgroundColor: colors.primary,
-                    opacity: dot2Opacity,
-                    transform: [
-                        { scale: dot2Scale },
-                        { translateY: dot2TranslateY }
-                    ]
-                }
-            ]} />
-            <Animated.View style={[
-                styles.loadingDot,
-                {
-                    backgroundColor: colors.primary,
-                    opacity: dot3Opacity,
-                    transform: [
-                        { scale: dot3Scale },
-                        { translateY: dot3TranslateY }
-                    ]
-                }
-            ]} />
+        <View
+            style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'flex-start',
+                height: 20,
+            }}>
+            <Animated.View
+                style={[
+                    styles.loadingDot,
+                    {
+                        backgroundColor: colors.primary,
+                        opacity: dot1Opacity,
+                        transform: [{ scale: dot1Scale }, { translateY: dot1TranslateY }],
+                    },
+                ]}
+            />
+            <Animated.View
+                style={[
+                    styles.loadingDot,
+                    {
+                        backgroundColor: colors.primary,
+                        opacity: dot2Opacity,
+                        transform: [{ scale: dot2Scale }, { translateY: dot2TranslateY }],
+                    },
+                ]}
+            />
+            <Animated.View
+                style={[
+                    styles.loadingDot,
+                    {
+                        backgroundColor: colors.primary,
+                        opacity: dot3Opacity,
+                        transform: [{ scale: dot3Scale }, { translateY: dot3TranslateY }],
+                    },
+                ]}
+            />
         </View>
     );
 
     // Extra spacer component to ensure proper spacing at the end of the list
     const renderFooterSpacer = () => {
-        return (
-            <View style={{ height: 40 }} />
-        );
+        return <View style={{ height: 40 }} />;
     };
 
     // Render loading bubble with animated dots
@@ -1710,14 +1898,15 @@ const LexAI = () => {
 
         return (
             <View style={styles.loadingContainer}>
-                <View style={[
-                    styles.loadingBubble,
-                    {
-                        backgroundColor: colors.aiBubble,
-                        borderColor: colors.primary,
-                        borderWidth: 1
-                    }
-                ]}>
+                <View
+                    style={[
+                        styles.loadingBubble,
+                        {
+                            backgroundColor: colors.aiBubble,
+                            borderColor: colors.primary,
+                            borderWidth: 1,
+                        },
+                    ]}>
                     <LoadingDots />
                 </View>
             </View>
@@ -1748,7 +1937,9 @@ const LexAI = () => {
     };
 
     const getSuggestions = () => {
-        return currentMode === LexAIMode.AGENT ? AGENT_SUGGESTIONS : CHAT_SUGGESTIONS;
+        return currentMode === LexAIMode.AGENT
+            ? AGENT_SUGGESTIONS
+            : CHAT_SUGGESTIONS;
     };
 
     const handleSuggestionPress = (suggestion: string) => {
@@ -1764,26 +1955,26 @@ const LexAI = () => {
 
     /**
      * Handle executing tool calls directly within the component
-     * 
+     *
      * This function handles tools that require direct access to React Native component features
      * like navigation, linking, etc. It works with the LexAIService through two integration points:
-     * 
+     *
      * 1. Direct calls from handleSendMessage: When a response includes toolCalls, the function
      *    checks if any require component-level execution and passes them here.
-     * 
+     *
      * 2. Indirect calls from LexAIService: The executeComponentToolCall property is added to the
      *    LexAIService instance, allowing it to trigger component-level actions from service methods.
-     * 
+     *
      * Currently supported component-level tools:
      * - navigate: Uses React Navigation to navigate to different screens
      * - webSearch: Shows a message in the chat and executes a web search
      * - openUrl: Opens external URLs via the Linking API
-     * 
+     *
      * Other tools are handled by LexAIService's own executeToolCall method.
-     * 
+     *
      * @param toolCall An object containing the tool call details (name and parameters)
      */
-    const handleToolExecution = async (toolCall: any) => {
+    const handleToolExecution = useCallback(async (toolCall: any) => {
         // Skip if no tool call is provided
         if (!toolCall || !toolCall.toolName) {
             logDebug('No tool call to execute');
@@ -1792,7 +1983,7 @@ const LexAI = () => {
 
         logDebug('Executing tool call', {
             tool: toolCall.toolName,
-            params: toolCall.parameters
+            params: toolCall.parameters,
         });
 
         try {
@@ -1814,18 +2005,20 @@ const LexAI = () => {
                                     name: 'Tabs',
                                     params: {
                                         screen: screenName,
-                                        params: params || {}
-                                    }
-                                })
+                                        params: params || {},
+                                    },
+                                }),
                             );
-                            logDebug(`Navigated to Tab screen: ${screenName} via Tabs navigator`);
+                            logDebug(
+                                `Navigated to Tab screen: ${screenName} via Tabs navigator`,
+                            );
                         } else {
                             // Direct navigation for screens not in Tab Navigator
                             navigation.dispatch(
                                 CommonActions.navigate({
                                     name: screenName,
-                                    params: params || {}
-                                })
+                                    params: params || {},
+                                }),
                             );
                             logDebug(`Navigated directly to screen: ${screenName}`);
                         }
@@ -1847,15 +2040,19 @@ const LexAI = () => {
                             id: generateUUID(),
                             role: 'assistant',
                             content: `Searching the web for: "${searchQuery}"...`,
-                            timestamp: Date.now()
+                            timestamp: Date.now(),
                         };
 
                         if (conversation) {
                             // First, ensure the user's message requesting the search is preserved
                             // Check if the last message is from the user and contains the search request
-                            const lastMessage = conversation.messages[conversation.messages.length - 1];
-                            const needsUserMessage = lastMessage.role !== 'user' ||
-                                !lastMessage.content.toLowerCase().includes(searchQuery.toLowerCase());
+                            const lastMessage =
+                                conversation.messages[conversation.messages.length - 1];
+                            const needsUserMessage =
+                                lastMessage.role !== 'user' ||
+                                !lastMessage.content
+                                    .toLowerCase()
+                                    .includes(searchQuery.toLowerCase());
 
                             // If we need to add a user message (in case it was triggered from a different flow)
                             let updatedConvWithUserMsg = conversation;
@@ -1864,13 +2061,13 @@ const LexAI = () => {
                                     id: generateUUID(),
                                     role: 'user',
                                     content: `Search for "${searchQuery}"`,
-                                    timestamp: Date.now() - 1000 // Slightly earlier timestamp
+                                    timestamp: Date.now() - 1000, // Slightly earlier timestamp
                                 };
 
                                 updatedConvWithUserMsg = {
                                     ...conversation,
                                     messages: [...conversation.messages, userMessage],
-                                    updatedAt: Date.now()
+                                    updatedAt: Date.now(),
                                 };
 
                                 // Save the conversation with user message first
@@ -1881,8 +2078,11 @@ const LexAI = () => {
                             // Now add the searching message
                             const updatedConv = {
                                 ...updatedConvWithUserMsg,
-                                messages: [...updatedConvWithUserMsg.messages, searchingMessage],
-                                updatedAt: Date.now()
+                                messages: [
+                                    ...updatedConvWithUserMsg.messages,
+                                    searchingMessage,
+                                ],
+                                updatedAt: Date.now(),
                             };
 
                             setConversation(updatedConv);
@@ -1897,10 +2097,12 @@ const LexAI = () => {
                                 let resultsContent = `Here are some results for "${searchQuery}":\n\n`;
 
                                 if (searchResults && searchResults.length > 0) {
-                                    searchResults.forEach((result: SearchResult, index: number) => {
-                                        // Format clickable links in a way React Native can render
-                                        resultsContent += `${index + 1}. ${result.title}\n${result.url}\n\n`;
-                                    });
+                                    searchResults.forEach(
+                                        (result: SearchResult, index: number) => {
+                                            // Format clickable links in a way React Native can render
+                                            resultsContent += `${index + 1}. ${result.title}\n${result.url}\n\n`;
+                                        },
+                                    );
 
                                     // Add a message with the search results
                                     const resultsMessage: LexAIMessageWithLinks = {
@@ -1908,14 +2110,14 @@ const LexAI = () => {
                                         role: 'assistant',
                                         content: resultsContent,
                                         timestamp: Date.now(),
-                                        links: searchResults // Store links separately for rendering
+                                        links: searchResults, // Store links separately for rendering
                                     };
 
                                     // Update conversation with search results
                                     const finalConv = {
                                         ...updatedConv,
                                         messages: [...updatedConv.messages, resultsMessage],
-                                        updatedAt: Date.now()
+                                        updatedAt: Date.now(),
                                     };
 
                                     setConversation(finalConv);
@@ -1926,33 +2128,35 @@ const LexAI = () => {
                                         id: generateUUID(),
                                         role: 'assistant',
                                         content: `I couldn't find any results for "${searchQuery}". Please try a different search query.`,
-                                        timestamp: Date.now()
+                                        timestamp: Date.now(),
                                     };
 
                                     const finalConv = {
                                         ...updatedConv,
                                         messages: [...updatedConv.messages, noResultsMessage],
-                                        updatedAt: Date.now()
+                                        updatedAt: Date.now(),
                                     };
 
                                     setConversation(finalConv);
                                     await LexAIService.saveConversation(finalConv);
                                 }
                             } catch (error) {
-                                logDebug('Error fetching search results', { error: String(error) });
+                                logDebug('Error fetching search results', {
+                                    error: String(error),
+                                });
 
                                 // Add error message
                                 const errorMessage: LexAIMessageWithLinks = {
                                     id: generateUUID(),
                                     role: 'assistant',
                                     content: `I encountered an error while searching for "${searchQuery}". Please try again later.`,
-                                    timestamp: Date.now()
+                                    timestamp: Date.now(),
                                 };
 
                                 const errorConv = {
                                     ...updatedConv,
                                     messages: [...updatedConv.messages, errorMessage],
-                                    updatedAt: Date.now()
+                                    updatedAt: Date.now(),
                                 };
 
                                 setConversation(errorConv);
@@ -1965,13 +2169,13 @@ const LexAI = () => {
                             id: generateUUID(),
                             role: 'assistant',
                             content: `I'll do my best to answer your question based on my built-in knowledge. I don't have the ability to search the web in Simple Chat mode, but I'll share what I know about this topic.`,
-                            timestamp: Date.now()
+                            timestamp: Date.now(),
                         };
 
                         const updatedConv = {
                             ...conversation,
                             messages: [...conversation.messages, infoMessage],
-                            updatedAt: Date.now()
+                            updatedAt: Date.now(),
                         };
 
                         setConversation(updatedConv);
@@ -1995,14 +2199,14 @@ const LexAI = () => {
                                 id: generateUUID(),
                                 role: 'assistant',
                                 content: `I couldn't open the URL: ${toolCall.parameters.url}. It appears to be invalid.`,
-                                timestamp: Date.now()
+                                timestamp: Date.now(),
                             };
 
                             if (conversation) {
                                 const updatedConv = {
                                     ...conversation,
                                     messages: [...conversation.messages, urlErrorMessage],
-                                    updatedAt: Date.now()
+                                    updatedAt: Date.now(),
                                 };
                                 setConversation(updatedConv);
                                 await LexAIService.saveConversation(updatedConv);
@@ -2023,7 +2227,7 @@ const LexAI = () => {
                             duration = 60,
                             capacity = 10,
                             isPrivate = false,
-                            taskId = ''
+                            taskId = '',
                         } = toolCall.parameters;
 
                         // Validate required parameter
@@ -2032,14 +2236,14 @@ const LexAI = () => {
                                 id: generateUUID(),
                                 role: 'assistant',
                                 content: 'I need a title to create a meeting room.',
-                                timestamp: Date.now()
+                                timestamp: Date.now(),
                             };
 
                             if (conversation) {
                                 const updatedConv = {
                                     ...conversation,
                                     messages: [...conversation.messages, errorMessage],
-                                    updatedAt: Date.now()
+                                    updatedAt: Date.now(),
                                 };
 
                                 setConversation(updatedConv);
@@ -2053,14 +2257,14 @@ const LexAI = () => {
                             id: generateUUID(),
                             role: 'assistant',
                             content: `Preparing meeting room: "${title}"...`,
-                            timestamp: Date.now()
+                            timestamp: Date.now(),
                         };
 
                         if (conversation) {
                             const updatedConv = {
                                 ...conversation,
                                 messages: [...conversation.messages, creatingMessage],
-                                updatedAt: Date.now()
+                                updatedAt: Date.now(),
                             };
 
                             setConversation(updatedConv);
@@ -2078,10 +2282,13 @@ const LexAI = () => {
                             isPrivate: Boolean(isPrivate),
                             maxParticipants: parseInt(capacity) || 10,
                             taskId: taskId || undefined, // This now associates a team task, not a normal task
-                            host: '',  // Will be populated on Room
+                            host: '', // Will be populated on Room
                             status: 'scheduled',
                             participants: [],
-                            roomCode: Math.random().toString(36).substring(2, 8).toUpperCase(), // Generate temporary room code
+                            roomCode: Math.random()
+                                .toString(36)
+                                .substring(2, 8)
+                                .toUpperCase(), // Generate temporary room code
                             settings: {
                                 muteOnEntry: true,
                                 allowChat: true,
@@ -2089,7 +2296,7 @@ const LexAI = () => {
                                 recordingEnabled: false,
                             },
                             createdAt: new Date(),
-                            updatedAt: new Date()
+                            updatedAt: new Date(),
                         };
 
                         // Success message before navigation
@@ -2103,15 +2310,15 @@ const LexAI = () => {
                             metadata: {
                                 navigationType: 'createRoom',
                                 navigationId: meetingData.id,
-                                isNavigationMessage: true
-                            }
+                                isNavigationMessage: true,
+                            },
                         };
 
                         if (conversation) {
                             const updatedConv = {
                                 ...conversation,
                                 messages: [...conversation.messages, successMessage],
-                                updatedAt: Date.now()
+                                updatedAt: Date.now(),
                             };
 
                             setConversation(updatedConv);
@@ -2123,7 +2330,6 @@ const LexAI = () => {
                             navigation.navigate('Room', { meetingData });
                             logDebug('Navigated to Room with meeting data', { meetingData });
                         }, 500);
-
                     } catch (error) {
                         logDebug('Error preparing meeting room', { error: String(error) });
 
@@ -2132,14 +2338,14 @@ const LexAI = () => {
                             id: generateUUID(),
                             role: 'assistant',
                             content: `I encountered an error while preparing the meeting room: ${error instanceof Error ? error.message : 'Unknown error'}`,
-                            timestamp: Date.now()
+                            timestamp: Date.now(),
                         };
 
                         if (conversation) {
                             const updatedConv = {
                                 ...conversation,
                                 messages: [...conversation.messages, errorMessage],
-                                updatedAt: Date.now()
+                                updatedAt: Date.now(),
                             };
 
                             setConversation(updatedConv);
@@ -2162,14 +2368,14 @@ const LexAI = () => {
                                 id: generateUUID(),
                                 role: 'assistant',
                                 content: 'I need a room code to join a meeting room.',
-                                timestamp: Date.now()
+                                timestamp: Date.now(),
                             };
 
                             if (conversation) {
                                 const updatedConv = {
                                     ...conversation,
                                     messages: [...conversation.messages, errorMessage],
-                                    updatedAt: Date.now()
+                                    updatedAt: Date.now(),
                                 };
 
                                 setConversation(updatedConv);
@@ -2183,14 +2389,14 @@ const LexAI = () => {
                             id: generateUUID(),
                             role: 'assistant',
                             content: `Joining meeting room with code: "${roomCode}"...`,
-                            timestamp: Date.now()
+                            timestamp: Date.now(),
                         };
 
                         if (conversation) {
                             const updatedConv = {
                                 ...conversation,
                                 messages: [...conversation.messages, joiningMessage],
-                                updatedAt: Date.now()
+                                updatedAt: Date.now(),
                             };
 
                             setConversation(updatedConv);
@@ -2201,11 +2407,12 @@ const LexAI = () => {
                         setTimeout(() => {
                             navigation.navigate('Room', {
                                 joinMode: true,
-                                roomCode: roomCode
+                                roomCode: roomCode,
                             });
-                            logDebug('Navigated to Room with join mode and room code', { roomCode });
+                            logDebug('Navigated to Room with join mode and room code', {
+                                roomCode,
+                            });
                         }, 500);
-
                     } catch (error) {
                         logDebug('Error joining meeting room', { error: String(error) });
 
@@ -2214,14 +2421,14 @@ const LexAI = () => {
                             id: generateUUID(),
                             role: 'assistant',
                             content: `I encountered an error while joining the meeting room: ${error instanceof Error ? error.message : 'Unknown error'}`,
-                            timestamp: Date.now()
+                            timestamp: Date.now(),
                         };
 
                         if (conversation) {
                             const updatedConv = {
                                 ...conversation,
                                 messages: [...conversation.messages, errorMessage],
-                                updatedAt: Date.now()
+                                updatedAt: Date.now(),
                             };
 
                             setConversation(updatedConv);
@@ -2230,18 +2437,20 @@ const LexAI = () => {
                     }
                     break;
                 default:
-                    logDebug(`Tool call ${toolCall.toolName} will be handled by LexAIService`);
+                    logDebug(
+                        `Tool call ${toolCall.toolName} will be handled by LexAIService`,
+                    );
                     // Let the LexAIService handle other tool calls
                     break;
             }
         } catch (error) {
             logDebug('Error executing tool call', {
                 tool: toolCall.toolName,
-                error: String(error)
+                error: String(error),
             });
             console.error('Error executing tool call:', error);
         }
-    };
+    }, [conversation, currentMode, navigation]);
 
     // Expose tool execution function to LexAIService
     useEffect(() => {
@@ -2255,7 +2464,7 @@ const LexAI = () => {
             // @ts-ignore: Removing the property
             LexAIService.executeComponentToolCall = null;
         };
-    }, [navigation, conversation]); // Re-create when these dependencies change
+    }, [navigation, conversation, handleToolExecution]); // Re-create when these dependencies change
 
     // Function to fetch search results
     const fetchSearchResults = async (query: string): Promise<SearchResult[]> => {
@@ -2272,20 +2481,26 @@ const LexAI = () => {
             // Get the API keys from environment variables or config
             // Add these to your .env file or configuration
             const apiKey = Config.GOOGLE_SEARCH_API_KEY || 'YOUR_GOOGLE_API_KEY';
-            const searchEngineId = Config.GOOGLE_SEARCH_ENGINE_ID || 'YOUR_SEARCH_ENGINE_ID';
+            const searchEngineId =
+                Config.GOOGLE_SEARCH_ENGINE_ID || 'YOUR_SEARCH_ENGINE_ID';
 
             // Check if keys are properly configured
-            if (apiKey === 'YOUR_GOOGLE_API_KEY' || searchEngineId === 'YOUR_SEARCH_ENGINE_ID') {
+            if (
+                apiKey === 'YOUR_GOOGLE_API_KEY' ||
+                searchEngineId === 'YOUR_SEARCH_ENGINE_ID'
+            ) {
                 logDebug('Google Search API keys not configured', {
                     apiKeyConfigured: apiKey !== 'YOUR_GOOGLE_API_KEY',
-                    searchEngineIdConfigured: searchEngineId !== 'YOUR_SEARCH_ENGINE_ID'
+                    searchEngineIdConfigured: searchEngineId !== 'YOUR_SEARCH_ENGINE_ID',
                 });
                 // If keys aren't configured, fall back to a direct Google search
-                return [{
-                    title: `Search results for "${query}"`,
-                    url: `https://www.google.com/search?q=${encodeURIComponent(query)}`,
-                    snippet: `Click here to see search results for "${query}"`
-                }];
+                return [
+                    {
+                        title: `Search results for "${query}"`,
+                        url: `https://www.google.com/search?q=${encodeURIComponent(query)}`,
+                        snippet: `Click here to see search results for "${query}"`,
+                    },
+                ];
             }
 
             const url = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${searchEngineId}&q=${encodeURIComponent(query)}`;
@@ -2293,20 +2508,26 @@ const LexAI = () => {
             const response = await axios.get(url);
 
             // Check if we got valid results
-            if (response.status !== 200 || !response.data.items || !response.data.items.length) {
+            if (
+                response.status !== 200 ||
+                !response.data.items ||
+                !response.data.items.length
+            ) {
                 logDebug('No search results or invalid response', {
                     status: response.status,
-                    hasItems: !!response.data.items
+                    hasItems: !!response.data.items,
                 });
                 return [];
             }
 
             // Map Google's response format to our SearchResult interface
-            return response.data.items.map((item: any) => ({
-                title: item.title,
-                url: item.link,
-                snippet: item.snippet
-            })).slice(0, 5); // Limit to 5 results for better UX
+            return response.data.items
+                .map((item: any) => ({
+                    title: item.title,
+                    url: item.link,
+                    snippet: item.snippet,
+                }))
+                .slice(0, 5); // Limit to 5 results for better UX
         } catch (error) {
             logDebug('Error in Google Search API call', { error: String(error) });
             console.error('Google Search API Error:', error);
@@ -2316,42 +2537,44 @@ const LexAI = () => {
                 {
                     title: `Search results for "${query}"`,
                     url: `https://www.google.com/search?q=${encodeURIComponent(query)}`,
-                    snippet: `Click here to see search results for "${query}"`
-                }
+                    snippet: `Click here to see search results for "${query}"`,
+                },
             ];
         }
     };
 
     // Function to search posts
-    const handlePostSearch = async (query: string): Promise<{ success: boolean, posts: any[], error?: string }> => {
-        logDebug(`Searching posts for: ${query}`);
+    // const handlePostSearch = async (
+    //     query: string,
+    // ): Promise<{ success: boolean; posts: any[]; error?: string }> => {
+    //     logDebug(`Searching posts for: ${query}`);
 
-        try {
-            // Navigate directly to Search screen with the provided query
-            navigation.dispatch(
-                CommonActions.navigate({
-                    name: 'Tabs',
-                    params: {
-                        screen: 'Search',
-                        params: { searchText: query.trim() }
-                    }
-                })
-            );
+    //     try {
+    //         // Navigate directly to Search screen with the provided query
+    //         navigation.dispatch(
+    //             CommonActions.navigate({
+    //                 name: 'Tabs',
+    //                 params: {
+    //                     screen: 'Search',
+    //                     params: { searchText: query.trim() },
+    //                 },
+    //             }),
+    //         );
 
-            // Return a simple success response
-            return {
-                success: true,
-                posts: [] // We don't need to return actual posts anymore
-            };
-        } catch (error) {
-            logDebug('Error in handlePostSearch', { error: String(error) });
-            return {
-                success: false,
-                posts: [],
-                error: 'Failed to navigate to search screen'
-            };
-        }
-    };
+    //         // Return a simple success response
+    //         return {
+    //             success: true,
+    //             posts: [], // We don't need to return actual posts anymore
+    //         };
+    //     } catch (error) {
+    //         logDebug('Error in handlePostSearch', { error: String(error) });
+    //         return {
+    //             success: false,
+    //             posts: [],
+    //             error: 'Failed to navigate to search screen',
+    //         };
+    //     }
+    // };
 
     // Fetch user's name when component loads
     useEffect(() => {
@@ -2375,36 +2598,37 @@ const LexAI = () => {
             <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
 
             <LinearGradient
-                colors={isDarkMode ?
-                    ['#121C2E', '#162238', '#192941'] :
-                    ['#F5F9FF', '#EDF4FF', '#E5F0FF']}
+                colors={
+                    isDarkMode
+                        ? ['#121C2E', '#162238', '#192941']
+                        : ['#F5F9FF', '#EDF4FF', '#E5F0FF']
+                }
                 style={{ flex: 1 }}
                 start={{ x: 0.1, y: 0.1 }}
-                end={{ x: 0.9, y: 0.9 }}
-            >
+                end={{ x: 0.9, y: 0.9 }}>
                 {/* Enhanced header */}
                 <LinearGradient
-                    colors={isDarkMode ?
-                        ['#1A2740', '#15213A'] :
-                        ['#E9F2FF', '#DAEAFF']}
-                    style={styles.enhancedHeader}
-                >
+                    colors={isDarkMode ? ['#1A2740', '#15213A'] : ['#E9F2FF', '#DAEAFF']}
+                    style={styles.enhancedHeader}>
                     <View style={styles.headerContent}>
                         <View style={styles.headerTitleArea}>
-                            <Animated.View style={{
-                                marginRight: 8,
-                                transform: [
-                                    { rotate: spin },
-                                    { scale: iconScale }
-                                ]
-                            }}>
+                            <Animated.View
+                                style={{
+                                    marginRight: 8,
+                                    transform: [{ rotate: spin }, { scale: iconScale }],
+                                }}>
                                 <LinearGradient
-                                    colors={isDarkMode ?
-                                        ['#4E7CF6', '#6A5AE0'] :
-                                        ['#3E7BFA', '#6A5AE0']}
-                                    style={styles.headerIcon}
-                                >
-                                    <Image source={require('../../res/pngs/lexai.png')} style={{ width: Math.min(SCREEN_WIDTH * 0.045, 18), height: Math.min(SCREEN_WIDTH * 0.045, 18), tintColor: "white" }}
+                                    colors={
+                                        isDarkMode ? ['#4E7CF6', '#6A5AE0'] : ['#3E7BFA', '#6A5AE0']
+                                    }
+                                    style={styles.headerIcon}>
+                                    <Image
+                                        source={require('../../res/pngs/lexai.png')}
+                                        style={{
+                                            width: Math.min(SCREEN_WIDTH * 0.045, 18),
+                                            height: Math.min(SCREEN_WIDTH * 0.045, 18),
+                                            tintColor: 'white',
+                                        }}
                                     />
                                 </LinearGradient>
                             </Animated.View>
@@ -2418,12 +2642,16 @@ const LexAI = () => {
                                 onPress={() => {
                                     animateIcon();
                                     handleShowHistory();
-                                }}
-                            >
-                                <Ionicons name="time-outline" size={22} color={colors.primary} />
+                                }}>
+                                <Ionicons
+                                    name="time-outline"
+                                    size={22}
+                                    color={colors.primary}
+                                />
                             </TouchableOpacity>
                             <View style={styles.modeToggleContainer}>
-                                <Text style={{ color: colors.subtext, fontSize: 14, marginRight: 8 }}>
+                                <Text
+                                    style={{ color: colors.subtext, fontSize: 14, marginRight: 8 }}>
                                     {currentMode === LexAIMode.AGENT ? 'Agent' : 'Chat'}
                                 </Text>
                                 <Switch
@@ -2444,7 +2672,9 @@ const LexAI = () => {
                     keyExtractor={(item, index) => `message-${index}`}
                     renderItem={renderMessage}
                     ref={flatListRef}
-                    onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+                    onContentSizeChange={() =>
+                        flatListRef.current?.scrollToEnd({ animated: true })
+                    }
                     onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
                     ListFooterComponent={
                         <>
@@ -2461,22 +2691,32 @@ const LexAI = () => {
                             <Text style={[styles.emptyText, { color: colors.text }]}>
                                 {getGreeting()}
                             </Text>
-                            <View style={[styles.suggestionsContainer, {
-                                borderTopColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'
-                            }]}>
+                            <View
+                                style={[
+                                    styles.suggestionsContainer,
+                                    {
+                                        borderTopColor: isDarkMode
+                                            ? 'rgba(255,255,255,0.1)'
+                                            : 'rgba(0,0,0,0.05)',
+                                    },
+                                ]}>
                                 {getSuggestions().map((suggestion, index) => (
                                     <TouchableOpacity
                                         key={`suggestion-${index}`}
                                         style={[
                                             styles.suggestionChip,
                                             {
-                                                backgroundColor: isDarkMode ? 'rgba(10, 132, 255, 0.15)' : '#EFF6FF',
-                                                borderColor: isDarkMode ? 'rgba(62, 123, 250, 0.3)' : '#DBEAFE',
-                                            }
+                                                backgroundColor: isDarkMode
+                                                    ? 'rgba(10, 132, 255, 0.15)'
+                                                    : '#EFF6FF',
+                                                borderColor: isDarkMode
+                                                    ? 'rgba(62, 123, 250, 0.3)'
+                                                    : '#DBEAFE',
+                                            },
                                         ]}
-                                        onPress={() => handleSuggestionPress(suggestion)}
-                                    >
-                                        <Text style={[styles.suggestionText, { color: colors.primary }]}>
+                                        onPress={() => handleSuggestionPress(suggestion)}>
+                                        <Text
+                                            style={[styles.suggestionText, { color: colors.primary }]}>
                                             {suggestion}
                                         </Text>
                                     </TouchableOpacity>
@@ -2489,18 +2729,33 @@ const LexAI = () => {
                 <KeyboardAvoidingView
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                     keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 20}
-                    style={{ marginTop: 10 }}
-                >
-                    <View style={[styles.inputContainer, {
-                        backgroundColor: isDarkMode ? 'rgba(20, 30, 48, 0.85)' : 'rgba(230, 240, 255, 0.85)',
-                        borderTopWidth: 1,
-                        borderTopColor: isDarkMode ? 'rgba(26, 39, 64, 0.8)' : 'rgba(218, 234, 255, 0.8)'
-                    }]}>
+                    style={{ marginTop: 10 }}>
+                    <View
+                        style={[
+                            styles.inputContainer,
+                            {
+                                backgroundColor: isDarkMode
+                                    ? 'rgba(20, 30, 48, 0.85)'
+                                    : 'rgba(230, 240, 255, 0.85)',
+                                borderTopWidth: 1,
+                                borderTopColor: isDarkMode
+                                    ? 'rgba(26, 39, 64, 0.8)'
+                                    : 'rgba(218, 234, 255, 0.8)',
+                            },
+                        ]}>
                         <View style={styles.inputRow}>
-                            <View style={[styles.inputWrapper, {
-                                backgroundColor: isDarkMode ? 'rgba(15, 25, 40, 0.7)' : 'rgba(255, 255, 255, 0.7)',
-                                borderColor: isDarkMode ? 'rgba(36, 54, 86, 0.7)' : 'rgba(199, 221, 255, 0.7)'
-                            }]}>
+                            <View
+                                style={[
+                                    styles.inputWrapper,
+                                    {
+                                        backgroundColor: isDarkMode
+                                            ? 'rgba(15, 25, 40, 0.7)'
+                                            : 'rgba(255, 255, 255, 0.7)',
+                                        borderColor: isDarkMode
+                                            ? 'rgba(36, 54, 86, 0.7)'
+                                            : 'rgba(199, 221, 255, 0.7)',
+                                    },
+                                ]}>
                                 <TextInput
                                     style={[styles.input, { color: colors.text }]}
                                     placeholder="Ask me anything..."
@@ -2519,33 +2774,34 @@ const LexAI = () => {
                                         width: 60,
                                         height: 60,
                                         borderRadius: 30,
-                                        backgroundColor: currentMode === LexAIMode.AGENT ? '#3E7BFA' : '#FF375F',
+                                        backgroundColor:
+                                            currentMode === LexAIMode.AGENT ? '#3E7BFA' : '#FF375F',
                                         opacity: !isButtonDisabled ? glowOpacity : 0,
-                                        transform: [
-                                            { translateX: -7.5 },
-                                            { translateY: -7.5 }
-                                        ],
-                                        zIndex: -1
+                                        transform: [{ translateX: -7.5 }, { translateY: -7.5 }],
+                                        zIndex: -1,
                                     }}
                                 />
-                                <Animated.View style={{
-                                    transform: [
-                                        { scale: sendButtonScale },
-                                        { rotate: sendRotation }
-                                    ]
-                                }}>
+                                <Animated.View
+                                    style={{
+                                        transform: [
+                                            { scale: sendButtonScale },
+                                            { rotate: sendRotation },
+                                        ],
+                                    }}>
                                     <TouchableOpacity
                                         onPress={() => {
                                             animateSendButton();
                                             handleSendMessage();
                                         }}
                                         disabled={isButtonDisabled}
-                                        activeOpacity={0.8}
-                                    >
+                                        activeOpacity={0.8}>
                                         <LinearGradient
                                             colors={
                                                 isButtonDisabled
-                                                    ? [isDarkMode ? '#3A3A3C' : '#D1D1D6', isDarkMode ? '#2C2C2E' : '#C7C7CC']
+                                                    ? [
+                                                        isDarkMode ? '#3A3A3C' : '#D1D1D6',
+                                                        isDarkMode ? '#2C2C2E' : '#C7C7CC',
+                                                    ]
                                                     : currentMode === LexAIMode.AGENT
                                                         ? ['#4E7CF6', '#3E7BFA', '#2563EB']
                                                         : ['#FF375F', '#FF2D55', '#E31B60']
@@ -2561,18 +2817,17 @@ const LexAI = () => {
                                                     shadowOffset: { width: 0, height: 3 },
                                                     shadowOpacity: isDarkMode ? 0.5 : 0.4,
                                                     shadowRadius: 8,
-                                                    elevation: 5
-                                                }
+                                                    elevation: 5,
+                                                },
                                             ]}
                                             start={{ x: 0, y: 0 }}
-                                            end={{ x: 1, y: 1 }}
-                                        >
+                                            end={{ x: 1, y: 1 }}>
                                             <Ionicons
                                                 name="send"
                                                 size={20}
                                                 color="#fff"
                                                 style={{
-                                                    transform: [{ translateX: -1 }]
+                                                    transform: [{ translateX: -1 }],
                                                 }}
                                             />
                                         </LinearGradient>
@@ -2590,387 +2845,3 @@ const LexAI = () => {
 };
 
 export default LexAI;
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    mainContainer: {
-        flex: 1,
-    },
-    enhancedHeader: {
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(0,0,0,0.05)',
-    },
-    headerContent: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    headerTitleArea: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    headerIcon: {
-        width: 30,
-        height: 30,
-        borderRadius: 15,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    headerTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-    },
-    headerControls: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    headerButton: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: 'rgba(62, 123, 250, 0.1)',
-    },
-    modeToggleContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: 'rgba(62, 123, 250, 0.08)',
-        borderRadius: 20,
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-    },
-    messageList: {
-        flex: 1,
-        padding: 16,
-        paddingBottom: 120, // Increased from 100 to provide more space between last message and input area
-    },
-    emptyContainer: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginTop: 60, // Reduced from 100 to allow more screen space for content
-        padding: 20,
-    },
-    emptyText: {
-        fontSize: 24, // Increased from 16 to make greetings more prominent
-        fontWeight: '600',
-        textAlign: 'center',
-        marginBottom: 30, // Added spacing between greeting and suggestions
-        lineHeight: 32, // Added line height for better readability
-    },
-    messageBubble: {
-        maxWidth: '85%',
-        marginBottom: 16,
-        flexDirection: 'row',
-        alignItems: 'flex-end',
-    },
-    userMessage: {
-        alignSelf: 'flex-end',
-    },
-    assistantMessage: {
-        alignSelf: 'flex-start',
-    },
-    avatarContainer: {
-        marginRight: 8,
-        marginBottom: 4,
-    },
-    avatar: {
-        width: 28,
-        height: 28,
-        borderRadius: 14,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    avatarText: {
-        color: 'white',
-        fontSize: 12,
-        fontWeight: 'bold',
-    },
-    messageContent: {
-        borderRadius: 18,
-        padding: 12,
-        paddingTop: 10,
-        paddingBottom: 8,
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.12,
-        shadowRadius: 18,
-        elevation: 15,
-    },
-    userMessageContent: {
-        borderTopRightRadius: 4,
-    },
-    assistantMessageContent: {
-        borderTopLeftRadius: 4,
-    },
-    userMessageText: {
-        color: '#FFFFFF',
-    },
-    messageText: {
-        fontSize: 16,
-        lineHeight: 22,
-        letterSpacing: 0.1,
-    },
-    timestamp: {
-        fontSize: 10,
-        marginTop: 4,
-        alignSelf: 'flex-end',
-        opacity: 0.7,
-    },
-    inputContainer: {
-        padding: 12,
-        borderTopWidth: 1,
-    },
-    modeIndicator: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 8,
-    },
-    modeIndicatorIcon: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 6,
-    },
-    modeIndicatorText: {
-        fontSize: 12,
-        fontWeight: '500',
-    },
-    inputRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    inputWrapper: {
-        flex: 1,
-        borderRadius: 20,
-        borderWidth: 1,
-        paddingHorizontal: 6,
-    },
-    input: {
-        minHeight: 40,
-        maxHeight: 120,
-        paddingHorizontal: 10,
-        paddingVertical: 8,
-        fontSize: 16,
-    },
-    sendButton: {
-        width: 45,
-        height: 45,
-        borderRadius: 22.5,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginLeft: 10,
-        shadowColor: '#3E7BFA',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.5,
-        shadowRadius: 8,
-        elevation: 5,
-    },
-    historyModalContainer: {
-        flex: 1,
-        flexDirection: 'row',
-    },
-    historyBackdrop: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-    },
-    historyDrawer: {
-        width: 300,
-        maxWidth: '80%',
-        height: '100%',
-        position: 'absolute',
-        right: 0,
-        flex: 1,
-        flexDirection: 'column',
-        shadowColor: '#000',
-        shadowOffset: { width: -2, height: 0 },
-        shadowOpacity: 0.25,
-        shadowRadius: 5,
-        elevation: 10,
-    },
-    historyHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(0,0,0,0.1)',
-    },
-    historyTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-    },
-    historyList: {
-        flexGrow: 1,
-    },
-    historyItemContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(0,0,0,0.05)',
-    },
-    historyItem: {
-        flex: 1,
-        padding: 12,
-    },
-    activeHistoryItem: {
-        borderLeftWidth: 3,
-        borderLeftColor: '#007AFF',
-    },
-    historyItemContent: {
-        flex: 1,
-    },
-    historyItemHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 4,
-    },
-    historyItemDate: {
-        fontSize: 12,
-    },
-    historyItemPreview: {
-        fontSize: 14,
-        marginBottom: 4,
-    },
-    historyItemCount: {
-        fontSize: 12,
-    },
-    deleteButton: {
-        padding: 10,
-        marginRight: 10,
-        borderRadius: 8,
-    },
-    emptyHistoryContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20,
-        marginTop: 40,
-    },
-    emptyHistoryText: {
-        fontSize: 16,
-        textAlign: 'center',
-    },
-    newConversationButton: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 12,
-        margin: 16,
-        borderRadius: 8,
-    },
-    newConversationText: {
-        color: 'white',
-        fontWeight: 'bold',
-        marginLeft: 8,
-    },
-    loadingContainer: {
-        marginVertical: 10,
-        alignItems: 'flex-start',
-        width: '100%',
-    },
-    loadingBubble: {
-        padding: 12,
-        borderRadius: 16,
-        borderTopLeftRadius: 4,
-        width: 70,
-        alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.2,
-        shadowRadius: 2,
-        elevation: 2,
-    },
-    loadingDots: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    dot: {
-        width: 10,
-        height: 10,
-        borderRadius: 5,
-        margin: 3,
-    },
-    dot1: {
-        opacity: 0.5,
-        transform: [{ scale: 1 }],
-    },
-    dot2: {
-        opacity: 0.5,
-        transform: [{ scale: 1 }],
-    },
-    dot3: {
-        opacity: 0.5,
-        transform: [{ scale: 1 }],
-    },
-    suggestionsContainer: {
-        paddingVertical: 16, // Increased from 12 for more space
-        marginTop: 10,
-        width: '100%',
-        flexDirection: 'row', // Changed from default to allow flex wrap
-        flexWrap: 'wrap', // Allow wrapping to multiple lines
-        justifyContent: 'center', // Center the suggestions
-        alignItems: 'center',
-        borderTopWidth: 1,
-    },
-    suggestionsScrollContent: {
-        paddingHorizontal: 16, // Increased from 12
-    },
-    suggestionChip: {
-        paddingHorizontal: 16, // Increased from 12
-        paddingVertical: 12, // Increased from 8
-        borderRadius: 20, // Increased from 16
-        marginRight: 12,
-        marginBottom: 12, // Added bottom margin for vertical spacing between rows
-        borderWidth: 1,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 }, // Slightly more pronounced shadow
-        shadowOpacity: 0.1, // Increased from 0.05
-        shadowRadius: 4, // Increased from 1
-        elevation: 2, // Increased from 1
-    },
-    suggestionText: {
-        fontSize: 16, // Increased from 14
-        fontWeight: '500', // Added font weight for better visibility
-    },
-    searchResultItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 4,
-    },
-    searchResultIndex: {
-        fontSize: 12,
-        fontWeight: 'bold',
-        marginRight: 8,
-    },
-    searchResultContent: {
-        flex: 1,
-    },
-    searchResultTitle: {
-        fontSize: 14,
-        fontWeight: 'bold',
-    },
-    searchResultUrl: {
-        fontSize: 12,
-        color: 'blue',
-    },
-    searchResultSnippet: {
-        fontSize: 12,
-    },
-    loadingDot: {
-        width: 10,
-        height: 10,
-        borderRadius: 5,
-        margin: 3,
-    },
-});

@@ -407,12 +407,12 @@ Always be helpful, respectful, and focused on the user's needs.`;
       }
 
       // Add user message to conversation
-      const userMsg: LexAIMessage = {
-        id: generateUUID(),
-        role: 'user',
-        content: userMessage,
-        timestamp: Date.now(),
-      };
+      // const userMsg: LexAIMessage = {
+      //   id: generateUUID(),
+      //   role: 'user',
+      //   content: userMessage,
+      //   timestamp: Date.now(),
+      // };
 
       // Get messages for context (excluding system messages for API)
       const messages = conversation.messages

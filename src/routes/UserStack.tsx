@@ -29,6 +29,7 @@ import { MessageService } from '../service/firebase/MessageService';
 import LexAI from '../screens/userscreens/LexAI';
 import firestore from '@react-native-firebase/firestore';
 import FloatingBottomTabBar from '../components/common/FloatingBottomTabBar';
+import messaging from '@react-native-firebase/messaging';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -220,7 +221,7 @@ const UserStack = () => {
         console.error('Failed to clean up notification listeners:', error);
       }
     };
-  }, [navigation]);
+  }, [navigation,messaging]);
 
   // Handle deep link navigation
   useEffect(() => {

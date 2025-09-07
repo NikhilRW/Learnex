@@ -26,6 +26,7 @@ export function Header() {
         { name: 'Features', href: '#features' },
         { name: 'About', href: '#about' },
         { name: 'Screenshots', href: '#screenshots' },
+        { name: 'Lex AI', href: '#lex-ai' },
         { name: 'Reviews', href: '#reviews' },
         { name: 'FAQ', href: '#faq' },
     ];

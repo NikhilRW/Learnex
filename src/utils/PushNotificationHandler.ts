@@ -68,7 +68,9 @@ export class PushNotificationHandler {
       console.log('Registering for push notifications');
       // Get the FCM token
       await messaging().registerDeviceForRemoteMessages();
-      const fcmToken = await messaging().getToken();
+      const fcmToken = (await messaging().hasPermission())
+        ? await messaging().getToken()
+        : null;
       if (fcmToken) {
         console.log('FCM Token:', fcmToken);
         return fcmToken;
@@ -260,7 +262,7 @@ export class PushNotificationHandler {
           pressAction: {
             id: 'default',
           },
-          sound:'notification',
+          sound: 'notification',
           smallIcon: 'ic_notification_logo', // Make sure this exists in your drawable folders
           largeIcon: data.senderPhoto || '',
           importance: 4, // High
@@ -298,7 +300,7 @@ export class PushNotificationHandler {
         description: 'Notifications received from Firebase Cloud Messaging',
         lights: true,
         vibration: true,
-        sound:'notification',
+        sound: 'notification',
         importance: 4, // High
       });
 
@@ -309,7 +311,7 @@ export class PushNotificationHandler {
         description: 'Notifications for task due dates',
         lights: true,
         vibration: true,
-        sound:'notification',
+        sound: 'notification',
         importance: AndroidImportance.HIGH,
       });
 
@@ -321,7 +323,7 @@ export class PushNotificationHandler {
         lights: true,
         vibration: true,
         importance: AndroidImportance.HIGH,
-        sound:'notification',
+        sound: 'notification',
       });
     }
   }
