@@ -10,8 +10,119 @@ import {
   Alert,
 } from 'react-native';
 
-// Mock Alert
-jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
+// Test suite for Room Screen
+describe('Room Screen', () => {
+  // Test invalid inputs for create room
+  test('should show error when creating room with empty title', () => {
+    const {getByTestId} = render(<MockRoomScreen route={{params: {}}} />);
+    fireEvent.press(getByTestId('create-room-submit-button'));
+    expect(Alert.alert).toHaveBeenCalledWith(
+      'Error',
+      'Please enter a room title',
+    );
+  });
+
+  test('should show error when creating room with invalid duration', () => {
+    const {getByTestId} = render(<MockRoomScreen route={{params: {}}} />);
+    fireEvent.changeText(getByTestId('duration-input'), '0');
+    fireEvent.changeText(getByTestId('title-input'), 'Room 123');
+    fireEvent.press(getByTestId('create-room-submit-button'));
+    expect(Alert.alert).toHaveBeenCalledWith(
+      'Error',
+      'Please enter a valid duration',
+    );
+  });
+
+  test('should show error when creating room with invalid participants', () => {
+    const {getByTestId} = render(<MockRoomScreen route={{params: {}}} />);
+    fireEvent.changeText(getByTestId('title-input'), 'Room 123');
+    fireEvent.changeText(getByTestId('duration-input'), '20');
+    fireEvent.changeText(getByTestId('participants-input'), '-1');
+    fireEvent.press(getByTestId('create-room-submit-button'));
+    expect(Alert.alert).toHaveBeenCalledWith(
+      'Error',
+      'Please enter valid max participants',
+    );
+  });
+
+  // Test invalid inputs for join room
+  test('should show error when joining room with empty code', () => {
+    const {getByTestId} = render(<MockRoomScreen route={{params: {}}} />);
+    fireEvent.press(getByTestId('join-tab-button'));
+    fireEvent.press(getByTestId('join-room-submit-button'));
+    expect(Alert.alert).toHaveBeenCalledWith(
+      'Error',
+      'Please enter a room code',
+    );
+  });
+
+  test('should switch to join room tab when join tab button is pressed', () => {
+    const {getByTestId, queryByTestId} = render(
+      <MockRoomScreen route={{params: {}}} />,
+    );
+    fireEvent.press(getByTestId('join-tab-button'));
+    expect(queryByTestId('join-room-form')).toBeTruthy();
+    expect(queryByTestId('create-room-form')).toBeNull();
+  });
+
+  test('should switch to create room tab when create tab button is pressed', () => {
+    const {getByTestId, queryByTestId} = render(
+      <MockRoomScreen route={{params: {}}} />,
+    );
+    fireEvent.press(getByTestId('join-tab-button')); // Switch to join first
+    fireEvent.press(getByTestId('create-tab-button'));
+    expect(queryByTestId('create-room-form')).toBeTruthy();
+    expect(queryByTestId('join-room-form')).toBeNull();
+  });
+
+  test('should show success alert when creating room with valid inputs', () => {
+    const {getByTestId, getByText} = render(
+      <MockRoomScreen route={{params: {}}} />,
+    );
+    fireEvent.changeText(getByTestId('title-input'), 'Test Room');
+    fireEvent.changeText(getByTestId('duration-input'), '60');
+    fireEvent.changeText(getByTestId('participants-input'), '10');
+
+    const selectTaskButton = getByTestId('select-task-button');
+    fireEvent.press(selectTaskButton);
+
+    const taskItem = getByText('Math Homework');
+    fireEvent.press(taskItem);
+    fireEvent.press(selectTaskButton);
+
+    const closeButton = getByTestId('close-modal-button');
+    fireEvent.press(closeButton);
+
+    const createButton = getByTestId('create-room-submit-button');
+    fireEvent.press(createButton);
+
+    fireEvent.press(getByTestId('create-room-submit-button'));
+    expect(Alert.alert).toHaveBeenCalledWith(
+      'Success',
+      'Room created successfully!',
+    );
+  });
+
+  test('should show success alert when joining room with valid code', () => {
+    const {getByTestId} = render(<MockRoomScreen route={{params: {}}} />);
+    fireEvent.press(getByTestId('join-tab-button'));
+    fireEvent.changeText(getByTestId('room-code-input'), 'TESTCODE');
+    fireEvent.press(getByTestId('join-room-submit-button'));
+    expect(Alert.alert).toHaveBeenCalledWith('Success', 'Joining room...');
+  });
+
+  test('should show error when creating room without selecting a task', () => {
+    const {getByTestId} = render(<MockRoomScreen route={{params: {}}} />);
+    fireEvent.changeText(getByTestId('title-input'), 'Test Room');
+    fireEvent.changeText(getByTestId('duration-input'), '60');
+    fireEvent.changeText(getByTestId('participants-input'), '10');
+    fireEvent.press(getByTestId('create-room-submit-button'));
+    expect(Alert.alert).toHaveBeenCalledWith(
+      'Error',
+      'Select task before creating room',
+    );
+  });
+});
 
 // Create a proper React Native mock component for Room Screen
 const MockRoomScreen = ({route}: any) => {
@@ -45,12 +156,17 @@ const MockRoomScreen = ({route}: any) => {
       Alert.alert('Error', 'Please enter a room title');
       return;
     }
-    if (!duration || parseInt(duration,10) <= 0) {
+    if (!duration || parseInt(duration, 10) <= 0) {
       Alert.alert('Error', 'Please enter a valid duration');
       return;
     }
-    if (!maxParticipants || parseInt(maxParticipants,10) <= 0) {
+    if (!maxParticipants || parseInt(maxParticipants, 10) <= 0) {
       Alert.alert('Error', 'Please enter valid max participants');
+      return;
+    }
+
+    if (!selectedTask) {
+      Alert.alert('Error', 'Select task before creating room');
       return;
     }
 
@@ -390,7 +506,7 @@ describe('Room Screen Tests', () => {
     });
 
     it('creates room successfully with valid inputs', () => {
-      const {getByTestId} = render(<MockRoomScreen route={{}} />);
+      const {getByTestId, getByText} = render(<MockRoomScreen route={{}} />);
 
       const titleInput = getByTestId('title-input');
       fireEvent.changeText(titleInput, 'Valid Room');
@@ -400,6 +516,16 @@ describe('Room Screen Tests', () => {
 
       const participantsInput = getByTestId('participants-input');
       fireEvent.changeText(participantsInput, '4');
+
+      const selectTaskButton = getByTestId('select-task-button');
+      fireEvent.press(selectTaskButton);
+
+      const taskItem = getByText('Math Homework');
+      fireEvent.press(taskItem);
+      fireEvent.press(selectTaskButton);
+
+      const closeButton = getByTestId('close-modal-button');
+      fireEvent.press(closeButton);
 
       const createButton = getByTestId('create-room-submit-button');
       fireEvent.press(createButton);

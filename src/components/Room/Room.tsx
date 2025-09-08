@@ -1,4 +1,4 @@
-import React, {useEffect, useState, useRef, useMemo, useCallback} from 'react';
+import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -19,14 +19,14 @@ import {
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
-import {MediaStream, RTCView, MediaStreamTrack} from 'react-native-webrtc';
+import { MediaStream, RTCView } from 'react-native-webrtc';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import AntDesign from 'react-native-vector-icons/AntDesign';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import {Meeting} from '../../service/firebase/MeetingService';
-import {ParticipantState} from '../../service/firebase/WebRTCService';
-import {useTypedSelector} from '../../hooks/useTypedSelector';
-import {UserService} from '../../service/firebase/UserService';
-import Reanimated, {FadeIn, FadeOut} from 'react-native-reanimated';
+import { Meeting } from '../../service/firebase/MeetingService';
+import { ParticipantState } from '../../service/firebase/WebRTCService';
+import { useTypedSelector } from '../../hooks/useTypedSelector';
+import { UserService } from '../../service/firebase/UserService';
 import ReactionText from '../common/ReactionText';
 import MessageReactionIcon from '../common/MessageReactionIcon';
 
@@ -110,7 +110,7 @@ const Room: React.FC<RoomProps> = ({
   const [showMessageReactions, setShowMessageReactions] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const participantsListRef = useRef<FlatList>(null);
-  const {width, height} = Dimensions.get('window');
+  const { width, height } = Dimensions.get('window');
   const [pinnedParticipantId, setPinnedParticipantId] = useState<string | null>(
     null,
   );
@@ -118,7 +118,7 @@ const Room: React.FC<RoomProps> = ({
   const [userInfoCache, setUserInfoCache] = useState<
     Map<
       string,
-      {email: string | null; fullName: string | null; username: string | null}
+      { email: string | null; fullName: string | null; username: string | null }
     >
   >(new Map());
   const userService = useMemo(() => new UserService(), []);
@@ -174,7 +174,7 @@ const Room: React.FC<RoomProps> = ({
   useEffect(() => {
     // Scroll to bottom when new messages arrive
     if (messages.length > 0 && flatListRef.current) {
-      flatListRef.current.scrollToEnd({animated: true});
+      flatListRef.current.scrollToEnd({ animated: true });
     }
   }, [messages]);
 
@@ -361,6 +361,16 @@ const Room: React.FC<RoomProps> = ({
     setIsControlsVisible(true);
   };
 
+  const getOrderedParticipantsForList = () => {
+    const participants = getAllParticipants();
+    
+    // Current user should always be first
+    const currentUser = participants.find(p => p.id === currentUserId);
+    const otherParticipants = participants.filter(p => p.id !== currentUserId);
+    
+    return currentUser ? [currentUser, ...otherParticipants] : participants;
+  };
+
   const getAllParticipants = () => {
     const participantsMap = new Map();
 
@@ -412,7 +422,20 @@ const Room: React.FC<RoomProps> = ({
       }
     });
 
-    return Array.from(participantsMap.values());
+    let participantsArray = Array.from(participantsMap.values());
+
+    // If a participant is pinned, ensure they are the first in the array
+    if (pinnedParticipantId) {
+      const pinnedIndex = participantsArray.findIndex(
+        p => p.id === pinnedParticipantId,
+      );
+      if (pinnedIndex > -1) {
+        const [pinnedParticipant] = participantsArray.splice(pinnedIndex, 1);
+        participantsArray.unshift(pinnedParticipant);
+      }
+    }
+
+    return participantsArray;
   };
 
   const handlePinParticipant = (participantId: string) => {
@@ -480,8 +503,9 @@ const Room: React.FC<RoomProps> = ({
         style={[
           styles.participantContainer,
           isParticipantSpeaking && styles.participantSpeakingContainer,
-          isPinned && styles.participantPinnedContainer,
+          styles.participantPinnedContainer,
           isCurrentUser && styles.currentUserContainer,
+          !isPinned && !isVideoOn && { backgroundColor: 'rgba(0,0,0,0.2)' }, // Adjust to a lighter semi-transparent overlay for unpinned participants without video
         ]}>
         {/* RTCView or Placeholder */}
         {item.stream && isVideoOn ? (
@@ -492,14 +516,18 @@ const Room: React.FC<RoomProps> = ({
             mirror={isCurrentUser}
           />
         ) : (
-          <View style={[styles.videoPlaceholder, {backgroundColor: '#1f1f1f'}]}>
+          <View
+            style={[
+              styles.videoPlaceholder,
+              { backgroundColor: isPinned ? '#1f1f1f' : 'rgba(0,0,0,0.2)' },
+            ]}>
             <View
               style={[
                 styles.avatarCircle,
-                {backgroundColor: avatarColor},
+                { backgroundColor: avatarColor },
                 isParticipantSpeaking && styles.avatarCircleSpeaking,
               ]}>
-              <Text style={[styles.avatarText, {color: avatarTextColor}]}>
+              <Text style={[styles.avatarText, { color: avatarTextColor }]}>
                 {initials}
               </Text>
             </View>
@@ -582,8 +610,103 @@ const Room: React.FC<RoomProps> = ({
     );
   };
 
-  const renderMessageItem = ({item}: {item: Message}) => {
-    const reactionCounts: {[type: string]: number} = {};
+  const renderParticipantListItem = ({ item }: { item: any }) => {
+    const participantState = item.state || {};
+    const isCurrentUser = item.id === currentUserId;
+    const isVideoOn = isCurrentUser
+      ? isVideoEnabled
+      : (participantState.isVideoEnabled ?? true);
+    const isAudioOn = isCurrentUser
+      ? isAudioEnabled
+      : (participantState.isAudioEnabled ?? true);
+    const isParticipantSpeaking = participantState.isSpeaking ?? false;
+    const isMicMuted = !isAudioOn;
+    const isVideoMuted = !isVideoOn;
+
+    const nameParts = item.name.split(' ');
+    const firstInitial = nameParts[0]
+      ? nameParts[0].charAt(0).toUpperCase()
+      : '';
+    const lastInitial =
+      nameParts.length > 1
+        ? nameParts[nameParts.length - 1].charAt(0).toUpperCase()
+        : '';
+    const initials = lastInitial
+      ? `${firstInitial}${lastInitial}`
+      : firstInitial;
+    const displayName = item.name || initials;
+    const avatarColor = getAvatarColor(item.id);
+    const avatarHue = Number(item.id.charCodeAt(0)) % 360;
+    const avatarTextColor =
+      avatarHue > 30 && avatarHue < 190 ? '#202124' : '#ffffff';
+
+    return (
+      <TouchableOpacity
+        style={styles.participantListItem}
+        onPress={() => handlePinParticipant(item.id)}>
+        <View style={styles.participantListItemAvatarContainer}>
+          <View
+            style={[
+              styles.participantListItemAvatar,
+              { backgroundColor: avatarColor },
+            ]}>
+            <Text
+              style={[
+                styles.participantListItemAvatarText,
+                { color: avatarTextColor },
+              ]}>
+              {initials}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.participantListItemInfo}>
+          <Text
+            style={[
+              styles.participantListItemName,
+              { color: isDark ? 'white' : 'black' },
+            ]}
+            numberOfLines={1}>
+            {displayName} {isCurrentUser && '(You)'}
+          </Text>
+          {item.email && (
+            <Text
+              style={styles.participantListItemEmail}
+              numberOfLines={1}
+              ellipsizeMode="middle">
+              {item.email}
+            </Text>
+          )}
+        </View>
+        <View style={styles.participantListItemActions}>
+          {isParticipantSpeaking && (
+            <Icon name="volume-up" size={22} color="#4285f4" />
+          )}
+          {isMicMuted ? (
+            <Icon name="mic-off" size={22} color="#d66b6b" />
+          ) : (
+            <Icon name="mic" size={22} color="#9aa0a6" />
+          )}
+          {isVideoMuted ? (
+            <Icon name="videocam-off" size={22} color="#d66b6b" />
+          ) : (
+            <Icon name="videocam" size={22} color="#9aa0a6" />
+          )}
+          <TouchableOpacity
+            onPress={() => handlePinParticipant(item.id)}
+            style={styles.participantListItemMoreButton}>
+            <AntDesign
+              name="pushpin"
+              size={22}
+              color={pinnedParticipantId === item.id ? '#2196f3' : '#9aa0a6'}
+            />
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderMessageItem = ({ item }: { item: Message }) => {
+    const reactionCounts: { [type: string]: number } = {};
     if (item.reactions) {
       Object.values(item.reactions).forEach(type => {
         reactionCounts[type] = (reactionCounts[type] || 0) + 1;
@@ -765,9 +888,15 @@ const Room: React.FC<RoomProps> = ({
         itemHeight = height * 0.7;
       else itemHeight = height * 0.2;
     } else if (pinnedParticipantId && totalParticipants > 1) {
-      if (participantsArray[0].id === pinnedParticipantId)
+      if (participantsArray[0].id === pinnedParticipantId) {
         itemHeight = height * 0.7;
-      else itemHeight = height * 0.2;
+      } else {
+        // For unpinned participants when someone is pinned, make them smaller but still visible
+        // Adjust numColumns to accommodate more participants in a smaller view
+        numColumns = Math.min(totalParticipants - 1, 3); // Max 3 columns for unpinned
+        itemHeight =
+          (height * 0.3) / Math.ceil((totalParticipants - 1) / numColumns); // Distribute remaining height
+      }
     } else {
       if (numColumns === 1) {
         if (totalParticipants === 1) itemHeight = height * 0.8;
@@ -786,7 +915,7 @@ const Room: React.FC<RoomProps> = ({
     (renderParticipantGrid as any).itemHeight = itemHeight;
 
     // Define renderItem directly for FlatList
-    const renderGridItem = ({item, index}: {item: any; index: number}) => {
+    const renderGridItem = ({ item, index }: { item: any; index: number }) => {
       // Check if this participant is screen sharing
       const isItemScreenSharing = participantStates.get(
         item.id,
@@ -802,7 +931,7 @@ const Room: React.FC<RoomProps> = ({
           onLongPress={() =>
             handlePinParticipant(item.participantId || item.id)
           }
-          activeOpacity={0.9}
+          activeOpacity={1}
           style={[
             styles.participantWrapper,
             {
@@ -812,7 +941,7 @@ const Room: React.FC<RoomProps> = ({
             },
           ]}>
           {/* Call the inner content renderer */}
-          {renderParticipantItem({item, index, isPinned})}
+          {renderParticipantItem({ item, index, isPinned })}
         </TouchableOpacity>
       );
     };
@@ -854,51 +983,51 @@ const Room: React.FC<RoomProps> = ({
               {(!localStream ||
                 (remoteStreams.length === 0 &&
                   participantStates.size <= 1)) && (
-                <View style={styles.emptyStateContainer}>
-                  {isConnecting ? (
-                    <>
-                      <ActivityIndicator size="large" color="#4285F4" />
-                      <Text style={styles.emptyStateTitle}>
-                        Connecting to meeting...
-                      </Text>
-                      <Text style={styles.emptyStateSubtitle}>
-                        Please wait while we connect to the meeting
-                      </Text>
-                    </>
-                  ) : (
-                    <>
-                      <Text style={styles.emptyStateTitle}>
-                        You're the only one here
-                      </Text>
-                      <Text style={styles.emptyStateSubtitle}>
-                        Share this meeting link with others you want in the
-                        meeting
-                      </Text>
-                      <View style={styles.meetingLinkContainer}>
-                        <Text style={styles.meetingLink}>
-                          {meeting.roomCode}
+                  <View style={styles.emptyStateContainer}>
+                    {isConnecting ? (
+                      <>
+                        <ActivityIndicator size="large" color="#4285F4" />
+                        <Text style={styles.emptyStateTitle}>
+                          Connecting to meeting...
                         </Text>
+                        <Text style={styles.emptyStateSubtitle}>
+                          Please wait while we connect to the meeting
+                        </Text>
+                      </>
+                    ) : (
+                      <>
+                        <Text style={styles.emptyStateTitle}>
+                          You're the only one here
+                        </Text>
+                        <Text style={styles.emptyStateSubtitle}>
+                          Share this meeting link with others you want in the
+                          meeting
+                        </Text>
+                        <View style={styles.meetingLinkContainer}>
+                          <Text style={styles.meetingLink}>
+                            {meeting.roomCode}
+                          </Text>
+                          <TouchableOpacity
+                            style={styles.copyButton}
+                            onPress={copyToClipboard}>
+                            <Icon name="content-copy" size={24} color="#fff" />
+                          </TouchableOpacity>
+                        </View>
                         <TouchableOpacity
-                          style={styles.copyButton}
-                          onPress={copyToClipboard}>
-                          <Icon name="content-copy" size={24} color="#fff" />
+                          style={styles.shareInviteButton}
+                          onPress={handleShareInvite}>
+                          <Icon
+                            name="share"
+                            size={20}
+                            color="#fff"
+                            style={styles.shareIcon}
+                          />
+                          <Text style={styles.shareButtonText}>Share invite</Text>
                         </TouchableOpacity>
-                      </View>
-                      <TouchableOpacity
-                        style={styles.shareInviteButton}
-                        onPress={handleShareInvite}>
-                        <Icon
-                          name="share"
-                          size={20}
-                          color="#fff"
-                          style={styles.shareIcon}
-                        />
-                        <Text style={styles.shareButtonText}>Share invite</Text>
-                      </TouchableOpacity>
-                    </>
-                  )}
-                </View>
-              )}
+                      </>
+                    )}
+                  </View>
+                )}
             </View>
 
             <View
@@ -1045,7 +1174,7 @@ const Room: React.FC<RoomProps> = ({
           {/* Reactions Menu */}
           {showReactions && (
             <Animated.View
-              style={[styles.reactionsMenu, {opacity: reactionsMenuOpacity}]}>
+              style={[styles.reactionsMenu, { opacity: reactionsMenuOpacity }]}>
               <TouchableOpacity
                 style={styles.reactionButton}
                 onPress={() => handleReaction('thumbsUp')}>
@@ -1100,7 +1229,7 @@ const Room: React.FC<RoomProps> = ({
                 isDark
                   ? styles.fullScreenChatPanelDark
                   : styles.fullScreenChatPanelLight,
-                {opacity: chatPanelOpacity},
+                { opacity: chatPanelOpacity },
               ]}>
               <View
                 style={[styles.chatHeader, isDark && styles.chatHeaderDark]}>
@@ -1211,7 +1340,7 @@ const Room: React.FC<RoomProps> = ({
             <Animated.View
               style={[
                 styles.quickMessagesMenu,
-                {opacity: quickMessagesMenuOpacity},
+                { opacity: quickMessagesMenuOpacity },
               ]}>
               <View style={styles.quickMessagesHeader}>
                 <Text style={styles.quickMessagesTitle}>Quick messages</Text>
@@ -1222,7 +1351,7 @@ const Room: React.FC<RoomProps> = ({
               <FlatList
                 data={quickMessages}
                 keyExtractor={item => item}
-                renderItem={({item}) => (
+                renderItem={({ item }) => (
                   <TouchableOpacity
                     style={styles.quickMessageItem}
                     onPress={() => sendQuickMessage(item)}>
@@ -1276,7 +1405,7 @@ const Room: React.FC<RoomProps> = ({
                 isDark
                   ? styles.fullScreenPanelDark
                   : styles.fullScreenPanelLight,
-                {opacity: participantsPanelOpacity},
+                { opacity: participantsPanelOpacity },
               ]}>
               <View
                 style={[styles.panelHeader, isDark && styles.panelHeaderDark]}>
@@ -1296,14 +1425,14 @@ const Room: React.FC<RoomProps> = ({
               </View>
 
               <FlatList
-                data={getAllParticipants()}
-                renderItem={renderParticipantItem}
-                keyExtractor={item => item.id}
-                style={[
-                  styles.participantsList,
-                  isDark && styles.participantsListDark,
-                ]}
-              />
+                data={getOrderedParticipantsForList()} 
+                 renderItem={renderParticipantListItem} 
+                 keyExtractor={item => item.id} 
+                 style={[ 
+                   styles.participantsList, 
+                   isDark && styles.participantsListDark, 
+                 ]} 
+               />
             </Animated.View>
           )}
         </View>
@@ -1384,7 +1513,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
     textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: {width: 0, height: 1},
+    textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },
   currentUserNameText: {
@@ -1421,7 +1550,7 @@ const styles = StyleSheet.create({
     borderColor: '#4285f4',
     borderWidth: 3,
     shadowColor: '#4285f4',
-    shadowOffset: {width: 0, height: 0},
+    shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.5,
     shadowRadius: 8,
     elevation: 5,
@@ -1900,8 +2029,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     paddingHorizontal: 16,
+    borderColor: '#f1f3f410',
+    margin: 10,
+    borderRadius: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#f1f3f4',
   },
   participantListItemDark: {
     borderBottomColor: '#3c4043',
@@ -1910,15 +2041,49 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  participantListAvatar: {
+  participantListItemAvatarContainer: {
+    marginRight: 12,
+  },
+  participantListItemAvatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#4285f4',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  participantListItemAvatarText: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  participantListItemVideo: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#000000',
+  },
+  participantListItemInfo: {
+    flex: 1,
     marginRight: 12,
   },
+  participantListItemName: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  participantListItemEmail: {
+    color: '#5f6368',
+    fontSize: 12,
+  },
+  participantListItemActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  participantListItemMoreButton: {
+    marginLeft: 12,
+    padding: 4,
+  },
+
   participantListAvatarSpeaking: {
     borderWidth: 2,
     borderColor: '#4285f4',
