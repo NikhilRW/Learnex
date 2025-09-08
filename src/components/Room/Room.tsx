@@ -445,8 +445,6 @@ const Room: React.FC<RoomProps> = ({
     } else {
       setPinnedParticipantId(participantId);
     }
-    // Close participants panel
-    setShowParticipants(false);
   };
 
   const renderParticipantItem = ({
