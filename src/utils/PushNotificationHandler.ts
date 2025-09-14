@@ -1,5 +1,15 @@
 import {Platform, PermissionsAndroid} from 'react-native';
-import messaging from '@react-native-firebase/messaging';
+import{
+  AuthorizationStatus,
+  getInitialNotification,
+  getMessaging,
+  getToken,
+  hasPermission,
+  onMessage,
+  onNotificationOpenedApp,
+  registerDeviceForRemoteMessages,
+  requestPermission,
+} from '@react-native-firebase/messaging';
 import notifee, {
   AndroidImportance,
   AndroidCategory,
@@ -19,10 +29,10 @@ export class PushNotificationHandler {
 
       // For iOS, request permission
       if (Platform.OS === 'ios') {
-        const authStatus = await messaging().requestPermission();
+        const authStatus = await requestPermission(getMessaging());
         const enabled =
-          authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-          authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+          authStatus === AuthorizationStatus.AUTHORIZED ||
+          authStatus === AuthorizationStatus.PROVISIONAL;
 
         if (enabled) {
           console.log('iOS notification permissions granted');
@@ -67,9 +77,9 @@ export class PushNotificationHandler {
     try {
       console.log('Registering for push notifications');
       // Get the FCM token
-      await messaging().registerDeviceForRemoteMessages();
-      const fcmToken = (await messaging().hasPermission())
-        ? await messaging().getToken()
+      await registerDeviceForRemoteMessages(getMessaging());
+      const fcmToken = (await hasPermission(getMessaging()))
+        ? await getToken(getMessaging())
         : null;
       if (fcmToken) {
         console.log('FCM Token:', fcmToken);
@@ -91,7 +101,7 @@ export class PushNotificationHandler {
    */
   public static setupMessageHandlers(): void {
     // Handle foreground messages
-    messaging().onMessage(async remoteMessage => {
+    onMessage(getMessaging(), async remoteMessage => {
       console.log('Foreground notification received:', remoteMessage);
 
       // Check if this message has already been processed to avoid duplicate notifications
@@ -129,7 +139,7 @@ export class PushNotificationHandler {
       );
     });
     // Handle notification opened when app is in background
-    messaging().onNotificationOpenedApp(remoteMessage => {
+    onNotificationOpenedApp(getMessaging(), remoteMessage => {
       console.log('Notification opened from background state:', remoteMessage);
 
       // Get the data from the notification
@@ -160,42 +170,40 @@ export class PushNotificationHandler {
     });
 
     // Check if the app was opened from a notification when in quit state
-    messaging()
-      .getInitialNotification()
-      .then(remoteMessage => {
-        if (remoteMessage) {
-          console.log(
-            'App opened from quit state by notification:',
-            remoteMessage,
-          );
+    getInitialNotification(getMessaging()).then(remoteMessage => {
+      if (remoteMessage) {
+        console.log(
+          'App opened from quit state by notification:',
+          remoteMessage,
+        );
 
-          // Get the data from the notification
-          const data = remoteMessage.data || {};
+        // Get the data from the notification
+        const data = remoteMessage.data || {};
 
-          try {
-            // Import DeepLinkHandler dynamically to avoid circular dependencies
-            const {DeepLinkHandler} = require('../navigation/DeepLinkHandler');
+        try {
+          // Import DeepLinkHandler dynamically to avoid circular dependencies
+          const {DeepLinkHandler} = require('../navigation/DeepLinkHandler');
 
-            // Handle direct message notifications
-            if (data.type === 'direct_message' || data.conversationId) {
-              console.log('Navigating to chat from initial notification:', {
-                conversationId: data.conversationId,
-                senderId: data.senderId,
-              });
+          // Handle direct message notifications
+          if (data.type === 'direct_message' || data.conversationId) {
+            console.log('Navigating to chat from initial notification:', {
+              conversationId: data.conversationId,
+              senderId: data.senderId,
+            });
 
-              // Navigate to the chat screen
-              DeepLinkHandler.navigate('Chat', {
-                conversationId: data.conversationId,
-                recipientId: data.senderId,
-                recipientName: data.senderName,
-                recipientPhoto: data.senderPhoto || '',
-              });
-            }
-          } catch (error) {
-            console.error('Error navigating from initial notification:', error);
+            // Navigate to the chat screen
+            DeepLinkHandler.navigate('Chat', {
+              conversationId: data.conversationId,
+              recipientId: data.senderId,
+              recipientName: data.senderName,
+              recipientPhoto: data.senderPhoto || '',
+            });
           }
+        } catch (error) {
+          console.error('Error navigating from initial notification:', error);
         }
-      });
+      }
+    });
   }
 
   /**
@@ -336,7 +344,7 @@ export class PushNotificationHandler {
     try {
       // We no longer delete the FCM token to ensure notifications can still be delivered
       // when the app is closed. Instead, we rely on FCMTokenManager to manage token validity.
-      // Previously: await messaging().deleteToken();
+      // Previously: await getMessaging().deleteToken();
 
       console.log('FCM token preserved for background notifications');
     } catch (error) {

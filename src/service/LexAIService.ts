@@ -16,9 +16,16 @@ import {
 import {TaskService} from './firebase/TaskService';
 import LexAIFirestoreService from './firebase/LexAIFirestoreService';
 import {Task} from '../types/taskTypes';
-import auth from '@react-native-firebase/auth';
 import {Message} from '../models/Message';
-import firestore from '@react-native-firebase/firestore';
+import {getAuth} from '@react-native-firebase/auth';
+import {
+  getFirestore,
+  collection,
+  query,
+  where,
+  limit,
+  getDocs,
+} from '@react-native-firebase/firestore';
 const generateUUID = (): string => {
   // Use a timestamp-based prefix to ensure uniqueness
   const timestamp = Date.now().toString(36);
@@ -565,8 +572,8 @@ Always be helpful, respectful, and focused on the user's needs.`;
               parts[i].text
                 ? 'text content'
                 : parts[i].functionCall
-                ? 'function call'
-                : 'unknown content'
+                  ? 'function call'
+                  : 'unknown content'
             }`,
           );
 
@@ -1243,7 +1250,7 @@ IMPORTANT INSTRUCTIONS:
             );
 
             // First, get the current user ID
-            const currentUserId = auth().currentUser?.uid;
+            const currentUserId = getAuth().currentUser?.uid;
             if (!currentUserId) {
               return {
                 ...toolCall,
@@ -1252,11 +1259,13 @@ IMPORTANT INSTRUCTIONS:
             }
 
             // Search for collaborator by email
-            const userSnapshot = await firestore()
-              .collection('users')
-              .where('email', '==', parameters.collaboratorEmail)
-              .limit(1)
-              .get();
+            const userSnapshot = await getDocs(
+              query(
+                collection(getFirestore(), 'users'),
+                where('email', '==', parameters.collaboratorEmail),
+                limit(1),
+              ),
+            );
 
             if (userSnapshot.empty) {
               return {
@@ -1300,9 +1309,8 @@ IMPORTANT INSTRUCTIONS:
             );
 
             // Use the createDuoTask method to add the team task
-            const teamTaskId = await this.taskService.createDuoTask(
-              teamTaskData,
-            );
+            const teamTaskId =
+              await this.taskService.createDuoTask(teamTaskData);
             console.log(
               `LexAI :: executeToolCall() :: Team task created successfully with ID: ${teamTaskId}`,
             );
@@ -1968,7 +1976,7 @@ IMPORTANT INSTRUCTIONS:
 
       // URL passed all safety checks
       return true;
-    } catch (error) {
+    } catch (_) {
       // If URL parsing fails, consider it unsafe
       console.warn(`URL parsing failed for: ${url}`);
       return false;
@@ -2388,7 +2396,7 @@ IMPORTANT INSTRUCTIONS:
         parts: [
           {
             text: `${
-              msg.senderId === auth().currentUser?.uid ? 'Me' : recipientName
+              msg.senderId === getAuth().currentUser?.uid ? 'Me' : recipientName
             }: ${msg.text}`,
           },
         ],

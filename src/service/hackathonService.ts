@@ -36,9 +36,8 @@ export class HackathonService {
 
       // Check cache first if not forcing a refresh
       if (!forceRefresh) {
-        const cachedData = await StorageService.getCachedHackathons(
-          finalLocation,
-        );
+        const cachedData =
+          await StorageService.getCachedHackathons(finalLocation);
 
         // If we have valid cached data, use it
         if (cachedData && cachedData.isSameLocation) {

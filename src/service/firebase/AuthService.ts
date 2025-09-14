@@ -1,13 +1,22 @@
-import auth from '@react-native-firebase/auth';
+import {getAuth, GithubAuthProvider, GoogleAuthProvider, OIDCAuthProvider} from '@react-native-firebase/auth';
 import {
   GoogleSignin,
   statusCodes,
 } from '@react-native-google-signin/google-signin';
 import {authorize} from 'react-native-app-auth';
-import firestore from '@react-native-firebase/firestore';
+import {
+  getFirestore,
+  collection,
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  serverTimestamp,
+  FirebaseFirestoreTypes,
+} from '@react-native-firebase/firestore';
 import Config from 'react-native-config';
 import {signUpData} from '../../types/authTypes';
-import {AuthResponse} from '../../types/firebase';
+import {AuthResponse, FirebaseUser} from '../../types/firebase';
 
 export class AuthService {
   constructor() {
@@ -15,11 +24,11 @@ export class AuthService {
       webClientId:
         '378245937295-p9lvf9tenrtchg6d2t5g6tamlhm5a168.apps.googleusercontent.com',
     });
-    console.log('UserID ' + auth().currentUser?.uid);
+    console.log('UserID ' + getAuth().currentUser?.uid);
   }
 
   currentUser() {
-    return auth().currentUser;
+    return getAuth().currentUser;
   }
 
   async signUpWithEmailAndPassword({
@@ -29,27 +38,32 @@ export class AuthService {
     password,
   }: signUpData): Promise<AuthResponse> {
     try {
-      const userCredential = await auth().createUserWithEmailAndPassword(
+      const userCredential = await getAuth().createUserWithEmailAndPassword(
         email,
         password,
       );
 
-      const userData = {
+      const userData: Omit<FirebaseUser, 'uid'> = {
         email,
         username,
         fullName,
         isLoggedIn: true,
         savedPosts: [],
-        createdAt: firestore.FieldValue.serverTimestamp(),
+        createdAt: serverTimestamp(),
         image: `https://avatar.iran.liara.run/username?username=${encodeURIComponent(
           fullName,
         )}`,
       };
 
-      await firestore()
-        .collection('users')
-        .doc(userCredential.user.uid)
-        .set(userData);
+      const db = getFirestore();
+      const usersRef = collection(
+        db,
+        'users',
+      ) as FirebaseFirestoreTypes.CollectionReference<FirebaseUser>;
+      await setDoc(doc(usersRef, userCredential.user.uid), {
+        uid: userCredential.user.uid,
+        ...userData,
+      });
 
       return {success: true};
     } catch (error: any) {
@@ -63,14 +77,15 @@ export class AuthService {
     password: string,
   ): Promise<AuthResponse> {
     try {
-      await auth().signInWithEmailAndPassword(email, password);
+      await getAuth().signInWithEmailAndPassword(email, password);
 
       // Update user's isLoggedIn status in Firestore
-      const user = auth().currentUser;
+      const user = getAuth().currentUser;
       if (user) {
-        await firestore().collection('users').doc(user.uid).update({
+        const db = getFirestore();
+        await updateDoc(doc(db, 'users', user.uid), {
           isLoggedIn: true,
-          lastLogin: firestore.FieldValue.serverTimestamp(),
+          lastLogin: serverTimestamp(),
         });
 
         // Start notification listeners for the logged in user
@@ -92,7 +107,7 @@ export class AuthService {
 
   async sendPasswordResetEmail(email: string): Promise<AuthResponse> {
     try {
-      await auth().sendPasswordResetEmail(email);
+      await getAuth().sendPasswordResetEmail(email);
       return {success: true};
     } catch (error) {
       console.log('AuthService :: sendPasswordResetEmail() ::', error);
@@ -103,11 +118,12 @@ export class AuthService {
   async signOut(): Promise<AuthResponse> {
     try {
       // Update the user's isLoggedIn status before signing out
-      const user = auth().currentUser;
+      const user = getAuth().currentUser;
       if (user) {
-        await firestore().collection('users').doc(user.uid).update({
+        const db = getFirestore();
+        await updateDoc(doc(db, 'users', user.uid), {
           isLoggedIn: false,
-          lastLogout: firestore.FieldValue.serverTimestamp(),
+          lastLogout: serverTimestamp(),
         });
       }
 
@@ -120,7 +136,7 @@ export class AuthService {
         console.error('Failed to clean up notification listeners:', error);
       }
 
-      await auth().signOut();
+      await getAuth().signOut();
       if (GoogleSignin.hasPreviousSignIn()) {
         await GoogleSignin.signOut();
       }
@@ -134,50 +150,51 @@ export class AuthService {
   async googleSignIn(): Promise<AuthResponse> {
     try {
       await GoogleSignin.hasPlayServices({showPlayServicesUpdateDialog: true});
-      const userInfo = await GoogleSignin.signIn();
+      await GoogleSignin.signIn();
       const {accessToken} = await GoogleSignin.getTokens();
 
       if (!accessToken) {
         throw new Error('No access token found');
       }
 
-      const googleCredential = auth.GoogleAuthProvider.credential(
+      const googleCredential = GoogleAuthProvider.credential(
         null,
         accessToken,
       );
-      await auth().signInWithCredential(googleCredential);
+      await getAuth().signInWithCredential(googleCredential);
 
       // Handle user document (create or update)
-      const user = auth().currentUser;
+      const user = getAuth().currentUser;
       if (user) {
-        const userDoc = await firestore()
-          .collection('users')
-          .doc(user.uid)
-          .get();
+        const db = getFirestore();
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
 
         if (!userDoc.exists()) {
           // First time user - create new document
-          await firestore()
-            .collection('users')
-            .doc(user.uid)
-            .set({
-              email: user.email,
-              username: user.displayName || user.email?.split('@')[0] || 'User',
-              fullName: user.displayName || 'User',
-              isLoggedIn: true,
-              savedPosts: [],
-              createdAt: firestore.FieldValue.serverTimestamp(),
-              image:
-                user.photoURL ||
-                `https://avatar.iran.liara.run/username?username=${encodeURIComponent(
-                  user.displayName || 'Anonymous',
-                )}`,
-            });
+          const usersRef = collection(
+            db,
+            'users',
+          ) as FirebaseFirestoreTypes.CollectionReference<FirebaseUser>;
+          const newUserDoc: FirebaseUser = {
+            uid: user.uid,
+            email: user.email || '',
+            username: user.displayName || user.email?.split('@')[0] || 'User',
+            fullName: user.displayName || 'User',
+            isLoggedIn: true,
+            savedPosts: [],
+            createdAt: serverTimestamp() as any,
+            image:
+              user.photoURL ||
+              `https://avatar.iran.liara.run/username?username=${encodeURIComponent(
+                user.displayName || 'Anonymous',
+              )}`,
+          };
+          await setDoc(doc(usersRef, user.uid), newUserDoc);
         } else {
           // Returning user - update isLoggedIn status
-          await firestore().collection('users').doc(user.uid).update({
+          await updateDoc(doc(db, 'users', user.uid), {
             isLoggedIn: true,
-            lastLogin: firestore.FieldValue.serverTimestamp(),
+            lastLogin: serverTimestamp(),
           });
 
           // Start notification listeners for the logged in user
@@ -220,43 +237,44 @@ export class AuthService {
       };
 
       const authState = await authorize(config);
-      const githubCredential = auth.GithubAuthProvider.credential(
+      const githubCredential = GithubAuthProvider.credential(
         authState.accessToken,
       );
-      await auth().signInWithCredential(githubCredential);
+      await getAuth().signInWithCredential(githubCredential);
 
       // Handle user document (create or update)
-      const user = auth().currentUser;
+      const user = getAuth().currentUser;
       if (user) {
-        const userDoc = await firestore()
-          .collection('users')
-          .doc(user.uid)
-          .get();
+        const db = getFirestore();
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
 
         if (!userDoc.exists()) {
           // First time user - create new document
-          await firestore()
-            .collection('users')
-            .doc(user.uid)
-            .set({
-              email: user.email,
-              username:
-                user.displayName || user.email?.split('@')[0] || 'GitHub User',
-              fullName: user.displayName || 'GitHub User',
-              isLoggedIn: true,
-              savedPosts: [],
-              createdAt: firestore.FieldValue.serverTimestamp(),
-              image:
-                user.photoURL ||
-                `https://avatar.iran.liara.run/username?username=${encodeURIComponent(
-                  user.displayName || 'Anonymous',
-                )}`,
-            });
+          const usersRef = collection(
+            db,
+            'users',
+          ) as FirebaseFirestoreTypes.CollectionReference<FirebaseUser>;
+          const newUserDoc: FirebaseUser = {
+            uid: user.uid,
+            email: user.email || '',
+            username:
+              user.displayName || user.email?.split('@')[0] || 'GitHub User',
+            fullName: user.displayName || 'GitHub User',
+            isLoggedIn: true,
+            savedPosts: [],
+            createdAt: serverTimestamp() as any,
+            image:
+              user.photoURL ||
+              `https://avatar.iran.liara.run/username?username=${encodeURIComponent(
+                user.displayName || 'Anonymous',
+              )}`,
+          };
+          await setDoc(doc(usersRef, user.uid), newUserDoc);
         } else {
           // Returning user - update isLoggedIn status
-          await firestore().collection('users').doc(user.uid).update({
+          await updateDoc(doc(db, 'users', user.uid), {
             isLoggedIn: true,
-            lastLogin: firestore.FieldValue.serverTimestamp(),
+            lastLogin: serverTimestamp(),
           });
         }
       }
@@ -270,47 +288,46 @@ export class AuthService {
 
   async linkedinSignIn(accessToken: string): Promise<AuthResponse> {
     try {
-      const linkedinCredential = auth.OIDCAuthProvider.credential(
+      const linkedinCredential = OIDCAuthProvider.credential(
         'azure-test',
         accessToken,
       );
       console.log('accessToken', accessToken);
-      await auth().signInWithCredential(linkedinCredential);
+      await getAuth().signInWithCredential(linkedinCredential);
 
       // Handle user document (create or update)
-      const user = auth().currentUser;
+      const user = getAuth().currentUser;
       if (user) {
-        const userDoc = await firestore()
-          .collection('users')
-          .doc(user.uid)
-          .get();
+        const db = getFirestore();
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
 
         if (!userDoc.exists()) {
           // First time user - create new document
-          await firestore()
-            .collection('users')
-            .doc(user.uid)
-            .set({
-              email: user.email,
-              username:
-                user.displayName ||
-                user.email?.split('@')[0] ||
-                'LinkedIn User',
-              fullName: user.displayName || 'LinkedIn User',
-              isLoggedIn: true,
-              savedPosts: [],
-              createdAt: firestore.FieldValue.serverTimestamp(),
-              image:
-                user.photoURL ||
-                `https://avatar.iran.liara.run/username?username=${encodeURIComponent(
-                  user.displayName || 'Anonymous',
-                )}`,
-            });
+          const usersRef = collection(
+            db,
+            'users',
+          ) as FirebaseFirestoreTypes.CollectionReference<FirebaseUser>;
+          const newUserDoc: FirebaseUser = {
+            uid: user.uid,
+            email: user.email || '',
+            username:
+              user.displayName || user.email?.split('@')[0] || 'LinkedIn User',
+            fullName: user.displayName || 'LinkedIn User',
+            isLoggedIn: true,
+            savedPosts: [],
+            createdAt: serverTimestamp() as any,
+            image:
+              user.photoURL ||
+              `https://avatar.iran.liara.run/username?username=${encodeURIComponent(
+                user.displayName || 'Anonymous',
+              )}`,
+          };
+          await setDoc(doc(usersRef, user.uid), newUserDoc);
         } else {
           // Returning user - update isLoggedIn status
-          await firestore().collection('users').doc(user.uid).update({
+          await updateDoc(doc(db, 'users', user.uid), {
             isLoggedIn: true,
-            lastLogin: firestore.FieldValue.serverTimestamp(),
+            lastLogin: serverTimestamp(),
           });
         }
       }
@@ -322,6 +339,6 @@ export class AuthService {
   }
 
   isUserLoggedIn(): boolean {
-    return auth().currentUser != null;
+    return getAuth().currentUser != null;
   }
 }

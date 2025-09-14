@@ -1,5 +1,13 @@
-import auth from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
+import {getAuth} from '@react-native-firebase/auth';
+import {
+  getFirestore,
+  collection,
+  query,
+  where,
+  orderBy,
+  getDocs,
+  limit as fs_limit
+} from '@react-native-firebase/firestore';
 import {GetPostsResponse} from '../../types/firebase';
 import {FirestorePost} from '../../types/post';
 import {convertFirestorePost} from './utils';
@@ -23,7 +31,7 @@ export class TrendingService {
     limit = 10,
   ): Promise<GetPostsResponse> {
     try {
-      const currentUser = auth().currentUser;
+      const currentUser = getAuth().currentUser;
       if (!currentUser) {
         return {success: false, error: 'User not authenticated'};
       }
@@ -44,13 +52,15 @@ export class TrendingService {
         startDate.setDate(startDate.getDate() - 1);
       }
 
-      const postsSnapshot = await firestore()
-        .collection('posts')
-        .where('timestamp', '>=', startDate)
-        .orderBy('timestamp', 'desc')
-        .orderBy('likes', 'desc')
-        .limit(limit)
-        .get();
+      const postsSnapshot = await getDocs(
+        query(
+          collection(getFirestore(), 'posts'),
+          where('timestamp', '>=', startDate),
+          orderBy('timestamp', 'desc'),
+          orderBy('likes', 'desc'),
+          fs_limit(limit),
+        ),
+      );
 
       const posts = postsSnapshot.docs.map(doc => {
         const postData = {id: doc.id, ...doc.data()} as FirestorePost;
@@ -73,7 +83,7 @@ export class TrendingService {
     limit = 10,
   ): Promise<GetPostsResponse & {engagementRate?: number}> {
     try {
-      const currentUser = auth().currentUser;
+      const currentUser = getAuth().currentUser;
       if (!currentUser) {
         return {success: false, error: 'User not authenticated'};
       }
@@ -88,21 +98,23 @@ export class TrendingService {
       }
 
       // First, get posts with hashtag in the hashtags array
-      const arrayContainsQuery = firestore()
-        .collection('posts')
-        .where('hashtags', 'array-contains', hashtag)
-        .orderBy('timestamp', 'desc')
-        .limit(limit);
+      const arrayContainsQuery = query(
+        collection(getFirestore(), 'posts'),
+        where('hashtags', 'array-contains', hashtag),
+        orderBy('timestamp', 'desc'),
+        fs_limit(limit),
+      );
 
       // Then, get posts with hashtag in the description
-      const descriptionQuery = firestore()
-        .collection('posts')
-        .orderBy('timestamp', 'desc')
-        .limit(limit * 2); // Fetch more to filter later
+      const descriptionQuery = query(
+        collection(getFirestore(), 'posts'),
+        orderBy('timestamp', 'desc'),
+        fs_limit(limit * 2), // Fetch more to filter later
+      );
 
       const [arrayContainsSnapshot, descriptionSnapshot] = await Promise.all([
-        arrayContainsQuery.get(),
-        descriptionQuery.get(),
+        getDocs(arrayContainsQuery),
+        getDocs(descriptionQuery),
       ]);
 
       // Process posts from array-contains query

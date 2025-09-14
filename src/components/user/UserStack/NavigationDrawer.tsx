@@ -39,6 +39,7 @@ import {
 import Config from 'react-native-config';
 import {MessageService} from '../../../service/firebase/MessageService';
 import {deleteOldProfilePhoto} from '../../../utils/Cloudinary';
+import { DEFAULT_UPLOAD_PRESET } from '../../../constants/cloudinary';
 
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
 
@@ -442,7 +443,7 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
       // Add upload preset
       formData.append(
         'upload_preset',
-        Config.CLOUDINARY_UPLOAD_PRESET || 'default_preset',
+        DEFAULT_UPLOAD_PRESET,
       );
 
       // Check if we have the required configuration

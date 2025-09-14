@@ -1,31 +1,56 @@
-import auth from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
+import {getAuth} from '@react-native-firebase/auth';
+import {
+  getFirestore,
+  collection,
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  addDoc,
+  query,
+  where,
+  orderBy,
+  limit,
+  getDocs,
+  serverTimestamp,
+  arrayUnion,
+  arrayRemove,
+  writeBatch,
+  FirebaseFirestoreTypes,
+} from '@react-native-firebase/firestore';
 import {Task, SubTask} from '../../types/taskTypes';
 import notificationService from '../../service/NotificationService';
 import axios from 'axios';
 import Config from 'react-native-config';
 
 export class TaskService {
-  private tasksCollection = firestore().collection('tasks');
+  private tasksCollection = collection(
+    getFirestore(),
+    'tasks',
+  ) as FirebaseFirestoreTypes.CollectionReference<Task>;
   /**
    * Get all tasks for the current user (excluding team tasks)
    *
    */
   async getTasks(): Promise<Task[]> {
     try {
-      const userId = auth().currentUser?.uid;
+      const userId = getAuth().currentUser?.uid;
       if (!userId) {
         throw new Error('User not authenticated');
       }
 
-      const tasksSnapshot = await this.tasksCollection
-        .where('userId', '==', userId)
-        .where('isDuoTask', '!=', true) // Exclude team tasks
-        .orderBy('isDuoTask') // Required for using the != filter
-        .orderBy('dueDate', 'asc')
-        .get();
+      const tasksSnapshot = await getDocs(
+        query(
+          this.tasksCollection,
+          where('userId', '==', userId),
+          where('isDuoTask', '!=', true), // Exclude team tasks
+          orderBy('isDuoTask'), // Required for using the != filter
+          orderBy('dueDate', 'asc'),
+        ),
+      );
 
-      return tasksSnapshot.docs.map(doc => ({
+      return tasksSnapshot.docs.map((doc: any) => ({
         id: doc.id,
         ...doc.data(),
       })) as Task[];
@@ -88,7 +113,7 @@ export class TaskService {
         JSON.stringify(task),
       );
 
-      const userId = auth().currentUser?.uid;
+      const userId = getAuth().currentUser?.uid;
       if (!userId) {
         console.log('TaskService :: addTask() :: User not authenticated');
         throw new Error('User not authenticated');
@@ -142,8 +167,8 @@ export class TaskService {
       const taskWithUser = {
         ...task,
         userId,
-        createdAt: firestore.FieldValue.serverTimestamp(),
-        updatedAt: firestore.FieldValue.serverTimestamp(),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
         isDuoTask: task.isDuoTask !== undefined ? task.isDuoTask : false,
       };
 
@@ -152,7 +177,7 @@ export class TaskService {
           task.notify ? 'Yes' : 'No'
         }, isDuoTask: ${taskWithUser.isDuoTask ? 'Yes' : 'No'}`,
       );
-      const docRef = await this.tasksCollection.add(taskWithUser);
+      const docRef = await addDoc(this.tasksCollection, taskWithUser);
       console.log(
         `TaskService :: addTask() :: Task added with ID: ${docRef.id}`,
       );
@@ -173,7 +198,7 @@ export class TaskService {
               `TaskService :: addTask() :: Notification scheduled successfully, ID: ${notificationId}`,
             );
             // Update the task with the notification ID
-            await this.tasksCollection.doc(docRef.id).update({
+            await updateDoc(doc(this.tasksCollection, docRef.id), {
               notificationId: notificationId,
             });
             console.log(
@@ -215,7 +240,7 @@ export class TaskService {
         JSON.stringify(taskData),
       );
 
-      const userId = auth().currentUser?.uid;
+      const userId = getAuth().currentUser?.uid;
       if (!userId) {
         console.log('TaskService :: updateTask() :: User not authenticated');
         throw new Error('User not authenticated');
@@ -225,7 +250,7 @@ export class TaskService {
       console.log(
         `TaskService :: updateTask() :: Verifying task ownership for user: ${userId}`,
       );
-      const taskDoc = await this.tasksCollection.doc(taskId).get();
+      const taskDoc = await getDoc(doc(this.tasksCollection, taskId));
 
       if (!taskDoc.exists()) {
         console.log(
@@ -286,10 +311,10 @@ export class TaskService {
       }
 
       // Update the task
-      await this.tasksCollection.doc(taskId).update({
+      await updateDoc(doc(this.tasksCollection, taskId), {
         ...taskData,
         notificationId: null, // Clear the notification ID as we'll create a new one
-        updatedAt: firestore.FieldValue.serverTimestamp(),
+        updatedAt: serverTimestamp(),
       });
 
       console.log('Task updated in database');
@@ -309,7 +334,7 @@ export class TaskService {
 
           if (notificationId) {
             console.log('New notification scheduled with ID:', notificationId);
-            await this.tasksCollection.doc(taskId).update({
+            await updateDoc(doc(this.tasksCollection, taskId), {
               notificationId: notificationId,
             });
           } else {
@@ -344,7 +369,7 @@ export class TaskService {
         `TaskService :: toggleTaskCompletion() :: Attempting to toggle completion for task with ID: ${taskId}`,
       );
 
-      const userId = auth().currentUser?.uid;
+      const userId = getAuth().currentUser?.uid;
       if (!userId) {
         console.log(
           'TaskService :: toggleTaskCompletion() :: User not authenticated',
@@ -356,7 +381,7 @@ export class TaskService {
       console.log(
         `TaskService :: toggleTaskCompletion() :: Verifying task ownership for user: ${userId}`,
       );
-      const taskDoc = await this.tasksCollection.doc(taskId).get();
+      const taskDoc = await getDoc(doc(this.tasksCollection, taskId));
 
       if (!taskDoc.exists()) {
         console.log(
@@ -388,10 +413,10 @@ export class TaskService {
       }
 
       // Toggle completion status
-      await this.tasksCollection.doc(taskId).update({
+      await updateDoc(doc(this.tasksCollection, taskId), {
         completed: !currentStatus,
         notificationId: !currentStatus ? null : existingTask.notificationId, // Clear notification ID if marking as completed
-        updatedAt: firestore.FieldValue.serverTimestamp(),
+        updatedAt: serverTimestamp(),
       });
 
       // If task is being marked as not completed and notifications are enabled, reschedule
@@ -400,7 +425,7 @@ export class TaskService {
         const notificationId =
           await notificationService.scheduleTaskNotification(updatedTask);
         if (notificationId) {
-          await this.tasksCollection.doc(taskId).update({
+          await updateDoc(doc(this.tasksCollection, taskId), {
             notificationId: notificationId,
           });
         }
@@ -420,7 +445,7 @@ export class TaskService {
         `TaskService :: deleteTask() :: Attempting to delete task with ID: ${taskId}`,
       );
 
-      const userId = auth().currentUser?.uid;
+      const userId = getAuth().currentUser?.uid;
       if (!userId) {
         console.log('TaskService :: deleteTask() :: User not authenticated');
         throw new Error('User not authenticated');
@@ -430,7 +455,7 @@ export class TaskService {
       console.log(
         `TaskService :: deleteTask() :: Verifying task ownership for user: ${userId}`,
       );
-      const taskDoc = await this.tasksCollection.doc(taskId).get();
+      const taskDoc = await getDoc(doc(this.tasksCollection, taskId));
 
       if (!taskDoc.exists()) {
         console.log(
@@ -463,7 +488,7 @@ export class TaskService {
         );
       }
 
-      await this.tasksCollection.doc(taskId).delete();
+      await deleteDoc(doc(this.tasksCollection, taskId));
       console.log(
         `TaskService :: deleteTask() :: Successfully deleted task with ID: ${taskId}`,
       );
@@ -484,7 +509,7 @@ export class TaskService {
         `TaskService :: findTaskByName() :: Looking for task with name: "${taskName}"`,
       );
 
-      const userId = auth().currentUser?.uid;
+      const userId = getAuth().currentUser?.uid;
       if (!userId) {
         console.log(
           'TaskService :: findTaskByName() :: User not authenticated',
@@ -497,11 +522,14 @@ export class TaskService {
         `TaskService :: findTaskByName() :: Querying Firestore with userId=${userId}, title="${taskName}"`,
       );
 
-      const tasksSnapshot = await this.tasksCollection
-        .where('userId', '==', userId)
-        .where('title', '==', taskName)
-        .limit(1) // Limit to one result
-        .get();
+      const tasksSnapshot = await getDocs(
+        query(
+          this.tasksCollection,
+          where('userId', '==', userId),
+          where('title', '==', taskName),
+          limit(1), // Limit to one result
+        ),
+      );
 
       if (tasksSnapshot.empty) {
         console.log(
@@ -643,7 +671,7 @@ export class TaskService {
         `TaskService :: createDuoTask() :: Creating team task: "${task.title}"`,
       );
 
-      const userId = auth().currentUser?.uid;
+      const userId = getAuth().currentUser?.uid;
       if (!userId) {
         console.log('TaskService :: createDuoTask() :: User not authenticated');
         throw new Error('User not authenticated');
@@ -671,8 +699,8 @@ export class TaskService {
         userId, // Main owner is current user
         isDuoTask: true,
         collaborationStatus: 'pending',
-        createdAt: firestore.FieldValue.serverTimestamp(),
-        updatedAt: firestore.FieldValue.serverTimestamp(),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
         lastUpdatedBy: userId,
         progress:
           task.subtasks && task.subtasks.length > 0
@@ -687,7 +715,7 @@ export class TaskService {
       console.log(
         `TaskService :: createDuoTask() :: Adding team task to Firestore`,
       );
-      const docRef = await this.tasksCollection.add(teamTask);
+      const docRef = await addDoc(this.tasksCollection, teamTask);
       console.log(
         `TaskService :: createDuoTask() :: Team task added with ID: ${docRef.id}`,
       );
@@ -696,19 +724,17 @@ export class TaskService {
       const otherCollaborators = task.collaborators.filter(id => id !== userId);
 
       for (const collaboratorId of otherCollaborators) {
-        await firestore()
-          .collection('notifications')
-          .add({
-            userId: collaboratorId,
-            type: 'duo_task_invitation',
-            title: 'Team Task Invitation',
-            message: `${
-              auth().currentUser?.displayName || 'Someone'
-            } invited you to collaborate on "${task.title}"`,
-            taskId: docRef.id,
-            read: false,
-            createdAt: firestore.FieldValue.serverTimestamp(),
-          });
+        await addDoc(collection(getFirestore(), 'notifications'), {
+          userId: collaboratorId,
+          type: 'duo_task_invitation',
+          title: 'Team Task Invitation',
+          message: `${
+            getAuth().currentUser?.displayName || 'Someone'
+          } invited you to collaborate on "${task.title}"`,
+          taskId: docRef.id,
+          read: false,
+          createdAt: serverTimestamp(),
+        });
         console.log(
           `TaskService :: createDuoTask() :: Notification sent to collaborator: ${collaboratorId}`,
         );
@@ -729,7 +755,7 @@ export class TaskService {
               `TaskService :: createDuoTask() :: Notification scheduled successfully, ID: ${notificationId}`,
             );
             // Update the task with the notification ID
-            await this.tasksCollection.doc(docRef.id).update({
+            await updateDoc(doc(this.tasksCollection, docRef.id), {
               notificationId: notificationId,
             });
           } else {
@@ -761,14 +787,14 @@ export class TaskService {
         `TaskService :: updateDuoTask() :: Updating team task: "${task.title}" (ID: ${taskId})`,
       );
 
-      const userId = auth().currentUser?.uid;
+      const userId = getAuth().currentUser?.uid;
       if (!userId) {
         console.log('TaskService :: updateDuoTask() :: User not authenticated');
         throw new Error('User not authenticated');
       }
 
       // Verify user is a collaborator
-      const taskDoc = await this.tasksCollection.doc(taskId).get();
+      const taskDoc = await getDoc(doc(this.tasksCollection, taskId));
 
       if (!taskDoc.exists()) {
         throw new Error('Task not found');
@@ -783,11 +809,11 @@ export class TaskService {
       // Update the task
       const updateData = {
         ...task,
-        updatedAt: firestore.FieldValue.serverTimestamp(),
+        updatedAt: serverTimestamp(),
         lastUpdatedBy: userId,
       };
 
-      await this.tasksCollection.doc(taskId).update(updateData);
+      await updateDoc(doc(this.tasksCollection, taskId), updateData);
       console.log(
         `TaskService :: updateDuoTask() :: Team task updated successfully`,
       );
@@ -813,7 +839,7 @@ export class TaskService {
             await notificationService.scheduleTaskNotification(updatedTask);
 
           if (notificationId) {
-            await this.tasksCollection.doc(taskId).update({
+            await updateDoc(doc(this.tasksCollection, taskId), {
               notificationId: notificationId,
             });
             console.log(
@@ -830,19 +856,17 @@ export class TaskService {
 
       if (collaborators && collaborators.length > 0) {
         for (const collaboratorId of collaborators) {
-          await firestore()
-            .collection('notifications')
-            .add({
-              userId: collaboratorId,
-              type: 'duo_task_update',
-              title: 'Team Task Updated',
-              message: `${
-                auth().currentUser?.displayName || 'Your team member'
-              } updated task "${existingTask.title}"`,
-              taskId: taskId,
-              read: false,
-              createdAt: firestore.FieldValue.serverTimestamp(),
-            });
+          await addDoc(collection(getFirestore(), 'notifications'), {
+            userId: collaboratorId,
+            type: 'duo_task_update',
+            title: 'Team Task Updated',
+            message: `${
+              getAuth().currentUser?.displayName || 'Your team member'
+            } updated task "${existingTask.title}"`,
+            taskId: taskId,
+            read: false,
+            createdAt: serverTimestamp(),
+          });
         }
         console.log(
           `TaskService :: updateDuoTask() :: Notifications sent to collaborators`,
@@ -850,7 +874,7 @@ export class TaskService {
       }
 
       // Return the updated task
-      const updatedTaskDoc = await this.tasksCollection.doc(taskId).get();
+      const updatedTaskDoc = await getDoc(doc(this.tasksCollection, taskId));
       return {
         id: taskId,
         ...updatedTaskDoc.data(),
@@ -866,7 +890,7 @@ export class TaskService {
    */
   async getDuoTasks(): Promise<Task[]> {
     try {
-      const userId = auth().currentUser?.uid;
+      const userId = getAuth().currentUser?.uid;
       if (!userId) {
         throw new Error('User not authenticated');
       }
@@ -874,11 +898,14 @@ export class TaskService {
       console.log(
         `TaskService :: getDuoTasks() :: Fetching team tasks for user: ${userId}`,
       );
-      const teamTasksSnapshot = await this.tasksCollection
-        .where('collaborators', 'array-contains', userId)
-        .where('isDuoTask', '==', true)
-        .orderBy('dueDate', 'asc')
-        .get();
+      const teamTasksSnapshot = await getDocs(
+        query(
+          this.tasksCollection,
+          where('collaborators', 'array-contains', userId),
+          where('isDuoTask', '==', true),
+          orderBy('dueDate', 'asc'),
+        ),
+      );
 
       console.log(
         `TaskService :: getDuoTasks() :: Found ${teamTasksSnapshot.size} team tasks`,
@@ -898,18 +925,20 @@ export class TaskService {
    */
   async getPendingDuoTaskInvitations(): Promise<Task[]> {
     try {
-      const userId = auth().currentUser?.uid;
+      const userId = getAuth().currentUser?.uid;
       if (!userId) {
         throw new Error('User not authenticated');
       }
 
       // Get notifications for this user that are team task invitations and unread
-      const notificationsSnapshot = await firestore()
-        .collection('notifications')
-        .where('userId', '==', userId)
-        .where('type', '==', 'duo_task_invitation')
-        .where('read', '==', false)
-        .get();
+      const notificationsSnapshot = await getDocs(
+        query(
+          collection(getFirestore(), 'notifications'),
+          where('userId', '==', userId),
+          where('type', '==', 'duo_task_invitation'),
+          where('read', '==', false),
+        ),
+      );
 
       if (notificationsSnapshot.empty) {
         return [];
@@ -929,9 +958,9 @@ export class TaskService {
       const tasks: Task[] = [];
       for (const chunkIds of this.chunkArray(taskIds, 10)) {
         // Firestore "in" queries are limited to 10 values
-        const tasksSnapshot = await this.tasksCollection
-          .where(firestore.FieldPath.documentId(), 'in', chunkIds)
-          .get();
+        const tasksSnapshot = await getDocs(
+          query(this.tasksCollection, where('__name__', 'in', chunkIds)),
+        );
 
         tasks.push(
           ...tasksSnapshot.docs.map(
@@ -952,7 +981,7 @@ export class TaskService {
    */
   async acceptDuoTaskInvitation(taskId: string): Promise<void> {
     try {
-      const userId = auth().currentUser?.uid;
+      const userId = getAuth().currentUser?.uid;
       if (!userId) {
         throw new Error('User not authenticated');
       }
@@ -962,7 +991,7 @@ export class TaskService {
       );
 
       // Get the task to verify user is a collaborator
-      const taskDoc = await this.tasksCollection.doc(taskId).get();
+      const taskDoc = await getDoc(doc(this.tasksCollection, taskId));
 
       if (!taskDoc.exists()) {
         throw new Error('Task not found');
@@ -975,9 +1004,9 @@ export class TaskService {
       }
 
       // Update task status
-      await this.tasksCollection.doc(taskId).update({
+      await updateDoc(doc(this.tasksCollection, taskId), {
         collaborationStatus: 'active',
-        updatedAt: firestore.FieldValue.serverTimestamp(),
+        updatedAt: serverTimestamp(),
       });
 
       console.log(
@@ -985,15 +1014,17 @@ export class TaskService {
       );
 
       // Update notification as read
-      const notificationsSnapshot = await firestore()
-        .collection('notifications')
-        .where('userId', '==', userId)
-        .where('taskId', '==', taskId)
-        .where('type', '==', 'duo_task_invitation')
-        .get();
+      const notificationsSnapshot = await getDocs(
+        query(
+          collection(getFirestore(), 'notifications'),
+          where('userId', '==', userId),
+          where('taskId', '==', taskId),
+          where('type', '==', 'duo_task_invitation'),
+        ),
+      );
 
       if (!notificationsSnapshot.empty) {
-        const batch = firestore().batch();
+        const batch = writeBatch(getFirestore());
         notificationsSnapshot.docs.forEach(doc => {
           batch.update(doc.ref, {read: true});
         });
@@ -1006,19 +1037,17 @@ export class TaskService {
       // Notify the task creator
       const notifyUserId = task.userId;
       if (notifyUserId !== userId) {
-        await firestore()
-          .collection('notifications')
-          .add({
-            userId: notifyUserId,
-            type: 'duo_task_accepted',
-            title: 'Team Task Accepted',
-            message: `${
-              auth().currentUser?.displayName || 'A team member'
-            } accepted your invitation to task "${task.title}"`,
-            taskId: taskId,
-            read: false,
-            createdAt: firestore.FieldValue.serverTimestamp(),
-          });
+        await addDoc(collection(getFirestore(), 'notifications'), {
+          userId: notifyUserId,
+          type: 'duo_task_accepted',
+          title: 'Team Task Accepted',
+          message: `${
+            getAuth().currentUser?.displayName || 'A team member'
+          } accepted your invitation to task "${task.title}"`,
+          taskId: taskId,
+          read: false,
+          createdAt: serverTimestamp(),
+        });
         console.log(
           `TaskService :: acceptDuoTaskInvitation() :: Notification sent to task creator: ${notifyUserId}`,
         );
@@ -1034,7 +1063,7 @@ export class TaskService {
    */
   async rejectDuoTaskInvitation(taskId: string): Promise<void> {
     try {
-      const userId = auth().currentUser?.uid;
+      const userId = getAuth().currentUser?.uid;
       if (!userId) {
         throw new Error('User not authenticated');
       }
@@ -1044,7 +1073,7 @@ export class TaskService {
       );
 
       // Get the task
-      const taskDoc = await this.tasksCollection.doc(taskId).get();
+      const taskDoc = await getDoc(doc(this.tasksCollection, taskId));
 
       if (!taskDoc.exists()) {
         throw new Error('Task not found');
@@ -1058,11 +1087,11 @@ export class TaskService {
 
       // If only one collaborator left, convert back to regular task
       if (updatedCollaborators.length <= 1) {
-        await this.tasksCollection.doc(taskId).update({
+        await updateDoc(doc(this.tasksCollection, taskId), {
           isDuoTask: false,
-          collaborators: firestore.FieldValue.delete(),
-          collaborationStatus: firestore.FieldValue.delete(),
-          updatedAt: firestore.FieldValue.serverTimestamp(),
+          collaborators: arrayRemove(),
+          collaborationStatus: arrayRemove(),
+          updatedAt: serverTimestamp(),
           lastUpdatedBy: userId,
         });
         console.log(
@@ -1070,9 +1099,9 @@ export class TaskService {
         );
       } else {
         // Update collaborators list
-        await this.tasksCollection.doc(taskId).update({
+        await updateDoc(doc(this.tasksCollection, taskId), {
           collaborators: updatedCollaborators,
-          updatedAt: firestore.FieldValue.serverTimestamp(),
+          updatedAt: serverTimestamp(),
           lastUpdatedBy: userId,
         });
         console.log(
@@ -1081,15 +1110,17 @@ export class TaskService {
       }
 
       // Update notification as read
-      const notificationsSnapshot = await firestore()
-        .collection('notifications')
-        .where('userId', '==', userId)
-        .where('taskId', '==', taskId)
-        .where('type', '==', 'duo_task_invitation')
-        .get();
+      const notificationsSnapshot = await getDocs(
+        query(
+          collection(getFirestore(), 'notifications'),
+          where('userId', '==', userId),
+          where('taskId', '==', taskId),
+          where('type', '==', 'duo_task_invitation'),
+        ),
+      );
 
       if (!notificationsSnapshot.empty) {
-        const batch = firestore().batch();
+        const batch = writeBatch(getFirestore());
         notificationsSnapshot.docs.forEach(doc => {
           batch.update(doc.ref, {read: true});
         });
@@ -1102,19 +1133,17 @@ export class TaskService {
       // Notify the task creator
       const notifyUserId = task.userId;
       if (notifyUserId !== userId) {
-        await firestore()
-          .collection('notifications')
-          .add({
-            userId: notifyUserId,
-            type: 'duo_task_declined',
-            title: 'Team Task Declined',
-            message: `${
-              auth().currentUser?.displayName || 'A team member'
-            } declined your invitation to task "${task.title}"`,
-            taskId: taskId,
-            read: false,
-            createdAt: firestore.FieldValue.serverTimestamp(),
-          });
+        await addDoc(collection(getFirestore(), 'notifications'), {
+          userId: notifyUserId,
+          type: 'duo_task_declined',
+          title: 'Team Task Declined',
+          message: `${
+            getAuth().currentUser?.displayName || 'A team member'
+          } declined your invitation to task "${task.title}"`,
+          taskId: taskId,
+          read: false,
+          createdAt: serverTimestamp(),
+        });
         console.log(
           `TaskService :: rejectDuoTaskInvitation() :: Notification sent to task creator: ${notifyUserId}`,
         );
@@ -1152,13 +1181,13 @@ export class TaskService {
     updates: Partial<SubTask>,
   ): Promise<void> {
     try {
-      const userId = auth().currentUser?.uid;
+      const userId = getAuth().currentUser?.uid;
       if (!userId) {
         throw new Error('User not authenticated');
       }
 
       // Verify the task exists and user is a collaborator
-      const taskDoc = await this.tasksCollection.doc(taskId).get();
+      const taskDoc = await getDoc(doc(this.tasksCollection, taskId));
       if (!taskDoc.exists()) {
         throw new Error('Task not found');
       }
@@ -1189,7 +1218,7 @@ export class TaskService {
         ...updates,
         completedBy: updates.completed ? userId : undefined,
         completedAt: updates.completed ? now : undefined,
-        updatedAt: firestore.Timestamp.fromDate(now),
+        updatedAt: now,
       };
 
       // Calculate the new progress
@@ -1199,23 +1228,25 @@ export class TaskService {
       );
 
       // Update the task
-      await this.tasksCollection.doc(taskId).update({
+      await updateDoc(doc(this.tasksCollection, taskId), {
         subtasks: updatedSubtasks,
         progress,
-        updatedAt: firestore.FieldValue.serverTimestamp(),
+        updatedAt: serverTimestamp(),
         lastUpdatedBy: userId,
       });
 
       // Create a notification for other collaborators
       const otherCollaborators = task.collaborators.filter(id => id !== userId);
       if (otherCollaborators.length > 0) {
-        const batch = firestore().batch();
+        const batch = writeBatch(getFirestore());
         const currentUserName =
-          auth().currentUser?.displayName || 'A team member';
+          getAuth().currentUser?.displayName || 'A team member';
         const subtaskTitle = updatedSubtasks[subtaskIndex].title;
 
         for (const collaboratorId of otherCollaborators) {
-          const notificationRef = firestore().collection('notifications').doc();
+          const notificationRef = doc(
+            collection(getFirestore(), 'notifications'),
+          );
           batch.set(notificationRef, {
             userId: collaboratorId,
             type: 'subtask_update',
@@ -1226,7 +1257,7 @@ export class TaskService {
             taskId: taskId,
             subtaskId: subtaskId,
             read: false,
-            createdAt: firestore.FieldValue.serverTimestamp(),
+            createdAt: serverTimestamp(),
           });
         }
 
@@ -1253,13 +1284,13 @@ export class TaskService {
     subtask: Omit<SubTask, 'id' | 'createdAt' | 'updatedAt'>,
   ): Promise<void> {
     try {
-      const userId = auth().currentUser?.uid;
+      const userId = getAuth().currentUser?.uid;
       if (!userId) {
         throw new Error('User not authenticated');
       }
 
       // Verify the task exists and user is a collaborator
-      const taskDoc = await this.tasksCollection.doc(taskId).get();
+      const taskDoc = await getDoc(doc(this.tasksCollection, taskId));
       if (!taskDoc.exists()) {
         throw new Error('Task not found');
       }
@@ -1276,8 +1307,8 @@ export class TaskService {
       const newSubtask: SubTask = {
         id: this.generateUUID(),
         ...subtask,
-        createdAt: firestore.Timestamp.fromDate(now),
-        updatedAt: firestore.Timestamp.fromDate(now),
+        createdAt: now,
+        updatedAt: now,
       };
 
       // Add the subtask to the task
@@ -1292,22 +1323,24 @@ export class TaskService {
       );
 
       // Update the task
-      await this.tasksCollection.doc(taskId).update({
+      await updateDoc(doc(this.tasksCollection, taskId), {
         subtasks: updatedSubtasks,
         progress,
-        updatedAt: firestore.FieldValue.serverTimestamp(),
+        updatedAt: serverTimestamp(),
         lastUpdatedBy: userId,
       });
 
       // Create a notification for other collaborators
       const otherCollaborators = task.collaborators.filter(id => id !== userId);
       if (otherCollaborators.length > 0) {
-        const batch = firestore().batch();
+        const batch = writeBatch(getFirestore());
         const currentUserName =
-          auth().currentUser?.displayName || 'A team member';
+          getAuth().currentUser?.displayName || 'A team member';
 
         for (const collaboratorId of otherCollaborators) {
-          const notificationRef = firestore().collection('notifications').doc();
+          const notificationRef = doc(
+            collection(getFirestore(), 'notifications'),
+          );
           batch.set(notificationRef, {
             userId: collaboratorId,
             type: 'subtask_added',
@@ -1316,7 +1349,7 @@ export class TaskService {
             taskId: taskId,
             subtaskId: newSubtask.id,
             read: false,
-            createdAt: firestore.FieldValue.serverTimestamp(),
+            createdAt: serverTimestamp(),
           });
         }
 
@@ -1339,13 +1372,13 @@ export class TaskService {
    */
   async getDuoTaskMessages(taskId: string): Promise<any[]> {
     try {
-      const userId = auth().currentUser?.uid;
+      const userId = getAuth().currentUser?.uid;
       if (!userId) {
         throw new Error('User not authenticated');
       }
 
       // Verify the task exists and user is a collaborator
-      const taskDoc = await this.tasksCollection.doc(taskId).get();
+      const taskDoc = await getDoc(doc(this.tasksCollection, taskId));
       if (!taskDoc.exists()) {
         throw new Error('Task not found');
       }
@@ -1356,11 +1389,13 @@ export class TaskService {
       }
 
       // Get the messages for this task
-      const messagesSnapshot = await firestore()
-        .collection('taskMessages')
-        .where('taskId', '==', taskId)
-        .orderBy('createdAt', 'asc')
-        .get();
+      const messagesSnapshot = await getDocs(
+        query(
+          collection(getFirestore(), 'taskMessages'),
+          where('taskId', '==', taskId),
+          orderBy('createdAt', 'asc'),
+        ),
+      );
 
       // Process the messages with user info
       const messages = [];
@@ -1369,10 +1404,9 @@ export class TaskService {
         let userData = {displayName: 'Unknown User'};
 
         try {
-          const userDoc = await firestore()
-            .collection('users')
-            .doc(messageData.userId)
-            .get();
+          const userDoc = await getDoc(
+            doc(collection(getFirestore(), 'users'), messageData.userId),
+          );
           if (userDoc.exists()) {
             userData = userDoc.data() || userData;
           }
@@ -1408,13 +1442,13 @@ export class TaskService {
    */
   async sendDuoTaskMessage(taskId: string, message: string): Promise<void> {
     try {
-      const userId = auth().currentUser?.uid;
+      const userId = getAuth().currentUser?.uid;
       if (!userId) {
         throw new Error('User not authenticated');
       }
 
       // Verify the task exists and user is a collaborator
-      const taskDoc = await this.tasksCollection.doc(taskId).get();
+      const taskDoc = await getDoc(doc(this.tasksCollection, taskId));
       if (!taskDoc.exists()) {
         throw new Error('Task not found');
       }
@@ -1425,22 +1459,24 @@ export class TaskService {
       }
 
       // Add the message
-      await firestore().collection('taskMessages').add({
+      await addDoc(collection(getFirestore(), 'taskMessages'), {
         taskId,
         userId,
         message,
-        createdAt: firestore.FieldValue.serverTimestamp(),
+        createdAt: serverTimestamp(),
       });
 
       // Create notifications for other collaborators
       const otherCollaborators = task.collaborators.filter(id => id !== userId);
       if (otherCollaborators.length > 0) {
-        const batch = firestore().batch();
+        const batch = writeBatch(getFirestore());
         const currentUserName =
-          auth().currentUser?.displayName || 'A team member';
+          getAuth().currentUser?.displayName || 'A team member';
 
         for (const collaboratorId of otherCollaborators) {
-          const notificationRef = firestore().collection('notifications').doc();
+          const notificationRef = doc(
+            collection(getFirestore(), 'notifications'),
+          );
           batch.set(notificationRef, {
             userId: collaboratorId,
             type: 'task_message',
@@ -1448,7 +1484,7 @@ export class TaskService {
             message: `${currentUserName} sent a message in task "${task.title}"`,
             taskId: taskId,
             read: false,
-            createdAt: firestore.FieldValue.serverTimestamp(),
+            createdAt: serverTimestamp(),
           });
         }
 
@@ -1485,7 +1521,7 @@ export class TaskService {
    */
   async getTaskById(taskId: string): Promise<Task | null> {
     try {
-      const userId = auth().currentUser?.uid;
+      const userId = getAuth().currentUser?.uid;
       if (!userId) {
         throw new Error('User not authenticated');
       }
@@ -1494,7 +1530,7 @@ export class TaskService {
         `TaskService :: getTaskById() :: Fetching task with ID: ${taskId}`,
       );
 
-      const taskDoc = await this.tasksCollection.doc(taskId).get();
+      const taskDoc = await getDoc(doc(this.tasksCollection, taskId));
 
       if (!taskDoc.exists()) {
         console.log(

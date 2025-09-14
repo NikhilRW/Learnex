@@ -1,4 +1,4 @@
-import React, {useEffect, useState, useRef, useCallback, useMemo} from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -14,23 +14,30 @@ import {
   Alert,
   Modal,
 } from 'react-native';
-import {Avatar} from 'react-native-elements';
+import { Avatar } from 'react-native-elements';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import {useNavigation, useRoute, RouteProp} from '@react-navigation/native';
-import {useTypedSelector} from '../../hooks/useTypedSelector';
-import {MessageService} from '../../service/firebase/MessageService';
-import {Message} from '../../models/Message';
-import {format} from 'date-fns';
-import {getUsernameForLogo} from '../../helpers/stringHelpers';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useTypedSelector } from '../../hooks/useTypedSelector';
+import { MessageService } from '../../service/firebase/MessageService';
+import { Message } from '../../models/Message';
+import { format } from 'date-fns';
+import { getUsernameForLogo } from '../../helpers/stringHelpers';
 import Snackbar from 'react-native-snackbar';
 import notificationService from '../../service/NotificationService';
-import firestore from '@react-native-firebase/firestore';
+import {
+  getFirestore,
+  collection,
+  doc,
+  onSnapshot,
+  writeBatch,
+  getDocs,
+} from '@react-native-firebase/firestore';
 import LexAIService from '../../service/LexAIService';
-import {SafeAreaView} from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import ChatHeaderLeft from '../../components/user/UserStack/ChatHeaderLeft';
-import {ChatNavigationObjectType} from '../../types/navigationTypes';
+import { ChatNavigationObjectType } from '../../types/navigationTypes';
 import ChatHeaderRight from '../../components/user/UserStack/ChatHeaderRight';
 
 type ChatScreenRouteParams = {
@@ -43,7 +50,7 @@ type ChatScreenRouteParams = {
   isQrInitiated?: boolean;
 };
 
-const {width: SCREEN_WIDTH} = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const ChatScreen: React.FC = () => {
   const route =
@@ -89,14 +96,14 @@ const ChatScreen: React.FC = () => {
     try {
       if (!currentUser || !conversationId) return;
 
-      const snapshot = await messageService.getMessages(conversationId).get();
+      const snapshot = await getDocs(messageService.getMessages(conversationId));
       const messagesData: Message[] = [];
 
-      snapshot.forEach(doc => {
-        const messageData = doc.data() as Message;
+      snapshot.docs.forEach((docSnapshot: any) => {
+        const messageData = docSnapshot.data() as Message;
         messagesData.push({
           ...messageData,
-          id: doc.id,
+          id: docSnapshot.id,
         });
       });
 
@@ -111,7 +118,7 @@ const ChatScreen: React.FC = () => {
       // Scroll to bottom after fetching messages
       setTimeout(() => {
         if (flatListRef.current) {
-          flatListRef.current.scrollToEnd({animated: false});
+          flatListRef.current.scrollToEnd({ animated: false });
         }
       }, 200);
     } catch (error) {
@@ -130,10 +137,9 @@ const ChatScreen: React.FC = () => {
   useEffect(() => {
     if (!recipientId || !conversationId) return;
 
-    const unsubscribe = firestore()
-      .collection('conversations')
-      .doc(conversationId)
-      .onSnapshot(snapshot => {
+    const unsubscribe = onSnapshot(
+      doc(collection(getFirestore(), 'conversations'), conversationId),
+      snapshot => {
         if (snapshot.exists()) {
           const data = snapshot.data();
           if (
@@ -190,25 +196,19 @@ const ChatScreen: React.FC = () => {
   // Function to mark messages as read
   const markMessagesAsRead = useCallback(async () => {
     try {
-      const batch = firestore().batch();
-      const snapshot = await messageService
-        .getMessages(conversationId)
-        .where('recipientId', '==', currentUser?.uid)
-        .where('read', '==', false)
-        .get();
+      const batch = writeBatch(getFirestore());
+      const snapshot = await getDocs(messageService.getMessages(conversationId));
 
       if (!snapshot.empty) {
-        snapshot.docs.forEach(doc => {
-          batch.update(doc.ref, {read: true});
+        snapshot.docs.forEach((docSnapshot: any) => {
+          batch.update(docSnapshot.ref, { read: true });
         });
 
         // Update the lastReadTimestamp to the current time
         lastReadTimestamp.current = Date.now();
 
         // Also reset unread count in the conversation
-        const conversationRef = firestore()
-          .collection('conversations')
-          .doc(conversationId);
+        const conversationRef = doc(collection(getFirestore(), 'conversations'), conversationId);
 
         batch.update(conversationRef, {
           [`unreadCount.${currentUser?.uid}`]: 0,
@@ -231,16 +231,17 @@ const ChatScreen: React.FC = () => {
     markMessagesAsRead();
 
     // Set up listener for new messages
-    const unsubscribe = messageService.getMessages(conversationId).onSnapshot(
+    const unsubscribe = onSnapshot(
+      messageService.getMessages(conversationId),
       snapshot => {
         const newMessages: Message[] = [];
         let hasNewMessages = false;
 
-        snapshot.forEach(doc => {
-          const messageData = doc.data() as Message;
+        snapshot.forEach((docSnapshot: any) => {
+          const messageData = docSnapshot.data() as Message;
           newMessages.push({
             ...messageData,
-            id: doc.id,
+            id: docSnapshot.id,
           });
 
           // Check if this is a new message from the other person
@@ -269,7 +270,7 @@ const ChatScreen: React.FC = () => {
         // Scroll to bottom when messages update
         setTimeout(() => {
           if (flatListRef.current) {
-            flatListRef.current.scrollToEnd({animated: true});
+            flatListRef.current.scrollToEnd({ animated: true });
           }
         }, 100);
       },
@@ -359,7 +360,7 @@ const ChatScreen: React.FC = () => {
       // Scroll to the bottom
       setTimeout(() => {
         if (flatListRef.current) {
-          flatListRef.current.scrollToEnd({animated: true});
+          flatListRef.current.scrollToEnd({ animated: true });
         }
       }, 100);
     } catch (error) {
@@ -476,7 +477,7 @@ const ChatScreen: React.FC = () => {
   };
 
   // Render message item
-  const renderMessageItem = ({item}: {item: Message}) => {
+  const renderMessageItem = ({ item }: { item: Message }) => {
     const isMyMessage = item.senderId === currentUser?.uid;
     const messageTime = format(new Date(item.timestamp), 'h:mm a');
 
@@ -495,7 +496,7 @@ const ChatScreen: React.FC = () => {
             {item.senderPhoto ? (
               <Avatar
                 rounded
-                source={{uri: item.senderPhoto}}
+                source={{ uri: item.senderPhoto }}
                 size={Math.min(SCREEN_WIDTH * 0.08, 30)}
               />
             ) : (
@@ -503,7 +504,7 @@ const ChatScreen: React.FC = () => {
                 rounded
                 title={getUsernameForLogo(item.senderName)}
                 size={Math.min(SCREEN_WIDTH * 0.08, 30)}
-                containerStyle={{backgroundColor: '#2379C2'}}
+                containerStyle={{ backgroundColor: '#2379C2' }}
               />
             )}
           </View>
@@ -513,13 +514,13 @@ const ChatScreen: React.FC = () => {
           style={[
             styles.messageBubble,
             isMyMessage
-              ? {backgroundColor: '#2379C2'}
-              : {backgroundColor: isDark ? '#333' : '#f0f0f0'},
+              ? { backgroundColor: '#2379C2' }
+              : { backgroundColor: isDark ? '#333' : '#f0f0f0' },
           ]}>
           <Text
             style={[
               styles.messageText,
-              {color: isMyMessage ? 'white' : isDark ? 'white' : 'black'},
+              { color: isMyMessage ? 'white' : isDark ? 'white' : 'black' },
             ]}>
             {item.text}
           </Text>
@@ -555,7 +556,7 @@ const ChatScreen: React.FC = () => {
     ),
     [currentRecipientPhoto, isDark, navigation, recipientName],
   );
-    const toggleNotifications = useCallback(async () => {
+  const toggleNotifications = useCallback(async () => {
     try {
       const newMuteStatus =
         await notificationService.toggleMuteRecipient(recipientId);
@@ -686,7 +687,7 @@ const ChatScreen: React.FC = () => {
     <SafeAreaView
       style={[
         styles.container,
-        {backgroundColor: isDark ? '#1a1a1a' : '#f9f9f9'},
+        { backgroundColor: isDark ? '#1a1a1a' : '#f9f9f9' },
       ]}>
       <StatusBar
         barStyle={isDark ? 'light-content' : 'dark-content'}
@@ -728,7 +729,7 @@ const ChatScreen: React.FC = () => {
                 <Text
                   style={[
                     styles.suggestionsLoadingText,
-                    isDark && {color: '#8ab4f8'},
+                    isDark && { color: '#8ab4f8' },
                   ]}>
                   Thinking...
                 </Text>
@@ -758,12 +759,12 @@ const ChatScreen: React.FC = () => {
 
         {isEditMode ? (
           <View
-            style={[styles.editContainer, isDark && {backgroundColor: '#333'}]}>
+            style={[styles.editContainer, isDark && { backgroundColor: '#333' }]}>
             <View style={styles.editHeader}>
               <Text
                 style={[
                   styles.editHeaderText,
-                  {color: isDark ? 'white' : 'black'},
+                  { color: isDark ? 'white' : 'black' },
                 ]}>
                 Edit Message
               </Text>
@@ -809,7 +810,7 @@ const ChatScreen: React.FC = () => {
           <View
             style={[
               styles.inputContainer,
-              isDark && {backgroundColor: '#333'},
+              isDark && { backgroundColor: '#333' },
             ]}>
             <TouchableOpacity
               style={[
@@ -817,8 +818,8 @@ const ChatScreen: React.FC = () => {
                 showSuggestions && styles.suggestionToggleButtonActive,
                 isDark && styles.darkSuggestionToggleButton,
                 showSuggestions &&
-                  isDark &&
-                  styles.darkSuggestionToggleButtonActive,
+                isDark &&
+                styles.darkSuggestionToggleButtonActive,
               ]}
               onPress={handleRequestSuggestions}
               disabled={messages.length === 0}>
@@ -895,7 +896,7 @@ const ChatScreen: React.FC = () => {
           activeOpacity={1}
           onPress={() => setIsContextMenuVisible(false)}>
           <View
-            style={[styles.contextMenu, isDark && {backgroundColor: '#333'}]}>
+            style={[styles.contextMenu, isDark && { backgroundColor: '#333' }]}>
             <TouchableOpacity
               style={styles.contextMenuItem}
               onPress={handleEditMessage}>
@@ -904,7 +905,7 @@ const ChatScreen: React.FC = () => {
                 size={20}
                 color={isDark ? '#fff' : '#333'}
               />
-              <Text style={[styles.contextMenuText, isDark && {color: '#fff'}]}>
+              <Text style={[styles.contextMenuText, isDark && { color: '#fff' }]}>
                 Edit Message
               </Text>
             </TouchableOpacity>
@@ -913,7 +914,7 @@ const ChatScreen: React.FC = () => {
               style={[styles.contextMenuItem, styles.deleteMenuItem]}
               onPress={handleDeleteMessage}>
               <MaterialIcons name="delete" size={20} color="#ff3b30" />
-              <Text style={[styles.contextMenuText, {color: '#ff3b30'}]}>
+              <Text style={[styles.contextMenuText, { color: '#ff3b30' }]}>
                 Delete Message
               </Text>
             </TouchableOpacity>
@@ -1009,7 +1010,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     elevation: 4,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
   },

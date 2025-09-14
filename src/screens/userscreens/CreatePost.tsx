@@ -17,10 +17,16 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { launchImageLibrary } from 'react-native-image-picker';
-import firestore from '@react-native-firebase/firestore';
-import auth from '@react-native-firebase/auth';
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  serverTimestamp,
+} from '@react-native-firebase/firestore';
+import { getAuth } from '@react-native-firebase/auth';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
 import Config from 'react-native-config';
+import { DEFAULT_UPLOAD_PRESET } from '../../constants/cloudinary';
 
 // Cloudinary Configuration
 const CLOUDINARY_CONFIG = {
@@ -433,7 +439,7 @@ const CreatePost = () => {
         type: mediaItem.type,
         name: mediaItem.name || (mediaItem.isVideo ? 'upload.mp4' : 'upload.jpg'),
       } as any);
-      formData.append('upload_preset', uploadPreset);
+      formData.append('upload_preset', DEFAULT_UPLOAD_PRESET);
       formData.append('tags', 'learnex_post');
 
       // Set mid-point progress
@@ -448,6 +454,7 @@ const CreatePost = () => {
       );
 
       const data = await response.json();
+      console.log('Cloudinary response:', data); 
 
       // Set end progress for this item
       setUploadProgress(progressEnd);
@@ -470,6 +477,7 @@ const CreatePost = () => {
           }
           throw new Error(`Cloudinary error: ${data.error.message}`);
         }
+        console.log("data_t",data);
         throw new Error('Failed to upload to Cloudinary');
       }
     } catch (error) {
@@ -518,7 +526,7 @@ const CreatePost = () => {
       }
 
       // Get current user
-      const currentUser = auth().currentUser;
+      const currentUser = getAuth().currentUser;
       if (!currentUser) {
         throw new Error('User not authenticated');
       }
@@ -532,7 +540,7 @@ const CreatePost = () => {
       const postVideos = mediaUrls
         .filter(item => item.isVideo)
         .map(item => item.url);
-      
+
       // Create post document in Firestore
       const postData = {
         user: {
@@ -551,13 +559,13 @@ const CreatePost = () => {
         likes: 0,
         likedBy: [],
         comments: 0,
-        timestamp: firestore.FieldValue.serverTimestamp(),
+        timestamp: serverTimestamp(),
       };
 
       console.log('Creating post with data:', JSON.stringify(postData, null, 2));
 
       // Add to Firestore with explicit type annotation to ensure hashtags field
-      await firestore().collection('posts').add(postData);
+      await addDoc(collection(getFirestore(), 'posts'), postData);
 
       Alert.alert('Success', 'Post created successfully!');
       navigation.goBack();

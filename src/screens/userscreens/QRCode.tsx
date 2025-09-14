@@ -10,7 +10,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 // Format: learnex://chat/{userId}
 const QRCode = () => {
     const navigation = useNavigation<DrawerNavigationProp<any>>();
-    const isDark = useTypedSelector((state) => state.user.theme) == "dark";
+    const isDark = useTypedSelector((state) => state.user.theme) === "dark";
     const firebase = useTypedSelector((state) => state.firebase.firebase);
     const currentUser = firebase.auth.currentUser();
     const [fullName, setFullName] = useState<string>('');
@@ -30,7 +30,7 @@ const QRCode = () => {
             }
         }
         fetchData();
-    }, []);
+    }, [currentUser, firebase.user]);
 
     // Function to share the deep link
     const handleShare = async () => {

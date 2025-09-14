@@ -20,7 +20,7 @@ import {
 import {DeepLinkHandler} from './navigation/DeepLinkHandler';
 import {PushNotificationHandler} from './utils/PushNotificationHandler';
 import {styles} from './styles/common/App';
-import messaging from '@react-native-firebase/messaging';
+import {getMessaging} from '@react-native-firebase/messaging';
 
 // Interface definition for deep link event
 interface DeepLinkEvent {
@@ -31,7 +31,8 @@ interface DeepLinkEvent {
 interface LinkingSubscription {
   remove: () => void;
 }
-globalThis.RNFB_SILENCE_MODULAR_DEPRECATION_WARNINGS = true;
+// globalThis.RNFB_SILENCE_MODULAR_DEPRECATION_WARNINGS = true;
+
 
 const App = () => {
   const navigationRef = useNavigationContainerRef();
@@ -193,8 +194,8 @@ const App = () => {
           notificationService.setupBackgroundHandler();
 
           // If user is already logged in, set up the message and task listeners
-          const auth = require('@react-native-firebase/auth').default;
-          if (auth().currentUser) {
+          const {getAuth} = require('@react-native-firebase/auth');
+          if (getAuth().currentUser) {
             console.log(
               'User already logged in, setting up notification listeners',
             );
@@ -272,8 +273,8 @@ const App = () => {
         }
       }
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigationRef, permissionsGranted, messaging]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigationRef, permissionsGranted, getMessaging]);
 
   return (
     <>

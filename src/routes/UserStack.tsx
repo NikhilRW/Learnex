@@ -1,6 +1,6 @@
 import Home from '../screens/userscreens/Home';
-import { createDrawerNavigator } from '@react-navigation/drawer';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import {createDrawerNavigator} from '@react-navigation/drawer';
+import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import NavigationDrawer from '../components/user/UserStack/NavigationDrawer';
 import NavigationDrawerButton from '../components/user/UserStack/NavigationDrawerButton';
 import Search from '../screens/userscreens/Search';
@@ -15,59 +15,64 @@ import ConversationsScreen from '../screens/userscreens/Conversations';
 import ChatScreen from '../screens/userscreens/Chat';
 import ContactListScreen from '../screens/userscreens/ContactList';
 import SavedPosts from '../screens/userscreens/SavedPosts';
-import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import { useTypedSelector } from '../hooks/useTypedSelector';
+import {BottomTabNavigationProp} from '@react-navigation/bottom-tabs';
+import {useTypedSelector} from '../hooks/useTypedSelector';
 import NavigationIconHelper from '../helpers/NavigationIconHelper';
-import { Dimensions, Alert, ImageSourcePropType} from 'react-native';
-import { useEffect, useRef } from 'react';
-import { useNavigation, CommonActions } from '@react-navigation/native';
-import { useTypedDispatch } from '../hooks/useTypedDispatch';
-import { clearDeepLink, markDeepLinkProcessed } from '../reducers/DeepLink';
-import { MeetingService } from '../service/firebase/MeetingService';
+import {Dimensions, Alert, ImageSourcePropType} from 'react-native';
+import {useEffect, useRef} from 'react';
+import {useNavigation, CommonActions} from '@react-navigation/native';
+import {useTypedDispatch} from '../hooks/useTypedDispatch';
+import {clearDeepLink, markDeepLinkProcessed} from '../reducers/DeepLink';
+import {MeetingService} from '../service/firebase/MeetingService';
 import QRCode from '../screens/userscreens/QRCode';
-import { MessageService } from '../service/firebase/MessageService';
+import {MessageService} from '../service/firebase/MessageService';
 import LexAI from '../screens/userscreens/LexAI';
-import firestore from '@react-native-firebase/firestore';
+import {
+  getFirestore,
+  collection,
+  doc,
+  getDoc,
+} from '@react-native-firebase/firestore';
 import FloatingBottomTabBar from '../components/common/FloatingBottomTabBar';
-import messaging from '@react-native-firebase/messaging';
+import {getMessaging} from '@react-native-firebase/messaging';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const {width: SCREEN_WIDTH} = Dimensions.get('window');
 
 /**
  * Type definitions for navigation parameters
  * Defines the shape of navigation props for each screen
  */
 export type UserStackParamList = {
-  Search: { searchText?: string };
+  Search: {searchText?: string};
   Home: undefined;
   CreatePost: undefined;
   Room:
-  | {
-    meetingData?: {
-      id: string;
-      title: string;
-      description: string;
-      duration: number;
-      isPrivate: boolean;
-      maxParticipants: number;
-      taskId?: string;
-      host: string;
-      status: string;
-      participants: string[];
-      roomCode: string;
-      settings: {
-        muteOnEntry: boolean;
-        allowChat: boolean;
-        allowScreenShare: boolean;
-        recordingEnabled: boolean;
-      };
-      createdAt: Date;
-      updatedAt: Date;
-    };
-    joinMode?: boolean;
-    roomCode?: string;
-  }
-  | undefined;
+    | {
+        meetingData?: {
+          id: string;
+          title: string;
+          description: string;
+          duration: number;
+          isPrivate: boolean;
+          maxParticipants: number;
+          taskId?: string;
+          host: string;
+          status: string;
+          participants: string[];
+          roomCode: string;
+          settings: {
+            muteOnEntry: boolean;
+            allowChat: boolean;
+            allowScreenShare: boolean;
+            recordingEnabled: boolean;
+          };
+          createdAt: Date;
+          updatedAt: Date;
+        };
+        joinMode?: boolean;
+        roomCode?: string;
+      }
+    | undefined;
   RoomScreen: {
     meeting: any;
     isHost: boolean;
@@ -166,6 +171,7 @@ const UserStack = () => {
   const meetingService = useRef(new MeetingService()).current;
   const messageService = useRef(new MessageService()).current;
   const firebase = useTypedSelector(state => state.firebase.firebase);
+  const messaging = getMessaging();
 
   // Set up notification channels and handlers for direct messages and tasks
   useEffect(() => {
@@ -221,7 +227,8 @@ const UserStack = () => {
         console.error('Failed to clean up notification listeners:', error);
       }
     };
-  }, [navigation,messaging]);
+  }, [navigation, messaging]);
+  const {DeepLinkHandler} = require('../navigation/DeepLinkHandler');
 
   // Handle deep link navigation
   useEffect(() => {
@@ -243,10 +250,9 @@ const UserStack = () => {
 
             // Get user details to show in the chat using UserService
             // Getting complete user document to fetch photoURL as well
-            const userDoc = await firestore()
-              .collection('users')
-              .doc(userId)
-              .get();
+            const userDoc = await getDoc(
+              doc(collection(getFirestore(), 'users'), userId),
+            );
 
             if (!userDoc.exists()) {
               throw new Error('User not found');
@@ -290,23 +296,20 @@ const UserStack = () => {
             }
 
             // Navigate to the chat screen
-            navigation.dispatch(
-              CommonActions.navigate({
-                name: 'Chat',
-                params: {
-                  conversationId: conversation.id,
-                  recipientId: userId,
-                  recipientName,
-                  recipientPhoto,
-                  isQrInitiated: true, // Pass QR flag to chat screen
-                },
-              }),
-            );
-
-            // Clear the deep link after successful navigation
-            setTimeout(() => {
-              dispatch(clearDeepLink());
-            }, 2000);
+            (DeepLinkHandler.navigate({
+              name: 'Chat',
+              params: {
+                conversationId: conversation.id,
+                recipientId: userId,
+                recipientName,
+                recipientPhoto,
+                isQrInitiated: true, // Pass QR flag to chat screen
+              },
+            }),
+              // Clear the deep link after successful navigation
+              setTimeout(() => {
+                dispatch(clearDeepLink());
+              }, 2000));
 
             return; // Exit after handling chat link
           } catch (error) {
@@ -373,7 +376,7 @@ const UserStack = () => {
       <Tab.Navigator
         initialRouteName="Home"
         tabBar={props => <FloatingBottomTabBar {...props} />}
-        screenOptions={({ route }) => ({
+        screenOptions={({route}) => ({
           headerShown: false,
           tabBarShowLabel: false,
           tabBarStyle: {
@@ -383,7 +386,7 @@ const UserStack = () => {
             paddingBottom: Math.min(SCREEN_WIDTH * 0.0125, 5),
           },
           // Custom tab bar icons with theme-aware colors
-          tabBarIcon: ({ focused, color, size }) => {
+          tabBarIcon: ({focused, color, size}) => {
             return NavigationIconHelper(
               route,
               focused,
@@ -392,7 +395,7 @@ const UserStack = () => {
               isDark,
             ); // Slightly reduce icon size
           },
-          animation: "fade",
+          animation: 'fade',
         })}>
         <Tab.Screen name="Home" component={Home} />
         <Tab.Screen name="Search" component={Search} />
@@ -419,7 +422,7 @@ const UserStack = () => {
         component={TabNavigator}
         options={{
           headerShown: true, // Show header only for the main tabs
-          header: ({ navigation }) => (
+          header: ({navigation}) => (
             <NavigationDrawerButton
               navigation={navigation}
               tintColor={isDark ? 'white' : 'black'}
@@ -434,7 +437,7 @@ const UserStack = () => {
         options={{
           headerShown: false, // Hide header for Room screen
           swipeEnabled: false, // Disable drawer swipe for this screen
-          drawerItemStyle: { display: 'none' }, // Hide from drawer if needed
+          drawerItemStyle: {display: 'none'}, // Hide from drawer if needed
         }}
       />
       <Drawer.Screen
@@ -443,7 +446,7 @@ const UserStack = () => {
         options={{
           headerShown: false, // Hide header for RoomScreen
           swipeEnabled: false, // Disable drawer swipe for this screen
-          drawerItemStyle: { display: 'none' }, // Hide from drawer
+          drawerItemStyle: {display: 'none'}, // Hide from drawer
         }}
       />
       <Drawer.Screen
@@ -452,7 +455,7 @@ const UserStack = () => {
         options={{
           headerShown: false, // Hide header for Tasks screen
           swipeEnabled: false, // Disable drawer swipe for this screen
-          drawerItemStyle: { display: 'none' }, // Hide from drawer if needed
+          drawerItemStyle: {display: 'none'}, // Hide from drawer if needed
         }}
       />
       <Drawer.Screen
@@ -461,7 +464,7 @@ const UserStack = () => {
         options={{
           headerShown: false, // Hide header for Events and Hackathons screen
           swipeEnabled: false, // Disable drawer swipe for this screen
-          drawerItemStyle: { display: 'none' }, // Hide from drawer if needed
+          drawerItemStyle: {display: 'none'}, // Hide from drawer if needed
         }}
       />
       <Drawer.Screen
@@ -470,7 +473,7 @@ const UserStack = () => {
         options={{
           headerShown: false, // Hide header for Event Details screen
           swipeEnabled: false, // Disable drawer swipe for this screen
-          drawerItemStyle: { display: 'none' }, // Hide from drawer if needed
+          drawerItemStyle: {display: 'none'}, // Hide from drawer if needed
         }}
       />
       <Drawer.Screen
@@ -487,7 +490,7 @@ const UserStack = () => {
         options={{
           headerShown: true, // Changed from false to true to show the header
           swipeEnabled: false, // Disable drawer swipe for this screen
-          drawerItemStyle: { display: 'none' }, // Hide from drawer
+          drawerItemStyle: {display: 'none'}, // Hide from drawer
         }}
       />
       <Drawer.Screen
@@ -496,7 +499,7 @@ const UserStack = () => {
         options={{
           headerShown: false, // Hide header for Contact List screen
           swipeEnabled: false, // Disable drawer swipe for this screen
-          drawerItemStyle: { display: 'none' }, // Hide from drawer
+          drawerItemStyle: {display: 'none'}, // Hide from drawer
         }}
       />
       <Drawer.Screen
@@ -505,7 +508,7 @@ const UserStack = () => {
         options={{
           headerShown: false, // Hide header for Saved Posts screen
           swipeEnabled: false, // Disable drawer swipe for this screen
-          drawerItemStyle: { display: 'none' }, // Hide from drawer
+          drawerItemStyle: {display: 'none'}, // Hide from drawer
         }}
       />
       <Drawer.Screen
@@ -514,7 +517,7 @@ const UserStack = () => {
         options={{
           headerShown: false, // Hide header for Saved Posts screen
           swipeEnabled: false, // Disable drawer swipe for this screen
-          drawerItemStyle: { display: 'none' }, // Hide from drawer
+          drawerItemStyle: {display: 'none'}, // Hide from drawer
         }}
       />
       <Drawer.Screen
@@ -522,7 +525,7 @@ const UserStack = () => {
         component={LexAI}
         options={{
           headerShown: false, // Hide header for LexAI screen
-          drawerItemStyle: { display: 'none' }, // Hide from drawer
+          drawerItemStyle: {display: 'none'}, // Hide from drawer
         }}
       />
       <Drawer.Screen
@@ -530,7 +533,7 @@ const UserStack = () => {
         component={DuoTasks}
         options={{
           headerShown: false, // Hide header for LexAI screen
-          drawerItemStyle: { display: 'none' }, // Hide from drawer
+          drawerItemStyle: {display: 'none'}, // Hide from drawer
         }}
       />
     </Drawer.Navigator>

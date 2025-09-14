@@ -1,5 +1,18 @@
-import auth from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
+import {getAuth} from '@react-native-firebase/auth';
+import {
+  getFirestore,
+  collection,
+  doc,
+  getDoc,
+  setDoc,
+  deleteDoc,
+  addDoc,
+  query,
+  where,
+  onSnapshot,
+  serverTimestamp,
+  FirebaseFirestoreTypes,
+} from '@react-native-firebase/firestore';
 import {
   RTCPeerConnection,
   RTCSessionDescription,
@@ -32,8 +45,14 @@ interface ParticipantInfo {
 }
 
 export class WebRTCService {
-  private meetingsCollection = firestore().collection('meetings');
-  private signalingCollection = firestore().collection('signaling');
+  private meetingsCollection = collection(
+    getFirestore(),
+    'meetings',
+  ) as FirebaseFirestoreTypes.CollectionReference<any>;
+  private signalingCollection = collection(
+    getFirestore(),
+    'signaling',
+  ) as FirebaseFirestoreTypes.CollectionReference<SignalingMessage>;
   private unsubscribeSignaling: (() => void) | null = null;
   private unsubscribeParticipantStates: (() => void) | null = null;
   private peerConnections: Map<string, RTCPeerConnection> = new Map();
@@ -429,7 +448,7 @@ export class WebRTCService {
     if (!this.currentMeetingId) return;
 
     try {
-      const userId = auth().currentUser?.uid;
+      const userId = getAuth().currentUser?.uid;
       if (!userId) return;
 
       console.log(
@@ -480,7 +499,7 @@ export class WebRTCService {
   /**
    * Handle peer disconnection with improved state cleanup
    */
-  private handlePeerDisconnection(participantId: string): void {
+  private async handlePeerDisconnection(participantId: string): Promise<void> {
     try {
       console.log(`Peer disconnected: ${participantId}`);
 
@@ -504,14 +523,19 @@ export class WebRTCService {
 
       // If we have a meeting ID, clean up the participant state in Firestore
       if (this.currentMeetingId && participantId) {
-        this.meetingsCollection
-          .doc(this.currentMeetingId)
-          .collection('participantStates')
-          .doc(participantId)
-          .delete()
-          .catch(error => {
-            console.error('Error removing participant state:', error);
-          });
+        try {
+          await deleteDoc(
+            doc(
+              collection(
+                doc(this.meetingsCollection, this.currentMeetingId),
+                'participantStates',
+              ),
+              participantId,
+            ),
+          );
+        } catch (error) {
+          console.error('Error removing participant state:', error);
+        }
       }
     } catch (error) {
       console.error('WebRTCService :: handlePeerDisconnection() ::', error);
@@ -529,7 +553,7 @@ export class WebRTCService {
       this.currentMeetingId = meetingId;
 
       // Filter out current user from list of participants to connect to
-      const currentUserId = auth().currentUser?.uid;
+      const currentUserId = getAuth().currentUser?.uid;
       if (!currentUserId) {
         throw new Error('User not authenticated');
       }
@@ -655,7 +679,7 @@ export class WebRTCService {
           // Attempt to reconnect
           if (this.currentMeetingId) {
             const peerConnection = this.createPeerConnection(participantId);
-            const userId = auth().currentUser?.uid;
+            const userId = getAuth().currentUser?.uid;
             if (userId && userId > participantId) {
               this.createOffer(
                 peerConnection,
@@ -678,7 +702,7 @@ export class WebRTCService {
     receiverId: string,
   ): Promise<void> {
     try {
-      const userId = auth().currentUser?.uid;
+      const userId = getAuth().currentUser?.uid;
       if (!userId) throw new Error('User not authenticated');
 
       // Check the signaling state before proceeding
@@ -726,7 +750,7 @@ export class WebRTCService {
     receiverId: string,
   ): Promise<void> {
     try {
-      const userId = auth().currentUser?.uid;
+      const userId = getAuth().currentUser?.uid;
       if (!userId) throw new Error('User not authenticated');
 
       const answer = await peerConnection.createAnswer();
@@ -768,7 +792,7 @@ export class WebRTCService {
     onSignalingMessage: (message: SignalingMessage) => void,
   ): void {
     try {
-      const userId = auth().currentUser?.uid;
+      const userId = getAuth().currentUser?.uid;
       if (!userId) {
         console.error('Cannot listen for messages: User not authenticated');
         return;
@@ -793,116 +817,118 @@ export class WebRTCService {
 
       // Create new subscription with error handling
       // TEMPORARY FIX: Remove orderBy to avoid composite index requirement
-      this.unsubscribeSignaling = this.signalingCollection
-        .where('meetingId', '==', meetingId)
-        .where('receiver', '==', userId)
-        // Removed: .orderBy('timestamp', 'asc')
-        .onSnapshot(
-          snapshot => {
-            try {
-              // Get new messages
-              const changes = snapshot.docChanges();
-              console.log(`Received ${changes.length} signaling messages`);
+      this.unsubscribeSignaling = onSnapshot(
+        query(
+          this.signalingCollection,
+          where('meetingId', '==', meetingId),
+          where('receiver', '==', userId),
+          // Removed: orderBy('timestamp', 'asc')
+        ),
+        async snapshot => {
+          try {
+            // Get new messages
+            const changes = snapshot.docChanges();
+            console.log(`Received ${changes.length} signaling messages`);
 
-              // Process new messages
-              const processedMessages: SignalingMessage[] = [];
-              for (const change of changes) {
-                if (change.type === 'added') {
-                  const message = change.doc.data() as SignalingMessage;
-                  console.log(
-                    `Processing signaling message: ${message.type} from ${message.sender}`,
-                  );
+            // Process new messages
+            const processedMessages: SignalingMessage[] = [];
+            for (const change of changes) {
+              if (change.type === 'added') {
+                const message = change.doc.data() as SignalingMessage;
+                console.log(
+                  `Processing signaling message: ${message.type} from ${message.sender}`,
+                );
 
-                  // Add message to list of processed messages
-                  processedMessages.push(message);
+                // Add message to list of processed messages
+                processedMessages.push(message);
 
-                  // Add sender to participant states if not already present
-                  const senderId = message.sender;
-                  if (
-                    senderId !== userId &&
-                    !this.participantStates.has(senderId)
-                  ) {
-                    // Initialize with default state
-                    this.participantStates.set(senderId, {
-                      isAudioEnabled: true,
-                      isVideoEnabled: true,
-                      isHandRaised: false,
-                      isScreenSharing: false,
-                      isThumbsUp: false,
-                      isThumbsDown: false,
-                      isClapping: false,
-                      isWaving: false,
-                      isSpeaking: false,
-                      reactionTimestamp: null,
-                      lastUpdated: new Date(),
-                    });
+                // Add sender to participant states if not already present
+                const senderId = message.sender;
+                if (
+                  senderId !== userId &&
+                  !this.participantStates.has(senderId)
+                ) {
+                  // Initialize with default state
+                  this.participantStates.set(senderId, {
+                    isAudioEnabled: true,
+                    isVideoEnabled: true,
+                    isHandRaised: false,
+                    isScreenSharing: false,
+                    isThumbsUp: false,
+                    isThumbsDown: false,
+                    isClapping: false,
+                    isWaving: false,
+                    isSpeaking: false,
+                    reactionTimestamp: null,
+                    lastUpdated: new Date(),
+                  });
 
-                    // Notify listeners
-                    if (this.onParticipantStateChangedCallback) {
-                      this.onParticipantStateChangedCallback(
-                        senderId,
-                        this.participantStates.get(senderId)!,
-                      );
-                    }
-
-                    console.log(`Added new participant: ${senderId}`);
+                  // Notify listeners
+                  if (this.onParticipantStateChangedCallback) {
+                    this.onParticipantStateChangedCallback(
+                      senderId,
+                      this.participantStates.get(senderId)!,
+                    );
                   }
 
-                  // Delete the message after processing to avoid processing it again
-                  change.doc.ref.delete().catch(error => {
-                    console.error(`Error deleting signaling message: ${error}`);
-                  });
+                  console.log(`Added new participant: ${senderId}`);
                 }
-              }
 
-              // Process messages - sort manually since we removed orderBy
-              if (processedMessages.length > 0) {
-                // Sort by timestamp
-                processedMessages.sort((a, b) => {
-                  const aTime =
-                    a.timestamp?.toDate?.() ||
-                    new Date(a.timestamp) ||
-                    new Date(0);
-                  const bTime =
-                    b.timestamp?.toDate?.() ||
-                    new Date(b.timestamp) ||
-                    new Date(0);
-                  return aTime.getTime() - bTime.getTime();
-                });
-
-                // Process each message
-                processedMessages.forEach(message => {
-                  onSignalingMessage(message);
+                // Delete the message after processing to avoid processing it again
+                await deleteDoc(change.doc.ref).catch(error => {
+                  console.error(`Error deleting signaling message: ${error}`);
                 });
               }
-            } catch (error) {
-              console.error('Error processing signaling messages:', error);
-            }
-          },
-          error => {
-            console.error('Error in signaling listener:', error);
-
-            // Check if this is a Firestore index error
-            if (
-              error.code === 'failed-precondition' &&
-              error.message &&
-              error.message.includes('index')
-            ) {
-              // Handle the Firestore index error using our new helper
-              this.handleFirebaseIndexError(error);
-            } else {
-              console.log('ERROR DETAILS:', JSON.stringify(error));
             }
 
-            // Attempt to reestablish the listener with a simplified query after a delay
-            setTimeout(() => {
-              if (this.currentMeetingId === meetingId) {
-                console.log('Attempting to reestablish signaling listener...');
-                this.listenForSignalingMessages(meetingId, onSignalingMessage);
-              }
-            }, 5000);
-          },
-        );
+            // Process messages - sort manually since we removed orderBy
+            if (processedMessages.length > 0) {
+              // Sort by timestamp
+              processedMessages.sort((a, b) => {
+                const aTime =
+                  a.timestamp?.toDate?.() ||
+                  new Date(a.timestamp) ||
+                  new Date(0);
+                const bTime =
+                  b.timestamp?.toDate?.() ||
+                  new Date(b.timestamp) ||
+                  new Date(0);
+                return aTime.getTime() - bTime.getTime();
+              });
+
+              // Process each message
+              processedMessages.forEach(message => {
+                onSignalingMessage(message);
+              });
+            }
+          } catch (error) {
+            console.error('Error processing signaling messages:', error);
+          }
+        },
+        error => {
+          console.error('Error in signaling listener:', error);
+          const err = error as unknown as {code: string};
+          // Check if this is a Firestore index error
+          if (
+            err?.code === 'failed-precondition' &&
+            error.message &&
+            error.message.includes('index')
+          ) {
+            // Handle the Firestore index error using our new helper
+            this.handleFirebaseIndexError(error);
+          } else {
+            console.log('ERROR DETAILS:', JSON.stringify(error));
+          }
+
+          // Attempt to reestablish the listener with a simplified query after a delay
+          setTimeout(() => {
+            if (this.currentMeetingId === meetingId) {
+              console.log('Attempting to reestablish signaling listener...');
+              this.listenForSignalingMessages(meetingId, onSignalingMessage);
+            }
+          }, 5000);
+        },
+      );
     } catch (error) {
       console.error('WebRTCService :: listenForSignalingMessages() ::', error);
     }
@@ -932,7 +958,7 @@ export class WebRTCService {
               // If both peers tried to create an offer at the same time,
               // we need to handle this collision.
               // The peer with the lower ID will win and the other will rollback
-              const myUserId = auth().currentUser?.uid;
+              const myUserId = getAuth().currentUser?.uid;
               if (myUserId && myUserId < sender) {
                 console.log(
                   'Signaling collision detected. Rolling back local description.',
@@ -1107,7 +1133,7 @@ export class WebRTCService {
     receiverId: string,
   ): Promise<void> {
     try {
-      const userId = auth().currentUser?.uid;
+      const userId = getAuth().currentUser?.uid;
       if (!userId) throw new Error('User not authenticated');
 
       await this.sendSignalingMessage({
@@ -1131,7 +1157,7 @@ export class WebRTCService {
     state: Partial<ParticipantState>,
   ): Promise<void> {
     try {
-      const userId = auth().currentUser?.uid;
+      const userId = getAuth().currentUser?.uid;
       if (!userId || !meetingId) {
         throw new Error('User not authenticated or meeting ID not provided');
       }
@@ -1194,11 +1220,17 @@ export class WebRTCService {
       this.participantStates.set(userId, newState);
 
       // Update in Firestore
-      await this.meetingsCollection
-        .doc(meetingId)
-        .collection('participantStates')
-        .doc(userId)
-        .set(newState, {merge: true});
+      await setDoc(
+        doc(
+          collection(
+            doc(this.meetingsCollection, meetingId),
+            'participantStates',
+          ),
+          userId,
+        ),
+        newState,
+        {merge: true},
+      );
     } catch (error) {
       console.error('WebRTCService :: updateLocalParticipantState() ::', error);
       throw error;
@@ -1217,36 +1249,37 @@ export class WebRTCService {
       // Store meeting ID for reference
       this.currentMeetingId = meetingId;
 
-      this.unsubscribeParticipantStates = this.meetingsCollection
-        .doc(meetingId)
-        .collection('participantStates')
-        .onSnapshot(
-          snapshot => {
-            snapshot.docChanges().forEach(change => {
-              const participantId = change.doc.id;
-              const state = change.doc.data() as ParticipantState;
+      this.unsubscribeParticipantStates = onSnapshot(
+        collection(
+          doc(this.meetingsCollection, meetingId),
+          'participantStates',
+        ),
+        snapshot => {
+          snapshot.docChanges().forEach((change: any) => {
+            const participantId = change.doc.id;
+            const state = change.doc.data() as ParticipantState;
 
-              if (change.type === 'added' || change.type === 'modified') {
-                // Update local cache
-                this.participantStates.set(participantId, state);
+            if (change.type === 'added' || change.type === 'modified') {
+              // Update local cache
+              this.participantStates.set(participantId, state);
 
-                // Notify callback
-                if (this.onParticipantStateChangedCallback) {
-                  this.onParticipantStateChangedCallback(participantId, state);
-                }
-              } else if (change.type === 'removed') {
-                // Remove from local cache
-                this.participantStates.delete(participantId);
+              // Notify callback
+              if (this.onParticipantStateChangedCallback) {
+                this.onParticipantStateChangedCallback(participantId, state);
               }
-            });
-          },
-          error => {
-            console.error(
-              'WebRTCService :: Error in participant states listener:',
-              error,
-            );
-          },
-        );
+            } else if (change.type === 'removed') {
+              // Remove from local cache
+              this.participantStates.delete(participantId);
+            }
+          });
+        },
+        error => {
+          console.error(
+            'WebRTCService :: Error in participant states listener:',
+            error,
+          );
+        },
+      );
     } catch (error) {
       console.error(
         'WebRTCService :: subscribeToParticipantStates() ::',
@@ -1272,11 +1305,11 @@ export class WebRTCService {
   /**
    * Stop listening for signaling messages and close all connections
    */
-  cleanup(): void {
+  async cleanup(): Promise<void> {
     console.log('WebRTCService :: cleanup()');
 
     // Get current user ID and meeting ID for cleanup
-    const userId = auth().currentUser?.uid;
+    const userId = getAuth().currentUser?.uid;
     const meetingId = this.currentMeetingId;
 
     // Clear connection monitoring
@@ -1292,7 +1325,7 @@ export class WebRTCService {
     }
 
     // Clear all ICE connection timers
-    this.iceConnectionTimers.forEach((timer, participantId) => {
+    this.iceConnectionTimers.forEach(timer => {
       clearTimeout(timer);
     });
     this.iceConnectionTimers.clear();
@@ -1341,14 +1374,19 @@ export class WebRTCService {
       console.log(
         `Deleting participant state for ${userId} in meeting ${meetingId}`,
       );
-      this.meetingsCollection
-        .doc(meetingId)
-        .collection('participantStates')
-        .doc(userId)
-        .delete()
-        .catch(error => {
-          console.error('Error deleting participant state:', error);
-        });
+      try {
+        await deleteDoc(
+          doc(
+            collection(
+              doc(this.meetingsCollection, meetingId),
+              'participantStates',
+            ),
+            userId,
+          ),
+        );
+      } catch (error) {
+        console.error('Error deleting participant state:', error);
+      }
     }
 
     // Clear local participant states
@@ -1372,11 +1410,11 @@ export class WebRTCService {
         `Sending signaling message: ${message.type} to ${message.receiver}`,
       );
 
-      await this.signalingCollection.add({
+      await addDoc(this.signalingCollection, {
         ...message,
         retryCount,
         meetingId: this.currentMeetingId, // Ensure meetingId is always included
-        timestamp: firestore.FieldValue.serverTimestamp(),
+        timestamp: serverTimestamp(),
       });
 
       console.log(
@@ -1446,7 +1484,7 @@ export class WebRTCService {
       this.updateConnectionState('connecting');
 
       // Notify other participants about reconnection attempt
-      const userId = auth().currentUser?.uid;
+      const userId = getAuth().currentUser?.uid;
       if (!userId) throw new Error('User not authenticated');
 
       console.log('Beginning reconnection process...');
@@ -1476,10 +1514,10 @@ export class WebRTCService {
       });
 
       // Get fresh list of participants
-      const meetingDoc = await this.meetingsCollection
-        .doc(this.currentMeetingId)
-        .get();
-      const meetingData = meetingDoc.data();
+      const meetingDoc = await getDoc(
+        doc(this.meetingsCollection, this.currentMeetingId),
+      );
+      const meetingData = meetingDoc.data() as any;
 
       if (meetingData?.participants) {
         console.log(
@@ -1542,10 +1580,16 @@ export class WebRTCService {
    */
   private async getUserInfo(userId: string): Promise<ParticipantInfo | null> {
     try {
-      const userDoc = await firestore().collection('users').doc(userId).get();
+      const userDoc = await getDoc(
+        doc(collection(getFirestore(), 'users'), userId),
+      );
 
       if (userDoc.exists()) {
-        const userData = userDoc.data();
+        const userData = userDoc.data() as {
+          username: string;
+          email: string;
+          fullName: string;
+        };
         return {
           displayName: userData?.fullName || userData?.username,
           email: userData?.email,
@@ -1567,7 +1611,7 @@ export class WebRTCService {
     receiverId: string,
   ): Promise<void> {
     try {
-      const userId = auth().currentUser?.uid;
+      const userId = getAuth().currentUser?.uid;
       if (!userId) throw new Error('User not authenticated');
 
       await this.sendSignalingMessage({
@@ -1669,7 +1713,10 @@ export class WebRTCService {
         sdp = sdp.replace(/(m=audio[\s\S]*?)(a=recvonly)/g, '$1a=sendrecv');
 
         // Create new description with modified SDP
-        const newDesc = {...description, sdp};
+        const newDesc = {
+          sdp,
+          type: description.type ?? (description as any)._type ?? 'offer',
+        };
         return oldSetLocalDescription(newDesc);
       }
       return oldSetLocalDescription(description);
@@ -1691,7 +1738,7 @@ export class WebRTCService {
     }
 
     try {
-      const userId = auth().currentUser?.uid;
+      const userId = getAuth().currentUser?.uid;
       if (!userId) return;
 
       // Only the peer with the lower ID initiates the restart to avoid conflicts
@@ -1765,7 +1812,7 @@ export class WebRTCService {
       this.localStream = newStream as MediaStream;
 
       // Get current user ID
-      const userId = auth().currentUser?.uid;
+      const userId = getAuth().currentUser?.uid;
       if (!userId) {
         console.error(
           'WebRTCService :: updateLocalStream() :: User not authenticated',
@@ -1869,6 +1916,7 @@ export interface ParticipantState {
   isWaving: boolean;
   // Add speaking status
   isSpeaking: boolean;
+  isSmiling: boolean;
   // Add reaction timestamp to auto-expire reactions
   reactionTimestamp: Date | null;
   lastUpdated: Date;

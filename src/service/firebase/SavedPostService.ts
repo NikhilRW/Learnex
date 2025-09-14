@@ -1,5 +1,15 @@
-import auth from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
+import {getAuth} from '@react-native-firebase/auth';
+import {
+  getFirestore,
+  collection,
+  doc,
+  getDoc,
+  updateDoc,
+  onSnapshot,
+  arrayUnion,
+  arrayRemove,
+  FirebaseFirestoreTypes,
+} from '@react-native-firebase/firestore';
 import {SavePostResponse} from '../../types/firebase';
 
 export class SavedPostService {
@@ -15,43 +25,41 @@ export class SavedPostService {
   }
 
   private setupSavedPostsListener() {
-    const user = auth().currentUser;
+    const user = getAuth().currentUser;
     if (!user) return;
 
     // Listen to changes in user's saved posts
-    firestore()
-      .collection('users')
-      .doc(user.uid)
-      .onSnapshot(
-        doc => {
-          try {
-            if (!doc) {
-              console.warn(
-                'SavedPostService: Received null snapshot in saved posts listener',
-              );
-              return;
-            }
-
-            if (doc.exists()) {
-              // Update our list of saved posts
-              this.savedPosts = doc.data()?.savedPosts || [];
-              // Tell everyone who's listening that saved posts changed
-              this.notifyListeners();
-            }
-          } catch (error) {
-            console.error(
-              'SavedPostService: Error processing saved posts snapshot:',
-              error,
+    onSnapshot(
+      doc(collection(getFirestore(), 'users'), user.uid),
+      (doc: FirebaseFirestoreTypes.DocumentSnapshot) => {
+        try {
+          if (!doc) {
+            console.warn(
+              'SavedPostService: Received null snapshot in saved posts listener',
             );
+            return;
           }
-        },
-        error => {
+
+          if (doc.exists()) {
+            // Update our list of saved posts
+            this.savedPosts = doc.data()?.savedPosts || [];
+            // Tell everyone who's listening that saved posts changed
+            this.notifyListeners();
+          }
+        } catch (error) {
           console.error(
-            'SavedPostService: Error in saved posts listener:',
+            'SavedPostService: Error processing saved posts snapshot:',
             error,
           );
-        },
-      );
+        }
+      },
+      error => {
+        console.error(
+          'SavedPostService: Error in saved posts listener:',
+          error,
+        );
+      },
+    );
   }
 
   // Add a new listener
@@ -78,19 +86,17 @@ export class SavedPostService {
   // Save or unsave a post
   async savePost(postId: string): Promise<SavePostResponse> {
     try {
-      const user = auth().currentUser;
+      const user = getAuth().currentUser;
       if (!user) {
         return {success: false, error: 'Not logged in'};
       }
 
-      const userRef = firestore().collection('users').doc(user.uid);
+      const userRef = doc(collection(getFirestore(), 'users'), user.uid);
       const isSaved = this.isPostSaved(postId);
 
       // If post is already saved, remove it. If not saved, add it.
-      await userRef.update({
-        savedPosts: isSaved
-          ? firestore.FieldValue.arrayRemove(postId)
-          : firestore.FieldValue.arrayUnion(postId),
+      await updateDoc(userRef, {
+        savedPosts: isSaved ? arrayRemove(postId) : arrayUnion(postId),
       });
 
       return {success: true, saved: !isSaved};

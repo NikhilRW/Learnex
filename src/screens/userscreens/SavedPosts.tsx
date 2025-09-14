@@ -6,22 +6,25 @@ import {
     StyleSheet,
     ActivityIndicator,
     RefreshControl,
-    Image,
-    Dimensions,
     TouchableOpacity,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
 import Post from '../../components/user/UserScreens/Home/Post';
 import { PostType } from '../../types/post';
-import firestore from '@react-native-firebase/firestore';
+import {
+    getFirestore,
+    collection,
+    doc,
+    getDoc,
+    getDocs,
+} from '@react-native-firebase/firestore';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { primaryColor } from '../../res/strings/eng';
 import Icon from 'react-native-vector-icons/Feather';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { FirestorePost, convertFirestorePost } from '../../service/firebase/utils';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 /**
  * SavedPosts screen displays all posts that the user has saved
@@ -47,10 +50,9 @@ const SavedPosts: React.FC = () => {
             }
 
             // Get the user document to find saved post IDs
-            const userDoc = await firestore()
-                .collection('users')
-                .doc(currentUser.uid)
-                .get();
+            const userDoc = await getDoc(
+                doc(collection(getFirestore(), 'users'), currentUser.uid)
+            );
 
             if (!userDoc.exists()) {
                 setLoading(false);
@@ -58,7 +60,8 @@ const SavedPosts: React.FC = () => {
             }
 
             // Get the saved post IDs
-            const savedPostIds = userDoc.data()?.savedPosts || [];
+            const userData = userDoc.data() as { savedPosts?: string[] };
+            const savedPostIds = userData?.savedPosts || [];
 
             if (savedPostIds.length === 0) {
                 setSavedPosts([]);
@@ -67,21 +70,23 @@ const SavedPosts: React.FC = () => {
             }
 
             // Get each saved post data
-            const postsPromises = savedPostIds.map(async (postId) => {
+            const postsPromises = savedPostIds.map(async (postId: string) => {
                 try {
-                    const postDoc = await firestore()
-                        .collection('posts')
-                        .doc(postId)
-                        .get();
+                    const postDoc = await getDoc(
+                        doc(collection(getFirestore(), 'posts'), postId)
+                    );
 
                     if (!postDoc.exists()) return null;
 
                     // Get post data and comments
-                    const postData = { id: postId, ...postDoc.data() } as FirestorePost;
-                    const commentsSnapshot = await postDoc.ref.collection('comments').get();
-                    const comments = commentsSnapshot.docs.map(doc => ({
-                        id: doc.id,
-                        ...doc.data()
+                    const postDocData = postDoc.data() as any;
+                    const postData = { id: postId, ...postDocData } as FirestorePost;
+                    const commentsSnapshot = await getDocs(
+                        collection(doc(collection(getFirestore(), 'posts'), postId), 'comments')
+                    );
+                    const comments = commentsSnapshot.docs.map((docSnapshot: any) => ({
+                        id: docSnapshot.id,
+                        ...docSnapshot.data()
                     }));
 
                     postData.commentsList = comments;

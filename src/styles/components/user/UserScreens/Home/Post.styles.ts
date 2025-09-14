@@ -22,7 +22,7 @@ export const createStyles = (isDark: boolean) =>
     userInfo: {
       flexDirection: 'row',
       alignItems: 'center',
-      alignSelf:'center',
+      alignSelf: 'center',
     },
     avatar: {
       width: 40,
@@ -30,7 +30,7 @@ export const createStyles = (isDark: boolean) =>
       borderRadius: 20,
       marginRight: 10,
       borderWidth: 1,
-      marginTop:1,
+      marginTop: 1,
       borderColor: isDark ? '#333' : '#e0e0e0',
     },
     username: {
@@ -44,6 +44,8 @@ export const createStyles = (isDark: boolean) =>
       backgroundColor: isDark ? 'black' : 'white',
       width: '100%',
       overflow: 'hidden',
+      padding: 0,
+      margin: 0,
     },
     mediaContent: {
       backgroundColor: '#000',
@@ -59,7 +61,7 @@ export const createStyles = (isDark: boolean) =>
     postImage: {
       width: '100%',
       height: '100%',
-  backgroundColor: isDark ? 'black' : 'white',
+      backgroundColor: isDark ? 'black' : 'white',
     },
     videoContainer: {
       alignItems: 'center',
@@ -557,7 +559,7 @@ export const createStyles = (isDark: boolean) =>
       flex: 1,
       width: '100%',
       height: '100%',
-      margin:0,
+      margin: 0,
       paddingTop: 0, // Ensure no extra padding at the top
       backgroundColor: isDark ? '#1a1a1a' : 'white',
     },
@@ -580,7 +582,7 @@ export const createStyles = (isDark: boolean) =>
       padding: 16,
       paddingTop: 8,
       borderBottomWidth: 1,
-      margin:0,
+      margin: 0,
       shadowColor: '#000',
       shadowOffset: {
         width: 0,

@@ -12,11 +12,10 @@ import {
     ActivityIndicator
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { Task, SubTask } from '../../types/taskTypes';
 import { styles } from '../../styles/screens/userscreens/Tasks.styles';
-import firestore from '@react-native-firebase/firestore';
-import auth from '@react-native-firebase/auth';
+import { getFirestore, collection, doc, getDocs, Timestamp, query, where, limit } from '@react-native-firebase/firestore';
+import { getAuth } from '@react-native-firebase/auth';
 
 // Custom UUID generator that doesn't rely on crypto.getRandomValues()
 const generateUUID = (): string => {
@@ -75,13 +74,13 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
     const fetchCollaboratorDetails = async () => {
         if (!task.collaborators || task.collaborators.length === 0) return;
 
-        const currentUserId = auth().currentUser?.uid || '';
+        const currentUserId = getAuth().currentUser?.uid || '';
         const otherCollaboratorIds = task.collaborators.filter(id => id !== currentUserId);
 
         let collaboratorsList: any[] = [];
         for (const id of otherCollaboratorIds) {
             try {
-                const userDoc = await firestore().collection('users').doc(id).get();
+                const userDoc = await getDoc(doc(getFirestore(), 'users', id));
                 if (userDoc.exists) {
                     const userData = userDoc.data();
                     collaboratorsList.push({
@@ -136,11 +135,7 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
 
         try {
             // Search for user by email
-            const userSnapshot = await firestore()
-                .collection('users')
-                .where('email', '==', collaboratorEmail)
-                .limit(1)
-                .get();
+            const userSnapshot = await getDocs(query(collection(getFirestore(), 'users'), where('email', '==', collaboratorEmail), limit(1)));
 
             if (userSnapshot.empty) {
                 setError('User not found');
@@ -150,7 +145,7 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
                 const userId = userSnapshot.docs[0].id;
 
                 // Check if user is trying to add themselves
-                if (userId === auth().currentUser?.uid) {
+                if (userId === getAuth().currentUser?.uid) {
                     setError('You cannot add yourself as a collaborator');
                     setCollaboratorData(null);
                     return;
@@ -171,7 +166,7 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
                 });
 
                 // Add the new collaborator to the list
-                const currentUserId = auth().currentUser?.uid || '';
+                const currentUserId = getAuth().currentUser?.uid || '';
                 const existingCollaborators = task.collaborators || [currentUserId];
                 const updatedCollaborators = [...existingCollaborators];
 
@@ -219,8 +214,8 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
             title: newSubtaskTitle,
             description: newSubtaskDescription,
             completed: false,
-            createdAt: firestore.Timestamp.now(),
-            updatedAt: firestore.Timestamp.now()
+            createdAt: Timestamp.now(),
+            updatedAt: Timestamp.now()
         };
 
         setSubtasks([...subtasks, newSubtask]);
@@ -234,9 +229,9 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
                 return {
                     ...subtask,
                     completed: !subtask.completed,
-                    completedBy: !subtask.completed ? auth().currentUser?.uid : undefined,
-                    completedAt: !subtask.completed ? firestore.Timestamp.now() : undefined,
-                    updatedAt: firestore.Timestamp.now()
+                    completedBy: !subtask.completed ? getAuth().currentUser?.uid : undefined,
+                    completedAt: !subtask.completed ? Timestamp.now() : undefined,
+                    updatedAt: Timestamp.now()
                 };
             }
             return subtask;
@@ -271,7 +266,7 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
             ...task,
             isDuoTask: false,
             isTeamTask: false,
-            collaborators: [auth().currentUser?.uid || ''],
+            collaborators: [getAuth().currentUser?.uid || ''],
             collaborationStatus: undefined
         });
         setCollaboratorEmail('');

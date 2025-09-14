@@ -1,5 +1,15 @@
-import auth from '@react-native-firebase/auth';
-import firestore, {
+import {getAuth} from '@react-native-firebase/auth';
+import {
+  getFirestore,
+  collection,
+  doc,
+  getDoc,
+  query,
+  where,
+  orderBy,
+  limit,
+  getDocs,
+  onSnapshot,
   FirebaseFirestoreTypes,
 } from '@react-native-firebase/firestore';
 import {GetPostsResponse} from '../../types/firebase';
@@ -32,61 +42,62 @@ export class PostQueryService {
 
   subscribeToPostUpdates(callback: (posts: any[]) => void): () => void {
     try {
-      const currentUser = auth().currentUser;
+      const currentUser = getAuth().currentUser;
       if (!currentUser) {
         console.error('Cannot subscribe to posts: User not authenticated');
         return () => {};
       }
 
       // Get the user ref - we'll need this for blocked posts
-      const userRef = firestore().collection('users').doc(currentUser.uid);
+      const userRef = doc(collection(getFirestore(), 'users'), currentUser.uid);
 
       // Setup the subscription
-      const unsubscribe = firestore()
-        .collection('posts')
-        .orderBy('timestamp', 'desc')
-        .limit(10)
-        .onSnapshot(
-          async snapshot => {
-            try {
-              // Get the latest blocked post IDs on each update
-              const userDoc = await userRef.get();
-              const blockedPostIds = userDoc.exists
-                ? userDoc.data()?.blockedPostIds || []
-                : [];
+      const unsubscribe = onSnapshot(
+        query(
+          collection(getFirestore(), 'posts'),
+          orderBy('timestamp', 'desc'),
+          limit(10),
+        ),
+        async (snapshot: FirebaseFirestoreTypes.QuerySnapshot) => {
+          try {
+            // Get the latest blocked post IDs on each update
+            const userDoc = await getDoc(userRef);
+            const blockedPostIds = userDoc.exists()
+              ? userDoc.data()?.blockedPostIds || []
+              : [];
 
-              const postsPromises = snapshot.docs
-                .filter(doc => !blockedPostIds.includes(doc.id)) // Filter out blocked posts
-                .map(async doc => {
-                  const postData = {id: doc.id, ...doc.data()} as FirestorePost;
-                  const likedBy = postData.likedBy || [];
-                  const comments = await this.commentService.getPostComments(
-                    doc.ref,
-                  );
-                  postData.commentsList = comments;
-                  postData.comments = comments.length;
-                  this.likeCache.setPostLikes(doc.id, likedBy);
-                  const post = convertFirestorePost(postData, currentUser.uid);
-                  post.isSaved = this.savedPostService.isPostSaved(doc.id);
-                  return post;
-                });
+            const postsPromises = snapshot.docs
+              .filter(doc => !blockedPostIds.includes(doc.id)) // Filter out blocked posts
+              .map(async doc => {
+                const postData = {id: doc.id, ...doc.data()} as FirestorePost;
+                const likedBy = postData.likedBy || [];
+                const comments = await this.commentService.getPostComments(
+                  doc.ref,
+                );
+                postData.commentsList = comments;
+                postData.comments = comments.length;
+                this.likeCache.setPostLikes(doc.id, likedBy);
+                const post = convertFirestorePost(postData, currentUser.uid);
+                post.isSaved = this.savedPostService.isPostSaved(doc.id);
+                return post;
+              });
 
-              const posts = await Promise.all(postsPromises);
-              callback(posts);
-            } catch (error) {
-              console.error(
-                'PostQueryService: Error processing posts snapshot:',
-                error,
-              );
-            }
-          },
-          error => {
+            const posts = await Promise.all(postsPromises);
+            callback(posts);
+          } catch (error) {
             console.error(
-              'PostQueryService: Error in posts subscription:',
+              'PostQueryService: Error processing posts snapshot:',
               error,
             );
-          },
-        );
+          }
+        },
+        error => {
+          console.error(
+            'PostQueryService: Error in posts subscription:',
+            error,
+          );
+        },
+      );
 
       // Store the unsubscribe function
       this.activeListeners.set('posts', unsubscribe);
@@ -114,13 +125,13 @@ export class PostQueryService {
     } = {},
   ): Promise<GetPostsResponse> {
     try {
-      const currentUser = auth().currentUser;
+      const currentUser = getAuth().currentUser;
       if (!currentUser) throw new Error('User not authenticated');
 
       // Get the user's blocked post IDs
-      const userRef = firestore().collection('users').doc(currentUser.uid);
-      const userDoc = await userRef.get();
-      const blockedPostIds = userDoc.exists
+      const userRef = doc(collection(getFirestore(), 'users'), currentUser.uid);
+      const userDoc = await getDoc(userRef);
+      const blockedPostIds = userDoc.exists()
         ? userDoc.data()?.blockedPostIds || []
         : [];
 
@@ -153,15 +164,20 @@ export class PostQueryService {
         }
       }
 
-      let query: FirebaseFirestoreTypes.Query<FirebaseFirestoreTypes.DocumentData> =
-        firestore().collection('posts');
+      let postsQuery = query(collection(getFirestore(), 'posts'));
 
       if (userId) {
-        query = query.where('user.id', '==', userId);
+        postsQuery = query(
+          collection(getFirestore(), 'posts'),
+          where('user.id', '==', userId),
+        );
       }
 
       if (likedByUser) {
-        query = query.where('likedBy', 'array-contains', likedByUser);
+        postsQuery = query(
+          collection(getFirestore(), 'posts'),
+          where('likedBy', 'array-contains', likedByUser),
+        );
       }
 
       // Special handling for hashtag search
@@ -174,20 +190,14 @@ export class PostQueryService {
         // 2. Posts with hashtag in the description
 
         // First, get posts with hashtag in hashtags array
-        const hashtagArrayQuery = query.where(
-          'hashtags',
-          'array-contains',
-          hashtag,
+        const hashtagArrayQuery = query(
+          collection(getFirestore(), 'posts'),
+          where('hashtags', 'array-contains', hashtag),
+          orderBy('timestamp', 'desc'),
+          limit(limit),
         );
 
-        if (lastVisible) {
-          hashtagArrayQuery.startAfter(lastVisible);
-        }
-
-        const hashtagArraySnapshot = await hashtagArrayQuery
-          .orderBy('timestamp', 'desc')
-          .limit(limit)
-          .get();
+        const hashtagArraySnapshot = await getDocs(hashtagArrayQuery);
 
         const hashtagArrayPosts = hashtagArraySnapshot.docs.map(doc => {
           const data = doc.data();
@@ -201,15 +211,13 @@ export class PostQueryService {
 
         // Second, look for hashtag in descriptions (only if we didn't fill the limit)
         if (hashtagArrayPosts.length < limit) {
-          const descQuery = query.orderBy('timestamp', 'desc');
+          const descQuery = query(
+            collection(getFirestore(), 'posts'),
+            orderBy('timestamp', 'desc'),
+            limit(limit * 2), // Get more to filter
+          );
 
-          if (lastVisible) {
-            descQuery.startAfter(lastVisible);
-          }
-
-          const descQuerySnapshot = await descQuery
-            .limit(limit * 2) // Get more to filter
-            .get();
+          const descQuerySnapshot = await getDocs(descQuery);
 
           postsWithHashtagInDesc = descQuerySnapshot.docs
             .filter(doc => {
@@ -266,19 +274,20 @@ export class PostQueryService {
         }
       } else {
         // Handle normal query without hashtag
-        if (lastVisible) {
-          query = query.startAfter(lastVisible);
-        }
+        const queryConstraints = [orderBy('timestamp', 'desc'), limit(limit)];
 
         if (timeRange) {
           // Add time range filter if specified
           const rangeStart = this.getTimeRangeStart(timeRange);
-          query = query.where('timestamp', '>=', rangeStart);
+          queryConstraints.unshift(where('timestamp', '>=', rangeStart));
         }
 
-        query = query.orderBy('timestamp', 'desc').limit(limit);
+        postsQuery = query(
+          collection(getFirestore(), 'posts'),
+          ...queryConstraints,
+        );
 
-        const snapshot = await query.get();
+        const snapshot = await getDocs(postsQuery);
 
         // Process query results
         const postsData = snapshot.docs
@@ -311,13 +320,13 @@ export class PostQueryService {
 
   async getPostsBySearch(searchText: string): Promise<GetPostsResponse> {
     try {
-      const currentUser = auth().currentUser;
+      const currentUser = getAuth().currentUser;
       if (!currentUser) throw new Error('User not authenticated');
 
       // Get the user's blocked post IDs
-      const userRef = firestore().collection('users').doc(currentUser.uid);
-      const userDoc = await userRef.get();
-      const blockedPostIds = userDoc.exists
+      const userRef = doc(collection(getFirestore(), 'users'), currentUser.uid);
+      const userDoc = await getDoc(userRef);
+      const blockedPostIds = userDoc.exists()
         ? userDoc.data()?.blockedPostIds || []
         : [];
 
@@ -342,20 +351,25 @@ export class PostQueryService {
         .split(/\s+/)
         .filter(word => word.length > 0);
 
-      let query: any = firestore().collection('posts');
+      let postsQuery = query(collection(getFirestore(), 'posts'));
 
       if (searchWords.length > 0) {
         // Use array-contains-any to match any of the search words
-        query = query.where(
-          'searchKeywords',
-          'array-contains-any',
-          searchWords,
+        postsQuery = query(
+          collection(getFirestore(), 'posts'),
+          where('searchKeywords', 'array-contains-any', searchWords),
+          orderBy('timestamp', 'desc'),
+          limit(20),
+        );
+      } else {
+        postsQuery = query(
+          collection(getFirestore(), 'posts'),
+          orderBy('timestamp', 'desc'),
+          limit(20),
         );
       }
 
-      query = query.orderBy('timestamp', 'desc').limit(20);
-
-      const postsSnapshot = await query.get();
+      const postsSnapshot = await getDocs(postsQuery);
       const lastVisibleDoc = postsSnapshot.docs[postsSnapshot.docs.length - 1];
 
       const posts = await Promise.all(

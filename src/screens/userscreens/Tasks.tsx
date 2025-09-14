@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useCallback} from 'react';
+import React, {useState, useEffect, useCallback, useMemo} from 'react';
 import {
   Text,
   View,
@@ -12,7 +12,6 @@ import {
   ActivityIndicator,
   RefreshControl,
   Pressable,
-  Image,
 } from 'react-native';
 import {useTypedSelector} from '../../hooks/useTypedSelector';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -24,10 +23,9 @@ import {Task} from '../../types/taskTypes';
 import {TaskService} from '../../service/firebase/TaskService';
 import {styles} from '../../styles/screens/userscreens/Tasks.styles';
 import TaskModal from '../../components/Room/TaskModal';
-import AIGeneratedTaskSVG from '../../res/svgs/ai_generated_task.svg';
 import {SvgXml} from 'react-native-svg';
 import {AIGeneratedSVGXML} from '../../constants/svg';
-import auth from '@react-native-firebase/auth';
+import {getAuth} from '@react-native-firebase/auth';
 
 const Tasks = () => {
   const isDark = useTypedSelector(state => state.user.theme) === 'dark';
@@ -40,7 +38,7 @@ const Tasks = () => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [categories, setCategories] = useState<string[]>([]);
-  const taskService = new TaskService();
+  const taskService = useMemo(() => new TaskService(), []);
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [isAIGeneratingTask, setIsAIGeneratingTask] = useState<boolean>(false);
@@ -74,60 +72,61 @@ const Tasks = () => {
     });
   };
 
-  // Fetch tasks on component mount
-  useEffect(() => {
-    fetchTasks(selectedFilter);
-  }, [selectedFilter]); // Re-fetch when filter changes
+  const fetchTasks = useCallback(
+    async (filter = 'all') => {
+      try {
+        setIsLoading(true);
+        // Get all tasks first
+        const allTasks = await taskService.getTasks();
 
-  const fetchTasks = async (filter = 'all') => {
-    try {
-      setIsLoading(true);
-      // Get all tasks first
-      const allTasks = await taskService.getTasks();
-
-      console.log('Tasks :: fetchTasks() :: All tasks count:', allTasks.length);
-      // Add debug log to show tasks and their isDuoTask status
-      console.log('Tasks :: fetchTasks() :: Task details:');
-      allTasks.forEach(task => {
         console.log(
-          `Task: ${task.title}, isDuoTask: ${task.isDuoTask}, ID: ${task.id}`,
+          'Tasks :: fetchTasks() :: All tasks count:',
+          allTasks.length,
         );
-      });
-
-      // Extract unique categories for filter chips
-      const uniqueCategories = [
-        ...new Set(allTasks.map(task => task.category)),
-      ].filter(Boolean);
-      setCategories(uniqueCategories);
-
-      // Then filter them client-side based on the filter
-      let fetchedTasks;
-      switch (filter) {
-        case 'completed':
-          fetchedTasks = allTasks.filter(task => task.completed);
-          break;
-        case 'pending':
-          fetchedTasks = allTasks.filter(task => !task.completed);
-          break;
-        case 'all':
-          fetchedTasks = allTasks;
-          break;
-        default:
-          // Filter by category if it's not one of the predefined filters
-          fetchedTasks = allTasks.filter(
-            task => task.category.toLowerCase() === filter.toLowerCase(),
+        // Add debug log to show tasks and their isDuoTask status
+        console.log('Tasks :: fetchTasks() :: Task details:');
+        allTasks.forEach(task => {
+          console.log(
+            `Task: ${task.title}, isDuoTask: ${task.isDuoTask}, ID: ${task.id}`,
           );
-          break;
-      }
+        });
 
-      setTasks(fetchedTasks);
-    } catch (error) {
-      console.error('Error fetching tasks:', error);
-      Alert.alert('Error', 'Failed to load tasks. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+        // Extract unique categories for filter chips
+        const uniqueCategories = [
+          ...new Set(allTasks.map(task => task.category)),
+        ].filter(Boolean);
+        setCategories(uniqueCategories);
+
+        // Then filter them client-side based on the filter
+        let fetchedTasks;
+        switch (filter) {
+          case 'completed':
+            fetchedTasks = allTasks.filter(task => task.completed);
+            break;
+          case 'pending':
+            fetchedTasks = allTasks.filter(task => !task.completed);
+            break;
+          case 'all':
+            fetchedTasks = allTasks;
+            break;
+          default:
+            // Filter by category if it's not one of the predefined filters
+            fetchedTasks = allTasks.filter(
+              task => task.category.toLowerCase() === filter.toLowerCase(),
+            );
+            break;
+        }
+
+        setTasks(fetchedTasks);
+      } catch (error) {
+        console.error('Error fetching tasks:', error);
+        Alert.alert('Error', 'Failed to load tasks. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [taskService],
+  );
 
   // Filter tasks based on search query only (category filtering is now handled by Firestore)
   useEffect(() => {
@@ -145,6 +144,11 @@ const Tasks = () => {
 
     setFilteredTasks(result);
   }, [searchQuery, tasks]);
+
+  // Fetch tasks on component mount
+  useEffect(() => {
+    fetchTasks(selectedFilter);
+  }, [fetchTasks, selectedFilter]); // Re-fetch when filter changes
 
   const handleSearch = (text: string) => {
     setSearchQuery(text);
@@ -164,7 +168,7 @@ const Tasks = () => {
   const handleEditTask = (task: Task) => {
     setIsEditMode(true);
     setCurrentTaskId(task.id);
-    const {id, userId, createdAt, updatedAt, ...editableFields} = task;
+    const {...editableFields} = task;
     setNewTask(editableFields);
     setModalVisible(true);
   };
@@ -180,7 +184,7 @@ const Tasks = () => {
         await taskService.updateTask(currentTaskId, newTask);
         Alert.alert('Success', 'Task updated successfully');
       } else {
-        const userId = auth().currentUser?.uid;
+        const userId = getAuth().currentUser?.uid;
         if (userId) {
           await taskService.addTask({
             userId,
@@ -645,7 +649,6 @@ const Tasks = () => {
                 colors={['#1a9cd8']}
                 tintColor={isDark ? 'white' : '#1a9cd8'}
                 progressBackgroundColor={isDark ? '#2a2a2a' : '#f0f0f0'}
-                size="large"
                 title="Refreshing Tasks..."
                 titleColor={isDark ? 'white' : 'black'}
               />

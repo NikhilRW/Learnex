@@ -19,6 +19,20 @@ export interface Comment {
   editedAt?: string; // Add optional editedAt timestamp
 }
 
+// Firestore comment shape as stored in the database
+export interface FirestoreComment {
+  id: string;
+  userId: string;
+  username: string;
+  userImage: string;
+  text: string;
+  likes: number;
+  likedBy?: string[];
+  timestamp: any; // Firestore Timestamp or serialized
+  replies?: FirestoreComment[];
+  editedAt?: any;
+}
+
 export interface PostType {
   id: string;
   user: User;
@@ -35,4 +49,10 @@ export interface PostType {
   commentsList?: Comment[];
   isLiked: boolean; // Change from optional to required
   isVertical?: boolean;
+}
+
+export interface AddCommentResponse {
+  success: boolean;
+  comment?: FirestoreComment;
+  error?: string;
 }

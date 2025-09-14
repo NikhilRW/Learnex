@@ -301,6 +301,20 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     marginHorizontal: 8,
   },
+  button: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginHorizontal: 8,
+  },
+  saveButton: {
+    backgroundColor: '#1a9cd8',
+  },
+  buttonText: {
+    color: 'white',
+    fontWeight: '600',
+  },
   cancelButton: {
     backgroundColor: 'rgba(0, 0, 0, 0.1)',
   },
@@ -342,5 +356,369 @@ export const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginTop: -4,
     marginBottom: 8,
+  },
+});
+
+export const duoTaskModalStyles = StyleSheet.create({
+  modalContent: {
+    width: '95%',
+    maxHeight: '90%',
+  },
+  modalContentLight: {
+    backgroundColor: '#ffffff',
+  },
+  modalContentDark: {
+    backgroundColor: '#1c1c1c',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  modalTitleLight: {
+    color: '#000000',
+  },
+  modalTitleDark: {
+    color: '#ffffff',
+  },
+  closeButton: {
+    padding: 5,
+  },
+  tabsContainer: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+  },
+  tabsContainerLight: {
+    borderBottomColor: '#e0e0e0',
+  },
+  tabsContainerDark: {
+    borderBottomColor: '#404040',
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderBottomWidth: 2,
+  },
+  tabActive: {
+    borderBottomColor: '#1a9cd8',
+  },
+  tabInactive: {
+    borderBottomColor: 'transparent',
+  },
+  tabText: {
+    fontSize: 14.5,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  teamMembersTabText: {
+    marginRight: 2,
+  },
+  tabTextLight: {
+    color: '#666666',
+  },
+  tabTextDark: {
+    color: '#8e8e8e',
+  },
+  inputLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  inputLabelLight: {
+    color: '#000000',
+  },
+  inputLabelDark: {
+    color: '#ffffff',
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+  },
+  inputLight: {
+    backgroundColor: '#f5f5f5',
+    color: '#000000',
+    borderColor: '#e0e0e0',
+  },
+  inputDark: {
+    backgroundColor: '#2a2a2a',
+    color: '#ffffff',
+    borderColor: '#404040',
+  },
+  placeholderLight: {
+    color: '#999999',
+  },
+  placeholderDark: {
+    color: '#8e8e8e',
+  },
+  descriptionInput: {
+    height: 100,
+    textAlignVertical: 'top',
+  },
+  priorityButton: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    marginHorizontal: 4,
+  },
+  priorityButtonLight: {
+    borderColor: '#e0e0e0',
+  },
+  priorityButtonDark: {
+    borderColor: '#404040',
+  },
+  priorityButtonActive: {
+    backgroundColor: '#1a9cd8',
+    borderColor: '#1a9cd8',
+  },
+  priorityButtonText: {
+    fontWeight: '500',
+  },
+  priorityButtonTextLight: {
+    color: '#666666',
+  },
+  priorityButtonTextDark: {
+    color: '#8e8e8e',
+  },
+  priorityButtonTextActive: {
+    color: '#ffffff',
+  },
+  switchTrackLight: {
+    backgroundColor: '#e0e0e0',
+  },
+  switchTrackDark: {
+    backgroundColor: '#404040',
+  },
+  switchTrackActive: {
+    backgroundColor: '#1a9cd8',
+  },
+  switchThumbLight: {
+    backgroundColor: '#ffffff',
+  },
+  switchThumbDark: {
+    backgroundColor: '#cccccc',
+  },
+  switchThumbActive: {
+    backgroundColor: '#ffffff',
+  },
+  descriptionText: {
+    marginBottom: 10,
+    fontSize: 12,
+  },
+  descriptionTextLight: {
+    color: '#666666',
+  },
+  descriptionTextDark: {
+    color: '#8e8e8e',
+  },
+  subtaskInput: {
+    marginBottom: 10,
+  },
+  subtaskDescriptionInput: {
+    height: 80,
+    textAlignVertical: 'top',
+    marginBottom: 10,
+  },
+  addButton: {
+    backgroundColor: '#1a9cd8',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  addButtonText: {
+    color: 'white',
+    fontWeight: '600',
+  },
+  subtasksCount: {
+    marginTop: 10,
+    marginBottom: 10,
+  },
+  collaboratorInputContainer: {
+    flexDirection: 'row',
+    marginBottom: 10,
+  },
+  collaboratorInput: {
+    flex: 1,
+    marginRight: 5,
+  },
+  addCollaboratorButton: {
+    backgroundColor: '#1a9cd8',
+    padding: 10,
+    borderRadius: 5,
+    justifyContent: 'center',
+  },
+  addCollaboratorButtonText: {
+    color: 'white',
+  },
+  errorText: {
+    color: '#FF3B30',
+    marginBottom: 10,
+  },
+  teamMembersCount: {
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  emptyTeamMembersText: {
+    textAlign: 'center',
+    padding: 10,
+  },
+  collaboratorItem: {
+    flexDirection: 'row',
+    padding: 10,
+    borderRadius: 5,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  collaboratorItemLight: {
+    backgroundColor: '#f5f5f5',
+  },
+  collaboratorItemDark: {
+    backgroundColor: '#2a2a2a',
+  },
+  collaboratorDetails: {
+    flex: 1,
+  },
+  collaboratorNameLight: {
+    color: '#000000',
+  },
+  collaboratorNameDark: {
+    color: '#ffffff',
+  },
+  collaboratorEmailLight: {
+    color: '#666666',
+    fontSize: 12,
+  },
+  collaboratorEmailDark: {
+    color: '#8e8e8e',
+    fontSize: 12,
+  },
+  collaboratorEmailInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+  },
+  collaboratorEmailInputLight: {
+    backgroundColor: '#f5f5f5',
+    color: '#000000',
+    borderColor: '#e0e0e0',
+  },
+  collaboratorEmailInputDark: {
+    backgroundColor: '#2a2a2a',
+    color: '#ffffff',
+    borderColor: '#404040',
+  },
+  removeCollaboratorButton: {
+    padding: 5,
+  },
+  removeCollaboratorIconLight: {
+    color: '#666666',
+  },
+  removeCollaboratorIconDark: {
+    color: '#8e8e8e',
+  },
+  removeAllCollaboratorsButton: {
+    marginTop: 10,
+    padding: 10,
+    borderRadius: 5,
+    backgroundColor: '#FF3B30',
+    alignItems: 'center',
+  },
+  removeAllCollaboratorsButtonText: {
+    color: 'white',
+  },
+  collaborationHintText: {
+    marginTop: 20,
+    fontSize: 12,
+  },
+  collaborationHintTextLight: {
+    color: '#666666',
+  },
+  collaborationHintTextDark: {
+    color: '#8e8e8e',
+  },
+  subtaskList: {
+    paddingVertical: 10,
+  },
+  subtaskItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    padding: 10,
+    borderRadius: 8,
+  },
+  subtaskItemLight: {
+    backgroundColor: '#f9f9f9',
+  },
+  subtaskItemDark: {
+    backgroundColor: '#222222',
+  },
+  subtaskCheckbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  subtaskCheckboxLight: {
+    borderColor: '#8e8e8e',
+  },
+  subtaskCheckboxDark: {
+    borderColor: '#666666',
+  },
+  subtaskCheckboxActive: {
+    backgroundColor: '#1a9cd8',
+  },
+  subtaskCheckboxInactive: {
+    backgroundColor: 'transparent',
+  },
+  subtaskTitleContainer: {
+    flex: 1,
+  },
+  subtaskTitle: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  subtaskTitleLight: {
+    color: '#000000',
+  },
+  subtaskTitleDark: {
+    color: '#ffffff',
+  },
+  subtaskTitleCompleted: {
+    textDecorationLine: 'line-through',
+    opacity: 0.7,
+  },
+  subtaskDescription: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  subtaskDescriptionLight: {
+    color: '#666666',
+  },
+  subtaskDescriptionDark: {
+    color: '#8e8e8e',
+  },
+  subtaskDescriptionCompleted: {
+    textDecorationLine: 'line-through',
+    opacity: 0.7,
+  },
+  removeSubtaskButton: {
+    padding: 5,
+    marginLeft: 10,
+  },
+  removeSubtaskIconLight: {
+    color: '#666666',
+  },
+  removeSubtaskIconDark: {
+    color: '#8e8e8e',
   },
 });

@@ -1,5 +1,18 @@
-import auth from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
+import {getAuth} from '@react-native-firebase/auth';
+import {
+  getFirestore,
+  collection,
+  doc,
+  getDoc,
+  updateDoc,
+  deleteDoc,
+  getDocs,
+  serverTimestamp,
+  arrayUnion,
+  arrayRemove,
+  increment,
+  writeBatch,
+} from '@react-native-firebase/firestore';
 import {LikeCache} from './LikeCache';
 import {
   GetPostsResponse,
@@ -22,13 +35,13 @@ export class PostService {
 
   async likePost(postId: string): Promise<LikeResponse> {
     try {
-      const currentUser = auth().currentUser;
+      const currentUser = getAuth().currentUser;
       if (!currentUser) {
         return {success: false, error: 'User not authenticated'};
       }
 
-      const postRef = firestore().collection('posts').doc(postId);
-      const postDoc = await postRef.get();
+      const postRef = doc(collection(getFirestore(), 'posts'), postId);
+      const postDoc = await getDoc(postRef);
 
       if (!postDoc.exists()) {
         return {success: false, error: 'Post not found'};
@@ -39,9 +52,9 @@ export class PostService {
       const isLiked = likedBy.includes(currentUser.uid);
 
       if (isLiked) {
-        await postRef.update({
-          likedBy: firestore.FieldValue.arrayRemove(currentUser.uid),
-          likes: firestore.FieldValue.increment(-1),
+        await updateDoc(postRef, {
+          likedBy: arrayRemove(currentUser.uid),
+          likes: increment(-1),
         });
         const newLikedBy = likedBy.filter(
           (id: string) => id !== currentUser.uid,
@@ -49,9 +62,9 @@ export class PostService {
         this.likeCache.setPostLikes(postId, newLikedBy);
         return {success: true, liked: false};
       } else {
-        await postRef.update({
-          likedBy: firestore.FieldValue.arrayUnion(currentUser.uid),
-          likes: firestore.FieldValue.increment(1),
+        await updateDoc(postRef, {
+          likedBy: arrayUnion(currentUser.uid),
+          likes: increment(1),
         });
         const newLikedBy = [...likedBy, currentUser.uid];
         this.likeCache.setPostLikes(postId, newLikedBy);
@@ -99,14 +112,14 @@ export class PostService {
 
   async deletePost(postId: string) {
     try {
-      const currentUser = auth().currentUser;
+      const currentUser = getAuth().currentUser;
       if (!currentUser) {
         return {success: false, error: 'User not authenticated'};
       }
 
       // Get the post to check ownership
-      const postRef = firestore().collection('posts').doc(postId);
-      const postDoc = await postRef.get();
+      const postRef = doc(collection(getFirestore(), 'posts'), postId);
+      const postDoc = await getDoc(postRef);
 
       if (!postDoc.exists()) {
         return {success: false, error: 'Post not found'};
@@ -128,10 +141,10 @@ export class PostService {
       }
 
       // Create a batch to delete the post and all its associated data
-      const batch = firestore().batch();
+      const batch = writeBatch(getFirestore());
 
       // 1. Delete all comments
-      const commentsSnapshot = await postRef.collection('comments').get();
+      const commentsSnapshot = await getDocs(collection(postRef, 'comments'));
       commentsSnapshot.docs.forEach(doc => {
         batch.delete(doc.ref);
       });
@@ -194,17 +207,17 @@ export class PostService {
 
   async savePost(postId: string): Promise<SavePostResponse> {
     try {
-      const currentUser = auth().currentUser;
+      const currentUser = getAuth().currentUser;
       if (!currentUser) {
         return {success: false, error: 'User not authenticated'};
       }
 
-      const userRef = firestore().collection('users').doc(currentUser.uid);
-      const postRef = firestore().collection('posts').doc(postId);
+      const userRef = doc(collection(getFirestore(), 'users'), currentUser.uid);
+      const postRef = doc(collection(getFirestore(), 'posts'), postId);
 
       const [userDoc, postDoc] = await Promise.all([
-        userRef.get(),
-        postRef.get(),
+        getDoc(userRef),
+        getDoc(postRef),
       ]);
 
       if (!userDoc.exists()) {
@@ -306,17 +319,17 @@ export class PostService {
    */
   async hidePost(postId: string): Promise<{success: boolean; error?: string}> {
     try {
-      const currentUser = auth().currentUser;
+      const currentUser = getAuth().currentUser;
       if (!currentUser) {
         return {success: false, error: 'User not authenticated'};
       }
 
-      const userRef = firestore().collection('users').doc(currentUser.uid);
-      const postRef = firestore().collection('posts').doc(postId);
+      const userRef = doc(collection(getFirestore(), 'users'), currentUser.uid);
+      const postRef = doc(collection(getFirestore(), 'posts'), postId);
 
       const [userDoc, postDoc] = await Promise.all([
-        userRef.get(),
-        postRef.get(),
+        getDoc(userRef),
+        getDoc(postRef),
       ]);
 
       if (!userDoc.exists()) {
@@ -328,18 +341,18 @@ export class PostService {
       }
 
       // Create blockedPosts collection if it doesn't exist already
-      const blockedPostsRef = userRef.collection('blockedPosts');
+      const blockedPostsRef = collection(userRef, 'blockedPosts');
 
       // Add the post to blockedPosts collection
-      await blockedPostsRef.doc(postId).set({
-        blockedAt: firestore.FieldValue.serverTimestamp(),
+      await setDoc(doc(blockedPostsRef, postId), {
+        blockedAt: serverTimestamp(),
         postId: postId,
         postCreatorId: postDoc.data()?.user?.id || '',
       });
 
       // Also add to blockedPostIds field in user document for efficient querying
-      await userRef.update({
-        blockedPostIds: firestore.FieldValue.arrayUnion(postId),
+      await updateDoc(userRef, {
+        blockedPostIds: arrayUnion(postId),
       });
 
       return {success: true};
@@ -356,11 +369,11 @@ export class PostService {
    */
   async isPostHidden(postId: string): Promise<boolean> {
     try {
-      const currentUser = auth().currentUser;
+      const currentUser = getAuth().currentUser;
       if (!currentUser) return false;
 
-      const userRef = firestore().collection('users').doc(currentUser.uid);
-      const userDoc = await userRef.get();
+      const userRef = doc(collection(getFirestore(), 'users'), currentUser.uid);
+      const userDoc = await getDoc(userRef);
 
       if (!userDoc.exists()) return false;
 
@@ -384,25 +397,25 @@ export class PostService {
     postId: string,
   ): Promise<{success: boolean; error?: string}> {
     try {
-      const currentUser = auth().currentUser;
+      const currentUser = getAuth().currentUser;
       if (!currentUser) {
         return {success: false, error: 'User not authenticated'};
       }
 
-      const userRef = firestore().collection('users').doc(currentUser.uid);
-      const userDoc = await userRef.get();
+      const userRef = doc(collection(getFirestore(), 'users'), currentUser.uid);
+      const userDoc = await getDoc(userRef);
 
       if (!userDoc.exists()) {
         return {success: false, error: 'User document not found'};
       }
 
       // Remove from blockedPosts collection
-      const blockedPostRef = userRef.collection('blockedPosts').doc(postId);
-      await blockedPostRef.delete();
+      const blockedPostRef = doc(collection(userRef, 'blockedPosts'), postId);
+      await deleteDoc(blockedPostRef);
 
       // Also remove from blockedPostIds array
-      await userRef.update({
-        blockedPostIds: firestore.FieldValue.arrayRemove(postId),
+      await updateDoc(userRef, {
+        blockedPostIds: arrayRemove(postId),
       });
 
       return {success: true};

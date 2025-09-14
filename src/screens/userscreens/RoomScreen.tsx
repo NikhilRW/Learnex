@@ -15,7 +15,7 @@ import {
   CommonActions,
 } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
-import { MeetingService, Meeting } from '../../service/firebase/MeetingService';
+import { MeetingService } from '../../service/firebase/MeetingService';
 import {
   WebRTCService,
   ParticipantState,
@@ -24,8 +24,19 @@ import { MediaStream } from 'react-native-webrtc';
 import Room from '../../components/Room/Room';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
 import { UserStackParamList } from '../../routes/UserStack';
-import firestore from '@react-native-firebase/firestore';
-import auth from '@react-native-firebase/auth';
+import {
+  getFirestore,
+  collection,
+  doc,
+  addDoc,
+  getDoc,
+  updateDoc,
+  onSnapshot,
+  query,
+  orderBy,
+  serverTimestamp,
+} from '@react-native-firebase/firestore';
+import { getAuth } from '@react-native-firebase/auth';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { TaskService } from '../../service/firebase/TaskService';
 
@@ -60,7 +71,7 @@ const RoomScreen: React.FC = () => {
   const isDark = userTheme.theme === 'dark';
   const [username, setUsername] = useState('');
   const [fullName, setFullName] = useState('');
-  const currentUser = auth().currentUser;
+  const currentUser = getAuth().currentUser;
   const firebase = useTypedSelector(state => state.firebase);
   const [localStream, setLocalStream] = useState<ExtendedMediaStream | null>(
     null,
@@ -219,6 +230,7 @@ const RoomScreen: React.FC = () => {
                 isScreenSharing: false,
                 reactionTimestamp: null,
                 lastUpdated: new Date(),
+                isSmiling: false
               });
               setParticipantStates(newState);
             }
@@ -368,23 +380,23 @@ const RoomScreen: React.FC = () => {
         console.log(`- Participant ${id} (no stream)`);
       });
     }
-  }, [remoteStreams, streamsByParticipant, participantStates]);
+  }, [remoteStreams, streamsByParticipant, participantStates, currentUser?.uid]);
 
   const subscribeToMessages = () => {
     if (!currentUser) return;
 
-    const messagesRef = firestore()
-      .collection('meetings')
-      .doc(meeting.id)
-      .collection('messages')
-      .orderBy('timestamp', 'asc');
+    const messagesRef = collection(
+      doc(collection(getFirestore(), 'meetings'), meeting.id),
+      'messages'
+    );
 
-    const unsubscribe = messagesRef.onSnapshot(
+    const unsubscribe = onSnapshot(
+      query(messagesRef, orderBy('timestamp', 'asc')),
       snapshot => {
         if (!snapshot) return;
 
         const newMessages: Message[] = [];
-        snapshot.docChanges().forEach(change => {
+        snapshot.docChanges().forEach((change: any) => {
           if (change.type === 'added') {
             const data = change.doc.data();
             newMessages.push({
@@ -434,19 +446,20 @@ const RoomScreen: React.FC = () => {
   };
 
   const sendMessage = async (text: string) => {
-    let name = '';
     try {
-      await firestore()
-        .collection('meetings')
-        .doc(meeting.id)
-        .collection('messages')
-        .add({
+      await addDoc(
+        collection(
+          doc(collection(getFirestore(), 'meetings'), meeting.id),
+          'messages'
+        ),
+        {
           senderId: currentUser!.uid,
           senderName: currentUser?.displayName || 'Anonymous',
           text: text.trim(),
-          timestamp: firestore.FieldValue.serverTimestamp(),
+          timestamp: serverTimestamp(),
           reactions: {}, // Initialize empty reactions object
-        });
+        }
+      );
     } catch (error) {
       console.error('Error sending message:', error);
       Alert.alert('Error', 'Failed to send message');
@@ -581,7 +594,7 @@ const RoomScreen: React.FC = () => {
   };
 
   const handleReaction = async (
-    reaction: 'thumbsUp' | 'thumbsDown' | 'clapping' | 'waving',
+    reaction: 'thumbsUp' | 'thumbsDown' | 'clapping' | 'waving' | 'smiling',
   ) => {
     // Create update object with all reactions set to false
     const update: Partial<ParticipantState> = {
@@ -589,6 +602,7 @@ const RoomScreen: React.FC = () => {
       isThumbsDown: false,
       isClapping: false,
       isWaving: false,
+      isSmiling: false,
     };
 
     // Set the selected reaction to true
@@ -605,6 +619,9 @@ const RoomScreen: React.FC = () => {
       case 'waving':
         update.isWaving = true;
         break;
+      case 'smiling':
+        update.isSmiling = true;
+        break;
     }
 
     // Update participant state in Firestore
@@ -615,6 +632,7 @@ const RoomScreen: React.FC = () => {
         isThumbsDown: false,
         isClapping: false,
         isWaving: false,
+        isSmiling: false
       });
     }, 2500);
   };
@@ -680,17 +698,19 @@ const RoomScreen: React.FC = () => {
     if (!currentUser) return;
 
     try {
-      const messageRef = firestore()
-        .collection('meetings')
-        .doc(meeting.id)
-        .collection('messages')
-        .doc(messageId);
+      const messageRef = doc(
+        collection(
+          doc(collection(getFirestore(), 'meetings'), meeting.id),
+          'messages'
+        ),
+        messageId
+      );
 
       // Get current message data
-      const messageDoc = await messageRef.get();
+      const messageDoc = await getDoc(messageRef);
       if (!messageDoc.exists()) return;
 
-      const messageData = messageDoc.data();
+      const messageData = messageDoc.data() as any;
       const reactions = messageData?.reactions || {};
 
       // Toggle reaction: remove if same reaction exists, otherwise add/update
@@ -703,7 +723,7 @@ const RoomScreen: React.FC = () => {
       }
 
       // Update message with new reactions
-      await messageRef.update({ reactions });
+      await updateDoc(messageRef, { reactions });
     } catch (error) {
       console.error('Error adding reaction to message:', error);
     }

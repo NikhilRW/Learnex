@@ -1,18 +1,7 @@
-import {Comment, PostType} from '../../types/post';
+import {Comment, PostType, FirestoreComment} from '../../types/post';
 import {ImageSourcePropType} from 'react-native';
 
-// Define FirestorePost and FirestoreComment interfaces since they're missing from the types/post.ts file
-export interface FirestoreComment {
-  id: string;
-  userId: string;
-  username: string;
-  userImage: string;
-  text: string;
-  likes: number;
-  timestamp: any; // Firestore timestamp
-  replies?: FirestoreComment[];
-  editedAt?: any;
-}
+// FirestoreComment now imported from types/post
 
 export interface FirestorePost {
   id: string;

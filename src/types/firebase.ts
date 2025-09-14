@@ -1,3 +1,5 @@
+import {FirebaseFirestoreTypes} from '@react-native-firebase/firestore';
+
 // Firebase response types
 export interface AuthResponse {
   success: boolean;
@@ -44,4 +46,16 @@ export interface Post {
   likes: string[];
   createdAt: any; // firestore.FieldValue.serverTimestamp()
   updatedAt: any; // firestore.FieldValue.serverTimestamp()
+}
+
+// Firestore document interfaces
+export interface NotificationPreferences {
+  userId: string;
+  mutedRecipients: string[];
+  createdAt?:
+    | FirebaseFirestoreTypes.FieldValue
+    | FirebaseFirestoreTypes.Timestamp;
+  updatedAt?:
+    | FirebaseFirestoreTypes.FieldValue
+    | FirebaseFirestoreTypes.Timestamp;
 }

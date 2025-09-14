@@ -7,16 +7,33 @@ import notifee, {
   AndroidCategory,
 } from '@notifee/react-native';
 import {ToastAndroid, Platform} from 'react-native';
+import {getMessaging, onTokenRefresh} from '@react-native-firebase/messaging';
 import {NavigationProp} from '@react-navigation/native';
 import {UserStackParamList} from '../routes/UserStack';
-import auth from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
-import messaging from '@react-native-firebase/messaging';
+import {getAuth} from '@react-native-firebase/auth';
+import {
+  getFirestore,
+  collection,
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  arrayUnion,
+  arrayRemove,
+  serverTimestamp,
+  onSnapshot,
+  query,
+  where,
+  orderBy,
+  limit,
+  FirebaseFirestoreTypes,
+} from '@react-native-firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {Message} from '../models/Message';
 import {Task} from '../types/taskTypes';
 import {PushNotificationHandler} from '../utils/PushNotificationHandler';
 import {FCMTokenManager} from '../utils/FCMTokenManager';
+import {NotificationPreferences} from '../types/firebase';
 
 // Channel ID for direct messages
 const DM_CHANNEL_ID = 'direct_messages';
@@ -43,9 +60,11 @@ export class NotificationService {
   // Store active message listeners to avoid duplicates
   private messageListeners: {[userId: string]: () => void} = {};
   private isServiceRunning: boolean = false;
-  private notificationPreferencesCollection = firestore().collection(
-    'notificationPreferences',
-  );
+  private notificationPreferencesCollection: FirebaseFirestoreTypes.CollectionReference<NotificationPreferences> =
+    collection(
+      getFirestore(),
+      'notificationPreferences',
+    ) as FirebaseFirestoreTypes.CollectionReference<NotificationPreferences>;
   // Store active tasks listeners
   private taskListeners: {[userId: string]: () => void} = {};
   // Store FCM token
@@ -184,7 +203,7 @@ export class NotificationService {
    * Listen for FCM token refresh and update in Firestore
    */
   private setupTokenRefreshListener(): void {
-    messaging().onTokenRefresh(async (token: string) => {
+    onTokenRefresh(getMessaging(), async (token: string) => {
       console.log('FCM token refreshed:', token);
       this.fcmToken = token;
       await FCMTokenManager.saveToken(token);
@@ -395,7 +414,7 @@ export class NotificationService {
    * Call this when the user logs in
    */
   setupMessageListener(): void {
-    const currentUser = auth().currentUser;
+    const currentUser = getAuth().currentUser;
     if (!currentUser) {
       console.warn('Cannot setup message listener: User not logged in');
       return;
@@ -417,73 +436,80 @@ export class NotificationService {
 
     // Listen for new messages where the user is the recipient
     try {
-      const unsubscribe = firestore()
-        .collection('messages')
-        .where('recipientId', '==', userId)
-        .where('read', '==', false)
-        .orderBy('timestamp', 'desc')
-        .limit(20) // Limit to the 20 most recent unread messages
-        .onSnapshot(
-          snapshot => {
-            // Process changes in batches to avoid overwhelming the system
-            const processChanges = async () => {
-              for (const change of snapshot.docChanges()) {
-                // Only process newly added messages
-                if (change.type === 'added') {
-                  const message = change.doc.data() as Message;
-                  const messageId = change.doc.id;
+      const messagesRef = collection(
+        getFirestore(),
+        'messages',
+      ) as FirebaseFirestoreTypes.CollectionReference<Message>;
+      const messagesQuery = query(
+        messagesRef,
+        where('recipientId', '==', userId),
+        where('read', '==', false),
+        orderBy('timestamp', 'desc'),
+        limit(20),
+      );
 
-                  // Skip if this message has already been processed
-                  if (await this.hasProcessedMessage(messageId)) {
-                    console.log(
-                      `Skipping already processed message: ${messageId}`,
+      const unsubscribe = onSnapshot(
+        messagesQuery,
+        (snapshot: FirebaseFirestoreTypes.QuerySnapshot<Message>) => {
+          // Process changes in batches to avoid overwhelming the system
+          const processChanges = async () => {
+            for (const change of snapshot.docChanges() as FirebaseFirestoreTypes.DocumentChange<Message>[]) {
+              // Only process newly added messages
+              if (change.type === 'added') {
+                const message = change.doc.data() as Message;
+                const messageId = change.doc.id;
+
+                // Skip if this message has already been processed
+                if (await this.hasProcessedMessage(messageId)) {
+                  console.log(
+                    `Skipping already processed message: ${messageId}`,
+                  );
+                  continue;
+                }
+
+                // Mark as processed
+                await this.markMessageAsProcessed(messageId);
+
+                // Verify this is a new message (within the last minute)
+                const messageTime = message.timestamp;
+                const now = Date.now();
+                const ONE_MINUTE = 60000; // 60 seconds in milliseconds
+                const messageAge = now - messageTime;
+
+                // For POCO and other Chinese devices, let's be more lenient
+                // with the time window to improve notification reliability
+                const TIME_WINDOW =
+                  Platform.OS === 'android' ? 300000 : ONE_MINUTE; // 5 minutes for Android
+
+                if (messageAge < TIME_WINDOW) {
+                  // Only show notification if the sender is not the current user
+                  if (message.senderId !== userId) {
+                    await this.displayMessageNotification(
+                      message.senderId,
+                      message.senderName,
+                      message.text,
+                      message.conversationId,
+                      message.recipientId,
+                      message.senderPhoto,
+                      messageId,
                     );
-                    continue;
-                  }
-
-                  // Mark as processed
-                  await this.markMessageAsProcessed(messageId);
-
-                  // Verify this is a new message (within the last minute)
-                  const messageTime = message.timestamp;
-                  const now = Date.now();
-                  const ONE_MINUTE = 60000; // 60 seconds in milliseconds
-                  const messageAge = now - messageTime;
-
-                  // For POCO and other Chinese devices, let's be more lenient
-                  // with the time window to improve notification reliability
-                  const TIME_WINDOW =
-                    Platform.OS === 'android' ? 300000 : ONE_MINUTE; // 5 minutes for Android
-
-                  if (messageAge < TIME_WINDOW) {
-                    // Only show notification if the sender is not the current user
-                    if (message.senderId !== userId) {
-                      await this.displayMessageNotification(
-                        message.senderId,
-                        message.senderName,
-                        message.text,
-                        message.conversationId,
-                        message.recipientId,
-                        message.senderPhoto,
-                        messageId,
-                      );
-                    }
                   }
                 }
               }
-            };
+            }
+          };
 
-            // Process the changes and catch any errors
-            processChanges().catch(error => {
-              console.error('Error processing message changes:', error);
-            });
-          },
-          error => {
-            console.error('Error listening for new messages:', error);
-            // Try to reestablish the listener after a short delay
-            setTimeout(() => this.setupMessageListener(), 5000);
-          },
-        );
+          // Process the changes and catch any errors
+          processChanges().catch(error => {
+            console.error('Error processing message changes:', error);
+          });
+        },
+        error => {
+          console.error('Error listening for new messages:', error);
+          // Try to reestablish the listener after a short delay
+          setTimeout(() => this.setupMessageListener(), 5000);
+        },
+      );
 
       // Store the unsubscribe function
       this.messageListeners[userId] = unsubscribe;
@@ -498,7 +524,7 @@ export class NotificationService {
    * Remove message listener when user logs out
    */
   removeMessageListener(): void {
-    const currentUser = auth().currentUser;
+    const currentUser = getAuth().currentUser;
     if (currentUser && this.messageListeners[currentUser.uid]) {
       this.messageListeners[currentUser.uid]();
       delete this.messageListeners[currentUser.uid];
@@ -532,7 +558,7 @@ export class NotificationService {
   ): Promise<boolean> {
     try {
       // Don't show notifications for your own messages
-      const currentUserId = auth().currentUser?.uid;
+      const currentUserId = getAuth().currentUser?.uid;
       if (currentUserId === senderId) {
         return false;
       }
@@ -563,10 +589,10 @@ export class NotificationService {
       await this.markMessageAsProcessed(notificationDedupeId);
 
       // Validate the senderPhoto URL
-      let largeIcon = undefined;
+      // let largeIcon = undefined;
       if (senderPhoto && senderPhoto.startsWith('http')) {
         // Only use the URL if it's a valid http(s) URL
-        largeIcon = senderPhoto;
+        // largeIcon = senderPhoto;
       }
 
       // Generate a stable notification ID based on the conversation and message
@@ -764,16 +790,15 @@ export class NotificationService {
    */
   async isRecipientMuted(recipientId: string): Promise<boolean> {
     try {
-      const currentUser = auth().currentUser;
+      const currentUser = getAuth().currentUser;
       if (!currentUser) return false;
 
-      const prefsDoc = await this.notificationPreferencesCollection
-        .doc(currentUser.uid)
-        .get();
+      const prefsDoc = await getDoc(
+        doc(this.notificationPreferencesCollection, currentUser.uid),
+      );
 
       if (!prefsDoc.exists()) return false;
-
-      const prefs = prefsDoc.data();
+      const prefs = prefsDoc.data() as NotificationPreferences;
       return prefs?.mutedRecipients?.includes(recipientId) ?? false;
     } catch (error) {
       console.error('Error checking if recipient is muted:', error);
@@ -789,28 +814,28 @@ export class NotificationService {
    */
   async muteRecipient(recipientId: string): Promise<boolean> {
     try {
-      const currentUser = auth().currentUser;
+      const currentUser = getAuth().currentUser;
       if (!currentUser) return false;
 
       const userId = currentUser.uid;
-      const userPrefsRef = this.notificationPreferencesCollection.doc(userId);
+      const userPrefsRef = doc(this.notificationPreferencesCollection, userId);
 
       // Get current preferences
-      const prefsDoc = await userPrefsRef.get();
+      const prefsDoc = await getDoc(userPrefsRef);
 
       if (prefsDoc.exists()) {
         // Update existing preferences
-        await userPrefsRef.update({
-          mutedRecipients: firestore.FieldValue.arrayUnion(recipientId),
-          updatedAt: firestore.FieldValue.serverTimestamp(),
+        await updateDoc(userPrefsRef, {
+          mutedRecipients: arrayUnion(recipientId),
+          updatedAt: serverTimestamp(),
         });
       } else {
         // Create new preferences document
-        await userPrefsRef.set({
+        await setDoc(userPrefsRef, {
           userId,
           mutedRecipients: [recipientId],
-          createdAt: firestore.FieldValue.serverTimestamp(),
-          updatedAt: firestore.FieldValue.serverTimestamp(),
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
         });
       }
 
@@ -829,20 +854,20 @@ export class NotificationService {
    */
   async unmuteRecipient(recipientId: string): Promise<boolean> {
     try {
-      const currentUser = auth().currentUser;
+      const currentUser = getAuth().currentUser;
       if (!currentUser) return false;
 
       const userId = currentUser.uid;
-      const userPrefsRef = this.notificationPreferencesCollection.doc(userId);
+      const userPrefsRef = doc(this.notificationPreferencesCollection, userId);
 
       // Get current preferences
-      const prefsDoc = await userPrefsRef.get();
+      const prefsDoc = await getDoc(userPrefsRef);
 
-      if (prefsDoc.exists()){
+      if (prefsDoc.exists()) {
         // Remove the recipient from the muted list
-        await userPrefsRef.update({
-          mutedRecipients: firestore.FieldValue.arrayRemove(recipientId),
-          updatedAt: firestore.FieldValue.serverTimestamp(),
+        await updateDoc(userPrefsRef, {
+          mutedRecipients: arrayRemove(recipientId),
+          updatedAt: serverTimestamp(),
         });
       }
 
@@ -1008,7 +1033,7 @@ export class NotificationService {
           },
           data: {
             type: 'task_reminder',
-            taskId: task.id,
+            taskId: String(task.id),
           },
         },
         trigger,
@@ -1041,7 +1066,7 @@ export class NotificationService {
    * Setup task notification listener for changed or new tasks
    */
   setupTaskNotificationListener(): void {
-    const currentUser = auth().currentUser;
+    const currentUser = getAuth().currentUser;
     if (!currentUser) {
       console.warn(
         'Cannot setup task notification listener: User not logged in',
@@ -1057,74 +1082,82 @@ export class NotificationService {
 
     try {
       // Listen for tasks that have notifications enabled and are not completed
-      const unsubscribe = firestore()
-        .collection('tasks')
-        .where('userId', '==', userId)
-        .where('notify', '==', true)
-        .where('completed', '==', false)
-        .onSnapshot(
-          async snapshot => {
+      const tasksRef = collection(
+        getFirestore(),
+        'tasks',
+      ) as FirebaseFirestoreTypes.CollectionReference<Task>;
+      const tasksQuery = query(
+        tasksRef,
+        where('userId', '==', userId),
+        where('notify', '==', true),
+        where('completed', '==', false),
+      );
+
+      const unsubscribe = onSnapshot(
+        tasksQuery,
+        async (snapshot: FirebaseFirestoreTypes.QuerySnapshot<Task>) => {
+          console.log(
+            `Task snapshot received with ${
+              snapshot.docChanges().length
+            } changes`,
+          );
+
+          (
+            snapshot.docChanges() as FirebaseFirestoreTypes.DocumentChange<Task>[]
+          ).forEach(async change => {
+            const task = {...change.doc.data()} as Task;
             console.log(
-              `Task snapshot received with ${
-                snapshot.docChanges().length
-              } changes`,
+              `Task change detected: ${change.type} - Task: ${task.id}, ${task.title}`,
             );
 
-            snapshot.docChanges().forEach(async change => {
-              const task = {id: change.doc.id, ...change.doc.data()} as Task;
-              console.log(
-                `Task change detected: ${change.type} - Task: ${task.id}, ${task.title}`,
-              );
+            if (change.type === 'added' || change.type === 'modified') {
+              // If task already has a notification, cancel it first
+              if (task.notificationId) {
+                console.log(
+                  `Cancelling existing notification for task: ${task.id}`,
+                );
+                await this.cancelTaskNotification(task.notificationId);
+              }
 
-              if (change.type === 'added' || change.type === 'modified') {
-                // If task already has a notification, cancel it first
-                if (task.notificationId) {
-                  console.log(
-                    `Cancelling existing notification for task: ${task.id}`,
-                  );
-                  await this.cancelTaskNotification(task.notificationId);
-                }
+              // Schedule a new notification if task is not completed
+              if (!task.completed) {
+                console.log(
+                  `Scheduling notification for task: ${task.id}, ${task.title}`,
+                );
+                const notificationId =
+                  await this.scheduleTaskNotification(task);
 
-                // Schedule a new notification if task is not completed
-                if (!task.completed) {
+                // Update the task with the new notification ID
+                if (notificationId) {
                   console.log(
-                    `Scheduling notification for task: ${task.id}, ${task.title}`,
+                    `Updating task with new notification ID: ${notificationId}`,
                   );
-                  const notificationId = await this.scheduleTaskNotification(
-                    task,
+                  await updateDoc(doc(getFirestore(), 'tasks', task.id), {
+                    notificationId: notificationId,
+                  });
+                } else {
+                  console.warn(
+                    `Failed to schedule notification for task: ${task.id}`,
                   );
-
-                  // Update the task with the new notification ID
-                  if (notificationId) {
-                    console.log(
-                      `Updating task with new notification ID: ${notificationId}`,
-                    );
-                    await firestore().collection('tasks').doc(task.id).update({
-                      notificationId: notificationId,
-                    });
-                  } else {
-                    console.warn(
-                      `Failed to schedule notification for task: ${task.id}`,
-                    );
-                  }
-                }
-              } else if (change.type === 'removed') {
-                // If task is deleted, cancel its notification
-                if (task.notificationId) {
-                  console.log(
-                    `Cancelling notification for deleted task: ${task.id}`,
-                  );
-                  await this.cancelTaskNotification(task.notificationId);
                 }
               }
-            });
-          },
-          error => {
-            console.error('Error listening for task notifications:', error);
-            // Try to reestablish the listener after a delay
-            setTimeout(() => this.setupTaskNotificationListener(), 5000);
-          },
-        );
+            } else if (change.type === 'removed') {
+              // If task is deleted, cancel its notification
+              if (task.notificationId) {
+                console.log(
+                  `Cancelling notification for deleted task: ${task.id}`,
+                );
+                await this.cancelTaskNotification(task.notificationId);
+              }
+            }
+          });
+        },
+        error => {
+          console.error('Error listening for task notifications:', error);
+          // Try to reestablish the listener after a delay
+          setTimeout(() => this.setupTaskNotificationListener(), 5000);
+        },
+      );
 
       // Store the unsubscribe function
       this.taskListeners[userId] = unsubscribe;
@@ -1140,7 +1173,7 @@ export class NotificationService {
    * Remove task notification listener
    */
   removeTaskListener(): void {
-    const currentUser = auth().currentUser;
+    const currentUser = getAuth().currentUser;
     if (currentUser && this.taskListeners[currentUser.uid]) {
       this.taskListeners[currentUser.uid]();
       delete this.taskListeners[currentUser.uid];

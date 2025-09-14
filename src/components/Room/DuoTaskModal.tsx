@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     Modal,
     View,
@@ -9,14 +9,26 @@ import {
     Switch,
     FlatList,
     Alert,
-    ActivityIndicator
+    ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { Task, SubTask } from '../../types/taskTypes';
-import { styles } from '../../styles/screens/userscreens/Tasks.styles';
-import firestore from '@react-native-firebase/firestore';
-import auth from '@react-native-firebase/auth';
+import {
+    styles,
+    duoTaskModalStyles,
+} from '../../styles/screens/userscreens/Tasks.styles';
+import {
+    getFirestore,
+    collection,
+    doc,
+    getDocs,
+    Timestamp,
+    query,
+    where,
+    limit,
+    getDoc,
+} from '@react-native-firebase/firestore';
+import { getAuth } from '@react-native-firebase/auth';
 // Replace uuid import with custom generator
 // import { v4 as uuidv4 } from 'uuid';
 
@@ -33,18 +45,20 @@ const generateUUID = (): string => {
     return `${timestamp}-${randomSegment1}-${randomSegment2}`;
 };
 
-interface TeamTaskModalProps {
+interface DuoTaskModalProps {
     modalVisible: boolean;
     isEditMode: boolean;
     isDark: boolean;
     task: Omit<Task, 'id' | 'userId' | 'createdAt' | 'updatedAt'>;
     onClose: () => void;
     onSave: () => void;
-    onChangeTask: (task: Omit<Task, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => void;
+    onChangeTask: (
+        task: Omit<Task, 'id' | 'userId' | 'createdAt' | 'updatedAt'>,
+    ) => void;
     getPriorityColor: (priority: string) => string;
 }
 
-const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
+const DuoTaskModal: React.FC<DuoTaskModalProps> = ({
     modalVisible,
     isEditMode,
     isDark,
@@ -52,11 +66,10 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
     onClose,
     onSave,
     onChangeTask,
-    getPriorityColor
 }) => {
     const [collaboratorEmail, setCollaboratorEmail] = useState('');
     const [isSearching, setIsSearching] = useState(false);
-    const [collaboratorData, setCollaboratorData] = useState<any>(null);
+    const [, setCollaboratorData] = useState<any>(null);
     const [collaborators, setCollaborators] = useState<any[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState('details'); // 'details', 'subtasks', 'collaboration'
@@ -66,31 +79,28 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
     const [newSubtaskDescription, setNewSubtaskDescription] = useState('');
     const [subtasks, setSubtasks] = useState<SubTask[]>(task.subtasks || []);
 
-    // Initialize collaborators list from task
-    useEffect(() => {
-        if (task.collaborators && task.collaborators.length > 1) {
-            fetchCollaboratorDetails();
-        }
-    }, [task.collaborators]);
-
     // Fetch collaborator details for display
-    const fetchCollaboratorDetails = async () => {
+    const fetchCollaboratorDetails = useCallback(async () => {
         if (!task.collaborators || task.collaborators.length === 0) return;
 
-        const currentUserId = auth().currentUser?.uid || '';
-        const otherCollaboratorIds = task.collaborators.filter(id => id !== currentUserId);
+        const currentUserId = getAuth().currentUser?.uid || '';
+        const otherCollaboratorIds = task.collaborators.filter(
+            id => id !== currentUserId,
+        );
 
         let collaboratorsList: any[] = [];
         for (const id of otherCollaboratorIds) {
             try {
-                const userDoc = await firestore().collection('users').doc(id).get();
-                if (userDoc.exists) {
+                const userDoc = await getDoc(doc(getFirestore(), 'users', id));
+
+                if (userDoc.exists()) {
                     const userData = userDoc.data();
                     collaboratorsList.push({
                         id: userDoc.id,
-                        displayName: userData?.displayName || userData?.email || 'Unknown User',
+                        displayName:
+                            userData?.displayName || userData?.email || 'Unknown User',
                         email: userData?.email || '',
-                        photoURL: userData?.photoURL || null
+                        photoURL: userData?.photoURL || null,
                     });
                 }
             } catch (err) {
@@ -99,7 +109,13 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
         }
 
         setCollaborators(collaboratorsList);
-    };
+    }, [task.collaborators]);
+    // Initialize collaborators list from task
+    useEffect(() => {
+        if (task.collaborators && task.collaborators.length > 1) {
+            fetchCollaboratorDetails();
+        }
+    }, [task.collaborators, fetchCollaboratorDetails]);
 
     // Sync subtasks with task
     useEffect(() => {
@@ -112,7 +128,7 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
     useEffect(() => {
         onChangeTask({
             ...task,
-            subtasks
+            subtasks,
         });
 
         // Calculate progress
@@ -122,7 +138,7 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
             onChangeTask({
                 ...task,
                 subtasks,
-                progress: percentage
+                progress: percentage,
             });
         }
     }, [subtasks]);
@@ -138,11 +154,13 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
 
         try {
             // Search for user by email
-            const userSnapshot = await firestore()
-                .collection('users')
-                .where('email', '==', collaboratorEmail)
-                .limit(1)
-                .get();
+            const userSnapshot = await getDocs(
+                query(
+                    collection(getFirestore(), 'users'),
+                    where('email', '==', collaboratorEmail),
+                    limit(1),
+                ),
+            );
 
             if (userSnapshot.empty) {
                 setError('User not found');
@@ -152,7 +170,7 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
                 const userId = userSnapshot.docs[0].id;
 
                 // Check if user is trying to add themselves
-                if (userId === auth().currentUser?.uid) {
+                if (userId === getAuth().currentUser?.uid) {
                     setError('You cannot add yourself as a collaborator');
                     setCollaboratorData(null);
                     return;
@@ -169,11 +187,11 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
                     id: userId,
                     displayName: userData.displayName || userData.email,
                     email: userData.email,
-                    photoURL: userData.photoURL
+                    photoURL: userData.photoURL,
                 });
 
                 // Add the new collaborator to the list
-                const currentUserId = auth().currentUser?.uid || '';
+                const currentUserId = getAuth().currentUser?.uid || '';
                 const existingCollaborators = task.collaborators || [currentUserId];
                 const updatedCollaborators = [...existingCollaborators];
 
@@ -186,16 +204,19 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
                     ...task,
                     isDuoTask: true,
                     collaborators: updatedCollaborators,
-                    collaborationStatus: 'pending'
+                    collaborationStatus: 'pending',
                 });
 
                 // Add to UI collaborators list
-                setCollaborators([...collaborators, {
-                    id: userId,
-                    displayName: userData.displayName || userData.email,
-                    email: userData.email,
-                    photoURL: userData.photoURL
-                }]);
+                setCollaborators([
+                    ...collaborators,
+                    {
+                        id: userId,
+                        displayName: userData.displayName || userData.email,
+                        email: userData.email,
+                        photoURL: userData.photoURL,
+                    },
+                ]);
 
                 // Reset the input
                 setCollaboratorEmail('');
@@ -220,8 +241,8 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
             title: newSubtaskTitle,
             description: newSubtaskDescription,
             completed: false,
-            createdAt: firestore.Timestamp.now(),
-            updatedAt: firestore.Timestamp.now()
+            createdAt: Timestamp.now(),
+            updatedAt: Timestamp.now(),
         };
 
         setSubtasks([...subtasks, newSubtask]);
@@ -230,18 +251,22 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
     };
 
     const toggleSubtaskCompletion = (id: string) => {
-        setSubtasks(subtasks.map(subtask => {
-            if (subtask.id === id) {
-                return {
-                    ...subtask,
-                    completed: !subtask.completed,
-                    completedBy: !subtask.completed ? auth().currentUser?.uid : undefined,
-                    completedAt: !subtask.completed ? firestore.Timestamp.now() : undefined,
-                    updatedAt: firestore.Timestamp.now()
-                };
-            }
-            return subtask;
-        }));
+        setSubtasks(
+            subtasks.map(subtask => {
+                if (subtask.id === id) {
+                    return {
+                        ...subtask,
+                        completed: !subtask.completed,
+                        completedBy: !subtask.completed
+                            ? getAuth().currentUser?.uid
+                            : undefined,
+                        completedAt: !subtask.completed ? Timestamp.now() : undefined,
+                        updatedAt: Timestamp.now(),
+                    };
+                }
+                return subtask;
+            }),
+        );
     };
 
     const removeSubtask = (id: string) => {
@@ -254,8 +279,10 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
 
         // Remove from task collaborators array
         if (task.collaborators) {
-            const currentUserId = auth().currentUser?.uid || '';
-            const updatedCollaborators = task.collaborators.filter(id => id !== collaboratorId);
+            const currentUserId = getAuth().currentUser?.uid || '';
+            const updatedCollaborators = task.collaborators.filter(
+                id => id !== collaboratorId,
+            );
 
             // Make sure current user is still in the collaborators list
             if (!updatedCollaborators.includes(currentUserId)) {
@@ -266,7 +293,7 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
                 ...task,
                 collaborators: updatedCollaborators,
                 // Keep as a team task if there are still multiple collaborators
-                isDuoTask: updatedCollaborators.length > 1
+                isDuoTask: updatedCollaborators.length > 1,
             });
         }
     };
@@ -277,8 +304,8 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
         onChangeTask({
             ...task,
             isDuoTask: false,
-            collaborators: [auth().currentUser?.uid || ''],
-            collaborationStatus: undefined
+            collaborators: [getAuth().currentUser?.uid || ''],
+            collaborationStatus: undefined,
         });
         setCollaboratorEmail('');
         setCollaboratorData(null);
@@ -289,63 +316,104 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
             animationType="slide"
             transparent={true}
             visible={modalVisible}
-            onRequestClose={onClose}
-        >
+            onRequestClose={onClose}>
             <View style={styles.modalOverlay}>
-                <View style={[
-                    styles.modalContent,
-                    duoTaskModalStyles.modalContent,
-                    isDark ? duoTaskModalStyles.modalContentDark : duoTaskModalStyles.modalContentLight
-                ]}>
+                <View
+                    style={[
+                        styles.modalContent,
+                        duoTaskModalStyles.modalContent,
+                        isDark
+                            ? duoTaskModalStyles.modalContentDark
+                            : duoTaskModalStyles.modalContentLight,
+                    ]}>
                     <View style={styles.modalHeader}>
-                        <Text style={[styles.modalTitle, duoTaskModalStyles.modalTitle, isDark ? duoTaskModalStyles.modalTitleDark : duoTaskModalStyles.modalTitleLight]}>
+                        <Text
+                            style={[
+                                styles.modalTitle,
+                                duoTaskModalStyles.modalTitle,
+                                isDark
+                                    ? duoTaskModalStyles.modalTitleDark
+                                    : duoTaskModalStyles.modalTitleLight,
+                            ]}>
                             {isEditMode ? 'Edit Team Task' : 'Create Team Task'}
                         </Text>
-                        <TouchableOpacity style={duoTaskModalStyles.closeButton} onPress={onClose}>
-                            <Icon name="close" size={24} color={isDark ? duoTaskModalStyles.tabTextDark.color : duoTaskModalStyles.tabTextLight.color} />
+                        <TouchableOpacity
+                            style={duoTaskModalStyles.closeButton}
+                            onPress={onClose}>
+                            <Icon
+                                name="close"
+                                size={24}
+                                color={
+                                    isDark
+                                        ? duoTaskModalStyles.tabTextDark.color
+                                        : duoTaskModalStyles.tabTextLight.color
+                                }
+                            />
                         </TouchableOpacity>
                     </View>
 
                     {/* Tabs */}
-                    <View style={[
-                        duoTaskModalStyles.tabsContainer,
-                        isDark ? duoTaskModalStyles.tabsContainerDark : duoTaskModalStyles.tabsContainerLight
-                    ]}>
+                    <View
+                        style={[
+                            duoTaskModalStyles.tabsContainer,
+                            isDark
+                                ? duoTaskModalStyles.tabsContainerDark
+                                : duoTaskModalStyles.tabsContainerLight,
+                        ]}>
                         <TouchableOpacity
                             style={[
                                 duoTaskModalStyles.tab,
-                                activeTab === 'details' ? duoTaskModalStyles.tabActive : duoTaskModalStyles.tabInactive
+                                activeTab === 'details'
+                                    ? duoTaskModalStyles.tabActive
+                                    : duoTaskModalStyles.tabInactive,
                             ]}
-                            onPress={() => setActiveTab('details')}
-                        >
-                            <Text style={[
-                                duoTaskModalStyles.tabText,
-                                isDark ? duoTaskModalStyles.tabTextDark : duoTaskModalStyles.tabTextLight
-                            ]}>Task Details</Text>
+                            onPress={() => setActiveTab('details')}>
+                            <Text
+                                style={[
+                                    duoTaskModalStyles.tabText,
+                                    isDark
+                                        ? duoTaskModalStyles.tabTextDark
+                                        : duoTaskModalStyles.tabTextLight,
+                                ]}>
+                                Task Details
+                            </Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={[
                                 duoTaskModalStyles.tab,
-                                activeTab === 'subtasks' ? duoTaskModalStyles.tabActive : duoTaskModalStyles.tabInactive
+                                activeTab === 'subtasks'
+                                    ? duoTaskModalStyles.tabActive
+                                    : duoTaskModalStyles.tabInactive,
                             ]}
-                            onPress={() => setActiveTab('subtasks')}
-                        >
-                            <Text style={[
-                                duoTaskModalStyles.tabText,
-                                isDark ? duoTaskModalStyles.tabTextDark : duoTaskModalStyles.tabTextLight
-                            ]}>Subtasks</Text>
+                            onPress={() => setActiveTab('subtasks')}>
+                            <Text
+                                style={[
+                                    duoTaskModalStyles.tabText,
+                                    isDark
+                                        ? duoTaskModalStyles.tabTextDark
+                                        : duoTaskModalStyles.tabTextLight,
+                                ]}>
+                                Subtasks
+                            </Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={[
                                 duoTaskModalStyles.tab,
-                                activeTab === 'collaboration' ? duoTaskModalStyles.tabActive : duoTaskModalStyles.tabInactive
+                                activeTab === 'collaboration'
+                                    ? duoTaskModalStyles.tabActive
+                                    : duoTaskModalStyles.tabInactive,
                             ]}
-                            onPress={() => setActiveTab('collaboration')}
-                        >
-                            <Text style={[
-                                duoTaskModalStyles.tabText,
-                                isDark ? duoTaskModalStyles.tabTextDark : duoTaskModalStyles.tabTextLight
-                            ]}>Team Members</Text>
+                            onPress={() => setActiveTab('collaboration')}>
+                            <Text
+                                style={[
+                                    duoTaskModalStyles.tabText,
+                                    duoTaskModalStyles.teamMembersTabText,
+                                    isDark
+                                        ? duoTaskModalStyles.tabTextDark
+                                        : duoTaskModalStyles.tabTextLight,
+                                ]}>
+                                Team Members
+                            </Text>
                         </TouchableOpacity>
                     </View>
 
@@ -354,104 +422,205 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
                         {activeTab === 'details' && (
                             <>
                                 <View style={styles.inputGroup}>
-                                    <Text style={[styles.inputLabel, duoTaskModalStyles.inputLabel, isDark ? duoTaskModalStyles.inputLabelDark : duoTaskModalStyles.inputLabelLight]}>Title *</Text>
+                                    <Text
+                                        style={[
+                                            styles.inputLabel,
+                                            duoTaskModalStyles.inputLabel,
+                                            isDark
+                                                ? duoTaskModalStyles.inputLabelDark
+                                                : duoTaskModalStyles.inputLabelLight,
+                                        ]}>
+                                        Title *
+                                    </Text>
                                     <TextInput
                                         style={[
                                             styles.input,
                                             duoTaskModalStyles.input,
-                                            isDark ? duoTaskModalStyles.inputDark : duoTaskModalStyles.inputLight
+                                            isDark
+                                                ? duoTaskModalStyles.inputDark
+                                                : duoTaskModalStyles.inputLight,
                                         ]}
                                         placeholder="Task title"
-                                        placeholderTextColor={isDark ? duoTaskModalStyles.placeholderDark.color : duoTaskModalStyles.placeholderLight.color}
+                                        placeholderTextColor={
+                                            isDark
+                                                ? duoTaskModalStyles.placeholderDark.color
+                                                : duoTaskModalStyles.placeholderLight.color
+                                        }
                                         value={task.title}
-                                        onChangeText={(text) => onChangeTask({ ...task, title: text })}
+                                        onChangeText={text => onChangeTask({ ...task, title: text })}
                                     />
                                 </View>
 
                                 <View style={styles.inputGroup}>
-                                    <Text style={[styles.inputLabel, duoTaskModalStyles.inputLabel, isDark ? duoTaskModalStyles.inputLabelDark : duoTaskModalStyles.inputLabelLight]}>Description</Text>
+                                    <Text
+                                        style={[
+                                            styles.inputLabel,
+                                            duoTaskModalStyles.inputLabel,
+                                            isDark
+                                                ? duoTaskModalStyles.inputLabelDark
+                                                : duoTaskModalStyles.inputLabelLight,
+                                        ]}>
+                                        Description
+                                    </Text>
                                     <TextInput
                                         style={[
                                             styles.input,
                                             duoTaskModalStyles.input,
                                             duoTaskModalStyles.descriptionInput,
-                                            isDark ? duoTaskModalStyles.inputDark : duoTaskModalStyles.inputLight
+                                            isDark
+                                                ? duoTaskModalStyles.inputDark
+                                                : duoTaskModalStyles.inputLight,
                                         ]}
                                         placeholder="Task description"
-                                        placeholderTextColor={isDark ? duoTaskModalStyles.placeholderDark.color : duoTaskModalStyles.placeholderLight.color}
+                                        placeholderTextColor={
+                                            isDark
+                                                ? duoTaskModalStyles.placeholderDark.color
+                                                : duoTaskModalStyles.placeholderLight.color
+                                        }
                                         value={task.description}
-                                        onChangeText={(text) => onChangeTask({ ...task, description: text })}
+                                        onChangeText={text =>
+                                            onChangeTask({ ...task, description: text })
+                                        }
                                         multiline
                                         numberOfLines={4}
                                     />
                                 </View>
 
                                 <View style={styles.inputGroup}>
-                                    <Text style={[styles.inputLabel, duoTaskModalStyles.inputLabel, isDark ? duoTaskModalStyles.inputLabelDark : duoTaskModalStyles.inputLabelLight]}>Due Date</Text>
+                                    <Text
+                                        style={[
+                                            styles.inputLabel,
+                                            duoTaskModalStyles.inputLabel,
+                                            isDark
+                                                ? duoTaskModalStyles.inputLabelDark
+                                                : duoTaskModalStyles.inputLabelLight,
+                                        ]}>
+                                        Due Date
+                                    </Text>
                                     <TextInput
                                         style={[
                                             styles.input,
                                             duoTaskModalStyles.input,
-                                            isDark ? duoTaskModalStyles.inputDark : duoTaskModalStyles.inputLight
+                                            isDark
+                                                ? duoTaskModalStyles.inputDark
+                                                : duoTaskModalStyles.inputLight,
                                         ]}
                                         placeholder="Select due date"
-                                        placeholderTextColor={isDark ? duoTaskModalStyles.placeholderDark.color : duoTaskModalStyles.placeholderLight.color}
+                                        placeholderTextColor={
+                                            isDark
+                                                ? duoTaskModalStyles.placeholderDark.color
+                                                : duoTaskModalStyles.placeholderLight.color
+                                        }
                                         value={task.dueDate}
-                                        onChangeText={(text) => onChangeTask({ ...task, dueDate: text })}
+                                        onChangeText={text =>
+                                            onChangeTask({ ...task, dueDate: text })
+                                        }
                                     />
                                 </View>
 
                                 <View style={styles.inputGroup}>
-                                    <Text style={[styles.inputLabel, { color: isDark ? 'white' : 'black' }]}>Due Time</Text>
-                                    <TextInput
+                                    <Text
                                         style={[
-                                            styles.input,
-                                            {
-                                                backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5',
-                                                color: isDark ? 'white' : 'black',
-                                                borderColor: isDark ? '#404040' : '#e0e0e0'
-                                            }
-                                        ]}
-                                        placeholder="HH:MM (24-hour format)"
-                                        placeholderTextColor={isDark ? '#8e8e8e' : '#999'}
-                                        value={task.dueTime}
-                                        onChangeText={(text) => onChangeTask({ ...task, dueTime: text })}
-                                    />
-                                </View>
-
-                                <View style={styles.inputGroup}>
-                                    <Text style={[styles.inputLabel, duoTaskModalStyles.inputLabel, isDark ? duoTaskModalStyles.inputLabelDark : duoTaskModalStyles.inputLabelLight]}>Status</Text>
+                                            styles.inputLabel,
+                                            duoTaskModalStyles.inputLabel,
+                                            isDark
+                                                ? duoTaskModalStyles.inputLabelDark
+                                                : duoTaskModalStyles.inputLabelLight,
+                                        ]}>
+                                        Due Time
+                                    </Text>
                                     <TextInput
                                         style={[
                                             styles.input,
                                             duoTaskModalStyles.input,
-                                            isDark ? duoTaskModalStyles.inputDark : duoTaskModalStyles.inputLight
+                                            isDark
+                                                ? duoTaskModalStyles.inputDark
+                                                : duoTaskModalStyles.inputLight,
                                         ]}
-                                        placeholder="e.g. Work, Personal, Health"
-                                        placeholderTextColor={isDark ? duoTaskModalStyles.placeholderDark.color : duoTaskModalStyles.placeholderLight.color}
-                                        value={task.category}
-                                        onChangeText={(text) => onChangeTask({ ...task, category: text })}
+                                        placeholder="HH:MM (24-hour format)"
+                                        placeholderTextColor={
+                                            isDark
+                                                ? duoTaskModalStyles.placeholderDark.color
+                                                : duoTaskModalStyles.placeholderLight.color
+                                        }
+                                        value={task.dueTime}
+                                        onChangeText={text =>
+                                            onChangeTask({ ...task, dueTime: text })
+                                        }
                                     />
                                 </View>
 
                                 <View style={styles.inputGroup}>
-                                    <Text style={[styles.inputLabel, duoTaskModalStyles.inputLabel, isDark ? duoTaskModalStyles.inputLabelDark : duoTaskModalStyles.inputLabelLight]}>Priority</Text>
+                                    <Text
+                                        style={[
+                                            styles.inputLabel,
+                                            duoTaskModalStyles.inputLabel,
+                                            isDark
+                                                ? duoTaskModalStyles.inputLabelDark
+                                                : duoTaskModalStyles.inputLabelLight,
+                                        ]}>
+                                        Status
+                                    </Text>
+                                    <TextInput
+                                        style={[
+                                            styles.input,
+                                            duoTaskModalStyles.input,
+                                            isDark
+                                                ? duoTaskModalStyles.inputDark
+                                                : duoTaskModalStyles.inputLight,
+                                        ]}
+                                        placeholder="e.g. Work, Personal, Health"
+                                        placeholderTextColor={
+                                            isDark
+                                                ? duoTaskModalStyles.placeholderDark.color
+                                                : duoTaskModalStyles.placeholderLight.color
+                                        }
+                                        value={task.category}
+                                        onChangeText={text =>
+                                            onChangeTask({ ...task, category: text })
+                                        }
+                                    />
+                                </View>
+
+                                <View style={styles.inputGroup}>
+                                    <Text
+                                        style={[
+                                            styles.inputLabel,
+                                            duoTaskModalStyles.inputLabel,
+                                            isDark
+                                                ? duoTaskModalStyles.inputLabelDark
+                                                : duoTaskModalStyles.inputLabelLight,
+                                        ]}>
+                                        Priority
+                                    </Text>
                                     <View style={styles.prioritySelector}>
-                                        {['low', 'medium', 'high'].map((priority) => (
+                                        {['low', 'medium', 'high'].map(priority => (
                                             <TouchableOpacity
                                                 key={priority}
                                                 style={[
-                                                styles.priorityOption,
-                                                duoTaskModalStyles.priorityButton,
-                                                isDark ? duoTaskModalStyles.priorityButtonDark : duoTaskModalStyles.priorityButtonLight,
-                                                task.priority === priority && duoTaskModalStyles.priorityButtonActive
-                                            ]}
-                                                onPress={() => onChangeTask({ ...task, priority: priority as 'low' | 'medium' | 'high' })}
-                                            >
-                                                <Text style={[
-                                                    duoTaskModalStyles.priorityButtonText,
-                                                    task.priority === priority ? duoTaskModalStyles.priorityButtonTextActive : (isDark ? duoTaskModalStyles.priorityButtonTextDark : duoTaskModalStyles.priorityButtonTextLight)
-                                                ]}>
+                                                    styles.priorityOption,
+                                                    duoTaskModalStyles.priorityButton,
+                                                    isDark
+                                                        ? duoTaskModalStyles.priorityButtonDark
+                                                        : duoTaskModalStyles.priorityButtonLight,
+                                                    task.priority === priority &&
+                                                    duoTaskModalStyles.priorityButtonActive,
+                                                ]}
+                                                onPress={() =>
+                                                    onChangeTask({
+                                                        ...task,
+                                                        priority: priority as 'low' | 'medium' | 'high',
+                                                    })
+                                                }>
+                                                <Text
+                                                    style={[
+                                                        duoTaskModalStyles.priorityButtonText,
+                                                        task.priority === priority
+                                                            ? duoTaskModalStyles.priorityButtonTextActive
+                                                            : isDark
+                                                                ? duoTaskModalStyles.priorityButtonTextDark
+                                                                : duoTaskModalStyles.priorityButtonTextLight,
+                                                    ]}>
                                                     {priority.charAt(0).toUpperCase() + priority.slice(1)}
                                                 </Text>
                                             </TouchableOpacity>
@@ -461,15 +630,40 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
 
                                 <View style={styles.inputGroup}>
                                     <View style={styles.notifyContainer}>
-                                        <Text style={[styles.inputLabel, duoTaskModalStyles.inputLabel, isDark ? duoTaskModalStyles.inputLabelDark : duoTaskModalStyles.inputLabelLight]}>Send Notification</Text>
+                                        <Text
+                                            style={[
+                                                styles.inputLabel,
+                                                duoTaskModalStyles.inputLabel,
+                                                isDark
+                                                    ? duoTaskModalStyles.inputLabelDark
+                                                    : duoTaskModalStyles.inputLabelLight,
+                                            ]}>
+                                            Send Notification
+                                        </Text>
                                         <Switch
                                             trackColor={{
-                                            false: isDark ? duoTaskModalStyles.switchTrackDark.backgroundColor : duoTaskModalStyles.switchTrackLight.backgroundColor,
-                                            true: duoTaskModalStyles.switchTrackActive.backgroundColor
-                                        }}
-                                            thumbColor={task.notify ? duoTaskModalStyles.switchThumbActive.backgroundColor : (isDark ? duoTaskModalStyles.switchThumbDark.backgroundColor : duoTaskModalStyles.switchThumbLight.backgroundColor)}
-                                        ios_backgroundColor={isDark ? duoTaskModalStyles.switchTrackDark.backgroundColor : duoTaskModalStyles.switchTrackLight.backgroundColor}
-                                            onValueChange={(value) => onChangeTask({ ...task, notify: value })}
+                                                false: isDark
+                                                    ? duoTaskModalStyles.switchTrackDark.backgroundColor
+                                                    : duoTaskModalStyles.switchTrackLight.backgroundColor,
+                                                true: duoTaskModalStyles.switchTrackActive
+                                                    .backgroundColor,
+                                            }}
+                                            thumbColor={
+                                                task.notify
+                                                    ? duoTaskModalStyles.switchThumbActive.backgroundColor
+                                                    : isDark
+                                                        ? duoTaskModalStyles.switchThumbDark.backgroundColor
+                                                        : duoTaskModalStyles.switchThumbLight
+                                                            .backgroundColor
+                                            }
+                                            ios_backgroundColor={
+                                                isDark
+                                                    ? duoTaskModalStyles.switchTrackDark.backgroundColor
+                                                    : duoTaskModalStyles.switchTrackLight.backgroundColor
+                                            }
+                                            onValueChange={value =>
+                                                onChangeTask({ ...task, notify: value })
+                                            }
                                             value={task.notify}
                                         />
                                     </View>
@@ -481,10 +675,23 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
                         {activeTab === 'subtasks' && (
                             <>
                                 <View style={styles.inputGroup}>
-                                    <Text style={[styles.inputLabel, duoTaskModalStyles.inputLabel, isDark ? duoTaskModalStyles.inputLabelDark : duoTaskModalStyles.inputLabelLight]}>
+                                    <Text
+                                        style={[
+                                            styles.inputLabel,
+                                            duoTaskModalStyles.inputLabel,
+                                            isDark
+                                                ? duoTaskModalStyles.inputLabelDark
+                                                : duoTaskModalStyles.inputLabelLight,
+                                        ]}>
                                         Add Subtasks
                                     </Text>
-                                    <Text style={[duoTaskModalStyles.descriptionText, isDark ? duoTaskModalStyles.descriptionTextDark : duoTaskModalStyles.descriptionTextLight]}>
+                                    <Text
+                                        style={[
+                                            duoTaskModalStyles.descriptionText,
+                                            isDark
+                                                ? duoTaskModalStyles.descriptionTextDark
+                                                : duoTaskModalStyles.descriptionTextLight,
+                                        ]}>
                                         Break down your task into smaller, manageable subtasks
                                     </Text>
 
@@ -493,10 +700,16 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
                                             styles.input,
                                             duoTaskModalStyles.input,
                                             duoTaskModalStyles.subtaskInput,
-                                            isDark ? duoTaskModalStyles.inputDark : duoTaskModalStyles.inputLight
+                                            isDark
+                                                ? duoTaskModalStyles.inputDark
+                                                : duoTaskModalStyles.inputLight,
                                         ]}
                                         placeholder="Subtask title"
-                                        placeholderTextColor={isDark ? duoTaskModalStyles.placeholderDark.color : duoTaskModalStyles.placeholderLight.color}
+                                        placeholderTextColor={
+                                            isDark
+                                                ? duoTaskModalStyles.placeholderDark.color
+                                                : duoTaskModalStyles.placeholderLight.color
+                                        }
                                         value={newSubtaskTitle}
                                         onChangeText={setNewSubtaskTitle}
                                     />
@@ -506,87 +719,132 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
                                             styles.input,
                                             duoTaskModalStyles.input,
                                             duoTaskModalStyles.subtaskDescriptionInput,
-                                            isDark ? duoTaskModalStyles.inputDark : duoTaskModalStyles.inputLight
+                                            isDark
+                                                ? duoTaskModalStyles.inputDark
+                                                : duoTaskModalStyles.inputLight,
                                         ]}
                                         placeholder="Description (optional)"
-                                        placeholderTextColor={isDark ? duoTaskModalStyles.placeholderDark.color : duoTaskModalStyles.placeholderLight.color}
+                                        placeholderTextColor={
+                                            isDark
+                                                ? duoTaskModalStyles.placeholderDark.color
+                                                : duoTaskModalStyles.placeholderLight.color
+                                        }
                                         value={newSubtaskDescription}
                                         onChangeText={setNewSubtaskDescription}
                                     />
 
                                     <TouchableOpacity
                                         style={duoTaskModalStyles.addButton}
-                                        onPress={addSubtask}
-                                    >
-                                        <Text style={duoTaskModalStyles.addButtonText}>Add Subtask</Text>
+                                        onPress={addSubtask}>
+                                        <Text style={duoTaskModalStyles.addButtonText}>
+                                            Add Subtask
+                                        </Text>
                                     </TouchableOpacity>
                                 </View>
 
                                 <View style={styles.inputGroup}>
-                                    <Text style={[styles.inputLabel, duoTaskModalStyles.inputLabel, isDark ? duoTaskModalStyles.inputLabelDark : duoTaskModalStyles.inputLabelLight, duoTaskModalStyles.subtasksCount]}>
+                                    <Text
+                                        style={[
+                                            styles.inputLabel,
+                                            duoTaskModalStyles.inputLabel,
+                                            isDark
+                                                ? duoTaskModalStyles.inputLabelDark
+                                                : duoTaskModalStyles.inputLabelLight,
+                                            duoTaskModalStyles.subtasksCount,
+                                        ]}>
                                         Subtasks ({subtasks.length})
                                     </Text>
 
                                     {subtasks.length === 0 ? (
-                                        <Text style={{ color: isDark ? '#8e8e8e' : '#666', textAlign: 'center', padding: 20 }}>
+                                        <Text
+                                            style={{
+                                                color: isDark ? '#8e8e8e' : '#666',
+                                                textAlign: 'center',
+                                                padding: 20,
+                                            }}>
                                             No subtasks yet. Add some to track progress!
                                         </Text>
                                     ) : (
                                         <FlatList
                                             data={subtasks}
-                                            keyExtractor={(item) => item.id}
+                                            keyExtractor={item => item.id}
                                             renderItem={({ item }) => (
-                                                <View style={{
-                                                    flexDirection: 'row',
-                                                    padding: 10,
-                                                    borderBottomWidth: 1,
-                                                    borderColor: isDark ? '#404040' : '#e0e0e0',
-                                                    alignItems: 'center'
-                                                }}>
+                                                <View
+                                                    style={{
+                                                        flexDirection: 'row',
+                                                        padding: 10,
+                                                        borderBottomWidth: 1,
+                                                        borderColor: isDark ? '#404040' : '#e0e0e0',
+                                                        alignItems: 'center',
+                                                    }}>
                                                     <TouchableOpacity
-                                                        style={{
-                                                            width: 24,
-                                                            height: 24,
-                                                            borderRadius: 12,
-                                                            borderWidth: 2,
-                                                            borderColor: isDark ? '#8e8e8e' : '#666',
-                                                            justifyContent: 'center',
-                                                            alignItems: 'center',
-                                                            backgroundColor: item.completed ? '#1a9cd8' : 'transparent',
-                                                            marginRight: 10
-                                                        }}
-                                                        onPress={() => toggleSubtaskCompletion(item.id)}
-                                                    >
+                                                        style={[
+                                                            duoTaskModalStyles.subtaskCheckbox,
+                                                            {
+                                                                borderColor: isDark
+                                                                    ? duoTaskModalStyles.subtaskCheckboxDark
+                                                                        .borderColor
+                                                                    : duoTaskModalStyles.subtaskCheckboxLight
+                                                                        .borderColor,
+                                                                backgroundColor: item.completed
+                                                                    ? duoTaskModalStyles.subtaskCheckboxActive
+                                                                        .backgroundColor
+                                                                    : duoTaskModalStyles.subtaskCheckboxInactive
+                                                                        .backgroundColor,
+                                                            },
+                                                        ]}
+                                                        onPress={() => toggleSubtaskCompletion(item.id)}>
                                                         {item.completed && (
                                                             <Icon name="checkmark" size={16} color="white" />
                                                         )}
                                                     </TouchableOpacity>
 
-                                                    <View style={{ flex: 1 }}>
-                                                        <Text style={{
-                                                            color: isDark ? 'white' : 'black',
-                                                            textDecorationLine: item.completed ? 'line-through' : 'none',
-                                                            opacity: item.completed ? 0.7 : 1
-                                                        }}>
+                                                    <View
+                                                        style={duoTaskModalStyles.subtaskTitleContainer}>
+                                                        <Text
+                                                            style={[
+                                                                duoTaskModalStyles.subtaskTitle,
+                                                                isDark
+                                                                    ? duoTaskModalStyles.subtaskTitleDark
+                                                                    : duoTaskModalStyles.subtaskTitleLight,
+                                                                item.completed &&
+                                                                duoTaskModalStyles.subtaskTitleCompleted,
+                                                            ]}>
                                                             {item.title}
                                                         </Text>
                                                         {item.description && (
-                                                            <Text style={{
-                                                                color: isDark ? '#8e8e8e' : '#666',
-                                                                fontSize: 12,
-                                                                textDecorationLine: item.completed ? 'line-through' : 'none',
-                                                                opacity: item.completed ? 0.7 : 1
-                                                            }}>
+                                                            <Text
+                                                                style={[
+                                                                    duoTaskModalStyles.subtaskDescription,
+                                                                    isDark
+                                                                        ? duoTaskModalStyles.subtaskDescriptionDark
+                                                                        : duoTaskModalStyles.subtaskDescriptionLight,
+                                                                    item.completed &&
+                                                                    duoTaskModalStyles.subtaskDescriptionCompleted,
+                                                                ]}>
                                                                 {item.description}
                                                             </Text>
                                                         )}
                                                     </View>
 
-                                                    <TouchableOpacity onPress={() => removeSubtask(item.id)}>
-                                                        <Icon name="trash-outline" size={20} color={isDark ? '#8e8e8e' : '#666'} />
+                                                    <TouchableOpacity
+                                                        onPress={() => removeSubtask(item.id)}
+                                                        style={duoTaskModalStyles.removeSubtaskButton}>
+                                                        <Icon
+                                                            name="trash-outline"
+                                                            size={20}
+                                                            color={
+                                                                isDark
+                                                                    ? duoTaskModalStyles.removeSubtaskIconDark
+                                                                        .color
+                                                                    : duoTaskModalStyles.removeSubtaskIconLight
+                                                                        .color
+                                                            }
+                                                        />
                                                     </TouchableOpacity>
                                                 </View>
                                             )}
+                                            style={duoTaskModalStyles.subtaskList}
                                         />
                                     )}
                                 </View>
@@ -597,88 +855,134 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
                         {activeTab === 'collaboration' && (
                             <>
                                 <View style={styles.inputGroup}>
-                                    <Text style={[styles.inputLabel, { color: isDark ? 'white' : 'black' }]}>
+                                    <Text
+                                        style={[
+                                            styles.inputLabel,
+                                            duoTaskModalStyles.inputLabel,
+                                            isDark
+                                                ? duoTaskModalStyles.inputLabelDark
+                                                : duoTaskModalStyles.inputLabelLight,
+                                        ]}>
                                         Add Team Members
                                     </Text>
-                                    <Text style={[{ color: isDark ? '#8e8e8e' : '#666', marginBottom: 10, fontSize: 12 }]}>
+                                    <Text
+                                        style={[
+                                            duoTaskModalStyles.descriptionText,
+                                            duoTaskModalStyles.collaborationHintText,
+                                            isDark
+                                                ? duoTaskModalStyles.collaborationHintTextDark
+                                                : duoTaskModalStyles.collaborationHintTextLight,
+                                        ]}>
                                         Enter email of the person you want to add to the team
                                     </Text>
-
-                                    <View style={{ flexDirection: 'row', marginBottom: 10 }}>
+                                    <View style={duoTaskModalStyles.collaboratorInputContainer}>
                                         <TextInput
                                             style={[
                                                 styles.input,
-                                                {
-                                                    backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5',
-                                                    color: isDark ? 'white' : 'black',
-                                                    borderColor: isDark ? '#404040' : '#e0e0e0',
-                                                    flex: 1,
-                                                    marginRight: 5
-                                                }
+                                                duoTaskModalStyles.input,
+                                                duoTaskModalStyles.collaboratorInput,
+                                                isDark
+                                                    ? duoTaskModalStyles.inputDark
+                                                    : duoTaskModalStyles.inputLight,
                                             ]}
                                             placeholder="Team member email"
-                                            placeholderTextColor={isDark ? '#8e8e8e' : '#999'}
+                                            placeholderTextColor={
+                                                isDark
+                                                    ? duoTaskModalStyles.placeholderDark.color
+                                                    : duoTaskModalStyles.placeholderLight.color
+                                            }
                                             value={collaboratorEmail}
                                             onChangeText={setCollaboratorEmail}
                                             keyboardType="email-address"
                                         />
 
                                         <TouchableOpacity
-                                            style={{
-                                                backgroundColor: '#1a9cd8',
-                                                padding: 10,
-                                                borderRadius: 5,
-                                                justifyContent: 'center'
-                                            }}
+                                            style={duoTaskModalStyles.addCollaboratorButton}
                                             onPress={searchCollaborator}
-                                            disabled={isSearching}
-                                        >
+                                            disabled={isSearching}>
                                             {isSearching ? (
                                                 <ActivityIndicator size="small" color="white" />
                                             ) : (
-                                                <Text style={{ color: 'white' }}>Add</Text>
+                                                <Text
+                                                    style={duoTaskModalStyles.addCollaboratorButtonText}>
+                                                    Add
+                                                </Text>
                                             )}
                                         </TouchableOpacity>
                                     </View>
 
                                     {error && (
-                                        <Text style={{ color: '#FF3B30', marginBottom: 10 }}>
-                                            {error}
-                                        </Text>
+                                        <Text style={duoTaskModalStyles.errorText}>{error}</Text>
                                     )}
 
-                                    <Text style={[styles.inputLabel, { color: isDark ? 'white' : 'black', marginTop: 20, marginBottom: 10 }]}>
+                                    <Text
+                                        style={[
+                                            styles.inputLabel,
+                                            duoTaskModalStyles.inputLabel,
+                                            duoTaskModalStyles.teamMembersCount,
+                                            isDark
+                                                ? duoTaskModalStyles.inputLabelDark
+                                                : duoTaskModalStyles.inputLabelLight,
+                                        ]}>
                                         Team Members ({collaborators.length})
                                     </Text>
 
                                     {collaborators.length === 0 ? (
-                                        <Text style={{ color: isDark ? '#8e8e8e' : '#666', textAlign: 'center', padding: 10 }}>
-                                            No team members added yet. Add team members to work together!
+                                        <Text
+                                            style={[
+                                                duoTaskModalStyles.emptyTeamMembersText,
+                                                isDark
+                                                    ? duoTaskModalStyles.collaborationHintTextDark
+                                                    : duoTaskModalStyles.collaborationHintTextLight,
+                                            ]}>
+                                            No team members added yet. Add team members to work
+                                            together!
                                         </Text>
                                     ) : (
                                         <FlatList
                                             data={collaborators}
-                                            keyExtractor={(item) => item.id}
+                                            keyExtractor={item => item.id}
                                             renderItem={({ item }) => (
-                                                <View style={{
-                                                    flexDirection: 'row',
-                                                    padding: 10,
-                                                    backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5',
-                                                    borderRadius: 5,
-                                                    alignItems: 'center',
-                                                    marginBottom: 10
-                                                }}>
-                                                    <View style={{ flex: 1 }}>
-                                                        <Text style={{ color: isDark ? 'white' : 'black' }}>
+                                                <View
+                                                    style={[
+                                                        duoTaskModalStyles.collaboratorItem,
+                                                        isDark
+                                                            ? duoTaskModalStyles.collaboratorItemDark
+                                                            : duoTaskModalStyles.collaboratorItemLight,
+                                                    ]}>
+                                                    <View style={duoTaskModalStyles.collaboratorDetails}>
+                                                        <Text
+                                                            style={[
+                                                                isDark
+                                                                    ? duoTaskModalStyles.collaboratorNameDark
+                                                                    : duoTaskModalStyles.collaboratorNameLight,
+                                                            ]}>
                                                             {item.displayName}
                                                         </Text>
-                                                        <Text style={{ color: isDark ? '#8e8e8e' : '#666', fontSize: 12 }}>
+                                                        <Text
+                                                            style={[
+                                                                isDark
+                                                                    ? duoTaskModalStyles.collaboratorEmailDark
+                                                                    : duoTaskModalStyles.collaboratorEmailLight,
+                                                            ]}>
                                                             {item.email}
                                                         </Text>
                                                     </View>
 
-                                                    <TouchableOpacity onPress={() => removeCollaborator(item.id)}>
-                                                        <Icon name="close-circle" size={24} color={isDark ? '#8e8e8e' : '#666'} />
+                                                    <TouchableOpacity
+                                                        onPress={() => removeCollaborator(item.id)}
+                                                        style={duoTaskModalStyles.removeCollaboratorButton}>
+                                                        <Icon
+                                                            name="close-circle"
+                                                            size={24}
+                                                            color={
+                                                                isDark
+                                                                    ? duoTaskModalStyles
+                                                                        .removeCollaboratorIconDark.color
+                                                                    : duoTaskModalStyles
+                                                                        .removeCollaboratorIconLight.color
+                                                            }
+                                                        />
                                                     </TouchableOpacity>
                                                 </View>
                                             )}
@@ -687,21 +991,26 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
 
                                     {collaborators.length > 0 && (
                                         <TouchableOpacity
-                                            style={{
-                                                marginTop: 10,
-                                                padding: 10,
-                                                borderRadius: 5,
-                                                backgroundColor: '#FF3B30',
-                                                alignItems: 'center'
-                                            }}
-                                            onPress={resetCollaboration}
-                                        >
-                                            <Text style={{ color: 'white' }}>Remove All Team Members</Text>
+                                            style={duoTaskModalStyles.removeAllCollaboratorsButton}
+                                            onPress={resetCollaboration}>
+                                            <Text
+                                                style={
+                                                    duoTaskModalStyles.removeAllCollaboratorsButtonText
+                                                }>
+                                                Remove All Team Members
+                                            </Text>
                                         </TouchableOpacity>
                                     )}
 
-                                    <Text style={[{ color: isDark ? '#8e8e8e' : '#666', marginTop: 20, fontSize: 12 }]}>
-                                        Once you save the task, all team members will receive invitations to collaborate.
+                                    <Text
+                                        style={[
+                                            duoTaskModalStyles.collaborationHintText,
+                                            isDark
+                                                ? duoTaskModalStyles.collaborationHintTextDark
+                                                : duoTaskModalStyles.collaborationHintTextLight,
+                                        ]}>
+                                        Once you save the task, all team members will receive
+                                        invitations to collaborate.
                                     </Text>
                                 </View>
                             </>
@@ -711,14 +1020,12 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
                     <View style={styles.modalFooter}>
                         <TouchableOpacity
                             style={[styles.button, styles.cancelButton]}
-                            onPress={onClose}
-                        >
+                            onPress={onClose}>
                             <Text style={styles.buttonText}>Cancel</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={[styles.button, styles.saveButton]}
-                            onPress={onSave}
-                        >
+                            onPress={onSave}>
                             <Text style={styles.buttonText}>Save</Text>
                         </TouchableOpacity>
                     </View>
@@ -728,4 +1035,4 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
     );
 };
 
-export default TeamTaskModal;
+export default DuoTaskModal;

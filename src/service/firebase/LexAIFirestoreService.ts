@@ -1,5 +1,20 @@
-import auth from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
+import {getAuth} from '@react-native-firebase/auth';
+import {
+  getFirestore,
+  collection,
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  query,
+  where,
+  orderBy,
+  getDocs,
+  serverTimestamp,
+  Timestamp,
+  FirebaseFirestoreTypes,
+} from '@react-native-firebase/firestore';
 import {LexAIConversation} from '../../types/lexAITypes';
 
 /**
@@ -7,16 +22,17 @@ import {LexAIConversation} from '../../types/lexAITypes';
  * Replaces the AsyncStorage implementation with Firestore.
  */
 export class LexAIFirestoreService {
-  private conversationsCollection = firestore().collection(
+  private conversationsCollection = collection(
+    getFirestore(),
     'lexai_conversations',
-  );
+  ) as FirebaseFirestoreTypes.CollectionReference<LexAIConversation>;
 
   /**
    * Save a conversation to Firestore
    */
   async saveConversation(conversation: LexAIConversation): Promise<void> {
     try {
-      const userId = auth().currentUser?.uid;
+      const userId = getAuth().currentUser?.uid;
       if (!userId) {
         throw new Error('User not authenticated');
       }
@@ -26,18 +42,15 @@ export class LexAIFirestoreService {
         ...conversation,
         userId,
         // Convert timestamp numbers to Firestore timestamps
-        firestoreCreatedAt: firestore.Timestamp.fromMillis(
-          conversation.createdAt,
-        ),
-        firestoreUpdatedAt: firestore.Timestamp.fromMillis(
-          conversation.updatedAt,
-        ),
+        firestoreCreatedAt: Timestamp.fromMillis(conversation.createdAt),
+        firestoreUpdatedAt: Timestamp.fromMillis(conversation.updatedAt),
       };
 
       // Use the conversation ID as the document ID
-      await this.conversationsCollection
-        .doc(conversation.id)
-        .set(conversationWithUser);
+      await setDoc(
+        doc(this.conversationsCollection, conversation.id),
+        conversationWithUser,
+      );
     } catch (error) {
       console.error('Error saving LexAI conversation to Firestore:', error);
       throw error;
@@ -49,15 +62,17 @@ export class LexAIFirestoreService {
    */
   async loadConversations(): Promise<LexAIConversation[]> {
     try {
-      const userId = auth().currentUser?.uid;
+      const userId = getAuth().currentUser?.uid;
       if (!userId) {
         throw new Error('User not authenticated');
       }
 
-      const conversationsSnapshot = await this.conversationsCollection
-        .where('userId', '==', userId)
-        .orderBy('firestoreUpdatedAt', 'desc')
-        .get();
+      const conversationsQuery = query(
+        this.conversationsCollection,
+        where('userId', '==', userId),
+        orderBy('firestoreUpdatedAt', 'desc'),
+      );
+      const conversationsSnapshot = await getDocs(conversationsQuery);
 
       return conversationsSnapshot.docs.map(doc => {
         const data = doc.data();
@@ -82,23 +97,23 @@ export class LexAIFirestoreService {
    */
   async deleteConversation(conversationId: string): Promise<void> {
     try {
-      const userId = auth().currentUser?.uid;
+      const userId = getAuth().currentUser?.uid;
       if (!userId) {
         throw new Error('User not authenticated');
       }
 
       // Verify the conversation belongs to the current user
-      const conversationDoc = await this.conversationsCollection
-        .doc(conversationId)
-        .get();
+      const conversationDoc = await getDoc(
+        doc(this.conversationsCollection, conversationId),
+      );
       if (
-        !conversationDoc.exists ||
+        !conversationDoc.exists() ||
         conversationDoc.data()?.userId !== userId
       ) {
         throw new Error('Conversation not found or unauthorized');
       }
 
-      await this.conversationsCollection.doc(conversationId).delete();
+      await deleteDoc(doc(this.conversationsCollection, conversationId));
     } catch (error) {
       console.error('Error deleting LexAI conversation from Firestore:', error);
       throw error;
@@ -110,13 +125,15 @@ export class LexAIFirestoreService {
    */
   async getActiveConversationId(): Promise<string | null> {
     try {
-      const userId = auth().currentUser?.uid;
+      const userId = getAuth().currentUser?.uid;
       if (!userId) {
         return null;
       }
 
       // Store active conversation ID in the user's document
-      const userDoc = await firestore().collection('users').doc(userId).get();
+      const userDoc = await getDoc(
+        doc(collection(getFirestore(), 'users'), userId),
+      );
       if (userDoc.exists()) {
         return userDoc.data()?.lexai_active_conversation || null;
       }
@@ -132,15 +149,15 @@ export class LexAIFirestoreService {
    */
   async setActiveConversationId(conversationId: string): Promise<void> {
     try {
-      const userId = auth().currentUser?.uid;
+      const userId = getAuth().currentUser?.uid;
       if (!userId) {
         throw new Error('User not authenticated');
       }
 
       // Store active conversation ID in the user's document
-      await firestore().collection('users').doc(userId).update({
+      await updateDoc(doc(collection(getFirestore(), 'users'), userId), {
         lexai_active_conversation: conversationId,
-        updatedAt: firestore.FieldValue.serverTimestamp(),
+        updatedAt: serverTimestamp(),
       });
     } catch (error) {
       console.error('Error setting active LexAI conversation ID:', error);

@@ -1,4 +1,4 @@
-import React, {useEffect, useState, useCallback} from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,19 +9,23 @@ import {
   Dimensions,
   RefreshControl,
 } from 'react-native';
-import {Avatar, SearchBar} from 'react-native-elements';
-import {useTypedSelector} from '../../hooks/useTypedSelector';
-import {useNavigation} from '@react-navigation/native';
+import { Avatar, SearchBar } from 'react-native-elements';
+import { useTypedSelector } from '../../hooks/useTypedSelector';
+import { useNavigation } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import {MessageService} from '../../service/firebase/MessageService';
-import {getUsernameForLogo} from '../../helpers/stringHelpers';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { MessageService } from '../../service/firebase/MessageService';
+import { getUsernameForLogo } from '../../helpers/stringHelpers';
 import Snackbar from 'react-native-snackbar';
-import firestore from '@react-native-firebase/firestore';
-import {UserStackParamList} from '../../routes/UserStack';
-import {NavigationProp} from '@react-navigation/native';
+import {
+  getFirestore,
+  collection,
+  getDocs,
+} from '@react-native-firebase/firestore';
+import { UserStackParamList } from '../../routes/UserStack';
+import { NavigationProp } from '@react-navigation/native';
 
-const {width: SCREEN_WIDTH} = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface User {
   id: string;
@@ -48,17 +52,17 @@ const ContactListScreen: React.FC = () => {
 
   const fetchUsers = useCallback(async () => {
     try {
-      const usersSnapshot = await firestore().collection('users').get();
+      const usersSnapshot = await getDocs(collection(getFirestore(), 'users'));
 
       const usersData = usersSnapshot.docs
         .map(
-          doc =>
+          (doc: any) =>
             ({
               id: doc.id,
               ...doc.data(),
             }) as User,
         )
-        .filter(user => user.id !== currentUser?.uid); // Exclude current user
+        .filter((user: User) => user.id !== currentUser?.uid); // Exclude current user
       setUsers(usersData);
       setFilteredUsers(usersData);
       setLoading(false);
@@ -165,7 +169,7 @@ const ContactListScreen: React.FC = () => {
     </View>
   );
 
-  const renderUserItem = ({item}: {item: User}) => {
+  const renderUserItem = ({ item }: { item: User }) => {
     return (
       <TouchableOpacity
         style={styles.userItem}
@@ -175,7 +179,7 @@ const ContactListScreen: React.FC = () => {
             rounded
             size={Math.min(SCREEN_WIDTH * 0.12, 50)}
             containerStyle={styles.avatar}
-            source={{uri: item.image}}
+            source={{ uri: item.image }}
           />
         ) : (
           <Avatar
@@ -229,8 +233,8 @@ const ContactListScreen: React.FC = () => {
         placeholderTextColor={styles.placeholder.color}
         round
         lightTheme={!isDark}
-        searchIcon={{name: 'search', size: 25}}
-        clearIcon={{name: 'clear', size: 25}}
+        searchIcon={{ name: 'search', size: 25 }}
+        clearIcon={{ name: 'clear', size: 25 }}
         showLoading={false}
         cancelButtonTitle={''}
         showCancel={false}
@@ -343,7 +347,7 @@ const getStyles = (isDark: boolean) =>
       alignItems: 'center',
       backgroundColor: isDark ? '#1a1a1a' : 'white',
       shadowColor: '#000',
-      shadowOffset: {width: 0, height: 0},
+      shadowOffset: { width: 0, height: 0 },
       shadowOpacity: 0,
       shadowRadius: 20,
       elevation: 8,

@@ -1,3 +1,4 @@
+
 // Event source enum for better type safety
 export enum EventSource {
   HACKEREARTH = 'hackerearth',
@@ -71,3 +72,4 @@ export interface HackathonResponse {
   success: boolean;
   data: HackathonDetails;
 }
+

@@ -1,36 +1,41 @@
-import auth from '@react-native-firebase/auth';
-import firestore, {
+import {getAuth} from '@react-native-firebase/auth';
+import {
+  getFirestore,
+  doc,
+  collection,
+  getDoc,
+  getDocs,
+  updateDoc,
+  serverTimestamp,
+  arrayUnion,
+  arrayRemove,
+  increment,
+  query,
+  orderBy,
   FirebaseFirestoreTypes,
+  writeBatch,
 } from '@react-native-firebase/firestore';
-import {FirestoreComment} from '../../types/post';
-import {convertFirestoreComment, formatFirestoreTimestamp} from './utils';
-
-interface AddCommentResponse {
-  success: boolean;
-  comment?: FirestoreComment;
-  error?: string;
-}
+import {FirestoreComment, AddCommentResponse} from '../../types/post';
+import {convertFirestoreComment} from './utils';
 
 export class CommentService {
   async addComment(postId: string, text: string): Promise<AddCommentResponse> {
     try {
-      const currentUser = auth().currentUser;
+      const currentUser = getAuth().currentUser;
       if (!currentUser) {
         return {success: false, error: 'User not authenticated'};
       }
 
-      const postRef = firestore().collection('posts').doc(postId);
-      const postDoc = await postRef.get();
+      const db = getFirestore();
+      const postRef = doc(db, 'posts', postId);
+      const postDoc = await getDoc(postRef);
 
       if (!postDoc.exists()) {
         return {success: false, error: 'Post not found'};
       }
 
       // Use the document with currentUser.uid to retrieve user data
-      const userDoc = await firestore()
-        .collection('users')
-        .doc(currentUser.uid)
-        .get();
+      const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
 
       if (!userDoc.exists()) {
         return {success: false, error: 'User data not found'};
@@ -53,7 +58,7 @@ export class CommentService {
         'default_avatar_url';
 
       // Create a timestamp first to ensure it's valid
-      const timestamp = firestore.FieldValue.serverTimestamp();
+      const timestamp = serverTimestamp();
 
       const commentData: Omit<FirestoreComment, 'id'> = {
         userId: currentUser.uid,
@@ -68,16 +73,23 @@ export class CommentService {
       };
 
       // Use a batch to ensure atomic operations
-      const batch = firestore().batch();
+      const batch = writeBatch(getFirestore());
 
       // Create the comment
-      const commentRef = postRef.collection('comments').doc();
-      batch.set(commentRef, commentData);
+      const commentsCol = collection(postRef, 'comments');
+      const commentRef = doc(commentsCol);
+      batch.set(
+        commentRef as unknown as FirebaseFirestoreTypes.DocumentReference,
+        commentData,
+      );
 
       // Update post comment count
-      batch.update(postRef, {
-        comments: firestore.FieldValue.increment(1),
-      });
+      batch.update(
+        postRef as unknown as FirebaseFirestoreTypes.DocumentReference,
+        {
+          comments: increment(1),
+        },
+      );
 
       // Commit the batch
       await batch.commit();
@@ -109,18 +121,19 @@ export class CommentService {
       console.log(
         `Finding comment location for postId: ${postId}, commentId: ${commentId}`,
       );
-      const postRef = firestore().collection('posts').doc(postId);
+      const db = getFirestore();
+      const postRef = doc(db, 'posts', postId);
 
       // Check if post exists
-      const postDoc = await postRef.get();
+      const postDoc = await getDoc(postRef);
       if (!postDoc.exists()) {
         console.error(`Post with ID ${postId} does not exist`);
         return null;
       }
 
       // First check if it's a main comment
-      const commentRef = postRef.collection('comments').doc(commentId);
-      const commentDoc = await commentRef.get();
+      const commentRef = doc(collection(postRef, 'comments'), commentId);
+      const commentDoc = await getDoc(commentRef);
 
       if (commentDoc.exists()) {
         console.log(`Found main comment with ID ${commentId}`);
@@ -136,7 +149,7 @@ export class CommentService {
       );
 
       // Get all main comments
-      const commentsSnapshot = await postRef.collection('comments').get();
+      const commentsSnapshot = await getDocs(collection(postRef, 'comments'));
       console.log(
         `Found ${commentsSnapshot.size} main comments to search through`,
       );
@@ -146,8 +159,8 @@ export class CommentService {
         const mainCommentRef = mainComment.ref;
 
         // Look for the reply directly in this comment's replies collection
-        const replyRef = mainCommentRef.collection('replies').doc(commentId);
-        const replyDoc = await replyRef.get();
+        const replyRef = doc(collection(mainCommentRef, 'replies'), commentId);
+        const replyDoc = await getDoc(replyRef);
 
         if (replyDoc.exists()) {
           console.log(
@@ -174,7 +187,7 @@ export class CommentService {
     commentId: string,
   ): Promise<{success: boolean; liked?: boolean; error?: string}> {
     try {
-      const currentUser = auth().currentUser;
+      const currentUser = getAuth().currentUser;
       if (!currentUser) {
         return {success: false, error: 'User not authenticated'};
       }
@@ -184,8 +197,10 @@ export class CommentService {
         return {success: false, error: 'Comment not found'};
       }
 
-      const commentDoc = await commentLocation.commentRef.get();
-      const commentData = commentDoc.data();
+      const commentDoc = await getDoc(
+        commentLocation.commentRef as unknown as FirebaseFirestoreTypes.DocumentReference,
+      );
+      const commentData = commentDoc.data() as any;
 
       if (!commentData) {
         return {success: false, error: 'Comment data not found'};
@@ -194,12 +209,15 @@ export class CommentService {
       const likedBy = commentData.likedBy || [];
       const isLiked = likedBy.includes(currentUser.uid);
 
-      await commentLocation.commentRef.update({
-        likedBy: isLiked
-          ? firestore.FieldValue.arrayRemove(currentUser.uid)
-          : firestore.FieldValue.arrayUnion(currentUser.uid),
-        likes: firestore.FieldValue.increment(isLiked ? -1 : 1),
-      });
+      await updateDoc(
+        commentLocation.commentRef as unknown as FirebaseFirestoreTypes.DocumentReference,
+        {
+          likedBy: isLiked
+            ? arrayRemove(currentUser.uid)
+            : arrayUnion(currentUser.uid),
+          likes: increment(isLiked ? -1 : 1),
+        },
+      );
 
       return {success: true, liked: !isLiked};
     } catch (error) {
@@ -214,7 +232,7 @@ export class CommentService {
     text: string,
   ): Promise<{success: boolean; error?: string}> {
     try {
-      const currentUser = auth().currentUser;
+      const currentUser = getAuth().currentUser;
       if (!currentUser) {
         return {success: false, error: 'User not authenticated'};
       }
@@ -224,8 +242,10 @@ export class CommentService {
         return {success: false, error: 'Comment not found'};
       }
 
-      const commentDoc = await commentLocation.commentRef.get();
-      const commentData = commentDoc.data();
+      const commentDoc = await getDoc(
+        commentLocation.commentRef as unknown as FirebaseFirestoreTypes.DocumentReference,
+      );
+      const commentData = commentDoc.data() as any;
 
       if (!commentData) {
         return {success: false, error: 'Comment data not found'};
@@ -235,10 +255,13 @@ export class CommentService {
         return {success: false, error: 'Not authorized to edit this comment'};
       }
 
-      await commentLocation.commentRef.update({
-        text,
-        editedAt: firestore.FieldValue.serverTimestamp(),
-      });
+      await updateDoc(
+        commentLocation.commentRef as unknown as FirebaseFirestoreTypes.DocumentReference,
+        {
+          text,
+          editedAt: serverTimestamp(),
+        },
+      );
 
       return {success: true};
     } catch (error) {
@@ -252,7 +275,7 @@ export class CommentService {
     commentId: string,
   ): Promise<{success: boolean; error?: string}> {
     try {
-      const currentUser = auth().currentUser;
+      const currentUser = getAuth().currentUser;
       if (!currentUser) {
         return {success: false, error: 'User not authenticated'};
       }
@@ -262,8 +285,10 @@ export class CommentService {
         return {success: false, error: 'Comment not found'};
       }
 
-      const commentDoc = await commentLocation.commentRef.get();
-      const commentData = commentDoc.data();
+      const commentDoc = await getDoc(
+        commentLocation.commentRef as unknown as FirebaseFirestoreTypes.DocumentReference,
+      );
+      const commentData = commentDoc.data() as any;
 
       if (!commentData) {
         return {success: false, error: 'Comment data not found'};
@@ -273,32 +298,45 @@ export class CommentService {
         return {success: false, error: 'Not authorized to delete this comment'};
       }
 
-      const postRef = firestore().collection('posts').doc(postId);
-      const batch = firestore().batch();
+      const db = getFirestore();
+      const postRef = doc(db, 'posts', postId);
+      const batch = writeBatch(getFirestore());
 
       if (commentLocation.type === 'main') {
         // Delete all replies first
-        const repliesSnapshot = await commentLocation.commentRef
-          .collection('replies')
-          .get();
+        const repliesSnapshot = await getDocs(
+          collection(
+            commentLocation.commentRef as unknown as FirebaseFirestoreTypes.DocumentReference,
+            'replies',
+          ),
+        );
 
-        repliesSnapshot.docs.forEach(doc => batch.delete(doc.ref));
+        repliesSnapshot.docs.forEach(
+          (docSnap: FirebaseFirestoreTypes.QueryDocumentSnapshot) =>
+            batch.delete(
+              docSnap.ref as unknown as FirebaseFirestoreTypes.DocumentReference,
+            ),
+        );
 
         // Delete the main comment
-        batch.delete(commentLocation.commentRef);
+        batch.delete(
+          commentLocation.commentRef as unknown as FirebaseFirestoreTypes.DocumentReference,
+        );
 
         // Update post comments count
         const replyCount = repliesSnapshot.size;
-        await postRef.update({
-          comments: firestore.FieldValue.increment(-(replyCount + 1)),
+        await updateDoc(postRef, {
+          comments: increment(-(replyCount + 1)),
         });
       } else {
         // Delete the reply
-        batch.delete(commentLocation.commentRef);
+        batch.delete(
+          commentLocation.commentRef as unknown as FirebaseFirestoreTypes.DocumentReference,
+        );
 
         // Update post comments count
-        await postRef.update({
-          comments: firestore.FieldValue.increment(-1),
+        await updateDoc(postRef, {
+          comments: increment(-1),
         });
       }
 
@@ -318,25 +356,27 @@ export class CommentService {
     try {
       console.log('Adding reply:', {postId, parentCommentId, text});
 
-      const currentUser = auth().currentUser;
+      const currentUser = getAuth().currentUser;
       if (!currentUser) {
         console.log('No authenticated user found');
         return {success: false, error: 'User not authenticated'};
       }
 
       // Verify the post exists
-      const postRef = firestore().collection('posts').doc(postId);
-      const postDoc = await postRef.get();
+      const db = getFirestore();
+      const postRef = doc(db, 'posts', postId);
+      const postDoc = await getDoc(postRef);
       if (!postDoc.exists()) {
         console.error(`Post with ID ${postId} does not exist`);
         return {success: false, error: 'Post not found'};
       }
 
       // Directly verify the parent comment exists instead of using findCommentLocation
-      const parentCommentRef = postRef
-        .collection('comments')
-        .doc(parentCommentId);
-      const parentCommentDoc = await parentCommentRef.get();
+      const parentCommentRef = doc(
+        collection(postRef, 'comments'),
+        parentCommentId,
+      );
+      const parentCommentDoc = await getDoc(parentCommentRef);
 
       if (!parentCommentDoc.exists()) {
         console.error(
@@ -346,10 +386,7 @@ export class CommentService {
       }
 
       // Get user data
-      const userDoc = await firestore()
-        .collection('users')
-        .doc(currentUser.uid)
-        .get();
+      const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
 
       if (!userDoc.exists()) {
         console.log('User data not found for ID:', currentUser.uid);
@@ -374,7 +411,7 @@ export class CommentService {
         'default_avatar_url';
 
       // Create timestamp first to ensure it's valid
-      const timestamp = firestore.FieldValue.serverTimestamp();
+      const timestamp = serverTimestamp();
 
       const replyData = {
         userId: currentUser.uid,
@@ -390,16 +427,22 @@ export class CommentService {
       console.log('Creating reply with data:', replyData);
 
       // Use a batch to ensure atomic operations
-      const batch = firestore().batch();
+      const batch = getFirestore().batch();
 
       // Create the reply directly under the parent comment's replies collection
-      const replyRef = parentCommentRef.collection('replies').doc();
-      batch.set(replyRef, replyData);
+      const replyRef = doc(collection(parentCommentRef, 'replies'));
+      batch.set(
+        replyRef as unknown as FirebaseFirestoreTypes.DocumentReference,
+        replyData,
+      );
 
       // Update post comments count
-      batch.update(postRef, {
-        comments: firestore.FieldValue.increment(1),
-      });
+      batch.update(
+        postRef as unknown as FirebaseFirestoreTypes.DocumentReference,
+        {
+          comments: increment(1),
+        },
+      );
 
       // Commit the batch
       await batch.commit();
@@ -423,25 +466,30 @@ export class CommentService {
       return {success: true, reply};
     } catch (error) {
       console.error('Error in addReply:', error);
-      return {success: false, error: 'Failed to add reply: ' + error.message};
+      return {
+        success: false,
+        error:
+          'Failed to add reply' +
+          (error && (error as any).message
+            ? `: ${(error as any).message}`
+            : ''),
+      };
     }
   }
 
   async getPostComments(postRef: FirebaseFirestoreTypes.DocumentReference) {
     try {
-      const commentsSnapshot = await postRef
-        .collection('comments')
-        .orderBy('timestamp', 'desc')
-        .get();
+      const commentsRef = collection(postRef, 'comments');
+      const commentsQuery = query(commentsRef, orderBy('timestamp', 'desc'));
+      const commentsSnapshot = await getDocs(commentsQuery);
 
       const comments = await Promise.all(
         commentsSnapshot.docs.map(
           async (commentDoc: FirebaseFirestoreTypes.QueryDocumentSnapshot) => {
             const commentData = commentDoc.data();
-            const repliesSnapshot = await commentDoc.ref
-              .collection('replies')
-              .orderBy('timestamp', 'asc')
-              .get();
+            const repliesRef = collection(commentDoc.ref, 'replies');
+            const repliesQuery = query(repliesRef, orderBy('timestamp', 'asc'));
+            const repliesSnapshot = await getDocs(repliesQuery);
 
             // Convert replies with proper timestamp formatting
             const replies = repliesSnapshot.docs.map(
@@ -449,7 +497,14 @@ export class CommentService {
                 const replyData = replyDoc.data();
                 return convertFirestoreComment({
                   id: replyDoc.id,
-                  ...replyData,
+                  userId: replyData.userId,
+                  username: replyData.username,
+                  userImage: replyData.userImage,
+                  text: replyData.text,
+                  likes: replyData.likes || 0,
+                  likedBy: replyData.likedBy || [],
+                  timestamp: replyData.timestamp,
+                  editedAt: replyData.editedAt || null,
                 });
               },
             );
@@ -457,7 +512,14 @@ export class CommentService {
             // Convert main comment with proper timestamp formatting
             return convertFirestoreComment({
               id: commentDoc.id,
-              ...commentData,
+              userId: commentData.userId,
+              username: commentData.username,
+              userImage: commentData.userImage,
+              text: commentData.text,
+              likes: commentData.likes || 0,
+              likedBy: commentData.likedBy || [],
+              timestamp: commentData.timestamp,
+              editedAt: commentData.editedAt || null,
               replies,
             });
           },

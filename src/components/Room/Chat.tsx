@@ -15,9 +15,10 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import firestore from '@react-native-firebase/firestore';
-import auth from '@react-native-firebase/auth';
+import { getFirestore, collection, query, orderBy, getDocs, doc, setDoc, , deleteDoc, serverTimestamp, Timestamp } from '@react-native-firebase/firestore';
+import { getAuth } from '@react-native-firebase/auth';
 import {useTypedSelector} from '../../hooks/useTypedSelector';
+import { UserService } from '../../service/firebase/UserService';
 
 const {width} = Dimensions.get('window');
 
@@ -37,7 +38,7 @@ interface ChatProps {
   onClose: () => void;
 }
 
-const Chat: React.FC<ChatProps> = ({meetingId, isVisible, onClose}) => {
+const Chat: React.FC<ChatProps> = ({meetingId, isVisible, onClose,}) => {
   const isDark = useTypedSelector(state => state.user.theme) === 'dark';
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -49,14 +50,14 @@ const Chat: React.FC<ChatProps> = ({meetingId, isVisible, onClose}) => {
   const [isContextMenuVisible, setIsContextMenuVisible] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editText, setEditText] = useState('');
-  const firebase = useTypedSelector(state => state.firebase.firebase);
+  
 
   useEffect(() => {
     let unsubscribe: (() => void) | null = null;
     const initializeChat = async () => {
-      const userId = auth().currentUser?.uid;
-      const {username} = await firebase.user.getNameUsernamestring();
-      const fullName = firebase.auth.currentUser()?.displayName;
+      const userId = getAuth().currentUser?.uid;
+      const {username} = await UserService.getNameUsernamestring();
+      const fullName = getAuth().currentUser?.displayName;
       setUserName(username || fullName!);
       if (!userId || !meetingId) {
         setError('User not authenticated or invalid meeting');
@@ -66,22 +67,22 @@ const Chat: React.FC<ChatProps> = ({meetingId, isVisible, onClose}) => {
 
       try {
         // Ensure messages subcollection exists
-        const meetingRef = firestore().collection('meetings').doc(meetingId);
-        const messagesRef = meetingRef.collection('messages');
+        const meetingRef = doc(getFirestore(), 'meetings', meetingId);
+        const messagesRef = collection(meetingRef, 'messages');
 
         // Create initial message if collection is empty
-        const messagesSnapshot = await messagesRef.get();
+        const messagesSnapshot = await getDocs(messagesRef);
         if (messagesSnapshot.empty) {
-          await messagesRef.add({
+          await setDoc(doc(messagesRef), {
             text: 'Chat started',
             senderId: 'system',
             senderName: 'System',
-            timestamp: firestore.FieldValue.serverTimestamp(),
+            timestamp: serverTimestamp(),
           });
         }
 
         // Subscribe to messages
-        unsubscribe = messagesRef.orderBy('timestamp', 'asc').onSnapshot(
+        unsubscribe = query(messagesRef, orderBy('timestamp', 'asc')).onSnapshot(
           snapshot => {
             if (!snapshot) {
               console.warn('Received null snapshot');
@@ -99,7 +100,7 @@ const Chat: React.FC<ChatProps> = ({meetingId, isVisible, onClose}) => {
                       text: data.text || '',
                       senderId: data.senderId || '',
                       senderName: data.senderName || 'Anonymous',
-                      timestamp: data.timestamp || firestore.Timestamp.now(),
+                      timestamp: data.timestamp || Timestamp.now(),
                     });
                   }
                 }
@@ -149,12 +150,12 @@ const Chat: React.FC<ChatProps> = ({meetingId, isVisible, onClose}) => {
         unsubscribe();
       }
     };
-  }, [firebase.auth, firebase.user, meetingId]);
+  }, [meetingId]);
 
   const sendMessage = async () => {
     if (!newMessage.trim() || !meetingId) return;
 
-    const userId = auth().currentUser?.uid;
+    const userId = getAuth().currentUser?.uid;
     if (!userId) {
       Alert.alert('Error', 'You must be logged in to send messages');
       return;
@@ -162,16 +163,13 @@ const Chat: React.FC<ChatProps> = ({meetingId, isVisible, onClose}) => {
 
     setError(null);
     try {
-      const messagesRef = firestore()
-        .collection('meetings')
-        .doc(meetingId)
-        .collection('messages');
+      const messagesRef = collection(doc(getFirestore(), 'meetings', meetingId), 'messages');
 
       await messagesRef.add({
         text: newMessage.trim(),
         senderId: userId,
         senderName: userName || 'Anonymous',
-        timestamp: firestore.FieldValue.serverTimestamp(),
+        timestamp: serverTimestamp(),
       });
       setNewMessage('');
     } catch (err) {
@@ -183,7 +181,7 @@ const Chat: React.FC<ChatProps> = ({meetingId, isVisible, onClose}) => {
 
   const handleMessageLongPress = (message: Message) => {
     // Only allow actions on user's own messages
-    if (message.senderId === auth().currentUser?.uid) {
+    if (message.senderId === getAuth().currentUser?.uid) {
       setSelectedMessage(message);
       setIsContextMenuVisible(true);
     }
@@ -201,16 +199,12 @@ const Chat: React.FC<ChatProps> = ({meetingId, isVisible, onClose}) => {
     if (!selectedMessage || !editText.trim() || !meetingId) return;
 
     try {
-      const messageRef = firestore()
-        .collection('meetings')
-        .doc(meetingId)
-        .collection('messages')
-        .doc(selectedMessage.id);
+      const messageRef = doc(collection(doc(getFirestore(), 'meetings', meetingId), 'messages'), selectedMessage.id);
 
       await messageRef.update({
         text: editText.trim(),
         edited: true,
-        editedAt: firestore.FieldValue.serverTimestamp(),
+        editedAt: serverTimestamp(),
       });
 
       setIsEditMode(false);
@@ -240,13 +234,7 @@ const Chat: React.FC<ChatProps> = ({meetingId, isVisible, onClose}) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              await firestore()
-                .collection('meetings')
-                .doc(meetingId)
-                .collection('messages')
-                .doc(selectedMessage.id)
-                .delete();
-
+              await deleteDoc(doc(collection(doc(getFirestore(), 'meetings', meetingId), 'messages'), selectedMessage.id));
               setIsContextMenuVisible(false);
               setSelectedMessage(null);
             } catch (err) {
@@ -309,7 +297,7 @@ const Chat: React.FC<ChatProps> = ({meetingId, isVisible, onClose}) => {
           keyExtractor={item => item.id}
           style={styles.messageList}
           renderItem={({item}) => {
-            const isOwnMessage = item.senderId === auth().currentUser?.uid;
+            const isOwnMessage = item.senderId === getAuth().currentUser?.uid;
             const isSystemMessage = item.senderId === 'system';
             return (
               <TouchableOpacity

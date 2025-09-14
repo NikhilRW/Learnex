@@ -88,8 +88,9 @@ export class DeepLinkHandler {
               const senderPhoto =
                 parsedUrl.searchParams.get('senderPhoto') || '';
 
+                // UserStack
               // Navigate to the chat screen
-              this.navigationRef.navigate('Chat', {
+              this.navigationRef.navigate('UserStack', {
                 conversationId,
                 recipientId: senderId,
                 recipientName: senderName,

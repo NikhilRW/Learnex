@@ -1,16 +1,28 @@
-import auth from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
+import {getAuth} from '@react-native-firebase/auth';
+import {
+  getFirestore,
+  collection,
+  doc,
+  getDoc,
+  updateDoc,
+  query,
+  where,
+  limit,
+  getDocs,
+  FirebaseFirestoreTypes,
+} from '@react-native-firebase/firestore';
 import {AuthResponse} from '../../types/firebase';
 
 export class UserService {
   async getNameUsernamestring(): Promise<{fullName: string; username: string}> {
     try {
-      const doc = (
-        await firestore()
-          .collection('users')
-          .where('email', '==', auth().currentUser?.email)
-          .get()
-      ).docs[0].data();
+      const userQuery = await getDocs(
+        query(
+          collection(getFirestore(), 'users'),
+          where('email', '==', getAuth().currentUser?.email),
+        ),
+      );
+      const doc = userQuery.docs[0].data();
       if (doc.fullName && doc.username) {
         return {fullName: doc.fullName, username: doc.username};
       }
@@ -23,10 +35,12 @@ export class UserService {
 
   async checkUsernameIsAvailable(username: string): Promise<AuthResponse> {
     try {
-      const user = await firestore()
-        .collection('users')
-        .where('username', '==', username)
-        .get();
+      const user = await getDocs(
+        query(
+          collection(getFirestore(), 'users'),
+          where('username', '==', username),
+        ),
+      );
       return {success: user.empty};
     } catch (error) {
       console.log('UserService :: checkUsernameIsAvailable() ::', error);
@@ -35,10 +49,9 @@ export class UserService {
   }
   async checkEmailIsAvailable(email: string): Promise<AuthResponse> {
     try {
-      const user = await firestore()
-        .collection('users')
-        .where('email', '==', email)
-        .get();
+      const user = await getDocs(
+        query(collection(getFirestore(), 'users'), where('email', '==', email)),
+      );
       return {success: user.empty};
     } catch (error) {
       console.log('UserService :: checkEmailIsAvailable() ::', error);
@@ -50,14 +63,18 @@ export class UserService {
     emailOrUsername: string,
   ): Promise<{success: boolean; email?: string; error?: Error}> {
     try {
-      const email = await firestore()
-        .collection('users')
-        .where('email', '==', emailOrUsername)
-        .get();
-      const username = await firestore()
-        .collection('users')
-        .where('username', '==', emailOrUsername)
-        .get();
+      const email = await getDocs(
+        query(
+          collection(getFirestore(), 'users'),
+          where('email', '==', emailOrUsername),
+        ),
+      );
+      const username = await getDocs(
+        query(
+          collection(getFirestore(), 'users'),
+          where('username', '==', emailOrUsername),
+        ),
+      );
 
       if (!email.empty) return {success: true, email: emailOrUsername};
 
@@ -75,7 +92,9 @@ export class UserService {
 
   async getUserEmailById(userId: string): Promise<string | null> {
     try {
-      const userDoc = await firestore().collection('users').doc(userId).get();
+      const userDoc = await getDoc(
+        doc(collection(getFirestore(), 'users'), userId),
+      );
 
       if (userDoc.exists() && userDoc.data()?.email) {
         return userDoc.data()?.email;
@@ -89,12 +108,11 @@ export class UserService {
 
   async updateUsername(newUsername: string) {
     try {
-      const currentUserId = auth().currentUser?.uid;
-      const currentUserDoc = await firestore()
-        .collection('users')
-        .doc(currentUserId)
-        .get();
-      await currentUserDoc.ref.update({username: newUsername});
+      const currentUserId = getAuth().currentUser?.uid;
+      const currentUserDoc = await getDoc(
+        doc(collection(getFirestore(), 'users'), currentUserId),
+      );
+      await updateDoc(currentUserDoc.ref, {username: newUsername});
       return {success: true};
     } catch (error) {
       console.log('UserService :: checkUsernameIsAvailable() ::', error);
@@ -108,7 +126,9 @@ export class UserService {
     username: string | null;
   }> {
     try {
-      const userDoc = await firestore().collection('users').doc(userId).get();
+      const userDoc = await getDoc(
+        doc(collection(getFirestore(), 'users'), userId),
+      );
 
       if (userDoc.exists()) {
         const userData = userDoc.data();
@@ -128,7 +148,7 @@ export class UserService {
   async updateProfilePhoto(photoURI: string): Promise<AuthResponse> {
     try {
       // 1. Update auth user photoURL
-      const currentUser = auth().currentUser;
+      const currentUser = getAuth().currentUser;
       if (!currentUser) {
         return {
           success: false,
@@ -142,9 +162,12 @@ export class UserService {
       });
 
       // 3. Update Firestore user document
-      await firestore().collection('users').doc(currentUser.uid).update({
-        image: photoURI,
-      });
+      await updateDoc(
+        doc(collection(getFirestore(), 'users'), currentUser.uid),
+        {
+          image: photoURI,
+        },
+      );
 
       return {success: true};
     } catch (error) {
@@ -172,7 +195,7 @@ export class UserService {
         return [];
       }
 
-      const currentUserId = auth().currentUser?.uid;
+      const currentUserId = getAuth().currentUser?.uid;
       if (!currentUserId) {
         throw new Error('User not authenticated');
       }
@@ -181,28 +204,34 @@ export class UserService {
       const searchQueryLower = searchQuery.toLowerCase();
 
       // Get users where email contains the search query
-      const emailResults = await firestore()
-        .collection('users')
-        .where('email', '>=', searchQueryLower)
-        .where('email', '<=', searchQueryLower + '\uf8ff')
-        .limit(10)
-        .get();
+      const emailResults = await getDocs(
+        query(
+          collection(getFirestore(), 'users'),
+          where('email', '>=', searchQueryLower),
+          where('email', '<=', searchQueryLower + '\uf8ff'),
+          limit(10),
+        ),
+      );
 
       // Get users where username contains the search query
-      const usernameResults = await firestore()
-        .collection('users')
-        .where('username', '>=', searchQueryLower)
-        .where('username', '<=', searchQueryLower + '\uf8ff')
-        .limit(10)
-        .get();
+      const usernameResults = await getDocs(
+        query(
+          collection(getFirestore(), 'users'),
+          where('username', '>=', searchQueryLower),
+          where('username', '<=', searchQueryLower + '\uf8ff'),
+          limit(10),
+        ),
+      );
 
       // Get users where fullName contains the search query
-      const nameResults = await firestore()
-        .collection('users')
-        .where('fullName', '>=', searchQueryLower)
-        .where('fullName', '<=', searchQueryLower + '\uf8ff')
-        .limit(10)
-        .get();
+      const nameResults = await getDocs(
+        query(
+          collection(getFirestore(), 'users'),
+          where('fullName', '>=', searchQueryLower),
+          where('fullName', '<=', searchQueryLower + '\uf8ff'),
+          limit(10),
+        ),
+      );
 
       // Combine and deduplicate results
       const userMap = new Map();

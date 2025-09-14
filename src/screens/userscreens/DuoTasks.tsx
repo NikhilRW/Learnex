@@ -1,6 +1,5 @@
-import React, {useState, useEffect, useCallback} from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  StyleSheet,
   Text,
   View,
   FlatList,
@@ -12,32 +11,27 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
-  Image,
 } from 'react-native';
-import {useTypedSelector} from '../../hooks/useTypedSelector';
+import { useTypedSelector } from '../../hooks/useTypedSelector';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import {useNavigation} from '@react-navigation/native';
-import {DrawerNavigationProp} from '@react-navigation/drawer';
-import {Task, SubTask} from '../../types/taskTypes';
-import {TaskService} from '../../service/firebase/TaskService';
-import {styles} from '../../styles/screens/userscreens/Tasks.styles';
+import { useNavigation } from '@react-navigation/native';
+import { DrawerNavigationProp } from '@react-navigation/drawer';
+import { Task } from '../../types/taskTypes';
+import { TaskService } from '../../service/firebase/TaskService';
+import { styles } from '../../styles/screens/userscreens/Tasks.styles';
 import DuoTaskModal from '../../components/Room/DuoTaskModal';
 import DuoTaskDetailsModal from '../../components/Room/DuoTaskDetailsModal';
-import auth from '@react-native-firebase/auth';
-import {useIsFocused} from '@react-navigation/native';
-import firestore from '@react-native-firebase/firestore';
+import { getAuth } from '@react-native-firebase/auth';
+import { useIsFocused } from '@react-navigation/native';
+import {
+  getFirestore,
+  collection,
+  query,
+  where,
+  onSnapshot,
+} from '@react-native-firebase/firestore';
 
-// Custom UUID generator that doesn't rely on crypto.getRandomValues()
-const generateUUID = (): string => {
-  // Use a timestamp-based prefix to ensure uniqueness
-  const timestamp = Date.now().toString(36);
-  // Generate random segments
-  const randomSegment1 = Math.random().toString(36).substring(2, 15);
-  const randomSegment2 = Math.random().toString(36).substring(2, 15);
-  // Combine timestamp and random segments to form a UUID-like string
-  return `${timestamp}-${randomSegment1}-${randomSegment2}`;
-};
 
 const DuoTasks = () => {
   const isDark = useTypedSelector(state => state.user.theme) === 'dark';
@@ -129,7 +123,7 @@ const DuoTasks = () => {
 
   const fetchInvitations = async () => {
     try {
-      const userId = auth().currentUser?.uid;
+      const userId = getAuth().currentUser?.uid;
       if (!userId) return;
 
       const invitations = await taskService.getPendingDuoTaskInvitations();
@@ -191,7 +185,7 @@ const DuoTasks = () => {
 
     try {
       // Add current user ID to ensure the service has all required fields
-      const userId = auth().currentUser?.uid || '';
+      const userId = getAuth().currentUser?.uid || '';
       await taskService.createDuoTask({
         ...newTask,
         userId,
@@ -259,7 +253,7 @@ const DuoTasks = () => {
   const handleEditTask = (task: Task) => {
     setIsEditMode(true);
     setSelectedTask(task);
-    const {...editableFields} = task;
+    const { ...editableFields } = task;
     setNewTask(editableFields);
     setModalVisible(true);
   };
@@ -343,48 +337,50 @@ const DuoTasks = () => {
       await fetchTasks();
 
       // Get current user ID
-      const userId = auth().currentUser?.uid;
+      const userId = getAuth().currentUser?.uid;
       if (!userId) return;
 
       // Create a listener for the tasks collection
-      const unsubscribe = firestore()
-        .collection('tasks')
-        .where('collaborators', 'array-contains', userId)
-        .where('isDuoTask', '==', true)
-        .onSnapshot(
-          snapshot => {
-            // Handle task updates in real-time
-            if (!snapshot.empty) {
-              const updatedTasks = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-              })) as Task[];
+      const unsubscribe = onSnapshot(
+        query(
+          collection(getFirestore(), 'tasks'),
+          where('collaborators', 'array-contains', userId),
+          where('isDuoTask', '==', true)
+        ),
+        snapshot => {
+          // Handle task updates in real-time
+          if (!snapshot.empty) {
+            const updatedTasks = snapshot.docs.map((doc: any) => ({
+              id: doc.id,
+              ...doc.data(),
+            })) as Task[];
 
-              // Update tasks state, which will also update filtered tasks
-              setTasks(updatedTasks);
-            }
-          },
-          error => {
-            console.error('Error in tasks listener:', error);
-          },
-        );
+            // Update tasks state, which will also update filtered tasks
+            setTasks(updatedTasks);
+          }
+        },
+        error => {
+          console.error('Error in tasks listener:', error);
+        },
+      );
 
       // Create a listener for notifications/invitations
-      const invitationsUnsubscribe = firestore()
-        .collection('notifications')
-        .where('userId', '==', userId)
-        .where('type', '==', 'duo_task_invitation')
-        .where('read', '==', false)
-        .onSnapshot(
-          async snapshot => {
-            if (!snapshot.empty) {
-              await fetchInvitations();
-            }
-          },
-          error => {
-            console.error('Error in invitations listener:', error);
-          },
-        );
+      const invitationsUnsubscribe = onSnapshot(
+        query(
+          collection(getFirestore(), 'notifications'),
+          where('userId', '==', userId),
+          where('type', '==', 'duo_task_invitation'),
+          where('read', '==', false)
+        ),
+        async snapshot => {
+          if (!snapshot.empty) {
+            await fetchInvitations();
+          }
+        },
+        error => {
+          console.error('Error in invitations listener:', error);
+        },
+      );
 
       // Save references to the listeners for cleanup
       setTaskListeners([unsubscribe, invitationsUnsubscribe]);
@@ -403,15 +399,15 @@ const DuoTasks = () => {
     setTaskListeners([]);
   };
 
-  const renderInvitationItem = ({item}: {item: Task}) => (
+  const renderInvitationItem = ({ item }: { item: Task }) => (
     <View
       style={[
         styles.taskCard,
-        {backgroundColor: isDark ? '#2a2a2a' : 'white'},
+        { backgroundColor: isDark ? '#2a2a2a' : 'white' },
       ]}>
       <View style={styles.taskContent}>
         <View style={styles.taskHeader}>
-          <Text style={[styles.taskTitle, {color: isDark ? 'white' : 'black'}]}>
+          <Text style={[styles.taskTitle, { color: isDark ? 'white' : 'black' }]}>
             {item.title}
           </Text>
         </View>
@@ -419,7 +415,7 @@ const DuoTasks = () => {
         <Text
           style={[
             styles.taskDescription,
-            {color: isDark ? '#e0e0e0' : '#333'},
+            { color: isDark ? '#e0e0e0' : '#333' },
           ]}>
           {item.description}
         </Text>
@@ -434,10 +430,10 @@ const DuoTasks = () => {
             <Text
               style={[
                 styles.taskMetaText,
-                {color: isDark ? '#8e8e8e' : '#666', marginLeft: 5},
+                { color: isDark ? '#8e8e8e' : '#666', marginLeft: 5 },
               ]}>
               From:{' '}
-              {item.userId === auth().currentUser?.uid ? 'You' : 'Team Member'}
+              {item.userId === getAuth().currentUser?.uid ? 'You' : 'Team Member'}
             </Text>
           </View>
 
@@ -450,7 +446,7 @@ const DuoTasks = () => {
             <Text
               style={[
                 styles.taskMetaText,
-                {color: isDark ? '#8e8e8e' : '#666', marginLeft: 5},
+                { color: isDark ? '#8e8e8e' : '#666', marginLeft: 5 },
               ]}>
               {item.dueDate} {item.dueTime && `at ${item.dueTime}`}
             </Text>
@@ -474,7 +470,7 @@ const DuoTasks = () => {
               alignItems: 'center',
             }}
             onPress={() => declineInvitation(item.id)}>
-            <Text style={{color: 'white'}}>Decline</Text>
+            <Text style={{ color: 'white' }}>Decline</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -488,29 +484,29 @@ const DuoTasks = () => {
               alignItems: 'center',
             }}
             onPress={() => acceptInvitation(item.id)}>
-            <Text style={{color: 'white'}}>Join Team</Text>
+            <Text style={{ color: 'white' }}>Join Team</Text>
           </TouchableOpacity>
         </View>
       </View>
     </View>
   );
 
-  const renderTaskItem = ({item}: {item: Task}) => (
+  const renderTaskItem = ({ item }: { item: Task }) => (
     <TouchableOpacity
-      style={[styles.taskCard, {backgroundColor: isDark ? '#2a2a2a' : 'white'}]}
+      style={[styles.taskCard, { backgroundColor: isDark ? '#2a2a2a' : 'white' }]}
       onPress={() => openTaskDetails(item)}>
       <View style={styles.taskContent}>
         <View style={styles.taskHeader}>
           <Text
             style={[
               styles.taskTitle,
-              {color: isDark ? 'white' : 'black'},
+              { color: isDark ? 'white' : 'black' },
               item.completed && styles.completedTaskTitle,
             ]}>
             {item.title}
           </Text>
           {/* Only show action buttons if the current user is the task creator */}
-          {item.userId === auth().currentUser?.uid && (
+          {item.userId === getAuth().currentUser?.uid && (
             <View style={styles.taskActions}>
               <TouchableOpacity
                 style={styles.actionButton}
@@ -537,21 +533,21 @@ const DuoTasks = () => {
         <Text
           style={[
             styles.taskDescription,
-            {color: isDark ? '#e0e0e0' : '#333'},
+            { color: isDark ? '#e0e0e0' : '#333' },
             item.completed && styles.completedTaskText,
           ]}>
           {item.description}
         </Text>
 
         {/* Progress bar */}
-        <View style={{marginTop: 10, marginBottom: 5}}>
+        <View style={{ marginTop: 10, marginBottom: 5 }}>
           <View
             style={{
               flexDirection: 'row',
               justifyContent: 'space-between',
               marginBottom: 5,
             }}>
-            <Text style={{color: isDark ? '#8e8e8e' : '#666', fontSize: 12}}>
+            <Text style={{ color: isDark ? '#8e8e8e' : '#666', fontSize: 12 }}>
               Progress: {item.progress || 0}%
             </Text>
 
@@ -564,7 +560,7 @@ const DuoTasks = () => {
                 borderRadius: 10,
                 backgroundColor: getStatusColor(item),
               }}>
-              <Text style={{color: 'white', fontSize: 10}}>
+              <Text style={{ color: 'white', fontSize: 10 }}>
                 {item.completed ? 'Completed' : item.collaborationStatus}
               </Text>
             </View>
@@ -593,13 +589,13 @@ const DuoTasks = () => {
             <View
               style={[
                 styles.priorityIndicator,
-                {backgroundColor: getPriorityColor(item.priority)},
+                { backgroundColor: getPriorityColor(item.priority) },
               ]}
             />
             <Text
               style={[
                 styles.taskMetaText,
-                {color: isDark ? '#8e8e8e' : '#666'},
+                { color: isDark ? '#8e8e8e' : '#666' },
               ]}>
               {item.priority.charAt(0).toUpperCase() + item.priority.slice(1)}
             </Text>
@@ -614,7 +610,7 @@ const DuoTasks = () => {
             <Text
               style={[
                 styles.taskMetaText,
-                {color: isDark ? '#8e8e8e' : '#666', marginLeft: 5},
+                { color: isDark ? '#8e8e8e' : '#666', marginLeft: 5 },
               ]}>
               {item.dueDate}
             </Text>
@@ -629,7 +625,7 @@ const DuoTasks = () => {
             <Text
               style={[
                 styles.taskMetaText,
-                {color: isDark ? '#8e8e8e' : '#666', marginLeft: 5},
+                { color: isDark ? '#8e8e8e' : '#666', marginLeft: 5 },
               ]}>
               {getCollaboratorText(item)}
             </Text>
@@ -643,7 +639,7 @@ const DuoTasks = () => {
     <SafeAreaView
       style={[
         styles.container,
-        {backgroundColor: isDark ? '#1a1a1a' : '#f5f5f5'},
+        { backgroundColor: isDark ? '#1a1a1a' : '#f5f5f5' },
       ]}>
       <StatusBar
         barStyle={isDark ? 'light-content' : 'dark-content'}
@@ -654,7 +650,7 @@ const DuoTasks = () => {
       <View
         style={[
           styles.customHeader,
-          {backgroundColor: isDark ? '#1a1a1a' : '#f5f5f5'},
+          { backgroundColor: isDark ? '#1a1a1a' : '#f5f5f5' },
         ]}>
         <TouchableOpacity
           style={styles.backButton}
@@ -666,7 +662,7 @@ const DuoTasks = () => {
           />
         </TouchableOpacity>
 
-        <Text style={[styles.headerTitle, {color: isDark ? 'white' : 'black'}]}>
+        <Text style={[styles.headerTitle, { color: isDark ? 'white' : 'black' }]}>
           Team Tasks
         </Text>
 
@@ -701,7 +697,7 @@ const DuoTasks = () => {
           ]}>
           <Icon name="search" size={20} color={isDark ? '#8e8e8e' : '#666'} />
           <TextInput
-            style={[styles.searchInput, {color: isDark ? 'white' : 'black'}]}
+            style={[styles.searchInput, { color: isDark ? 'white' : 'black' }]}
             placeholder="Search team tasks..."
             placeholderTextColor={isDark ? '#8e8e8e' : '#999'}
             value={searchQuery}
@@ -852,7 +848,7 @@ const DuoTasks = () => {
         </ScrollView>
 
         {invitations.length > 0 && (
-          <View style={{marginBottom: 10}}>
+          <View style={{ marginBottom: 10 }}>
             <Text
               style={[
                 {
@@ -872,8 +868,8 @@ const DuoTasks = () => {
               keyExtractor={item => item.id}
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{paddingHorizontal: 10}}
-              ItemSeparatorComponent={() => <View style={{width: 10}} />}
+              contentContainerStyle={{ paddingHorizontal: 10 }}
+              ItemSeparatorComponent={() => <View style={{ width: 10 }} />}
             />
           </View>
         )}
@@ -882,7 +878,7 @@ const DuoTasks = () => {
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={isDark ? '#fff' : '#000'} />
             <Text
-              style={[styles.loadingText, {color: isDark ? '#fff' : '#000'}]}>
+              style={[styles.loadingText, { color: isDark ? '#fff' : '#000' }]}>
               Loading team tasks...
             </Text>
           </View>
@@ -890,7 +886,7 @@ const DuoTasks = () => {
           <View style={styles.emptyContainer}>
             <Icon name="people" size={50} color={isDark ? '#404040' : '#ccc'} />
             <Text
-              style={[styles.emptyText, {color: isDark ? '#8e8e8e' : '#666'}]}>
+              style={[styles.emptyText, { color: isDark ? '#8e8e8e' : '#666' }]}>
               {searchQuery
                 ? 'No team tasks found matching your search'
                 : 'No team tasks available. Create one to collaborate!'}

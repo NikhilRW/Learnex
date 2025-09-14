@@ -1,5 +1,22 @@
-import auth from '@react-native-firebase/auth';
-import firestore, {
+import {getAuth} from '@react-native-firebase/auth';
+import {
+  getFirestore,
+  collection,
+  doc,
+  getDoc,
+  updateDoc,
+  deleteDoc,
+  addDoc,
+  query,
+  where,
+  orderBy,
+  limit,
+  getDocs,
+  onSnapshot,
+  serverTimestamp,
+  arrayUnion,
+  arrayRemove,
+  writeBatch,
   FirebaseFirestoreTypes,
 } from '@react-native-firebase/firestore';
 import {generateRoomCode} from '../../helpers/roomCodeGenerator';
@@ -32,7 +49,10 @@ export interface MeetingError extends Error {
 }
 
 export class MeetingService {
-  private meetingsCollection = firestore().collection('meetings');
+  private meetingsCollection = collection(
+    getFirestore(),
+    'meetings',
+  ) as FirebaseFirestoreTypes.CollectionReference<Meeting>;
   private unsubscribeMeeting: (() => void) | null = null;
   private endTimeCheckInterval: NodeJS.Timeout | null = null;
   private retryAttempts = 3;
@@ -97,7 +117,7 @@ export class MeetingService {
     >,
   ): Promise<string> {
     return this.retryOperation(async () => {
-      const userId = auth().currentUser?.uid;
+      const userId = getAuth().currentUser?.uid;
       if (!userId) {
         throw this.createError('User not authenticated');
       }
@@ -117,11 +137,11 @@ export class MeetingService {
           allowScreenShare: meetingData.settings?.allowScreenShare ?? true,
           recordingEnabled: meetingData.settings?.recordingEnabled ?? false,
         },
-        createdAt: firestore.FieldValue.serverTimestamp(),
-        updatedAt: firestore.FieldValue.serverTimestamp(),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       };
 
-      const docRef = await this.meetingsCollection.add(meeting);
+      const docRef = await addDoc(this.meetingsCollection, meeting);
       return docRef.id;
     }, 'Failed to create meeting');
   }
@@ -131,13 +151,13 @@ export class MeetingService {
    */
   async joinMeeting(meetingId: string): Promise<void> {
     return this.retryOperation(async () => {
-      const userId = auth().currentUser?.uid;
+      const userId = getAuth().currentUser?.uid;
       if (!userId) {
         throw this.createError('User not authenticated');
       }
 
-      const meetingRef = this.meetingsCollection.doc(meetingId);
-      const meetingDoc = await meetingRef.get();
+      const meetingRef = doc(this.meetingsCollection, meetingId);
+      const meetingDoc = await getDoc(meetingRef);
 
       if (!meetingDoc.exists()) {
         throw this.createError('Meeting not found');
@@ -168,10 +188,10 @@ export class MeetingService {
         );
       }
 
-      await meetingRef.update({
-        participants: firestore.FieldValue.arrayUnion(userId),
+      await updateDoc(meetingRef, {
+        participants: arrayUnion(userId),
         status: 'active',
-        updatedAt: firestore.FieldValue.serverTimestamp(),
+        updatedAt: serverTimestamp(),
       });
     }, 'Failed to join meeting');
   }
@@ -181,13 +201,13 @@ export class MeetingService {
    */
   async leaveMeeting(meetingId: string): Promise<void> {
     return this.retryOperation(async () => {
-      const userId = auth().currentUser?.uid;
+      const userId = getAuth().currentUser?.uid;
       if (!userId) {
         throw this.createError('User not authenticated');
       }
 
-      const meetingRef = this.meetingsCollection.doc(meetingId);
-      const meetingDoc = await meetingRef.get();
+      const meetingRef = doc(this.meetingsCollection, meetingId);
+      const meetingDoc = await getDoc(meetingRef);
 
       if (!meetingDoc.exists()) {
         throw this.createError('Meeting not found');
@@ -203,11 +223,12 @@ export class MeetingService {
 
       // Clean up participant state data from Firestore
       try {
-        await this.meetingsCollection
-          .doc(meetingId)
-          .collection('participantStates')
-          .doc(userId)
-          .delete();
+        await deleteDoc(
+          doc(
+            collection(this.meetingsCollection, meetingId, 'participantStates'),
+            userId,
+          ),
+        );
         console.log(
           `Deleted participant state for ${userId} in meeting ${meetingId}`,
         );
@@ -216,9 +237,9 @@ export class MeetingService {
         // Continue with removal from participants list even if state deletion fails
       }
 
-      await meetingRef.update({
-        participants: firestore.FieldValue.arrayRemove(userId),
-        updatedAt: firestore.FieldValue.serverTimestamp(),
+      await updateDoc(meetingRef, {
+        participants: arrayRemove(userId),
+        updatedAt: serverTimestamp(),
       });
     }, 'Failed to leave meeting');
   }
@@ -228,13 +249,13 @@ export class MeetingService {
    */
   async endMeeting(meetingId: string): Promise<void> {
     return this.retryOperation(async () => {
-      const userId = auth().currentUser?.uid;
+      const userId = getAuth().currentUser?.uid;
       if (!userId) {
         throw this.createError('User not authenticated');
       }
 
-      const meetingRef = this.meetingsCollection.doc(meetingId);
-      const meetingDoc = await meetingRef.get();
+      const meetingRef = doc(this.meetingsCollection, meetingId);
+      const meetingDoc = await getDoc(meetingRef);
 
       if (!meetingDoc.exists()) {
         throw this.createError('Meeting not found');
@@ -247,17 +268,23 @@ export class MeetingService {
 
       // Delete all participant states for this meeting
       try {
-        // Get all participant state documents
-        const participantStatesSnapshot = await this.meetingsCollection
-          .doc(meetingId)
-          .collection('participantStates')
-          .get();
+        // Create a reference to the participant states subcollection
+        const participantStatesRef = collection(
+          getFirestore(),
+          'meetings',
+          meetingId,
+          'participantStates',
+        );
+        const participantStatesSnapshot = await getDocs(participantStatesRef);
 
         // Delete each document
-        const deletionPromises = participantStatesSnapshot.docs.map(doc =>
-          doc.ref.delete(),
+        const batch = writeBatch(getFirestore());
+        participantStatesSnapshot.forEach(
+          (docSnapshot: FirebaseFirestoreTypes.QueryDocumentSnapshot) => {
+            batch.delete(docSnapshot.ref);
+          },
         );
-        await Promise.all(deletionPromises);
+        await batch.commit();
 
         console.log(
           `Deleted ${participantStatesSnapshot.size} participant states for meeting ${meetingId}`,
@@ -267,9 +294,9 @@ export class MeetingService {
         // Continue with meeting end even if state deletion fails
       }
 
-      await meetingRef.update({
+      await updateDoc(meetingRef, {
         status: 'completed',
-        updatedAt: firestore.FieldValue.serverTimestamp(),
+        updatedAt: serverTimestamp(),
       });
     }, 'Failed to end meeting');
   }
@@ -282,13 +309,13 @@ export class MeetingService {
     settings: Partial<Meeting['settings']>,
   ): Promise<void> {
     return this.retryOperation(async () => {
-      const userId = auth().currentUser?.uid;
+      const userId = getAuth().currentUser?.uid;
       if (!userId) {
         throw this.createError('User not authenticated');
       }
 
-      const meetingRef = this.meetingsCollection.doc(meetingId);
-      const meetingDoc = await meetingRef.get();
+      const meetingRef = doc(this.meetingsCollection, meetingId);
+      const meetingDoc = await getDoc(meetingRef);
 
       if (!meetingDoc.exists()) {
         throw this.createError('Meeting not found');
@@ -299,9 +326,9 @@ export class MeetingService {
         throw this.createError('Only the host can update meeting settings');
       }
 
-      await meetingRef.update({
+      await updateDoc(meetingRef, {
         settings: {...meetingData.settings, ...settings},
-        updatedAt: firestore.FieldValue.serverTimestamp(),
+        updatedAt: serverTimestamp(),
       });
     }, 'Failed to update meeting settings');
   }
@@ -311,7 +338,7 @@ export class MeetingService {
    */
   private async checkMeetingEndTime(meetingId: string): Promise<boolean> {
     try {
-      const meetingDoc = await this.meetingsCollection.doc(meetingId).get();
+      const meetingDoc = await getDoc(doc(this.meetingsCollection, meetingId));
       if (!meetingDoc.exists()) return false;
 
       const meetingData = meetingDoc.data() as Meeting;
@@ -374,68 +401,67 @@ export class MeetingService {
         this.unsubscribeMeeting();
       }
 
-      this.unsubscribeMeeting = this.meetingsCollection
-        .doc(meetingId)
-        .onSnapshot(
-          snapshot => {
-            if (!snapshot) {
-              const error = this.createError('Failed to get meeting data');
-              console.warn(
-                'MeetingService: Received null snapshot in meeting listener',
+      this.unsubscribeMeeting = onSnapshot(
+        doc(this.meetingsCollection, meetingId),
+        (snapshot: FirebaseFirestoreTypes.DocumentSnapshot<Meeting>) => {
+          if (!snapshot) {
+            const error = this.createError('Failed to get meeting data');
+            console.warn(
+              'MeetingService: Received null snapshot in meeting listener',
+            );
+            onError(error);
+            return;
+          }
+
+          try {
+            if (snapshot.exists()) {
+              const meeting = {
+                id: snapshot.id,
+                ...snapshot.data(),
+              } as Meeting;
+
+              // Check if meeting has ended
+              const now = new Date();
+              const endTime = new Date(
+                meeting.duration * 60000 + meeting.createdAt.toMillis(),
               );
-              onError(error);
-              return;
-            }
-
-            try {
-              if (snapshot.exists()) {
-                const meeting = {
-                  id: snapshot.id,
-                  ...snapshot.data(),
-                } as Meeting;
-
-                // Check if meeting has ended
-                const now = new Date();
-                const endTime = new Date(
-                  meeting.duration * 60000 + meeting.createdAt.toMillis(),
-                );
-                if (this.endTimeCheckInterval) {
-                  clearInterval(this.endTimeCheckInterval);
-                  this.endTimeCheckInterval = null;
-                }
-                this.startEndTimeMonitoring(meetingId, () => {
-                  meeting.status = 'completed';
-                  onUpdate(meeting);
-                });
-
-                if (endTime <= now && meeting.status !== 'completed') {
-                  this.endMeeting(meetingId)
-                    .then(() => {
-                      meeting.status = 'completed';
-                      onUpdate(meeting);
-                    })
-                    .catch(error => {
-                      console.error('Error ending expired meeting:', error);
-                    });
-                } else {
-                  onUpdate(meeting);
-                }
-              } else {
-                onError(this.createError('Meeting not found'));
+              if (this.endTimeCheckInterval) {
+                clearInterval(this.endTimeCheckInterval);
+                this.endTimeCheckInterval = null;
               }
-            } catch (error) {
-              console.error(
-                'MeetingService: Error processing meeting snapshot:',
-                error,
-              );
-              onError(this.createError('Error processing meeting data', error));
+              this.startEndTimeMonitoring(meetingId, () => {
+                meeting.status = 'completed';
+                onUpdate(meeting);
+              });
+
+              if (endTime <= now && meeting.status !== 'completed') {
+                this.endMeeting(meetingId)
+                  .then(() => {
+                    meeting.status = 'completed';
+                    onUpdate(meeting);
+                  })
+                  .catch(error => {
+                    console.error('Error ending expired meeting:', error);
+                  });
+              } else {
+                onUpdate(meeting);
+              }
+            } else {
+              onError(this.createError('Meeting not found'));
             }
-          },
-          error => {
-            console.error('MeetingService: Error in meeting listener:', error);
-            onError(this.createError('Meeting subscription error', error));
-          },
-        );
+          } catch (error) {
+            console.error(
+              'MeetingService: Error processing meeting snapshot:',
+              error,
+            );
+            onError(this.createError('Error processing meeting data', error));
+          }
+        },
+        error => {
+          console.error('MeetingService: Error in meeting listener:', error);
+          onError(this.createError('Meeting subscription error', error));
+        },
+      );
     } catch (error) {
       console.error('MeetingService :: subscribeMeeting() ::', error);
       onError(
@@ -449,7 +475,7 @@ export class MeetingService {
    */
   async getMeeting(meetingId: string): Promise<Meeting> {
     return this.retryOperation(async () => {
-      const meetingDoc = await this.meetingsCollection.doc(meetingId).get();
+      const meetingDoc = await getDoc(doc(this.meetingsCollection, meetingId));
       if (!meetingDoc.exists()) {
         throw this.createError('Meeting not found');
       }
@@ -466,11 +492,14 @@ export class MeetingService {
    */
   async getMeetingByRoomCode(roomCode: string): Promise<Meeting> {
     return this.retryOperation(async () => {
-      const querySnapshot = await this.meetingsCollection
-        .where('roomCode', '==', roomCode)
-        .where('status', 'in', ['scheduled', 'active'])
-        .limit(1)
-        .get();
+      const querySnapshot = await getDocs(
+        query(
+          this.meetingsCollection,
+          where('roomCode', '==', roomCode),
+          where('status', 'in', ['scheduled', 'active']),
+          limit(1),
+        ),
+      );
 
       if (querySnapshot.empty) {
         throw this.createError('Meeting not found');
@@ -489,16 +518,19 @@ export class MeetingService {
    */
   async getActiveMeetings(): Promise<Meeting[]> {
     return this.retryOperation(async () => {
-      const userId = auth().currentUser?.uid;
+      const userId = getAuth().currentUser?.uid;
       if (!userId) {
         throw this.createError('User not authenticated');
       }
 
-      const querySnapshot = await this.meetingsCollection
-        .where('participants', 'array-contains', userId)
-        .where('status', '==', 'active')
-        .orderBy('startTime', 'desc')
-        .get();
+      const querySnapshot = await getDocs(
+        query(
+          this.meetingsCollection,
+          where('participants', 'array-contains', userId),
+          where('status', '==', 'active'),
+          orderBy('startTime', 'desc'),
+        ),
+      );
 
       return querySnapshot.docs.map(doc => ({
         id: doc.id,

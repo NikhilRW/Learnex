@@ -1,13 +1,43 @@
-import auth, {FirebaseAuthTypes} from '@react-native-firebase/auth';
 import {
   statusCodes,
   GoogleSignin,
 } from '@react-native-google-signin/google-signin';
 import Config from 'react-native-config';
-import firestore from '@react-native-firebase/firestore';
 import {authorize, AuthConfiguration} from 'react-native-app-auth';
 import {signUpData} from '../types/authTypes';
 import {PostType} from '../types/post';
+import {
+  arrayRemove,
+  arrayUnion,
+  getDocs,
+  increment,
+  limit,
+  limitToLast,
+  orderBy,
+  serverTimestamp,
+  getFirestore,
+  collection,
+  doc,
+  addDoc,
+  getDoc,
+  updateDoc,
+  setDoc,
+  query,
+  where,
+  runTransaction,
+  writeBatch,
+} from '@react-native-firebase/firestore';
+import {
+  createUserWithEmailAndPassword,
+  FirebaseAuthTypes,
+  getAuth,
+  GithubAuthProvider,
+  GoogleAuthProvider,
+  sendPasswordResetEmail,
+  signInWithCredential,
+  signInWithEmailAndPassword,
+  signOut,
+} from '@react-native-firebase/auth';
 
 interface GetPostsResponse {
   success: boolean;
@@ -25,7 +55,7 @@ class AuthModule {
   }
 
   currentUser(): FirebaseAuthTypes.User | null {
-    return auth().currentUser;
+    return getAuth().currentUser;
   }
 
   async signUpWithEmailAndPassword({
@@ -36,8 +66,8 @@ class AuthModule {
   }: signUpData) {
     try {
       const data = {email, username, fullName, isLoggedIn: true};
-      await auth().createUserWithEmailAndPassword(email, password);
-      await firestore().collection('users').add(data);
+      await createUserWithEmailAndPassword(getAuth(), email, password);
+      await addDoc(collection(getFirestore(), 'users'), data);
       return {success: true};
     } catch (error: any) {
       console.log('AuthModule :: signUpWithEmailAndPassword() ::', error);
@@ -47,7 +77,7 @@ class AuthModule {
 
   async loginWithEmailAndPassword(email: string, password: string) {
     try {
-      await auth().signInWithEmailAndPassword(email, password);
+      await signInWithEmailAndPassword(getAuth(), email, password);
       return {success: true};
     } catch (error: any) {
       console.log('AuthModule :: loginWithEmailAndPassword() ::', error);
@@ -57,7 +87,7 @@ class AuthModule {
 
   async sendPasswordResetEmail(email: string) {
     try {
-      await auth().sendPasswordResetEmail(email);
+      await sendPasswordResetEmail(getAuth(), email);
       return {success: true};
     } catch (error) {
       console.log('AuthModule :: sendPasswordResetEmail() ::', error);
@@ -67,7 +97,7 @@ class AuthModule {
 
   async signOut() {
     try {
-      await auth().signOut();
+      await signOut(getAuth());
       return {success: true};
     } catch (error: any) {
       console.log('AuthModule :: signOut() ::', error);
@@ -86,35 +116,27 @@ class AuthModule {
       }
 
       // Create a Google credential with the token
-      const googleCredential = auth.GoogleAuthProvider.credential(
-        null,
-        accessToken,
-      );
-      await auth().signInWithCredential(googleCredential);
+      const googleCredential = GoogleAuthProvider.credential(null, accessToken);
+      await signInWithCredential(getAuth(), googleCredential);
 
       // Create user document if it doesn't exist
-      const user = auth().currentUser;
+      const user = getAuth().currentUser;
       if (user) {
-        const userDoc = await firestore()
-          .collection('users')
-          .doc(user.uid)
-          .get();
+        const userDoc = await getDoc(doc(getFirestore(), 'users', user.uid));
         if (!userDoc.exists()) {
-          await firestore()
-            .collection('users')
-            .doc(user.uid)
-            .set({
-              email: user.email,
-              username: user.displayName || user.email?.split('@')[0] || 'User',
-              fullName: user.displayName || 'User',
-              isLoggedIn: true,
-              savedPosts: [],
-              createdAt: firestore.FieldValue.serverTimestamp(),
-              image:
-                user.photoURL ||
-                'https://www.gravatar.com/avatar/' +
-                  Math.random().toString(36).substring(7),
-            });
+          await setDoc(doc(getFirestore(), 'users', user.uid), {
+            email: user.email,
+            username: user.displayName || user.email?.split('@')[0] || 'User',
+            fullName: user.displayName || 'User',
+            isLoggedIn: true,
+            savedPosts: [],
+            createdAt: serverTimestamp(),
+
+            image:
+              user.photoURL ||
+              'https://www.gravatar.com/avatar/' +
+                Math.random().toString(36).substring(7),
+          });
         }
       }
 
@@ -146,35 +168,30 @@ class AuthModule {
         },
       };
       const authState = await authorize(config);
-      const githubCredential = auth.GithubAuthProvider.credential(
+      const githubCredential = GithubAuthProvider.credential(
         authState.accessToken,
       );
-      await auth().signInWithCredential(githubCredential);
+      await signInWithCredential(getAuth(), githubCredential);
 
       // Create user document if it doesn't exist
-      const user = auth().currentUser;
+      const user = getAuth().currentUser;
       if (user) {
-        const userDoc = await firestore()
-          .collection('users')
-          .doc(user.uid)
-          .get();
+        const userDoc = await getDoc(doc(getFirestore(), 'users', user.uid));
         if (!userDoc.exists()) {
-          await firestore()
-            .collection('users')
-            .doc(user.uid)
-            .set({
-              email: user.email,
-              username:
-                user.displayName || user.email?.split('@')[0] || 'GitHub User',
-              fullName: user.displayName || 'GitHub User',
-              isLoggedIn: true,
-              savedPosts: [],
-              createdAt: firestore.FieldValue.serverTimestamp(),
-              image:
-                user.photoURL ||
-                'https://www.gravatar.com/avatar/' +
-                  Math.random().toString(36).substring(7),
-            });
+          await setDoc(doc(getFirestore(), 'users', user.uid), {
+            email: user.email,
+            username:
+              user.displayName || user.email?.split('@')[0] || 'GitHub User',
+            fullName: user.displayName || 'GitHub User',
+            isLoggedIn: true,
+            savedPosts: [],
+            createdAt: serverTimestamp(),
+
+            image:
+              user.photoURL ||
+              'https://www.gravatar.com/avatar/' +
+                Math.random().toString(36).substring(7),
+          });
         }
       }
 
@@ -186,7 +203,7 @@ class AuthModule {
   }
 
   isUserLoggedIn(): boolean {
-    return auth().currentUser != null;
+    return getAuth().currentUser != null;
   }
 }
 
@@ -195,10 +212,12 @@ class UserModule {
   async getNameUsernamestring(): Promise<{fullName: string; username: string}> {
     try {
       const doc = (
-        await firestore()
-          .collection('users')
-          .where('email', '==', auth().currentUser?.email)
-          .get()
+        await getDocs(
+          query(
+            collection(getFirestore(), 'users'),
+            where('email', '==', getAuth().currentUser?.email),
+          ),
+        )
       ).docs[0].data();
       return {fullName: doc.fullName, username: doc.username};
     } catch (error) {
@@ -209,10 +228,12 @@ class UserModule {
 
   async checkUsernameIsAvailable(username: string) {
     try {
-      const user = await firestore()
-        .collection('users')
-        .where('username', '==', username)
-        .get();
+      const user = await getDocs(
+        query(
+          collection(getFirestore(), 'users'),
+          where('username', '==', username),
+        ),
+      );
       return {success: user.empty};
     } catch (error) {
       console.log('UserModule :: checkUsernameIsAvailable() ::', error);
@@ -222,10 +243,9 @@ class UserModule {
 
   async checkEmailIsAvailable(email: string) {
     try {
-      const user = await firestore()
-        .collection('users')
-        .where('email', '==', email)
-        .get();
+      const user = await getDocs(
+        query(collection(getFirestore(), 'users'), where('email', '==', email)),
+      );
       return {success: user.empty};
     } catch (error) {
       console.log('UserModule :: checkEmailIsAvailable() ::', error);
@@ -235,14 +255,18 @@ class UserModule {
 
   async checkUsernameOrEmailRegistered(emailOrUsername: string) {
     try {
-      const email = await firestore()
-        .collection('users')
-        .where('email', '==', emailOrUsername)
-        .get();
-      const username = await firestore()
-        .collection('users')
-        .where('username', '==', emailOrUsername)
-        .get();
+      const email = await getDocs(
+        query(
+          collection(getFirestore(), 'users'),
+          where('email', '==', emailOrUsername),
+        ),
+      );
+      const username = await getDocs(
+        query(
+          collection(getFirestore(), 'users'),
+          where('username', '==', emailOrUsername),
+        ),
+      );
 
       if (!email.empty) return {success: true, email: emailOrUsername};
 
@@ -296,13 +320,13 @@ class PostsModule {
     isVideo?: boolean;
   }) {
     try {
-      const currentUser = auth().currentUser;
+      const currentUser = getAuth().currentUser;
       if (!currentUser) throw new Error('User not authenticated');
 
       const userModule = new UserModule();
       const {fullName: username} = await userModule.getNameUsernamestring();
 
-      const postRef = firestore().collection('posts');
+      const postRef = collection(getFirestore(), 'posts');
       const newPost = {
         user: {
           id: currentUser.uid,
@@ -312,10 +336,10 @@ class PostsModule {
         ...postData,
         likes: 0,
         comments: 0,
-        createdAt: firestore.FieldValue.serverTimestamp(),
+        createdAt: serverTimestamp(),
       };
 
-      const docRef = await postRef.add(newPost);
+      const docRef = await addDoc(postRef, newPost);
       return {success: true, postId: docRef.id};
     } catch (error) {
       console.log('PostsModule :: createPost() ::', error);
@@ -326,23 +350,22 @@ class PostsModule {
     }
   }
 
-  async getPosts(limit = 10): Promise<GetPostsResponse> {
+  async getPosts(limitNum = 10): Promise<GetPostsResponse> {
     try {
-      const currentUser = auth().currentUser;
-      const postsRef = firestore().collection('posts');
+      const currentUser = getAuth().currentUser;
+      const postsRef = collection(getFirestore(), 'posts');
 
       let snapshot;
       try {
-        snapshot = await postsRef
-          .orderBy('createdAt', 'desc')
-          .limit(limit)
-          .get();
+        snapshot = await getDocs(
+          query(postsRef, orderBy('createdAt', 'desc'), limit(limitNum)),
+        );
       } catch (orderByError) {
         console.log(
           'Error with orderBy, fetching without sorting:',
           orderByError,
         );
-        snapshot = await postsRef.limit(limit).get();
+        snapshot = await getDocs(query(postsRef, limit(limitNum)));
       }
 
       const postsWithLikes = await Promise.all(
@@ -354,11 +377,13 @@ class PostsModule {
             : false;
 
           // Get comments with their like status
-          const commentsSnapshot = await doc.ref
-            .collection('comments')
-            .orderBy('createdAt', 'desc')
-            .limit(5)
-            .get();
+          const commentsSnapshot = await getDocs(
+            query(
+              collection(doc.ref, 'comments'),
+              orderBy('createdAt', 'desc'),
+              limitToLast(5),
+            ),
+          );
 
           const comments = commentsSnapshot.docs.map(commentDoc => {
             const commentData = commentDoc.data();
@@ -410,15 +435,14 @@ class PostsModule {
 
   async isPostLikedByUser(postId: string): Promise<boolean> {
     try {
-      const currentUser = auth().currentUser;
+      const currentUser = getAuth().currentUser;
       if (!currentUser) return false;
 
-      const likeDoc = await firestore()
-        .collection('likes')
-        .doc(`${postId}_${currentUser.uid}`)
-        .get();
+      const likeDoc = await getDoc(
+        doc(getFirestore(), 'likes', `${postId}_${currentUser.uid}`),
+      );
 
-      return likeDoc.exists;
+      return likeDoc.exists();
     } catch (error) {
       console.error('Error checking if post is liked:', error);
       return false;
@@ -427,29 +451,31 @@ class PostsModule {
 
   async likePost(postId: string) {
     try {
-      const currentUser = auth().currentUser;
+      const currentUser = getAuth().currentUser;
       if (!currentUser) throw new Error('User not authenticated');
 
-      const postRef = firestore().collection('posts').doc(postId);
-      const likeDocRef = firestore()
-        .collection('likes')
-        .doc(`${postId}_${currentUser.uid}`);
+      const postRef = doc(getFirestore(), 'posts', postId);
+      const likeDocRef = doc(
+        getFirestore(),
+        'likes',
+        `${postId}_${currentUser.uid}`,
+      );
 
-      await firestore().runTransaction(async transaction => {
+      await runTransaction(getFirestore(), async transaction => {
         const likeDoc = await transaction.get(likeDocRef);
         if (likeDoc.exists()) {
           transaction.delete(likeDocRef);
           transaction.update(postRef, {
-            likes: firestore.FieldValue.increment(-1),
+            likes: increment(-1),
           });
         } else {
           transaction.set(likeDocRef, {
             userId: currentUser.uid,
             postId,
-            createdAt: firestore.FieldValue.serverTimestamp(),
+            createdAt: serverTimestamp(),
           });
           transaction.update(postRef, {
-            likes: firestore.FieldValue.increment(1),
+            likes: increment(1),
           });
         }
       });
@@ -468,29 +494,29 @@ class PostsModule {
 
   async addComment(postId: string, comment: string) {
     try {
-      const currentUser = auth().currentUser;
+      const currentUser = getAuth().currentUser;
       if (!currentUser) throw new Error('User not authenticated');
 
       const userModule = new UserModule();
       const {fullName: username} = await userModule.getNameUsernamestring();
 
       // Create a batch to ensure atomic operations
-      const batch = firestore().batch();
+      const batch = writeBatch(getFirestore());
 
       // Get post reference
-      const postRef = firestore().collection('posts').doc(postId);
+      const postRef = doc(getFirestore(), 'posts', postId);
 
       // Get post data first to verify it exists
-      const postDoc = await postRef.get();
-      if (!postDoc.exists()) {
+      const postDoc = await getDoc(postRef);
+      if (postDoc.exists()) {
         throw new Error('Post not found');
       }
 
       // Create a direct comments collection in the post document
-      const commentRef = postRef.collection('comments').doc();
+      const commentRef = doc(collection(postRef, 'comments'));
 
       // Get current timestamp
-      const timestamp = firestore.FieldValue.serverTimestamp();
+      const timestamp = serverTimestamp();
 
       // Create the comment data
       const newComment = {
@@ -510,7 +536,7 @@ class PostsModule {
 
       // Increment comment count in post
       batch.update(postRef, {
-        comments: firestore.FieldValue.increment(1),
+        comments: increment(1),
       });
 
       // Commit the batch
@@ -541,26 +567,27 @@ class PostsModule {
 
   async savePost(postId: string) {
     try {
-      const currentUser = auth().currentUser;
+      const currentUser = getAuth().currentUser;
       if (!currentUser) {
         return {success: false, error: 'User not authenticated'};
       }
 
       // Check if post exists
-      const postDoc = await firestore().collection('posts').doc(postId).get();
+      const postDoc = await getDoc(doc(getFirestore(), 'posts', postId));
       if (!postDoc.exists()) {
         return {success: false, error: 'Post not found'};
       }
 
       // Get user document
-      const userRef = firestore().collection('users').doc(currentUser.uid);
-      const userDoc = await userRef.get();
+      const userDoc = await getDoc(
+        doc(getFirestore(), 'users', currentUser.uid),
+      );
 
       // If user document doesn't exist, create it with savedPosts field
       if (!userDoc.exists()) {
-        await userRef.set({
+        await setDoc(doc(getFirestore(), 'users', currentUser.uid), {
           savedPosts: [postId],
-          updatedAt: firestore.FieldValue.serverTimestamp(),
+          updatedAt: serverTimestamp(),
         });
         return {success: true, saved: true};
       }
@@ -571,11 +598,9 @@ class PostsModule {
       const isSaved = savedPosts.includes(postId);
 
       // Toggle saved status
-      await userRef.update({
-        savedPosts: isSaved
-          ? firestore.FieldValue.arrayRemove(postId)
-          : firestore.FieldValue.arrayUnion(postId),
-        updatedAt: firestore.FieldValue.serverTimestamp(),
+      await updateDoc(doc(getFirestore(), 'users', currentUser.uid), {
+        savedPosts: isSaved ? arrayRemove(postId) : arrayUnion(postId),
+        updatedAt: serverTimestamp(),
       });
 
       return {success: true, saved: !isSaved};
@@ -590,14 +615,14 @@ class PostsModule {
 
   async deletePost(postId: string) {
     try {
-      const currentUser = auth().currentUser;
+      const currentUser = getAuth().currentUser;
       if (!currentUser) {
         return {success: false, error: 'User not authenticated'};
       }
 
       // Get the post to check ownership
-      const postRef = firestore().collection('posts').doc(postId);
-      const postDoc = await postRef.get();
+      const postRef = doc(getFirestore(), 'posts', postId);
+      const postDoc = await getDoc(postRef);
 
       if (!postDoc.exists()) {
         return {success: false, error: 'Post not found'};
@@ -610,10 +635,10 @@ class PostsModule {
       }
 
       // Create a batch to delete the post and all its associated data
-      const batch = firestore().batch();
+      const batch = writeBatch(getFirestore());
 
       // 1. Delete all comments
-      const commentsSnapshot = await postRef.collection('comments').get();
+      const commentsSnapshot = await getDocs(collection(postRef, 'comments'));
       commentsSnapshot.docs.forEach(doc => {
         batch.delete(doc.ref);
       });
@@ -634,9 +659,9 @@ class PostsModule {
     }
   }
 
-  isPostSaved(postId: string): boolean {
+  isPostSaved(): boolean {
     try {
-      const currentUser = auth().currentUser;
+      const currentUser = getAuth().currentUser;
       if (!currentUser) return false;
 
       // This is a synchronous check, so we need to have the data already cached

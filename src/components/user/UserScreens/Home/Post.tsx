@@ -25,10 +25,20 @@ import {MessageService} from '../../../../service/firebase/MessageService';
 import Snackbar from 'react-native-snackbar';
 import {UserStackParamList} from '../../../../routes/UserStack';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import firestore from '@react-native-firebase/firestore';
+import {
+  getFirestore,
+  collection,
+  doc,
+  getDoc,
+  updateDoc,
+  deleteDoc,
+  setDoc,
+} from '@react-native-firebase/firestore';
+import {getAuth} from '@react-native-firebase/auth';
 import PostOptionsModal from './PostOptionsModal';
 import {FullPostModal} from './FullPostModal';
 import {createStyles} from '../../../../styles/components/user/UserScreens/Home/Post.styles';
+import {onSnapshot} from '@react-native-firebase/firestore';
 
 /**
  * Post component that displays a social media post with images
@@ -125,7 +135,8 @@ const Post: React.FC<PostProps> = ({post, isVisible = false}) => {
   useEffect(() => {
     // Check if the current user is the post creator
     const checkCurrentUser = async () => {
-      const currentUser = firebase.currentUser();
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
       if (currentUser && post.user.id === currentUser.uid) {
         setIsCurrentUserPost(true);
       }
@@ -138,17 +149,16 @@ const Post: React.FC<PostProps> = ({post, isVisible = false}) => {
   useEffect(() => {
     if (!post.user.id) return;
 
-    const unsubscribe = firestore()
-      .collection('users')
-      .doc(post.user.id)
-      .onSnapshot(snapshot => {
-        if (snapshot.exists()) {
-          const userData = snapshot.data();
-          if (userData?.image && userData.image !== userProfileImage) {
-            setUserProfileImage(userData.image);
-          }
+    const db = getFirestore();
+    const userRef = doc(collection(db, 'users'), post.user.id);
+    const unsubscribe = onSnapshot(userRef, snapshot => {
+      if (snapshot.exists()) {
+        const userData = snapshot.data();
+        if (userData?.image && userData.image !== userProfileImage) {
+          setUserProfileImage(userData.image);
         }
-      });
+      }
+    });
 
     return () => unsubscribe();
   }, [post.user.id, userProfileImage]);
@@ -418,11 +428,11 @@ const Post: React.FC<PostProps> = ({post, isVisible = false}) => {
             styles.postImage,
             {
               height: isFullModal
-                ? imageHeight
+                ? imageHeight 
                 : imageHeight - 12 || (post.isVertical ? 480 : 300),
             },
           ]}
-          resizeMode={post.isVertical ? 'cover' : 'contain'}
+          resizeMode={isFullModal ? 'contain' : 'cover' }
           onError={error =>
             console.error(
               'Image loading error for source',
@@ -438,7 +448,8 @@ const Post: React.FC<PostProps> = ({post, isVisible = false}) => {
 
   const handleMessageUser = async () => {
     try {
-      const currentUser = firebase.currentUser();
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
       if (!currentUser) {
         Snackbar.show({
           text: 'You must be logged in to message users',
@@ -489,7 +500,8 @@ const Post: React.FC<PostProps> = ({post, isVisible = false}) => {
     try {
       setIsAddingComment(true);
 
-      const currentUser = firebase.currentUser();
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
       if (!currentUser) {
         Snackbar.show({
           text: 'You must be logged in to comment',
@@ -500,11 +512,29 @@ const Post: React.FC<PostProps> = ({post, isVisible = false}) => {
         return;
       }
 
-      // Call firebase service to add comment
-      const result = await firebase.posts.addComment(
+      const db = getFirestore();
+      const commentsCollectionRef = collection(
+        db,
+        'posts',
         post.id,
-        newComment.trim(),
+        'comments',
       );
+      const newCommentRef = doc(commentsCollectionRef);
+      const newCommentData = {
+        id: newCommentRef.id,
+        userId: currentUser.uid,
+        username: currentUser.displayName || 'Anonymous',
+        userImage: currentUser.photoURL || null,
+        comment: newComment.trim(),
+        timestamp: new Date().toISOString(),
+        likes: 0,
+        isLiked: false,
+        replies: [],
+      };
+
+      await setDoc(newCommentRef, newCommentData);
+
+      const result = {success: true, comment: newCommentData};
 
       if (result.success) {
         // Update UI immediately with the new comment
@@ -558,7 +588,10 @@ const Post: React.FC<PostProps> = ({post, isVisible = false}) => {
       setIsHiding(true);
       setShowOptions(false);
 
-      const result = await firebase.posts.hidePost(post.id);
+      const db = getFirestore();
+      const postRef = doc(db, 'posts', post.id);
+      await updateDoc(postRef, {hidden: true});
+      const result = {success: true};
 
       if (result.success) {
         Snackbar.show({
@@ -593,8 +626,34 @@ const Post: React.FC<PostProps> = ({post, isVisible = false}) => {
 
     setIsSaving(true);
     try {
-      // Call Firebase service to save/unsave the post
-      const result = await firebase.posts.savePost(post.id);
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        return {success: false, error: 'User not authenticated'};
+      }
+
+      const db = getFirestore();
+      const userRef = doc(db, 'users', currentUser.uid);
+      const userDoc = await getDoc(userRef);
+
+      let updatedSavedPosts = [];
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        const savedPosts = userData?.savedPosts || [];
+        if (savedPosts.includes(post.id)) {
+          updatedSavedPosts = savedPosts.filter((id: string) => id !== post.id);
+        } else {
+          updatedSavedPosts = [...savedPosts, post.id];
+        }
+      } else {
+        updatedSavedPosts = [post.id];
+      }
+
+      await updateDoc(userRef, {savedPosts: updatedSavedPosts});
+      const result = {
+        success: true,
+        saved: updatedSavedPosts.includes(post.id),
+      };
 
       if (result.success) {
         setIsSaved(result.saved === true);
@@ -654,8 +713,10 @@ const Post: React.FC<PostProps> = ({post, isVisible = false}) => {
         backgroundColor: '#2379C2',
       });
 
-      // Delete the post using the firebase posts module
-      const result = await firebase.posts.deletePost(post.id);
+      const db = getFirestore();
+      const postRef = doc(db, 'posts', post.id);
+      await deleteDoc(postRef);
+      const result = {success: true};
 
       // Dismiss loading indicator and show success/error message
       Snackbar.dismiss();
@@ -672,7 +733,7 @@ const Post: React.FC<PostProps> = ({post, isVisible = false}) => {
         // If you have a refresh function passed as prop, call it here
       } else {
         Snackbar.show({
-          text: result.error || 'Failed to delete post',
+          text: 'Failed to delete post',
           duration: Snackbar.LENGTH_LONG,
           textColor: 'white',
           backgroundColor: '#ff3b30',
@@ -696,11 +757,13 @@ const Post: React.FC<PostProps> = ({post, isVisible = false}) => {
     const checkPostSavedStatus = async () => {
       try {
         // We need to fetch the actual saved status from Firestore
-        const currentUser = firebase.currentUser();
+        const auth = getAuth();
+        const currentUser = auth.currentUser;
         if (!currentUser) return;
 
-        const userRef = firestore().collection('users').doc(currentUser.uid);
-        const userDoc = await userRef.get();
+        const db = getFirestore();
+        const userRef = doc(collection(db, 'users'), currentUser.uid);
+        const userDoc = await getDoc(userRef);
 
         if (userDoc.exists()) {
           const userData = userDoc.data();
@@ -732,8 +795,36 @@ const Post: React.FC<PostProps> = ({post, isVisible = false}) => {
       const likesChange = newIsLiked ? 1 : -1;
       post.likes += likesChange;
 
-      // Send request to backend
-      const result = await firebase.posts.likePost(post.id);
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        return {success: false, error: 'User not authenticated'};
+      }
+
+      const db = getFirestore();
+      const postRef = doc(db, 'posts', post.id);
+      const postDoc = await getDoc(postRef);
+
+      if (!postDoc.exists()) {
+        return {success: false, error: 'Post not found'};
+      }
+
+      const postData = postDoc.data();
+      let updatedLikes = postData?.likes || 0;
+      let updatedLikedBy = postData?.likedBy || [];
+
+      if (newIsLiked) {
+        updatedLikes++;
+        updatedLikedBy.push(currentUser.uid);
+      } else {
+        updatedLikes--;
+        updatedLikedBy = updatedLikedBy.filter(
+          (id: string) => id !== currentUser.uid,
+        );
+      }
+
+      await updateDoc(postRef, {likes: updatedLikes, likedBy: updatedLikedBy});
+      const result = {success: true};
 
       if (!result.success) {
         // Revert UI changes if request failed
@@ -742,7 +833,7 @@ const Post: React.FC<PostProps> = ({post, isVisible = false}) => {
 
         // Show error to user
         Snackbar.show({
-          text: result.error || 'Failed to update like status',
+          text: 'Failed to update like status',
           duration: Snackbar.LENGTH_LONG,
           textColor: 'white',
           backgroundColor: '#ff3b30',

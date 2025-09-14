@@ -1,0 +1,1 @@
+export const DEFAULT_UPLOAD_PRESET = 'default_one';

@@ -1,5 +1,18 @@
-import auth from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
+import {getAuth} from '@react-native-firebase/auth';
+import {
+  getFirestore,
+  collection,
+  doc,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  query,
+  where,
+  getDocs,
+  serverTimestamp,
+  writeBatch,
+  FirebaseFirestoreTypes,
+} from '@react-native-firebase/firestore';
 import {Platform} from 'react-native';
 
 /**
@@ -16,7 +29,10 @@ import {Platform} from 'react-native';
  * to ensure notifications can still be delivered in these states.
  */
 export class FCMTokenManager {
-  private static tokensCollection = firestore().collection('fcmTokens');
+  private static tokensCollection = collection(
+    getFirestore(),
+    'fcmTokens',
+  ) as FirebaseFirestoreTypes.CollectionReference<any>;
 
   /**
    * Save a new FCM token for the current user
@@ -27,7 +43,7 @@ export class FCMTokenManager {
    */
   public static async saveToken(token: string): Promise<boolean> {
     try {
-      const currentUser = auth().currentUser;
+      const currentUser = getAuth().currentUser;
       if (!currentUser) {
         console.error('Cannot save FCM token: No user is logged in');
         return false;
@@ -53,15 +69,15 @@ export class FCMTokenManager {
         token,
         device: deviceInfo,
         active: true, // Mark the token as active
-        createdAt: firestore.FieldValue.serverTimestamp(),
-        updatedAt: firestore.FieldValue.serverTimestamp(),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       };
 
       // We'll use the token itself as part of the document ID
       // to ensure we don't store duplicate tokens
       const tokenId = `${userId}_${token.substring(token.length - 12)}`;
 
-      await this.tokensCollection.doc(tokenId).set(tokenDoc);
+      await setDoc(doc(this.tokensCollection, tokenId), tokenDoc);
       console.log('FCM token saved to Firestore');
       return true;
     } catch (error) {
@@ -80,7 +96,7 @@ export class FCMTokenManager {
    */
   public static async markTokenInactive(token: string): Promise<boolean> {
     try {
-      const currentUser = auth().currentUser;
+      const currentUser = getAuth().currentUser;
       if (!currentUser) {
         console.log('No user logged in to update FCM token status');
         return false;
@@ -89,9 +105,9 @@ export class FCMTokenManager {
       const userId = currentUser.uid;
       const tokenId = `${userId}_${token.substring(token.length - 12)}`;
 
-      await this.tokensCollection.doc(tokenId).update({
+      await updateDoc(doc(this.tokensCollection, tokenId), {
         active: false,
-        updatedAt: firestore.FieldValue.serverTimestamp(),
+        updatedAt: serverTimestamp(),
       });
 
       console.log('FCM token marked as inactive');
@@ -112,7 +128,7 @@ export class FCMTokenManager {
    */
   public static async removeToken(token: string): Promise<boolean> {
     try {
-      const currentUser = auth().currentUser;
+      const currentUser = getAuth().currentUser;
       if (!currentUser) {
         console.log('No user logged in to remove FCM token for');
         return false;
@@ -121,7 +137,7 @@ export class FCMTokenManager {
       const userId = currentUser.uid;
       const tokenId = `${userId}_${token.substring(token.length - 12)}`;
 
-      await this.tokensCollection.doc(tokenId).delete();
+      await deleteDoc(doc(this.tokensCollection, tokenId));
       console.log('FCM token removed from Firestore');
       return true;
     } catch (error) {
@@ -139,19 +155,19 @@ export class FCMTokenManager {
    */
   public static async removeAllUserTokens(): Promise<boolean> {
     try {
-      const currentUser = auth().currentUser;
+      const currentUser = getAuth().currentUser;
       if (!currentUser) {
         console.log('No user logged in to remove FCM tokens for');
         return false;
       }
 
       const userId = currentUser.uid;
-      const batch = firestore().batch();
+      const batch = writeBatch(getFirestore());
 
       // Get all tokens for this user
-      const snapshot = await this.tokensCollection
-        .where('userId', '==', userId)
-        .get();
+      const snapshot = await getDocs(
+        query(this.tokensCollection, where('userId', '==', userId)),
+      );
 
       if (snapshot.empty) {
         console.log('No FCM tokens found for this user');
