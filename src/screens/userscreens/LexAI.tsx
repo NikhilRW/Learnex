@@ -39,6 +39,7 @@ import Config from 'react-native-config';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
 import { styles } from '../../styles/screens/userscreens/LexAI.styles';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { generateUUID, logDebug } from '../../utils/LexAI';
 
 // Define search result interface
 interface SearchResult {
@@ -128,16 +129,6 @@ const darkColors: ThemeColors = {
     controlsBackground: 'rgba(28, 39, 57, 0.8)',
 };
 
-// Debug function
-const logDebug = (message: string, data?: any) => {
-    const timestamp = new Date().toISOString();
-    const logMessage = `[LexAI ${timestamp}] ${message}`;
-    console.log(logMessage);
-    if (data) {
-        console.log('Data:', JSON.stringify(data, null, 2));
-    }
-};
-
 // Suggestions for common queries
 const AGENT_SUGGESTIONS = [
     'What can you help me with?',
@@ -155,18 +146,7 @@ const CHAT_SUGGESTIONS = [
     'Search the web for latest AI trends',
 ];
 
-// Custom UUID generator that doesn't rely on crypto.getRandomValues()
-const generateUUID = (): string => {
-    // Use a timestamp-based prefix to ensure uniqueness
-    const timestamp = Date.now().toString(36);
 
-    // Generate random segments
-    const randomSegment1 = Math.random().toString(36).substring(2, 15);
-    const randomSegment2 = Math.random().toString(36).substring(2, 15);
-
-    // Combine timestamp and random segments to form a UUID-like string
-    return `${timestamp}-${randomSegment1}-${randomSegment2}`;
-};
 
 // Define a type for the navigation prop that includes nested navigation
 type LexAINavigationProp = DrawerNavigationProp<UserStackParamList>;
@@ -498,8 +478,7 @@ const LexAI = () => {
                 setConversation(newConversation);
                 await LexAIService.saveConversation(newConversation);
                 dispatch(setActiveConversation(newConversation.id));
-
-                handleInitialMessage(newConversation);
+                // handleInitialMessage(newConversation);
             } catch (error) {
                 console.error('Error initializing conversation:', error);
                 // Fallback to creating a new conversation if there's an error
@@ -573,7 +552,7 @@ const LexAI = () => {
             setConversation(newConversation);
             await LexAIService.saveConversation(newConversation);
             dispatch(setActiveConversation(newConversation.id));
-            handleInitialMessage(newConversation);
+            // handleInitialMessage(newConversation);
         } else {
             // Update the existing conversation's mode
             logDebug('Updating existing conversation mode', { id: conversation.id });
@@ -1071,7 +1050,7 @@ const LexAI = () => {
         setConversation(newConversation);
         await LexAIService.saveConversation(newConversation);
         dispatch(setActiveConversation(newConversation.id));
-        handleInitialMessage(newConversation);
+        // handleInitialMessage(newConversation);
     };
 
     // Show history drawer with animation
@@ -1176,7 +1155,7 @@ const LexAI = () => {
                                 setConversation(newConversation);
                                 await LexAIService.saveConversation(newConversation);
                                 dispatch(setActiveConversation(newConversation.id));
-                                handleInitialMessage(newConversation);
+                                // handleInitialMessage(newConversation);
                             }
 
                             logDebug('Conversation deleted successfully');
@@ -1806,45 +1785,6 @@ const LexAI = () => {
         );
     };
 
-    // Render suggestion chips
-    const renderSuggestions = () => {
-        if (!showSuggestions) return null;
-
-        return (
-            <View
-                style={[
-                    styles.suggestionsContainer,
-                    {
-                        backgroundColor: isDarkMode
-                            ? 'rgba(30, 30, 30, 0.9)'
-                            : 'rgba(255, 255, 255, 0.9)',
-                        borderTopColor: isDarkMode
-                            ? 'rgba(255,255,255,0.1)'
-                            : 'rgba(0,0,0,0.05)',
-                    },
-                ]}>
-                {suggestions.map((suggestion, index) => (
-                    <TouchableOpacity
-                        key={index}
-                        style={[
-                            styles.suggestionChip,
-                            {
-                                backgroundColor: isDarkMode
-                                    ? 'rgba(10, 132, 255, 0.15)'
-                                    : '#EFF6FF',
-                                borderColor: isDarkMode ? 'rgba(62, 123, 250, 0.3)' : '#DBEAFE',
-                            },
-                        ]}
-                        onPress={() => handleSuggestionClick(suggestion)}>
-                        <Text style={[styles.suggestionText, { color: colors.primary }]}>
-                            {suggestion}
-                        </Text>
-                    </TouchableOpacity>
-                ))}
-            </View>
-        );
-    };
-
     // Rendering loading dots animation
     const LoadingDots = () => (
         <View
@@ -1917,7 +1857,6 @@ const LexAI = () => {
     const getGreeting = () => {
         // Get the current hour to determine time of day
         const currentHour = new Date().getHours();
-
         // Create time-based greeting
         let timeGreeting = '';
         if (currentHour >= 5 && currentHour < 12) {
@@ -1930,9 +1869,9 @@ const LexAI = () => {
 
         // Add mode-specific message after the time greeting
         if (currentMode === LexAIMode.AGENT) {
-            return `${timeGreeting} I'm LexAI in Agent Mode. I can help with questions, tasks, navigation, searching posts, and more. How can I assist you today?`;
+            return `Hi! I'm LexAI in Agent Mode. I can help with tasks, navigation and searches. How can I assist?`;
         } else {
-            return `${timeGreeting} I'm LexAI in Simple Chat Mode. I'm here to answer your questions and have a conversation. What would you like to talk about?`;
+            return `Hi! I'm LexAI in Chat Mode. What would you like to talk about?`;
         }
     };
 

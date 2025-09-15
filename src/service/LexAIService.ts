@@ -278,12 +278,19 @@ You have access to several capabilities to help the user via function calls:
      * If not, suggest creating a team task first with "addTeamTask"
      * Then create a meeting room and link it to the team task ID
 
-5. You can perform web searches using the "webSearch" tool
-6. You can open URLs using the "openUrl" tool
+5. You are knowledgeable about a wide range of topics and can help users by:
+   - Answering questions directly using your built-in knowledge when appropriate
+   - Using "webSearch" only for current events, specific facts, or when users explicitly request online information
+   - Understanding when to use your own knowledge vs when to search
+   - Being conversational and helpful while staying within your capabilities
+6. You can open URLs using the "openUrl" tool when needed
 7. You can help users understand how to use the app
 
-YOU ARE REQUIRED TO USE FUNCTION CALLS FOR ALL ACTIONS. The system ONLY supports function calls from the model.
-You CANNOT perform actions through text responses. EVERY action MUST be a function call.
+YOU ARE REQUIRED TO USE FUNCTION CALLS FOR ACTIONS, but be intelligent about when to use them. 
+- Answer general questions directly without searching
+- Use webSearch only when truly needed or explicitly requested
+- Maintain natural conversation while using tools appropriately
+EVERY action requiring app functionality MUST be a function call.
 
 CRITICAL: ALL of these phrases require IMMEDIATE function calls, not text responses:
 - "Delete it" → MUST call deleteTask with taskName based on context
@@ -2074,23 +2081,32 @@ IMPORTANT INSTRUCTIONS:
 
     // Web search patterns
     if (
-      lowerMessage.includes('search') ||
-      lowerMessage.includes('look up') ||
-      lowerMessage.includes('find') ||
+      lowerMessage.startsWith('search') ||
+      lowerMessage.startsWith('look up') ||
+      lowerMessage.startsWith('google') ||
+      lowerMessage.match(/^(find|search for|tell me about)\s+/i) ||
+      lowerMessage.includes('search the web for') ||
+      // Only match questions that explicitly request online/current information
       lowerMessage.match(
-        /what is|who is|when is|where is|how to|can you tell me about/,
+        /^(what'?s|who'?s|what is|who is)\s+the\s+(latest|current|recent|newest|trending)/i,
       )
     ) {
       // Extract search query - remove action words
-      let query = userMessage
+      const searchText = userMessage
         .replace(
-          /^(search|look up|find|search for|look for|find out about)/i,
+          /^(search|look up|find|search for|look for|find out about|google|tell me about)\s*/i,
+          '',
+        )
+        .replace(
+          /^(what'?s|who'?s|what is|who is)\s+(the\s+)?(latest|current|recent|newest|trending)\s+/i,
           '',
         )
         .trim();
 
-      // If empty after removing action words, use the whole message
-      if (!query) query = userMessage;
+      // Only proceed if we have a meaningful search query
+      if (!searchText || searchText.match(/^(about|for)?\s*$/i)) {
+        return null;
+      }
 
       console.log(
         `LexAI :: checkForForcedToolCalls() :: Detected web search request for: "${query}"`,
