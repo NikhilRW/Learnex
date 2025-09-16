@@ -15,8 +15,8 @@ import {
   FirebaseFirestoreTypes,
   writeBatch,
 } from '@react-native-firebase/firestore';
-import {FirestoreComment, AddCommentResponse} from '../../types/post';
-import {convertFirestoreComment} from './utils';
+import {FirestoreComment, AddCommentResponse} from '@/features/Home/types/post';
+import {convertFirestoreComment} from '../../shared/service/utils';
 
 export class CommentService {
   async addComment(postId: string, text: string): Promise<AddCommentResponse> {

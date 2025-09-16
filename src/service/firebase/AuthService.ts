@@ -1,4 +1,9 @@
-import {getAuth, GithubAuthProvider, GoogleAuthProvider, OIDCAuthProvider} from '@react-native-firebase/auth';
+import {
+  getAuth,
+  GithubAuthProvider,
+  GoogleAuthProvider,
+  OIDCAuthProvider,
+} from '@react-native-firebase/auth';
 import {
   GoogleSignin,
   statusCodes,
@@ -15,8 +20,8 @@ import {
   FirebaseFirestoreTypes,
 } from '@react-native-firebase/firestore';
 import Config from 'react-native-config';
-import {signUpData} from '../../types/authTypes';
-import {AuthResponse, FirebaseUser} from '../../types/firebase';
+import {signUpData} from 'shared/types/authTypes';
+import {AuthResponse, FirebaseUser} from 'shared/types/firebase';
 
 export class AuthService {
   constructor() {
@@ -157,10 +162,7 @@ export class AuthService {
         throw new Error('No access token found');
       }
 
-      const googleCredential = GoogleAuthProvider.credential(
-        null,
-        accessToken,
-      );
+      const googleCredential = GoogleAuthProvider.credential(null, accessToken);
       await getAuth().signInWithCredential(googleCredential);
 
       // Handle user document (create or update)

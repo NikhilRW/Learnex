@@ -13,11 +13,11 @@ import {
     Image
 } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
-import { UserStackParamList } from '../../routes/UserStack';
-import { useTypedSelector } from '../../hooks/useTypedSelector';
+import { UserStackParamList } from 'shared/routes/UserStack';
+import { useTypedSelector } from '@/shared/hooks/redux/useTypedSelector';
 import { createStyles } from '../../styles/screens/EventDetails.styles';
 import { HackathonService } from '../../service/hackathonService';
-import { HackathonDetails } from '../../types/hackathon';
+import { HackathonDetails } from '@/features/EventsAndHackathons/types/hackathon';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { format, formatDistance, parseISO, isPast } from 'date-fns';
@@ -382,7 +382,7 @@ const EventDetails: React.FC = () => {
                     <View style={styles.content}>
                         <Text style={styles.eventTitle}>{event.title}</Text>
                         <Text style={styles.sourceLabel}>
-                            {event.source === 'hackerearth' ?'HackerEarth Event' : 'Devfolio Event'}
+                            {event.source === 'hackerearth' ? 'HackerEarth Event' : 'Devfolio Event'}
                         </Text>
                         <Text style={styles.eventDescription}>{event.description}</Text>
                         <View style={styles.infoContainer}>

@@ -6,7 +6,7 @@ import {CommentService} from './CommentService';
 import {SavedPostService} from './SavedPostService';
 import {PostQueryService} from './PostQueryService';
 import {LikeCache} from './LikeCache';
-import {TaskService} from './TaskService';
+import {TaskService} from '../../shared/service/TaskService';
 import {FirebaseAuthTypes} from '@react-native-firebase/auth';
 
 /**

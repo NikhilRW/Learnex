@@ -1,9 +1,9 @@
 import React, {useEffect, useState} from 'react';
 import {Platform, Linking, Alert, PermissionsAndroid} from 'react-native';
 import SplashScreen from 'react-native-splash-screen';
-import Route from './routes/Route';
+import Route from './shared/routes/Route';
 import {Provider} from 'react-redux';
-import {persistor, store} from './store/store';
+import {persistor, store} from 'shared/store/store';
 import 'react-native-gesture-handler';
 import 'react-native-reanimated';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
@@ -11,14 +11,14 @@ import {PersistGate} from 'redux-persist/integration/react';
 import ThemeListener from './components/user/ThemeListener';
 import Loader from './components/auth/Loader';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
-import {setDeepLink} from './reducers/DeepLink';
-import {fetchHackathons} from './reducers/Hackathon';
+import {setDeepLink} from 'shared/reducers/DeepLink';
+import {fetchHackathons} from 'shared/reducers/Hackathon';
 import {
   NavigationContainer,
   useNavigationContainerRef,
 } from '@react-navigation/native';
-import {DeepLinkHandler} from './navigation/DeepLinkHandler';
-import {PushNotificationHandler} from './utils/PushNotificationHandler';
+import {DeepLinkHandler} from './shared/service/DeepLinkHandler';
+import {PushNotificationHandler} from 'shared/utils/PushNotificationHandler';
 import {styles} from './styles/common/App';
 import {getMessaging} from '@react-native-firebase/messaging';
 
@@ -32,7 +32,6 @@ interface LinkingSubscription {
   remove: () => void;
 }
 // globalThis.RNFB_SILENCE_MODULAR_DEPRECATION_WARNINGS = true;
-
 
 const App = () => {
   const navigationRef = useNavigationContainerRef();

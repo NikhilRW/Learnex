@@ -13,7 +13,7 @@ const AnnouncementIcon = ({
   color: string;
 }) => {
   return (
-    focused ? <Image source={require('../../../res/pngs/megaphone_filled.png')} style={{ width: size, height: size }} /> : <Image source={require('../../../res/pngs/megaphone_unfilled.png')} style={{ width: size, height: size }} />
+    focused ? <Image source={require('../shared/res/pngs/megaphone_filled.png')} style={{ width: size, height: size }} /> : <Image source={require('../shared/res/pngs/megaphone_unfilled.png')} style={{ width: size, height: size }} />
   );
 };
 

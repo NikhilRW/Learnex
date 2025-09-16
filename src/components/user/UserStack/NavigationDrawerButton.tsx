@@ -1,19 +1,19 @@
-import {TouchableOpacity, View, Dimensions} from 'react-native';
-import React, {useEffect, useState, useCallback, memo} from 'react';
-import {Image} from 'react-native';
-import {ParamListBase} from '@react-navigation/native';
-import {DrawerNavigationProp} from '@react-navigation/drawer';
-import {useTypedSelector} from '../../../hooks/useTypedSelector';
+import { TouchableOpacity, View, Dimensions } from 'react-native';
+import React, { useEffect, useState, useCallback, memo } from 'react';
+import { Image } from 'react-native';
+import { ParamListBase } from '@react-navigation/native';
+import { DrawerNavigationProp } from '@react-navigation/drawer';
+import { useTypedSelector } from '../shared/hooks/useTypedSelector';
 import Icon from 'react-native-vector-icons/Feather';
-import {TextInput} from 'react-native-gesture-handler';
-import {Avatar} from 'react-native-elements';
-import {getUsernameForLogo} from '../../../helpers/stringHelpers';
-import {getStyles} from '../../../styles/components/user/UserStack/NavigationDrawerButton.styles';
+import { TextInput } from 'react-native-gesture-handler';
+import { Avatar } from 'react-native-elements';
+import { getUsernameForLogo } from '../../../shared/helpers/common/stringHelpers';
+import { getStyles } from '../../../styles/components/user/UserStack/NavigationDrawerButton.styles';
 
-const {width: SCREEN_WIDTH} = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const NavigationDrawerButton = memo(
-  ({navigation}: {navigation: DrawerNavigationProp<ParamListBase>}) => {
+  ({ navigation }: { navigation: DrawerNavigationProp<ParamListBase> }) => {
     const theme = useTypedSelector(state => state.user.theme);
     const isDark = theme === 'dark';
     const firebase = useTypedSelector(state => state.firebase.firebase);
@@ -104,7 +104,7 @@ const NavigationDrawerButton = memo(
         className={`${isDark ? 'bg-[#1a1a1a]' : 'bg-white'} flex-row w-full px-2 py-1 items-center`}>
         <TouchableOpacity onPress={handleOpenDrawer}>
           <Image
-            source={require('../../../res/pngs/menu.png')}
+            source={require('../shared/res/pngs/menu.png')}
             style={styles.menuIcon}
           />
         </TouchableOpacity>
@@ -128,10 +128,10 @@ const NavigationDrawerButton = memo(
           <TouchableOpacity onPress={handleOpenDrawer} activeOpacity={0.7}>
             {photoURL ? (
               <Image
-                source={{uri: photoURL}}
+                source={{ uri: photoURL }}
                 style={[
                   styles.container,
-                  {borderColor: isDark ? `#2379C2` : `#2379C2`},
+                  { borderColor: isDark ? `#2379C2` : `#2379C2` },
                 ]}
                 onError={e => {
                   console.log(

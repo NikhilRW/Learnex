@@ -1,10 +1,10 @@
-import {View, TouchableOpacity, StyleSheet} from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import React from 'react';
-import {FloatingBottomTabBarPropsType} from '../../types/bottomTabBarTypes';
-import navigationIconHelper from '../../helpers/NavigationIconHelper';
-import {NavigationRoute, ParamListBase} from '@react-navigation/native';
-import {primaryColor} from '../../res/strings/eng';
-import {useTheme} from '../../hooks/useTheme';
+import { FloatingBottomTabBarPropsType } from 'shared/types/bottomTabBarTypes';
+import navigationIconHelper from '../../shared/helpers/NavigationIconHelper';
+import { NavigationRoute, ParamListBase } from '@react-navigation/native';
+import { primaryColor } from 'shared/res/strings/eng';
+import { useTheme } from '@/shared/hooks/common/useTheme';
 import Animated, {
   FadeIn,
   FadingTransition,
@@ -13,7 +13,7 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import {useTypedSelector} from '../../hooks/useTypedSelector';
+import { useTypedSelector } from '@/shared/hooks/redux/useTypedSelector';
 
 const BUTTON_SIZE = 48;
 
@@ -24,7 +24,7 @@ const FloatingBottomTabBar = ({
   navigation,
   state,
 }: FloatingBottomTabBarPropsType) => {
-  const {isDark} = useTheme();
+  const { isDark } = useTheme();
   const onPress = (route: NavigationRoute<ParamListBase, string>) => {
     navigation.navigate(route.name);
   };
@@ -111,7 +111,7 @@ const TabsButton = (
           <Animated.Text
             entering={FadeIn}
             numberOfLines={1}
-            style={[{color: isDark ? 'white' : '#0987C1'}, styles.tabIconText]}>
+            style={[{ color: isDark ? 'white' : '#0987C1' }, styles.tabIconText]}>
             {route.name === 'CreatePost' ? 'Post' : route.name}
           </Animated.Text>
         )}
@@ -122,7 +122,7 @@ const TabsButton = (
 
 const styles = StyleSheet.create({
   floatingTabBarContainer: {
-    transform: [{translateX: '-50%'}],
+    transform: [{ translateX: '-50%' }],
     flexDirection: 'row',
     marginHorizontal: 'auto',
     justifyContent: 'center',

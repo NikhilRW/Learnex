@@ -19,7 +19,7 @@ import {
   writeBatch,
   FirebaseFirestoreTypes,
 } from '@react-native-firebase/firestore';
-import {generateRoomCode} from '../../helpers/roomCodeGenerator';
+import {generateRoomCode} from '../../shared/helpers/common/roomCodeGenerator';
 
 export interface Meeting {
   id: string;

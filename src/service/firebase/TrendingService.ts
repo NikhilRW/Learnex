@@ -6,11 +6,11 @@ import {
   where,
   orderBy,
   getDocs,
-  limit as fs_limit
+  limit as fs_limit,
 } from '@react-native-firebase/firestore';
-import {GetPostsResponse} from '../../types/firebase';
-import {FirestorePost} from '../../types/post';
-import {convertFirestorePost} from './utils';
+import {GetPostsResponse} from 'shared/types/firebase';
+import {FirestorePost} from '@/features/Home/types/post';
+import {convertFirestorePost} from '../../shared/service/utils';
 
 export class TrendingService {
   private queryCache: Map<string, any[]> = new Map();

@@ -4,9 +4,9 @@ import {
   TouchableOpacity,
   Animated,
 } from 'react-native';
-import { NavigationProp, useNavigation} from '@react-navigation/native';
+import { NavigationProp, useNavigation } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { UserStackParamList } from '../../routes/UserStack';
+import { UserStackParamList } from 'shared/routes/UserStack';
 
 interface FloatingLexAIButtonProps {
   position?: 'bottomRight' | 'bottomLeft';
@@ -57,8 +57,8 @@ const FloatingLexAIButton: React.FC<FloatingLexAIButtonProps> = ({
   // Calculate position styles based on prop
   const positionStyle =
     position === 'bottomRight'
-      ? {right: 20, bottom: 20}
-      : {left: 20, bottom: 20};
+      ? { right: 20, bottom: 20 }
+      : { left: 20, bottom: 20 };
 
   return (
     <Animated.View
@@ -70,7 +70,7 @@ const FloatingLexAIButton: React.FC<FloatingLexAIButtonProps> = ({
           height: size,
           borderRadius: size / 2,
           backgroundColor: color,
-          transform: [{scale: scaleAnim}],
+          transform: [{ scale: scaleAnim }],
         },
       ]}>
       <TouchableOpacity
@@ -94,7 +94,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     elevation: 5,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     zIndex: 1000,

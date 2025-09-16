@@ -14,14 +14,14 @@ import {
     Modal,
     FlatList,
 } from 'react-native';
-import { useTypedSelector } from '../../hooks/useTypedSelector';
+import { useTypedSelector } from '@/shared/hooks/redux/useTypedSelector';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
-import { userState } from '../../types/userType';
+import { userState } from 'shared/types/userType';
 import { MeetingService } from '../../service/firebase/MeetingService';
-import { UserStackParamList } from '../../routes/UserStack';
-import { TaskService } from '../../service/firebase/TaskService';
-import { Task } from '../../types/taskTypes';
+import { UserStackParamList } from 'shared/routes/UserStack';
+import { TaskService } from '../../shared/service/TaskService';
+import { Task } from 'shared/types/taskTypes';
 
 // Define room route params interface
 interface RoomParams {

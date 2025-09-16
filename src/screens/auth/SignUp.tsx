@@ -7,11 +7,11 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import {styles} from '../../styles/screens/auth/SignUp.styles';
-import React, {useCallback, useEffect, useState} from 'react';
+import { styles } from '../../styles/screens/auth/SignUp.styles';
+import React, { useCallback, useEffect, useState } from 'react';
 import FeatherIcon from 'react-native-vector-icons/Feather';
 import BouncyCheckbox from 'react-native-bouncy-checkbox';
-import {Image, Input} from 'react-native-elements';
+import { Image, Input } from 'react-native-elements';
 import MaterialsIcon from 'react-native-vector-icons/MaterialIcons';
 import {
   emailNotAvailErrMsg,
@@ -20,15 +20,15 @@ import {
   privacyTitle,
   usernameNotAvailErrMsg,
   welcomeQuoteSignIn,
-} from '../../res/strings/eng';
-import useIsKeyboardVisible from '../../hooks/useKeyBoardVisible';
-import {useNavigation} from '@react-navigation/native';
-import {AuthNavigationProps} from '../../routes/AuthStack';
-import {Formik} from 'formik';
-import {signUpData} from '../../types/authTypes';
+} from 'shared/res/strings/eng';
+import useIsKeyboardVisible from '@/shared/hooks/common/useKeyBoardVisible';
+import { useNavigation } from '@react-navigation/native';
+import { AuthNavigationProps } from 'shared/routes/AuthStack';
+import { Formik } from 'formik';
+import { signUpData } from 'shared/types/authTypes';
 import ErrorMessage from '../../components/auth/ErrorMessage';
-import {signUpSchema} from '../../service/yupSchemas';
-import {useTypedSelector} from '../../hooks/useTypedSelector';
+import { signUpSchema } from '../../service/yupSchemas';
+import { useTypedSelector } from '@/shared/hooks/redux/useTypedSelector';
 import Snackbar from 'react-native-snackbar';
 import debounce from 'lodash.debounce';
 import Loader from '../../components/auth/Loader';
@@ -71,7 +71,7 @@ const SignUp = () => {
       });
       return;
     }
-    const {success, error} =
+    const { success, error } =
       await firebase.auth.signUpWithEmailAndPassword(values);
     if (success) {
       Snackbar.show({
@@ -105,7 +105,7 @@ const SignUp = () => {
     }
   };
   useEffect(() => {
-    const handleDeepLink = (event: {url: string}) => {};
+    const handleDeepLink = (event: { url: string }) => { };
 
     // Set up listeners for deep links - handle API differences in React Native versions
     let subscription: any;
@@ -118,7 +118,7 @@ const SignUp = () => {
     }
 
     Linking.getInitialURL().then(url => {
-      if (url) handleDeepLink({url});
+      if (url) handleDeepLink({ url });
     });
 
     return () => {
@@ -133,7 +133,7 @@ const SignUp = () => {
     };
   }, []);
   const checkUsernameAvailability = async (username: string) => {
-    const {success} = await firebase.user.checkUsernameIsAvailable(username);
+    const { success } = await firebase.user.checkUsernameIsAvailable(username);
     if (success) {
       setIsUsernameError(false);
     } else {
@@ -145,7 +145,7 @@ const SignUp = () => {
     [],
   );
   const checkEmailAvailability = async (email: string) => {
-    const {success} = await firebase.user.checkEmailIsAvailable(email);
+    const { success } = await firebase.user.checkEmailIsAvailable(email);
     if (success) {
       setIsEmailError(false);
     } else {
@@ -184,7 +184,7 @@ const SignUp = () => {
           initialValues={userData}
           validationSchema={signUpSchema}
           onSubmit={values => submitDataToDB(values)}>
-          {({handleChange, handleSubmit, values, errors, isSubmitting}) => (
+          {({ handleChange, handleSubmit, values, errors, isSubmitting }) => (
             <KeyboardAvoidingView
               behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
               className="w-full h-full justify-center flex items-center  gap-y-5">
@@ -201,9 +201,9 @@ const SignUp = () => {
               </View>
               <View className="rounded-lg border-gray-400 border-2 w-full h-12">
                 <Input
-                  inputContainerStyle={{borderBottomWidth: 0}}
+                  inputContainerStyle={{ borderBottomWidth: 0 }}
                   placeholderTextColor={`${isDark ? '#b5b5b5' : '#545454'}`}
-                  style={{color: `${isDark ? 'white' : 'black'}`}}
+                  style={{ color: `${isDark ? 'white' : 'black'}` }}
                   placeholder="Enter Fullname"
                   onChangeText={handleChange('fullName')}
                   value={values.fullName}
@@ -213,9 +213,9 @@ const SignUp = () => {
               {errors.fullName && <ErrorMessage error={errors.fullName} />}
               <View className="rounded-lg border-gray-400 border-2 w-full h-12">
                 <Input
-                  inputContainerStyle={{borderBottomWidth: 0}}
+                  inputContainerStyle={{ borderBottomWidth: 0 }}
                   placeholderTextColor={`${isDark ? '#b5b5b5' : '#545454'}`}
-                  style={{color: `${isDark ? 'white' : 'black'}`}}
+                  style={{ color: `${isDark ? 'white' : 'black'}` }}
                   placeholder="Enter Username"
                   onChangeText={text => {
                     handleChange('username')(text);
@@ -231,9 +231,9 @@ const SignUp = () => {
               )}
               <View className="rounded-lg border-gray-400 border-2 w-full h-12">
                 <Input
-                  inputContainerStyle={{borderBottomWidth: 0}}
+                  inputContainerStyle={{ borderBottomWidth: 0 }}
                   placeholderTextColor={`${isDark ? '#b5b5b5' : '#545454'}`}
-                  style={{color: `${isDark ? 'white' : 'black'}`}}
+                  style={{ color: `${isDark ? 'white' : 'black'}` }}
                   placeholder="Enter Email"
                   onChangeText={text => {
                     handleChange('email')(text);
@@ -249,9 +249,9 @@ const SignUp = () => {
                 <Input
                   placeholder="Password"
                   secureTextEntry={isPasswordHidden}
-                  inputContainerStyle={{borderBottomWidth: 0}}
+                  inputContainerStyle={{ borderBottomWidth: 0 }}
                   placeholderTextColor={`${isDark ? '#b5b5b5' : '#545454'}`}
-                  style={{color: `${isDark ? 'white' : 'black'}`}}
+                  style={{ color: `${isDark ? 'white' : 'black'}` }}
                   onChangeText={handleChange('password')}
                   value={values.password}
                   rightIcon={
@@ -271,8 +271,8 @@ const SignUp = () => {
                   placeholder="Confirm Password"
                   placeholderTextColor={`${isDark ? '#b5b5b5' : '#545454'}`}
                   secureTextEntry={isConfirmPasswordHidden}
-                  inputContainerStyle={{borderBottomWidth: 0}}
-                  style={{color: `${isDark ? 'white' : 'black'}`}}
+                  inputContainerStyle={{ borderBottomWidth: 0 }}
+                  style={{ color: `${isDark ? 'white' : 'black'}` }}
                   onChangeText={handleChange('confirmPassword')}
                   value={values.confirmPassword}
                   rightIcon={
@@ -303,8 +303,8 @@ const SignUp = () => {
                       {privacyTitle}
                     </Text>
                   }
-                  iconStyle={{borderColor: primaryColor, borderRadius: 8}}
-                  innerIconStyle={{borderWidth: 2, borderRadius: 8}}
+                  iconStyle={{ borderColor: primaryColor, borderRadius: 8 }}
+                  innerIconStyle={{ borderWidth: 2, borderRadius: 8 }}
                   textStyle={{
                     fontFamily: 'JosefinSans-Regular',
                     fontSize: 14,
@@ -347,18 +347,18 @@ const SignUp = () => {
               </View>
               <View className="flex flex-row gap-[3%] justify-center items-center">
                 <Image
-                  source={require('../../res/pngs/google.png')}
+                  source={require('shared/res/pngs/google.png')}
                   onPress={async () => {
                     await firebase.auth.googleSignIn();
                   }}
-                  style={{width: 55, height: 55}}
+                  style={{ width: 55, height: 55 }}
                 />
                 <Image
-                  source={require('../../res/jpgs/github.jpg')}
+                  source={require('shared/res/jpgs/github.jpg')}
                   onPress={() => {
                     firebase.auth.githubSignIn();
                   }}
-                  style={{width: 40, height: 40, borderRadius: 30}}
+                  style={{ width: 40, height: 40, borderRadius: 30 }}
                 />
               </View>
             </KeyboardAvoidingView>

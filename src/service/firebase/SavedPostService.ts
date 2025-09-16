@@ -10,7 +10,7 @@ import {
   arrayRemove,
   FirebaseFirestoreTypes,
 } from '@react-native-firebase/firestore';
-import {SavePostResponse} from '../../types/firebase';
+import {SavePostResponse} from 'shared/types/firebase';
 
 export class SavedPostService {
   // Simple list to store saved post IDs

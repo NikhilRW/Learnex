@@ -12,9 +12,9 @@ import {
   onSnapshot,
   FirebaseFirestoreTypes,
 } from '@react-native-firebase/firestore';
-import {GetPostsResponse} from '../../types/firebase';
-import {FirestorePost} from '../../types/post';
-import {convertFirestorePost} from './utils';
+import {GetPostsResponse} from 'shared/types/firebase';
+import {FirestorePost} from '@/features/Home/types/post';
+import {convertFirestorePost} from '../../shared/service/utils';
 import {CommentService} from './CommentService';
 import {SavedPostService} from './SavedPostService';
 import {LikeCache} from './LikeCache';

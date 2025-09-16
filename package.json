@@ -28,6 +28,7 @@
     "@shopify/flash-list": "^2.0.3",
     "@types/jest": "^30.0.0",
     "axios": "1.11.0",
+    "babel-plugin-module-resolver": "^5.0.2",
     "date-fns": "4.1.0",
     "formik": "2.4.6",
     "lodash.debounce": "4.0.8",

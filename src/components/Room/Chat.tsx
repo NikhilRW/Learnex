@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useRef} from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -17,10 +17,10 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { getFirestore, collection, query, orderBy, getDocs, doc, setDoc, , deleteDoc, serverTimestamp, Timestamp } from '@react-native-firebase/firestore';
 import { getAuth } from '@react-native-firebase/auth';
-import {useTypedSelector} from '../../hooks/useTypedSelector';
+import { useTypedSelector } from '@/shared/hooks/redux/useTypedSelector';
 import { UserService } from '../../service/firebase/UserService';
 
-const {width} = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
 interface Message {
   id: string;
@@ -38,7 +38,7 @@ interface ChatProps {
   onClose: () => void;
 }
 
-const Chat: React.FC<ChatProps> = ({meetingId, isVisible, onClose,}) => {
+const Chat: React.FC<ChatProps> = ({ meetingId, isVisible, onClose, }) => {
   const isDark = useTypedSelector(state => state.user.theme) === 'dark';
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -50,13 +50,13 @@ const Chat: React.FC<ChatProps> = ({meetingId, isVisible, onClose,}) => {
   const [isContextMenuVisible, setIsContextMenuVisible] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editText, setEditText] = useState('');
-  
+
 
   useEffect(() => {
     let unsubscribe: (() => void) | null = null;
     const initializeChat = async () => {
       const userId = getAuth().currentUser?.uid;
-      const {username} = await UserService.getNameUsernamestring();
+      const { username } = await UserService.getNameUsernamestring();
       const fullName = getAuth().currentUser?.displayName;
       setUserName(username || fullName!);
       if (!userId || !meetingId) {
@@ -127,7 +127,7 @@ const Chat: React.FC<ChatProps> = ({meetingId, isVisible, onClose,}) => {
             setIsLoading(false);
             // Scroll to bottom on new messages
             setTimeout(() => {
-              flatListRef.current?.scrollToEnd({animated: true});
+              flatListRef.current?.scrollToEnd({ animated: true });
             }, 100);
           },
           error => {
@@ -296,7 +296,7 @@ const Chat: React.FC<ChatProps> = ({meetingId, isVisible, onClose,}) => {
           data={messages}
           keyExtractor={item => item.id}
           style={styles.messageList}
-          renderItem={({item}) => {
+          renderItem={({ item }) => {
             const isOwnMessage = item.senderId === getAuth().currentUser?.uid;
             const isSystemMessage = item.senderId === 'system';
             return (
@@ -309,12 +309,12 @@ const Chat: React.FC<ChatProps> = ({meetingId, isVisible, onClose,}) => {
                   isSystemMessage
                     ? styles.systemMessage
                     : isOwnMessage
-                    ? styles.ownMessage
-                    : styles.otherMessage,
+                      ? styles.ownMessage
+                      : styles.otherMessage,
                   isDark &&
-                    (isSystemMessage
-                      ? styles.darkSystemMessage
-                      : isOwnMessage
+                  (isSystemMessage
+                    ? styles.darkSystemMessage
+                    : isOwnMessage
                       ? styles.darkOwnMessage
                       : styles.darkOtherMessage),
                 ]}>
@@ -627,7 +627,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     elevation: 4,
     shadowColor: '#000000',
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
   },

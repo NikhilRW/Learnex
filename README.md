@@ -270,7 +270,7 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Video, { VideoRef } from 'react-native-video';
 import { PostType } from '../../../../types/post';
 import { useTypedSelector } from '../../../../hooks/useTypedSelector';
-import { primaryColor } from '../../../../res/strings/eng';
+import { primaryColor } from 'shared/res/strings/eng';
 import CommentModal from './CommentModal';
 import { getUsernameForLogo } from '../../../../helpers/stringHelpers';
 import { Avatar } from 'react-native-elements';

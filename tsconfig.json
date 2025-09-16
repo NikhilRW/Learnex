@@ -1,3 +1,23 @@
 {
-  "extends": "@react-native/typescript-config/tsconfig.json"
+  "extends": "@react-native/typescript-config/tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"],
+      "lex-ai/*": ["./src/features/LexAI/*"],
+      "conversations/*": ["./src/features/Conversations/*"],
+      "create-post/*": ["./src/features/CreatePost/*"],
+      "events-and-hackathons/*": ["./src/features/EventsAndHackathons/*"],
+      "generate-qr/*": ["./src/features/GenerateQR/*"],
+      "post/*": ["./src/features/Post/*"],
+      "search-post/*": ["./src/features/SearchPost/*"],
+      "home/*": ["./src/features/Home/*"],
+      "getting-started/*": ["./src/features/GettingStarted/*"],
+      "auth/*": ["./src/features/Auth/*"],
+      "shared/*": ["./src/shared/*"],
+      "qr-code/*": ["./src/features/GenerateQR/*"],
+      "tasks/*": ["./src/features/Tasks/*"],
+      "saved-post/*": ["./src/features/SavedPost/*"],
+      "res/*": ["./src/shared/res/*"],
+    }
+  }
 }

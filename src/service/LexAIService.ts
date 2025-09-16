@@ -1,7 +1,7 @@
 import axios from 'axios';
 import Config from 'react-native-config';
 import {Linking} from 'react-native';
-import {DeepLinkHandler} from '../navigation/DeepLinkHandler';
+import {DeepLinkHandler} from '../shared/service/DeepLinkHandler';
 import {
   LexAIMessage,
   LexAIConversation,
@@ -12,11 +12,11 @@ import {
   LexAIPersonality,
   LexAIMode,
   PERSONALITIES,
-} from '../types/lexAITypes';
-import {TaskService} from './firebase/TaskService';
-import LexAIFirestoreService from './firebase/LexAIFirestoreService';
-import {Task} from '../types/taskTypes';
-import {Message} from '../models/Message';
+} from '../features/LexAI/types/lexAITypes';
+import {TaskService} from '../shared/service/TaskService';
+import LexAIFirestoreService from '../features/LexAI/services/LexAIFirestoreService';
+import {Task} from '../shared/types/taskTypes';
+import {Message} from '../features/Conversations/models/Message';
 import {getAuth} from '@react-native-firebase/auth';
 import {
   getFirestore,

@@ -11,7 +11,7 @@ import {
   getDocs,
   FirebaseFirestoreTypes,
 } from '@react-native-firebase/firestore';
-import {AuthResponse} from '../../types/firebase';
+import {AuthResponse} from 'shared/types/firebase';
 
 export class UserService {
   async getNameUsernamestring(): Promise<{fullName: string; username: string}> {

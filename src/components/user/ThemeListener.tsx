@@ -1,8 +1,8 @@
-import React, {useEffect} from 'react';
-import {Appearance, ColorSchemeName} from 'react-native';
-import {changeThemeColor} from '../../reducers/User';
-import {useTypedDispatch} from '../../hooks/useTypedDispatch';
-import {useTypedSelector} from '../../hooks/useTypedSelector';
+import React, { useEffect } from 'react';
+import { Appearance, ColorSchemeName } from 'react-native';
+import { changeThemeColor } from 'shared/reducers/User';
+import { useTypedDispatch } from '@/shared/hooks/redux/useTypedDispatch';
+import { useTypedSelector } from '@/shared/hooks/redux/useTypedSelector';
 
 const ThemeListener = () => {
   const dispatch = useTypedDispatch();
@@ -12,7 +12,7 @@ const ThemeListener = () => {
   useEffect(() => {
     if (!customColorPreference) {
       dispatch(changeThemeColor(Appearance.getColorScheme()!));
-      const listener = (preferences: {colorScheme: ColorSchemeName}) => {
+      const listener = (preferences: { colorScheme: ColorSchemeName }) => {
         const theme = preferences.colorScheme || 'light';
         dispatch(changeThemeColor(theme));
       };

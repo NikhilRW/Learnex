@@ -1,12 +1,12 @@
 import { Text, View, FlatList, ViewToken, RefreshControl, ActivityIndicator } from 'react-native'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { UserStackParamList } from '../../routes/UserStack';
+import { UserStackParamList } from 'shared/routes/UserStack';
 import { RouteProp } from '@react-navigation/native';
-import { styles } from '../../styles/screens/userscreens/Home.styles'; // Reuse Home styles
-import { useTypedSelector } from '../../hooks/useTypedSelector';
-import { PostType } from '../../types/post';
-import Post from '../../components/user/UserScreens/Home/Post';
-import { primaryColor } from '../../res/strings/eng';
+import { styles } from '../../features/Home/styles/Home'; // Reuse Home styles
+import { useTypedSelector } from '@/shared/hooks/redux/useTypedSelector';
+import { PostType } from '@/shared/types/post';
+import Post from '../../features/Home/components/Post';
+import { primaryColor } from 'shared/res/strings/eng';
 
 type SearchScreenRouteProp = RouteProp<UserStackParamList, 'Search'>;
 

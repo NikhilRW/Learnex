@@ -1,32 +1,32 @@
 import Home from '../screens/userscreens/Home';
-import {createDrawerNavigator} from '@react-navigation/drawer';
-import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
+import { createDrawerNavigator } from '@react-navigation/drawer';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import NavigationDrawer from '../components/user/UserStack/NavigationDrawer';
 import NavigationDrawerButton from '../components/user/UserStack/NavigationDrawerButton';
 import Search from '../screens/userscreens/Search';
-import CreatePost from '../screens/userscreens/CreatePost';
+import CreatePost from '../features/CreatePost/screens/CreatePost';
 import Room from '../screens/userscreens/Room';
 import RoomScreen from '../screens/userscreens/RoomScreen';
 import Tasks from '../screens/userscreens/Tasks';
-import DuoTasks from '../screens/userscreens/DuoTasks';
-import EventsAndHackathons from '../screens/userscreens/EventsAndHackathons';
+import DuoTasks from '../features/Tasks/screens/DuoTasks';
+import EventsAndHackathons from '../features/EventsAndHackathons/screens/EventsAndHackathons';
 import EventDetails from '../screens/userscreens/EventDetails';
-import ConversationsScreen from '../screens/userscreens/Conversations';
-import ChatScreen from '../screens/userscreens/Chat';
-import ContactListScreen from '../screens/userscreens/ContactList';
-import SavedPosts from '../screens/userscreens/SavedPosts';
-import {BottomTabNavigationProp} from '@react-navigation/bottom-tabs';
-import {useTypedSelector} from '../hooks/useTypedSelector';
-import NavigationIconHelper from '../helpers/NavigationIconHelper';
-import {Dimensions, Alert, ImageSourcePropType} from 'react-native';
-import {useEffect, useRef} from 'react';
-import {useNavigation, CommonActions} from '@react-navigation/native';
-import {useTypedDispatch} from '../hooks/useTypedDispatch';
-import {clearDeepLink, markDeepLinkProcessed} from '../reducers/DeepLink';
-import {MeetingService} from '../service/firebase/MeetingService';
-import QRCode from '../screens/userscreens/QRCode';
-import {MessageService} from '../service/firebase/MessageService';
-import LexAI from '../screens/userscreens/LexAI';
+import ConversationsScreen from '../features/Conversations/screens/Conversations';
+import ChatScreen from '../features/Conversations/screens/Chat';
+import ContactListScreen from '../features/Conversations/screens/ContactList';
+import SavedPosts from '../features/SavedPost/screens/SavedPosts';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { useTypedSelector } from '@/shared/hooks/redux/useTypedSelector';
+import NavigationIconHelper from '../shared/helpers/NavigationIconHelper';
+import { Dimensions, Alert, ImageSourcePropType } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { useNavigation, CommonActions } from '@react-navigation/native';
+import { useTypedDispatch } from '@/shared/hooks/redux/useTypedDispatch';
+import { clearDeepLink, markDeepLinkProcessed } from 'shared/reducers/DeepLink';
+import { MeetingService } from '../service/firebase/MeetingService';
+import QRCode from '../features/GenerateQR/screens/QRCode';
+import { MessageService } from '../features/Conversations/services/MessageService';
+import LexAI from 'lex-ai/screens/LexAI';
 import {
   getFirestore,
   collection,
@@ -34,45 +34,45 @@ import {
   getDoc,
 } from '@react-native-firebase/firestore';
 import FloatingBottomTabBar from '../components/common/FloatingBottomTabBar';
-import {getMessaging} from '@react-native-firebase/messaging';
+import { getMessaging } from '@react-native-firebase/messaging';
 
-const {width: SCREEN_WIDTH} = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 /**
  * Type definitions for navigation parameters
  * Defines the shape of navigation props for each screen
  */
 export type UserStackParamList = {
-  Search: {searchText?: string};
+  Search: { searchText?: string };
   Home: undefined;
   CreatePost: undefined;
   Room:
-    | {
-        meetingData?: {
-          id: string;
-          title: string;
-          description: string;
-          duration: number;
-          isPrivate: boolean;
-          maxParticipants: number;
-          taskId?: string;
-          host: string;
-          status: string;
-          participants: string[];
-          roomCode: string;
-          settings: {
-            muteOnEntry: boolean;
-            allowChat: boolean;
-            allowScreenShare: boolean;
-            recordingEnabled: boolean;
-          };
-          createdAt: Date;
-          updatedAt: Date;
-        };
-        joinMode?: boolean;
-        roomCode?: string;
-      }
-    | undefined;
+  | {
+    meetingData?: {
+      id: string;
+      title: string;
+      description: string;
+      duration: number;
+      isPrivate: boolean;
+      maxParticipants: number;
+      taskId?: string;
+      host: string;
+      status: string;
+      participants: string[];
+      roomCode: string;
+      settings: {
+        muteOnEntry: boolean;
+        allowChat: boolean;
+        allowScreenShare: boolean;
+        recordingEnabled: boolean;
+      };
+      createdAt: Date;
+      updatedAt: Date;
+    };
+    joinMode?: boolean;
+    roomCode?: string;
+  }
+  | undefined;
   RoomScreen: {
     meeting: any;
     isHost: boolean;
@@ -228,7 +228,7 @@ const UserStack = () => {
       }
     };
   }, [navigation, messaging]);
-  const {DeepLinkHandler} = require('../navigation/DeepLinkHandler');
+  const { DeepLinkHandler } = require('shared/navigation/DeepLinkHandler');
 
   // Handle deep link navigation
   useEffect(() => {
@@ -376,7 +376,7 @@ const UserStack = () => {
       <Tab.Navigator
         initialRouteName="Home"
         tabBar={props => <FloatingBottomTabBar {...props} />}
-        screenOptions={({route}) => ({
+        screenOptions={({ route }) => ({
           headerShown: false,
           tabBarShowLabel: false,
           tabBarStyle: {
@@ -386,7 +386,7 @@ const UserStack = () => {
             paddingBottom: Math.min(SCREEN_WIDTH * 0.0125, 5),
           },
           // Custom tab bar icons with theme-aware colors
-          tabBarIcon: ({focused, color, size}) => {
+          tabBarIcon: ({ focused, color, size }) => {
             return NavigationIconHelper(
               route,
               focused,
@@ -422,7 +422,7 @@ const UserStack = () => {
         component={TabNavigator}
         options={{
           headerShown: true, // Show header only for the main tabs
-          header: ({navigation}) => (
+          header: ({ navigation }) => (
             <NavigationDrawerButton
               navigation={navigation}
               tintColor={isDark ? 'white' : 'black'}
@@ -437,7 +437,7 @@ const UserStack = () => {
         options={{
           headerShown: false, // Hide header for Room screen
           swipeEnabled: false, // Disable drawer swipe for this screen
-          drawerItemStyle: {display: 'none'}, // Hide from drawer if needed
+          drawerItemStyle: { display: 'none' }, // Hide from drawer if needed
         }}
       />
       <Drawer.Screen
@@ -446,7 +446,7 @@ const UserStack = () => {
         options={{
           headerShown: false, // Hide header for RoomScreen
           swipeEnabled: false, // Disable drawer swipe for this screen
-          drawerItemStyle: {display: 'none'}, // Hide from drawer
+          drawerItemStyle: { display: 'none' }, // Hide from drawer
         }}
       />
       <Drawer.Screen
@@ -455,7 +455,7 @@ const UserStack = () => {
         options={{
           headerShown: false, // Hide header for Tasks screen
           swipeEnabled: false, // Disable drawer swipe for this screen
-          drawerItemStyle: {display: 'none'}, // Hide from drawer if needed
+          drawerItemStyle: { display: 'none' }, // Hide from drawer if needed
         }}
       />
       <Drawer.Screen
@@ -464,7 +464,7 @@ const UserStack = () => {
         options={{
           headerShown: false, // Hide header for Events and Hackathons screen
           swipeEnabled: false, // Disable drawer swipe for this screen
-          drawerItemStyle: {display: 'none'}, // Hide from drawer if needed
+          drawerItemStyle: { display: 'none' }, // Hide from drawer if needed
         }}
       />
       <Drawer.Screen
@@ -473,7 +473,7 @@ const UserStack = () => {
         options={{
           headerShown: false, // Hide header for Event Details screen
           swipeEnabled: false, // Disable drawer swipe for this screen
-          drawerItemStyle: {display: 'none'}, // Hide from drawer if needed
+          drawerItemStyle: { display: 'none' }, // Hide from drawer if needed
         }}
       />
       <Drawer.Screen
@@ -490,7 +490,7 @@ const UserStack = () => {
         options={{
           headerShown: true, // Changed from false to true to show the header
           swipeEnabled: false, // Disable drawer swipe for this screen
-          drawerItemStyle: {display: 'none'}, // Hide from drawer
+          drawerItemStyle: { display: 'none' }, // Hide from drawer
         }}
       />
       <Drawer.Screen
@@ -499,7 +499,7 @@ const UserStack = () => {
         options={{
           headerShown: false, // Hide header for Contact List screen
           swipeEnabled: false, // Disable drawer swipe for this screen
-          drawerItemStyle: {display: 'none'}, // Hide from drawer
+          drawerItemStyle: { display: 'none' }, // Hide from drawer
         }}
       />
       <Drawer.Screen
@@ -508,7 +508,7 @@ const UserStack = () => {
         options={{
           headerShown: false, // Hide header for Saved Posts screen
           swipeEnabled: false, // Disable drawer swipe for this screen
-          drawerItemStyle: {display: 'none'}, // Hide from drawer
+          drawerItemStyle: { display: 'none' }, // Hide from drawer
         }}
       />
       <Drawer.Screen
@@ -517,7 +517,7 @@ const UserStack = () => {
         options={{
           headerShown: false, // Hide header for Saved Posts screen
           swipeEnabled: false, // Disable drawer swipe for this screen
-          drawerItemStyle: {display: 'none'}, // Hide from drawer
+          drawerItemStyle: { display: 'none' }, // Hide from drawer
         }}
       />
       <Drawer.Screen
@@ -525,7 +525,7 @@ const UserStack = () => {
         component={LexAI}
         options={{
           headerShown: false, // Hide header for LexAI screen
-          drawerItemStyle: {display: 'none'}, // Hide from drawer
+          drawerItemStyle: { display: 'none' }, // Hide from drawer
         }}
       />
       <Drawer.Screen
@@ -533,7 +533,7 @@ const UserStack = () => {
         component={DuoTasks}
         options={{
           headerShown: false, // Hide header for LexAI screen
-          drawerItemStyle: {display: 'none'}, // Hide from drawer
+          drawerItemStyle: { display: 'none' }, // Hide from drawer
         }}
       />
     </Drawer.Navigator>

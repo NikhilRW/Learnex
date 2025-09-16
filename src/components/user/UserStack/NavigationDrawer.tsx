@@ -11,25 +11,25 @@ import {
   TextInput,
   ScrollView,
 } from 'react-native';
-import React, {useEffect, useState} from 'react';
-import {useTypedSelector} from '../../../hooks/useTypedSelector';
-import {useTypedDispatch} from '../../../hooks/useTypedDispatch';
+import React, { useEffect, useState } from 'react';
+import { useTypedSelector } from '../shared/hooks/useTypedSelector';
+import { useTypedDispatch } from '../shared/hooks/useTypedDispatch';
 import {
   changeIsLoggedIn,
   changeThemeColor,
   updateUserPhoto,
-} from '../../../reducers/User';
-import {Avatar, Image} from 'react-native-elements';
-import {getUsernameForLogo} from '../../../helpers/stringHelpers';
+} from '../shared/reducers/User';
+import { Avatar, Image } from 'react-native-elements';
+import { getUsernameForLogo } from '../../../shared/helpers/common/stringHelpers';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import AntDesign from 'react-native-vector-icons/AntDesign';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {createStyles} from '../../../styles/components/user/UserStack/NavigationDrawer.styles';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { createStyles } from '../../../styles/components/user/UserStack/NavigationDrawer.styles';
 import Snackbar from 'react-native-snackbar';
-import {DrawerContentComponentProps} from '@react-navigation/drawer';
+import { DrawerContentComponentProps } from '@react-navigation/drawer';
 import FontAwesome5Icon from 'react-native-vector-icons/FontAwesome5';
 import {
   launchCamera,
@@ -37,11 +37,11 @@ import {
   CameraOptions,
 } from 'react-native-image-picker';
 import Config from 'react-native-config';
-import {MessageService} from '../../../service/firebase/MessageService';
-import {deleteOldProfilePhoto} from '../../../utils/Cloudinary';
-import { DEFAULT_UPLOAD_PRESET } from '../../../constants/cloudinary';
+import { MessageService } from '../../../features/Conversations/services/MessageService';
+import { deleteOldProfilePhoto } from '../../../utils/Cloudinary';
+import { DEFAULT_UPLOAD_PRESET } from '../../../shared/constants/cloudinary';
 
-const {width: SCREEN_WIDTH} = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const NavigationDrawer = (props: DrawerContentComponentProps) => {
   const firebase = useTypedSelector(state => state.firebase.firebase);
@@ -113,7 +113,7 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
 
   const handleLogOutPress = async () => {
     try {
-      const {success, error} = await firebase.auth.signOut();
+      const { success, error } = await firebase.auth.signOut();
       if (success) {
         dispatch(changeIsLoggedIn(false));
         navigation.getParent()?.navigate('AuthStack');
@@ -219,7 +219,7 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
           setPhotoURL(null);
         }
 
-        const {username} = await firebase.user.getNameUsernamestring();
+        const { username } = await firebase.user.getNameUsernamestring();
         setUsername(username);
         setNewUsername(username); // Initialize new username
 
@@ -272,7 +272,7 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
   const checkUsernameAvailability = async (user_name: string) => {
     try {
       // Check if username is available using Firebase
-      const {success} = await firebase.user.checkUsernameIsAvailable(user_name);
+      const { success } = await firebase.user.checkUsernameIsAvailable(user_name);
       return success;
     } catch (err) {
       console.error('Error checking username availability:', err);
@@ -541,13 +541,13 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
             style={[
               styles.avatar,
               styles.activityIndicatorContainer,
-              {backgroundColor: isDark ? '#333' : '#eee'},
+              { backgroundColor: isDark ? '#333' : '#eee' },
             ]}>
             <ActivityIndicator color="#2379C2" size="small" />
           </View>
         ) : photoURL && photoURL.length > 0 ? (
           <Image
-            source={{uri: photoURL}}
+            source={{ uri: photoURL }}
             containerStyle={styles.avatar}
             onError={() => {
               console.log('NavigationDrawer: Profile image loading error');
@@ -562,7 +562,7 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
             containerStyle={[
               styles.avatar,
               styles.avatarContainerStyle,
-              {backgroundColor: profileColor || '#2379C2'},
+              { backgroundColor: profileColor || '#2379C2' },
             ]}
             activeOpacity={0.7}
           />
@@ -587,7 +587,7 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
           />
         ) : option === 'LexAI' ? (
           <Image
-            source={require('../../../res/pngs/lexai.png')}
+            source={require('../shared/res/pngs/lexai.png')}
             style={{
               width: Math.min(SCREEN_WIDTH * 0.045, 18),
               height: Math.min(SCREEN_WIDTH * 0.045, 18),
@@ -631,7 +631,7 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
     <View
       style={[
         styles.container,
-        {paddingTop: insets.top, paddingBottom: insets.bottom},
+        { paddingTop: insets.top, paddingBottom: insets.bottom },
       ]}>
       <ScrollView
         style={styles.scrollView}
@@ -758,7 +758,7 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
                   : styles.modalPhotoPickerCancelButtonLight,
               ]}
               onPress={() => setPhotoPickerVisible(false)}>
-              <Text style={[styles.photoPickerCancelText, {color: '#FF3B30'}]}>
+              <Text style={[styles.photoPickerCancelText, { color: '#FF3B30' }]}>
                 Cancel
               </Text>
             </TouchableOpacity>
@@ -782,7 +782,7 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
               isDark
                 ? styles.modalPhotoPickerContainerDark
                 : styles.modalPhotoPickerContainerLight,
-              {padding: 10},
+              { padding: 10 },
             ]}>
             <Text
               style={[
@@ -827,7 +827,7 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
                     : styles.usernameCancelButtonLight,
                 ]}
                 onPress={() => setUsernameEditVisible(false)}>
-                <Text style={[styles.usernameButtonText, {color: '#FF3B30'}]}>
+                <Text style={[styles.usernameButtonText, { color: '#FF3B30' }]}>
                   Cancel
                 </Text>
               </TouchableOpacity>

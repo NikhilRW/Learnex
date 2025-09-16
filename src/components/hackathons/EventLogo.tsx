@@ -1,6 +1,6 @@
 import React from 'react';
-import {View, Text, StyleSheet, ViewStyle} from 'react-native';
-import {EventSource} from '../../types/hackathon';
+import { View, Text, StyleSheet, ViewStyle } from 'react-native';
+import { EventSource } from '@/features/EventsAndHackathons/types/hackathon';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -21,7 +21,7 @@ const DEFAULT_GENERIC_ICON = 'calendar';
 /**
  * Component that displays a branded logo for each event source using vector icons
  */
-const EventLogo: React.FC<EventLogoProps> = ({source, size, style, isDark}) => {
+const EventLogo: React.FC<EventLogoProps> = ({ source, size, style, isDark }) => {
   const containerSize = size;
   const iconSize = size * 0.5;
 
@@ -38,8 +38,8 @@ const EventLogo: React.FC<EventLogoProps> = ({source, size, style, isDark}) => {
         ? '#2A3F5F'
         : '#3176B9'
       : isDark
-      ? '#563D7C'
-      : '#6C4AA0';
+        ? '#563D7C'
+        : '#6C4AA0';
 
   const textColor = 'white';
 
@@ -63,7 +63,7 @@ const EventLogo: React.FC<EventLogoProps> = ({source, size, style, isDark}) => {
           <Text
             style={[
               styles.logoText,
-              {fontSize: size * 0.12, color: textColor},
+              { fontSize: size * 0.12, color: textColor },
             ]}>
             HackerEarth
           </Text>
@@ -80,7 +80,7 @@ const EventLogo: React.FC<EventLogoProps> = ({source, size, style, isDark}) => {
           <Text
             style={[
               styles.logoText,
-              {fontSize: size * 0.12, color: textColor},
+              { fontSize: size * 0.12, color: textColor },
             ]}>
             Devfolio
           </Text>
@@ -98,7 +98,7 @@ const EventLogo: React.FC<EventLogoProps> = ({source, size, style, isDark}) => {
           <Text
             style={[
               styles.logoText,
-              {fontSize: size * 0.12, color: textColor},
+              { fontSize: size * 0.12, color: textColor },
             ]}>
             Event
           </Text>

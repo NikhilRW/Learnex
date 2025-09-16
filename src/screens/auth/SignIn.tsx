@@ -7,32 +7,32 @@ import {
   View,
   Keyboard,
 } from 'react-native';
-import React, {useState} from 'react';
+import React, { useState } from 'react';
 import FeatherIcon from 'react-native-vector-icons/Feather';
 import BouncyCheckbox from 'react-native-bouncy-checkbox';
-import {Image, Input} from 'react-native-elements';
+import { Image, Input } from 'react-native-elements';
 import MaterialsIcon from 'react-native-vector-icons/MaterialIcons';
-import {NavigationProp, useNavigation} from '@react-navigation/native';
-import {Formik} from 'formik';
-import {signInData} from '../../types/authTypes';
-import {useTypedSelector} from '../../hooks/useTypedSelector';
-import {signInSchema} from '../../service/yupSchemas';
+import { NavigationProp, useNavigation } from '@react-navigation/native';
+import { Formik } from 'formik';
+import { signInData } from 'shared/types/authTypes';
+import { useTypedSelector } from '@/shared/hooks/redux/useTypedSelector';
+import { signInSchema } from '../../service/yupSchemas';
 import ErrorMessage from '../../components/auth/ErrorMessage';
 import Snackbar from 'react-native-snackbar';
-import {changeIsLoggedIn, changeProfileColor} from '../../reducers/User';
-import {useTypedDispatch} from '../../hooks/useTypedDispatch';
-import {getRandomColors} from '../../helpers/stringHelpers';
+import { changeIsLoggedIn, changeProfileColor } from 'shared/reducers/User';
+import { useTypedDispatch } from '@/shared/hooks/redux/useTypedDispatch';
+import { getRandomColors } from '../../shared/helpers/common/stringHelpers';
 import ButtonLoader from '../../components/auth/ButtonLoader';
-import {primaryColor, primaryDarkColor} from '../../res/strings/eng';
-import {getStyles} from '../../styles/screens/auth/SignIn.styles';
-import {RootStackParamList} from '../../routes/Route';
+import { primaryColor, primaryDarkColor } from 'shared/res/strings/eng';
+import { getStyles } from '../../styles/screens/auth/SignIn.styles';
+import { RootStackParamList } from 'shared/routes/Route';
 import OAuthButton from '../../components/auth/OAuthButton';
 
 const SignIn = () => {
   const theme = useTypedSelector(state => state.user.theme);
   const isDark = theme === 'dark';
   const navigation =
-    useNavigation<NavigationProp<RootStackParamList,'AuthStack'>>();
+    useNavigation<NavigationProp<RootStackParamList, 'AuthStack'>>();
   const firebase = useTypedSelector(state => state.firebase.firebase);
   const dispatch = useTypedDispatch();
   const [isPasswordHidden, setisPasswordHidden] = useState(false);
@@ -47,7 +47,7 @@ const SignIn = () => {
     try {
       setIsGoogleLoading(true);
       const response = await firebase.auth.googleSignIn();
-      console.log("response",response);
+      console.log("response", response);
       if (response.success) {
         dispatch(changeProfileColor(getRandomColors()));
         dispatch(changeIsLoggedIn(true));
@@ -119,11 +119,11 @@ const SignIn = () => {
   //   }
   // };
 
-  const signInUser = async ({usernameOrEmail, password}: signInData) => {
+  const signInUser = async ({ usernameOrEmail, password }: signInData) => {
     const response =
       await firebase.user.checkUsernameOrEmailRegistered(usernameOrEmail);
     if (response.success) {
-      const {success, error} = await firebase.auth.loginWithEmailAndPassword(
+      const { success, error } = await firebase.auth.loginWithEmailAndPassword(
         response.email!,
         password,
       );
@@ -161,7 +161,7 @@ const SignIn = () => {
 
     try {
       setIsForgotPasswordLoading(true);
-      const {email, success} =
+      const { email, success } =
         await firebase.user.checkUsernameOrEmailRegistered(usernameOrEmail);
       if (success) {
         await firebase.auth.sendPasswordResetEmail(email!);
@@ -222,7 +222,7 @@ const SignIn = () => {
             initialValues={userData}
             validationSchema={signInSchema}
             onSubmit={(values: signInData) => signInUser(values)}>
-            {({handleChange, handleSubmit, values, errors, isSubmitting}) => (
+            {({ handleChange, handleSubmit, values, errors, isSubmitting }) => (
               <>
                 {/* 
                   feature : Loading Effect Center
@@ -232,13 +232,12 @@ const SignIn = () => {
                   <View className="w-full gap-y-4 items-center justify-center ">
                     <View className="mb-[5%] w-full justify-center items-center">
                       <Text
-                        className={`font-[Kufam-Bold] text-black text-[9vw] ${
-                          isDark ? ' text-white' : 'text-black'
-                        }`}>
+                        className={`font-[Kufam-Bold] text-black text-[9vw] ${isDark ? ' text-white' : 'text-black'
+                          }`}>
                         Welcome Back!
                       </Text>
                       <Image
-                        source={require('../../res/pngs/signInHero-removebg.png')}
+                        source={require('shared/res/pngs/signInHero-removebg.png')}
                         style={styles.heroImage}
                       />
                     </View>
@@ -265,7 +264,7 @@ const SignIn = () => {
                           styles.usernameOrEmailInputContainerStyle
                         }
                         placeholderTextColor={`${isDark ? '#b5b5b5' : '#545454'}`}
-                        style={{color: `${isDark ? 'white' : 'black'}`}}
+                        style={{ color: `${isDark ? 'white' : 'black'}` }}
                         onChangeText={handleChange('password')}
                         value={values.password}
                         rightIcon={
@@ -291,9 +290,8 @@ const SignIn = () => {
                         unFillColor={`${isDark ? '#1a1a1a' : '#fff'}`}
                         textComponent={
                           <Text
-                            className={`mx-3 ${
-                              isDark ? 'text-white' : 'text-gray-600'
-                            } `}>
+                            className={`mx-3 ${isDark ? 'text-white' : 'text-gray-600'
+                              } `}>
                             Keep Me Logged In
                           </Text>
                         }
@@ -316,9 +314,8 @@ const SignIn = () => {
                     <TouchableOpacity
                       activeOpacity={0.65}
                       onPress={() => handleSubmit()}
-                      className={`${
-                        isDark ? 'bg-[#1a9cd8]' : 'bg-[#3EB9F1]'
-                      }  px-[14%] py-[4%] rounded-2xl w-full`}>
+                      className={`${isDark ? 'bg-[#1a9cd8]' : 'bg-[#3EB9F1]'
+                        }  px-[14%] py-[4%] rounded-2xl w-full`}>
                       {isSubmitting ? (
                         <ButtonLoader />
                       ) : (
@@ -329,15 +326,13 @@ const SignIn = () => {
                     </TouchableOpacity>
                     <View className="w-full">
                       <Text
-                        className={`w-full font-normal text-[3.5vw]  ${
-                          isDark ? 'text-white' : 'text-gray-600'
-                        }`}>
+                        className={`w-full font-normal text-[3.5vw]  ${isDark ? 'text-white' : 'text-gray-600'
+                          }`}>
                         Don't Have An Account?{' '}
                         <Text
                           onPress={() => navigation.navigate('SignUp')}
-                          className={`${
-                            isDark ? 'text-[#3EB9F1]' : 'text-[#1a9cd8]'
-                          } font-medium text-[3.5vw]`}>
+                          className={`${isDark ? 'text-[#3EB9F1]' : 'text-[#1a9cd8]'
+                            } font-medium text-[3.5vw]`}>
                           Sign Up
                         </Text>
                       </Text>
@@ -347,27 +342,26 @@ const SignIn = () => {
                     <View className="flex flex-row justify-start items-center gap-[4%]">
                       <View className="h-0.5 w-[27%] bg-gray-500" />
                       <Text
-                        className={`font-semibold text-[3.5vw] ${
-                          isDark ? 'text-white' : 'text-gray-600'
-                        } `}>
+                        className={`font-semibold text-[3.5vw] ${isDark ? 'text-white' : 'text-gray-600'
+                          } `}>
                         Or Continue With
                       </Text>
                       <View className="h-0.5 w-[27%] bg-gray-500" />
                     </View>
                     <View
                       className="flex flex-row mx-auto w-full justify-center py-[3%] items-center"
-                      style={{gap: 5, marginTop: 1}}>
+                      style={{ gap: 5, marginTop: 1 }}>
                       <OAuthButton
                         isOAuthLoading={isGoogleLoading}
                         isSubmitting={isSubmitting}
-                        oauthImage={require('../../res/pngs/google.png')}
+                        oauthImage={require('shared/res/pngs/google.png')}
                         handleOAuthSignIn={handleGoogleSignIn}
                         isGitHub={false}
                       />
                       <OAuthButton
                         isOAuthLoading={isGithubLoading}
                         isSubmitting={isSubmitting}
-                        oauthImage={require('../../res/jpgs/github.jpg')}
+                        oauthImage={require('shared/res/jpgs/github.jpg')}
                         handleOAuthSignIn={handleGithubSignIn}
                         isGitHub={true}
                       />

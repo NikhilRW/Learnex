@@ -4,8 +4,8 @@ import {
 } from '@react-native-google-signin/google-signin';
 import Config from 'react-native-config';
 import {authorize, AuthConfiguration} from 'react-native-app-auth';
-import {signUpData} from '../types/authTypes';
-import {PostType} from '../types/post';
+import {signUpData} from '../shared/types/authTypes';
+import {PostType} from 'shared/types/post';
 import {
   arrayRemove,
   arrayUnion,
@@ -108,7 +108,7 @@ class AuthModule {
   async googleSignIn() {
     try {
       await GoogleSignin.hasPlayServices({showPlayServicesUpdateDialog: true});
-      const userInfo = await GoogleSignin.signIn();
+      await GoogleSignin.signIn();
       const {accessToken} = await GoogleSignin.getTokens();
 
       if (!accessToken) {

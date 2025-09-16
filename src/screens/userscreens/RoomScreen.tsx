@@ -22,8 +22,8 @@ import {
 } from '../../service/firebase/WebRTCService';
 import { MediaStream } from 'react-native-webrtc';
 import Room from '../../components/Room/Room';
-import { useTypedSelector } from '../../hooks/useTypedSelector';
-import { UserStackParamList } from '../../routes/UserStack';
+import { useTypedSelector } from '@/shared/hooks/redux/useTypedSelector';
+import { UserStackParamList } from 'shared/routes/UserStack';
 import {
   getFirestore,
   collection,
@@ -38,7 +38,7 @@ import {
 } from '@react-native-firebase/firestore';
 import { getAuth } from '@react-native-firebase/auth';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { TaskService } from '../../service/firebase/TaskService';
+import { TaskService } from '../../shared/service/TaskService';
 
 type RoomScreenRouteProp = RouteProp<UserStackParamList, 'RoomScreen'>;
 type RoomScreenNavigationProp = DrawerNavigationProp<UserStackParamList>;

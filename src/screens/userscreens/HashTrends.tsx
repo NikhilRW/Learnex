@@ -1,7 +1,7 @@
 import { Text, View, ScrollView, RefreshControl } from 'react-native'
 import React, { useState, useCallback } from 'react'
 import { styles } from '../../styles/screens/userscreens/HashTrends.styles';
-import { useTypedSelector } from '../../hooks/useTypedSelector';
+import { useTypedSelector } from '@/shared/hooks/redux/useTypedSelector';
 
 const HashTrends = () => {
   const [refreshing, setRefreshing] = useState(false);

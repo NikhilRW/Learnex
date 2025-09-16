@@ -19,7 +19,7 @@ import {
   LikeResponse,
   SavePostResponse,
   AddCommentResponse,
-} from '../../types/responses';
+} from 'shared/types/responses';
 import {CommentService} from './CommentService';
 import {SavedPostService} from './SavedPostService';
 import {PostQueryService} from './PostQueryService';
