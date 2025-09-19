@@ -10,7 +10,6 @@ export class DeepLinkHandler {
     // Store the navigation ref for later use
     this.navigationRef = navigationRef;
   }
-
   /**
    * Navigate directly to a screen using the navigation ref
    * This is useful for programmatic navigation from notifications
