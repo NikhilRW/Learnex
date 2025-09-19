@@ -1,7 +1,7 @@
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import HomeIcon from '../../components/user/UserStack/HomeIcon';
-import AnnouncementIcon from '../../components/user/UserStack/AnnouncementIcon';
+import HomeIcon from 'shared/navigation/components/HomeIcon';
+import AnnouncementIcon from 'shared/navigation/components/AnnouncementIcon';
 import {Dimensions, Image} from 'react-native';
 import {JSX} from 'react';
 import {Text} from 'react-native';

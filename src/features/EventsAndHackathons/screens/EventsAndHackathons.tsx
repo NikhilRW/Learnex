@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { useTypedSelector } from '@/shared/hooks/redux/useTypedSelector';
+import { useTypedSelector } from 'hooks/redux/useTypedSelector';
 import { createStyles } from 'events-and-hackathons/styles/EventsAndHackathons';
 import { HackathonService } from '@/features/EventsAndHackathons/services/hackathonService';
 import { HackathonSummary, EventMode, EventSource } from 'events-and-hackathons/types/hackathon';
@@ -21,7 +21,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { format, parseISO, isAfter, isWithinInterval } from 'date-fns';
 import FontAwesome5Icon from 'react-native-vector-icons/FontAwesome5';
 import { useDispatch } from 'react-redux';
-import { fetchHackathons, setFilterType, clearHackathonCache } from '@/shared/reducers/Hackathon';
+import { fetchHackathons, setFilterType, clearHackathonCache } from 'shared/reducers/Hackathon';
 import { AnyAction } from '@reduxjs/toolkit';
 import LinearGradient from 'react-native-linear-gradient';
 

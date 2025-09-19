@@ -11,13 +11,13 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
-import { useTypedSelector } from '@/shared/hooks/redux/useTypedSelector';
+import { useTypedSelector } from 'hooks/redux/useTypedSelector';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { useNavigation } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { Task } from 'shared/types/taskTypes';
-import { TaskService } from '@/shared/service/TaskService';
+import { TaskService } from 'shared/services/TaskService';
 import { styles } from 'tasks/styles/Tasks.styles';
 import DuoTaskModal from 'tasks/components/DuoTaskModal';
 import DuoTaskDetailsModal from 'tasks/components/DuoTaskDetailsModal';

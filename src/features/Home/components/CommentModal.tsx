@@ -18,8 +18,8 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import AntDesign from 'react-native-vector-icons/AntDesign';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { Comment } from 'home/types/post';
-import { useTypedSelector } from 'shared/hooks/redux/useTypedSelector';
-import { formatFirestoreTimestamp } from '@/shared/service/utils';
+import { useTypedSelector } from 'hooks/redux/useTypedSelector';
+import { formatFirestoreTimestamp } from 'shared/services/utils';
 import { primaryColor } from 'shared/res/strings/eng';
 import { Avatar } from 'react-native-elements';
 import { getUsernameForLogo } from 'shared/helpers/common/stringHelpers';
@@ -33,7 +33,7 @@ import {
   deleteDoc,
   addDoc,
 } from '@react-native-firebase/firestore';
-import { createStyles } from '../../../styles/components/user/CommentModal.styles';
+import { createStyles } from '../styles/CommentModal.styles';
 
 interface CommentModalProps {
   visible: boolean;

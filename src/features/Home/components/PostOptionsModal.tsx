@@ -1,11 +1,11 @@
-import React, {useMemo} from 'react';
-import {ActivityIndicator, StyleSheet, View} from 'react-native';
-import {Modal, TouchableOpacity, TouchableWithoutFeedback} from 'react-native';
-import {Text} from 'react-native-elements';
-import {useTheme} from 'shared/hooks/common/useTheme';
-import {PostType} from 'home/types/post';
+import React, { useMemo } from 'react';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { Modal, TouchableOpacity, TouchableWithoutFeedback } from 'react-native';
+import { Text } from 'react-native-elements';
+import { useTheme } from 'hooks/common/useTheme';
+import { PostType } from 'home/types/post';
 import Feather from 'react-native-vector-icons/Feather';
-import {getClassicDarkLightThemeColor} from 'shared/utils/UserInterface';
+import { getClassicDarkLightThemeColor } from 'shared/utils/UserInterface';
 
 const PostOptionsModal = ({
   showOptions,
@@ -28,7 +28,7 @@ const PostOptionsModal = ({
   handleMessageUser: () => void;
   handleHidePost: () => void;
 }) => {
-  const {isDark} = useTheme();
+  const { isDark } = useTheme();
   const optionTextColor = useMemo(
     () => (isDark ? '#ff3b30' : '#ff3b30'),
     [isDark],
@@ -50,7 +50,7 @@ const PostOptionsModal = ({
             <View
               style={[
                 styles.modalContent,
-                {backgroundColor: modalBackgroundColor},
+                { backgroundColor: modalBackgroundColor },
               ]}>
               {isCurrentUserPost ? (
                 // Show only delete option for the user's own post
@@ -59,7 +59,7 @@ const PostOptionsModal = ({
                   onPress={handleDeletePost}
                   disabled={isDeleting}>
                   <Feather name="trash-2" size={24} color={optionTextColor} />
-                  <Text style={[styles.optionText, {color: optionTextColor}]}>
+                  <Text style={[styles.optionText, { color: optionTextColor }]}>
                     {isDeleting ? 'Deleting post...' : 'Delete Post'}
                   </Text>
                   {isDeleting && (

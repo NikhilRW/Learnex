@@ -1,10 +1,10 @@
-import {Image, Text, TouchableOpacity, View} from 'react-native';
+import { Image, Text, TouchableOpacity, View } from 'react-native';
 import React from 'react';
 import MaterialsIcon from 'react-native-vector-icons/MaterialIcons';
-import {gettingStartedHeaderQuote} from 'shared/res/strings/eng';
-import {useNavigation} from '@react-navigation/native';
-import {AuthNavigationProps} from 'shared/routes/AuthStack';
-import {styles} from 'getting-started/styles/GettingStarted';
+import { gettingStartedHeaderQuote } from 'shared/res/strings/eng';
+import { useNavigation } from '@react-navigation/native';
+import { AuthNavigationProps } from 'shared/navigation/routes/AuthStack';
+import { styles } from 'getting-started/styles/GettingStarted';
 
 const GettingStarted = () => {
   const navigate = useNavigation<AuthNavigationProps>();

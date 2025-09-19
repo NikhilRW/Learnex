@@ -1,4 +1,4 @@
-import {colors} from '../../../constants/style';
+import {colors} from '../../constants/style';
 
 export function getUsernameForLogo(username: string): string {
   const parts = username.split(' ');

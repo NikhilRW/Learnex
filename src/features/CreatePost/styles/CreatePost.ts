@@ -1,4 +1,4 @@
-import { StyleSheet } from "react-native";
+import {StyleSheet} from 'react-native';
 
 export const styles = StyleSheet.create({
   container: {
@@ -84,25 +84,62 @@ export const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   progressContainer: {
-    marginTop: 10,
-    padding: 10,
+    marginTop: 16,
+    padding: 16,
     borderWidth: 1,
-    borderColor: '#555',
-    borderRadius: 8,
-    backgroundColor: '#f0f0f0',
+    borderRadius: 12,
   },
   progressBarContainer: {
-    height: 20,
-    borderWidth: 1,
-    borderColor: '#555',
-    borderRadius: 10,
-    backgroundColor: '#fff',
-    marginBottom: 4,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'transparent',
+    marginVertical: 8,
+    overflow: 'hidden',
   },
   progressBar: {
     height: '100%',
-    borderRadius: 10,
+    borderRadius: 4,
+  },
+  progressText: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  progressPercentage: {
+    fontSize: 12,
+    marginTop: 4,
+  },
+  darkProgressContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: '#444',
+  },
+  lightProgressContainer: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E5E7EB',
+  },
+  darkProgressBar: {
+    backgroundColor: '#0A84FF',
+  },
+  lightProgressBar: {
     backgroundColor: '#007AFF',
+  },
+  darkProgressBarContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  lightProgressBarContainer: {
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  darkProgressText: {
+    color: '#E0E0E0',
+  },
+  lightProgressText: {
+    color: '#1F1F1F',
+  },
+  darkProgressPercentage: {
+    color: '#999',
+  },
+  lightProgressPercentage: {
+    color: '#666',
   },
   errorContainer: {
     marginTop: 10,

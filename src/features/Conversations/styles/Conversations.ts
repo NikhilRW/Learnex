@@ -1,5 +1,5 @@
-import { SCREEN_WIDTH } from "@/shared/constants/common";
-import { StyleSheet } from "react-native";
+import {SCREEN_WIDTH} from 'shared/constants/common';
+import {StyleSheet} from 'react-native';
 
 export const styles = StyleSheet.create({
   container: {

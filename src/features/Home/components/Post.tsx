@@ -15,7 +15,8 @@ import AntDesign from 'react-native-vector-icons/AntDesign';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Video, { VideoRef } from 'react-native-video';
 import { PostType } from 'shared/types/post';
-import { useTypedSelector } from 'shared/hooks/redux/useTypedSelector';
+import { Comment } from 'home/types/post';
+import { useTypedSelector } from 'hooks/redux/useTypedSelector';
 import { primaryColor } from 'shared/res/strings/eng';
 import CommentModal from 'home/components/CommentModal';
 import { getUsernameForLogo } from 'shared/helpers/common/stringHelpers';
@@ -23,7 +24,7 @@ import { Avatar } from 'react-native-elements';
 import { useNavigation } from '@react-navigation/native';
 import { MessageService } from 'conversations/services/MessageService';
 import Snackbar from 'react-native-snackbar';
-import { UserStackParamList } from 'shared/routes/UserStack';
+import { UserStackParamList } from 'shared/navigation/routes/UserStack';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   getFirestore,
@@ -520,12 +521,12 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
         'comments',
       );
       const newCommentRef = doc(commentsCollectionRef);
-      const newCommentData = {
+      const newCommentData: Comment = {
         id: newCommentRef.id,
         userId: currentUser.uid,
         username: currentUser.displayName || 'Anonymous',
-        userImage: currentUser.photoURL || null,
-        comment: newComment.trim(),
+        userImage: currentUser.photoURL,
+        text: newComment.trim(),
         timestamp: new Date().toISOString(),
         likes: 0,
         isLiked: false,

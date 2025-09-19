@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -10,23 +10,23 @@ import {
   Alert,
   Platform,
 } from 'react-native';
-import {Avatar, SearchBar} from 'react-native-elements';
-import {useTypedSelector} from 'shared/hooks/redux/useTypedSelector';
-import {useNavigation} from '@react-navigation/native';
-import {NavigationProp} from '@react-navigation/native';
-import {UserStackParamList} from 'shared/routes/UserStack';
-import {MessageService} from 'conversations/services/MessageService';
-import {Conversation} from 'conversations/models/Message';
+import { Avatar, SearchBar } from 'react-native-elements';
+import { useTypedSelector } from 'hooks/redux/useTypedSelector';
+import { useNavigation } from '@react-navigation/native';
+import { NavigationProp } from '@react-navigation/native';
+import { UserStackParamList } from 'shared/navigation/routes/UserStack';
+import { MessageService } from 'conversations/services/MessageService';
+import { Conversation } from 'conversations/models/Message';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import {SwipeListView} from 'react-native-swipe-list-view';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import {formatDistanceToNow} from 'date-fns';
-import {getUsernameForLogo} from 'shared/helpers/common/stringHelpers';
+import { SwipeListView } from 'react-native-swipe-list-view';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { formatDistanceToNow } from 'date-fns';
+import { getUsernameForLogo } from 'shared/helpers/common/stringHelpers';
 import Snackbar from 'react-native-snackbar';
-import {styles} from 'conversations/styles/Conversations';
+import { styles } from 'conversations/styles/Conversations';
 
-const {width: SCREEN_WIDTH} = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const ConversationsScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp<UserStackParamList>>();
@@ -114,7 +114,7 @@ const ConversationsScreen: React.FC = () => {
           'Delete Conversation',
           'Are you sure you want to delete this conversation? This action cannot be undone.',
           [
-            {text: 'Cancel', style: 'cancel'},
+            { text: 'Cancel', style: 'cancel' },
             {
               text: 'Delete',
               style: 'destructive',
@@ -167,15 +167,15 @@ const ConversationsScreen: React.FC = () => {
             size={80}
             color={isDark ? '#555' : '#ccc'}
           />
-          <Text style={[styles.emptyText, {color: isDark ? '#aaa' : '#888'}]}>
+          <Text style={[styles.emptyText, { color: isDark ? '#aaa' : '#888' }]}>
             No conversations yet
           </Text>
           <Text
-            style={[styles.emptySubText, {color: isDark ? '#888' : '#aaa'}]}>
+            style={[styles.emptySubText, { color: isDark ? '#888' : '#aaa' }]}>
             Start messaging with your peers
           </Text>
           <TouchableOpacity
-            style={[styles.newMessageButton, {marginTop: 20}]}
+            style={[styles.newMessageButton, { marginTop: 20 }]}
             onPress={handleNewMessage}>
             <Text style={styles.newMessageButtonText}>Start New Chat</Text>
           </TouchableOpacity>
@@ -184,7 +184,7 @@ const ConversationsScreen: React.FC = () => {
     </View>
   );
 
-  const renderConversationItem = ({item}: {item: Conversation}) => {
+  const renderConversationItem = ({ item }: { item: Conversation }) => {
     const otherParticipantId = item.participants.find(
       id => id !== currentUser?.uid,
     );
@@ -195,8 +195,8 @@ const ConversationsScreen: React.FC = () => {
       item.unreadCount && item.unreadCount[currentUser?.uid || ''] > 0;
     const lastMessageTime = item.lastMessage?.timestamp
       ? formatDistanceToNow(new Date(item.lastMessage.timestamp), {
-          addSuffix: true,
-        })
+        addSuffix: true,
+      })
       : '';
 
     return (
@@ -225,7 +225,7 @@ const ConversationsScreen: React.FC = () => {
         {otherParticipant.image ? (
           <Avatar
             rounded
-            source={{uri: otherParticipant.image}}
+            source={{ uri: otherParticipant.image }}
             size={Math.min(SCREEN_WIDTH * 0.12, 50)}
             containerStyle={styles.avatar}
           />
@@ -234,7 +234,7 @@ const ConversationsScreen: React.FC = () => {
             rounded
             title={getUsernameForLogo(otherParticipant.name)}
             size={Math.min(SCREEN_WIDTH * 0.12, 50)}
-            containerStyle={[styles.avatar, {backgroundColor: '#2379C2'}]}
+            containerStyle={[styles.avatar, { backgroundColor: '#2379C2' }]}
           />
         )}
 
@@ -251,14 +251,14 @@ const ConversationsScreen: React.FC = () => {
               numberOfLines={1}>
               {otherParticipant.name}
             </Text>
-            <Text style={[styles.timeText, {color: isDark ? '#aaa' : '#777'}]}>
+            <Text style={[styles.timeText, { color: isDark ? '#aaa' : '#777' }]}>
               {lastMessageTime}
             </Text>
           </View>
 
           <View style={styles.lastMessageContainer}>
             {otherParticipant.typing ? (
-              <Text style={[styles.typingText, {color: '#2379C2'}]}>
+              <Text style={[styles.typingText, { color: '#2379C2' }]}>
                 typing...
               </Text>
             ) : (
@@ -298,11 +298,11 @@ const ConversationsScreen: React.FC = () => {
   };
 
   // Render hidden item with delete action
-  const renderHiddenItem = ({item}: {item: Conversation}) => (
+  const renderHiddenItem = ({ item }: { item: Conversation }) => (
     <View
       style={[
         styles.rowBack,
-        {backgroundColor: isDark ? '#331111' : '#ffebee'},
+        { backgroundColor: isDark ? '#331111' : '#ffebee' },
       ]}>
       <TouchableOpacity
         style={[styles.deleteButton]}
@@ -323,7 +323,7 @@ const ConversationsScreen: React.FC = () => {
         },
       ]}>
       <View style={styles.header}>
-        <Text style={[styles.title, {color: isDark ? 'white' : 'black'}]}>
+        <Text style={[styles.title, { color: isDark ? 'white' : 'black' }]}>
           Messages
         </Text>
         <TouchableOpacity
@@ -344,13 +344,13 @@ const ConversationsScreen: React.FC = () => {
         value={search}
         containerStyle={[
           styles.searchContainer,
-          {backgroundColor: isDark ? '#1a1a1a' : 'white'},
+          { backgroundColor: isDark ? '#1a1a1a' : 'white' },
         ]}
         inputContainerStyle={[
           styles.searchInputContainer,
-          {backgroundColor: isDark ? '#333' : '#f5f5f5'},
+          { backgroundColor: isDark ? '#333' : '#f5f5f5' },
         ]}
-        inputStyle={{color: isDark ? 'white' : 'black'}}
+        inputStyle={{ color: isDark ? 'white' : 'black' }}
         placeholderTextColor={isDark ? '#aaa' : '#999'}
         round
         lightTheme={!isDark}

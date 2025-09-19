@@ -19,7 +19,7 @@ import {
 } from '@react-native-firebase/firestore';
 import {Conversation, Message} from 'conversations/models/Message';
 import {FirebaseErrorHandler} from 'shared/helpers/firebase/FirebaseErrorHandler';
-import notificationService from 'shared/service/NotificationService';
+import notificationService from 'shared/services/NotificationService';
 import Config from 'react-native-config';
 import {getAuth} from '@react-native-firebase/auth';
 

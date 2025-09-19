@@ -7,11 +7,11 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { UserStackParamList } from 'shared/routes/UserStack';
+import { UserStackParamList } from 'shared/navigation/routes/UserStack';
 import { RouteProp } from '@react-navigation/native';
-import { styles } from 'shared/styles/Home.styles'; // Reuse Home styles
-import { useTypedSelector } from 'shared/hooks/redux/useTypedSelector';
-import { PostType } from '@/shared/types/post';
+import { styles } from 'shared/styles/Home'; // Reuse Home styles
+import { useTypedSelector } from 'hooks/redux/useTypedSelector';
+import { PostType } from 'shared/types/post';
 import Post from 'home/components/Post';
 import { primaryColor } from 'shared/res/strings/eng';
 

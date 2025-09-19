@@ -10,19 +10,19 @@ import {
   RefreshControl,
 } from 'react-native';
 import { Avatar, SearchBar } from 'react-native-elements';
-import { useTypedSelector } from '@/shared/hooks/redux/useTypedSelector';
+import { useTypedSelector } from 'hooks/redux/useTypedSelector';
 import { useNavigation } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MessageService } from '../services/MessageService';
-import { getUsernameForLogo } from '../../../shared/helpers/common/stringHelpers';
+import { getUsernameForLogo } from 'shared/helpers/common/stringHelpers';
 import Snackbar from 'react-native-snackbar';
 import {
   getFirestore,
   collection,
   getDocs,
 } from '@react-native-firebase/firestore';
-import { UserStackParamList } from 'shared/routes/UserStack';
+import { UserStackParamList } from 'shared/navigation/routes/UserStack';
 import { NavigationProp } from '@react-navigation/native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');

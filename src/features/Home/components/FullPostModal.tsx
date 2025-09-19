@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useCallback} from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Image,
@@ -12,13 +12,13 @@ import {
 import Icon from 'react-native-vector-icons/Feather';
 import AntDesign from 'react-native-vector-icons/AntDesign';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import {primaryColor} from 'shared/res/strings/eng';
-import {getUsernameForLogo} from 'shared/helpers/common/stringHelpers';
-import {Avatar} from 'react-native-elements';
-import {useTheme} from 'shared/hooks/common/useTheme';
-import {PostType} from 'shared/types/post';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import {createStyles} from '@/features/Home/styles/Post';
+import { primaryColor } from 'shared/res/strings/eng';
+import { getUsernameForLogo } from 'shared/helpers/common/stringHelpers';
+import { Avatar } from 'react-native-elements';
+import { useTheme } from 'hooks/common/useTheme';
+import { PostType } from 'shared/types/post';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { createStyles } from '@/features/Home/styles/Post';
 
 type FullPostModalProps = {
   currentMediaIndex: number;
@@ -81,7 +81,7 @@ export const FullPostModal = ({
 }: FullPostModalProps) => {
   // Create local state for modal media navigation to prevent affecting the main feed
   const [modalMediaIndex, setModalMediaIndex] = useState(currentMediaIndex);
-  const {isDark} = useTheme();
+  const { isDark } = useTheme();
   // Function to handle comment button in the modal
   const handleCommentButtonInModal = () => {
     // First close the full post modal
@@ -166,7 +166,7 @@ export const FullPostModal = ({
               <Image
                 source={
                   typeof userProfileImage === 'string'
-                    ? {uri: userProfileImage}
+                    ? { uri: userProfileImage }
                     : userProfileImage
                 }
                 style={[styles.avatar]}
@@ -222,7 +222,7 @@ export const FullPostModal = ({
                   <TouchableOpacity
                     style={[styles.navButton, styles.prevButton]}
                     onPress={goToPreviousMediaInModal}
-                    hitSlop={{top: 20, bottom: 20, left: 20, right: 10}}>
+                    hitSlop={{ top: 20, bottom: 20, left: 20, right: 10 }}>
                     <Icon name="chevron-left" size={30} color="white" />
                   </TouchableOpacity>
                 )}
@@ -231,7 +231,7 @@ export const FullPostModal = ({
                   <TouchableOpacity
                     style={[styles.navButton, styles.nextButton]}
                     onPress={goToNextMediaInModal}
-                    hitSlop={{top: 20, bottom: 20, left: 10, right: 20}}>
+                    hitSlop={{ top: 20, bottom: 20, left: 10, right: 20 }}>
                     <Icon name="chevron-right" size={30} color="white" />
                   </TouchableOpacity>
                 )}
@@ -310,7 +310,7 @@ export const FullPostModal = ({
                   <TouchableOpacity
                     onPress={handleCommentButtonInModal}
                     style={styles.viewAllCommentsButton}>
-                    <Text style={{color: primaryColor}}>View all</Text>
+                    <Text style={{ color: primaryColor }}>View all</Text>
                   </TouchableOpacity>
                 </View>
 
@@ -321,19 +321,19 @@ export const FullPostModal = ({
                     style={[
                       styles.commentItem,
                       index < Math.min(post.commentsList?.length || 0, 3) - 1 &&
-                        {},
+                      {},
                     ]}>
                     <Image
                       source={
                         comment.userImage
-                          ? {uri: comment.userImage}
+                          ? { uri: comment.userImage }
                           : {
-                              uri:
-                                'https://avatar.iran.liara.run/username?username=' +
-                                encodeURIComponent(
-                                  comment.username || 'Anonymous',
-                                ),
-                            }
+                            uri:
+                              'https://avatar.iran.liara.run/username?username=' +
+                              encodeURIComponent(
+                                comment.username || 'Anonymous',
+                              ),
+                          }
                       }
                       style={styles.commentAvatar}
                     />

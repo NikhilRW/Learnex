@@ -8,8 +8,8 @@ import {
   RefreshControl,
 } from 'react-native';
 import React, { useEffect, useState, useCallback, useRef, JSX } from 'react';
-import { useTypedSelector } from '@/shared/hooks/redux/useTypedSelector';
-import { useTypedDispatch } from '@/shared/hooks/redux/useTypedDispatch';
+import { useTypedSelector } from 'hooks/redux/useTypedSelector';
+import { useTypedDispatch } from 'hooks/redux/useTypedDispatch';
 import SkeletonPlaceholder from 'react-native-skeleton-placeholder';
 import Post from 'home/components/Post';
 import { PostType } from 'shared/types/post';

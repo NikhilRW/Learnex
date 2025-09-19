@@ -18,6 +18,8 @@
       "tasks/*": ["./src/features/Tasks/*"],
       "saved-post/*": ["./src/features/SavedPost/*"],
       "res/*": ["./src/shared/res/*"],
+      "hooks/*": ["./src/shared/hooks/*"],
+      "room/*": ["./src/features/Room/*"]
     }
   }
 }

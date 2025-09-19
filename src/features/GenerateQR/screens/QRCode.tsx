@@ -6,13 +6,13 @@ import {
   Share,
   Platform,
 } from 'react-native';
-import React, {useEffect, useState} from 'react';
+import React, { useEffect, useState } from 'react';
 import QRCodeView from 'react-native-qrcode-svg';
-import {useNavigation} from '@react-navigation/native';
-import {DrawerNavigationProp} from '@react-navigation/drawer';
-import {useTypedSelector} from 'shared/hooks/redux/useTypedSelector';
+import { useNavigation } from '@react-navigation/native';
+import { DrawerNavigationProp } from '@react-navigation/drawer';
+import { useTypedSelector } from 'hooks/redux/useTypedSelector';
 import Icon from 'react-native-vector-icons/Ionicons';
-import {styles} from 'qr-code/styles/QRCode';
+import { styles } from 'qr-code/styles/QRCode';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 // QR code format - uses a specific URI scheme for app deep linking
@@ -28,7 +28,7 @@ const QRCode = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      const {fullName} = await firebase.user.getNameUsernamestring();
+      const { fullName } = await firebase.user.getNameUsernamestring();
       setFullName(fullName);
 
       // Create a deep link URL with the current user's ID
@@ -84,7 +84,7 @@ const QRCode = () => {
     <SafeAreaView
       style={[
         styles.container,
-        {backgroundColor: isDark ? '#1a1a1a' : '#f5f5f5'},
+        { backgroundColor: isDark ? '#1a1a1a' : '#f5f5f5' },
       ]}>
       <StatusBar
         barStyle={isDark ? 'light-content' : 'dark-content'}
@@ -93,7 +93,7 @@ const QRCode = () => {
       <View
         style={[
           styles.customHeader,
-          {backgroundColor: isDark ? '#1a1a1a' : '#f5f5f5'},
+          { backgroundColor: isDark ? '#1a1a1a' : '#f5f5f5' },
         ]}>
         <TouchableOpacity
           style={styles.backButton}
@@ -104,7 +104,7 @@ const QRCode = () => {
             color={isDark ? 'white' : 'black'}
           />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, {color: isDark ? 'white' : 'black'}]}>
+        <Text style={[styles.headerTitle, { color: isDark ? 'white' : 'black' }]}>
           Your QR Code
         </Text>
         <TouchableOpacity
@@ -121,7 +121,7 @@ const QRCode = () => {
       <View
         style={[
           styles.qrCodeContainer,
-          {backgroundColor: isDark ? '#1a1a1a' : '#f5f5f5'},
+          { backgroundColor: isDark ? '#1a1a1a' : '#f5f5f5' },
         ]}>
         <QRCodeView
           ecl="M"
@@ -131,7 +131,7 @@ const QRCode = () => {
             uri:
               currentUser?.photoURL ||
               'https://avatar.iran.liara.run/username?username=' +
-                encodeURIComponent(fullName) ||
+              encodeURIComponent(fullName) ||
               'Anonymous',
           }}
           logoSize={100}
@@ -142,7 +142,7 @@ const QRCode = () => {
         />
 
         <Text
-          style={[styles.infoText, {color: isDark ? '#cccccc' : '#555555'}]}>
+          style={[styles.infoText, { color: isDark ? '#cccccc' : '#555555' }]}>
           Scan this QR code to start a conversation with me
         </Text>
 

@@ -19,13 +19,13 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { useTypedSelector } from '@/shared/hooks/redux/useTypedSelector';
+import { useTypedSelector } from 'hooks/redux/useTypedSelector';
 import { MessageService } from 'conversations/services/MessageService';
 import { Message } from 'conversations/models/Message';
 import { format } from 'date-fns';
-import { getUsernameForLogo } from '@/shared/helpers/common/stringHelpers';
+import { getUsernameForLogo } from 'shared/helpers/common/stringHelpers';
 import Snackbar from 'react-native-snackbar';
-import notificationService from 'shared/service/NotificationService';
+import notificationService from 'shared/services/NotificationService';
 import {
   getFirestore,
   collection,
@@ -34,7 +34,7 @@ import {
   writeBatch,
   getDocs,
 } from '@react-native-firebase/firestore';
-import LexAIService from 'shared/service/LexAIService';
+import LexAIService from 'shared/services/LexAIService';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import ChatHeaderLeft from 'conversations/components/ChatHeaderLeft';
 import { ChatNavigationObjectType, ChatScreenRouteParams } from 'conversations/types/main';
@@ -438,6 +438,7 @@ const ChatScreen: React.FC = () => {
           text: 'Cancel',
           style: 'cancel',
           onPress: () => setIsContextMenuVisible(false),
+        },
         {
           text: 'Delete',
           style: 'destructive',

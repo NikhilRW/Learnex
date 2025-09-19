@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useCallback} from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,10 +7,10 @@ import {
   RefreshControl,
   TouchableOpacity,
 } from 'react-native';
-import {useNavigation} from '@react-navigation/native';
-import {useTypedSelector} from '@/shared/hooks/redux/useTypedSelector';
+import { useNavigation } from '@react-navigation/native';
+import { useTypedSelector } from 'hooks/redux/useTypedSelector';
 import Post from 'home/components/Post';
-import {PostType} from '@/shared/types/post';
+import { PostType } from 'shared/types/post';
 import {
   getFirestore,
   collection,
@@ -18,11 +18,11 @@ import {
   getDoc,
   getDocs,
 } from '@react-native-firebase/firestore';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import {primaryColor} from 'shared/res/strings/eng';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { primaryColor } from 'shared/res/strings/eng';
 import Icon from 'react-native-vector-icons/Feather';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import {FirestorePost, convertFirestorePost} from 'shared/service/utils';
+import { FirestorePost, convertFirestorePost } from 'shared/services/utils';
 import { styles } from '../styles/SavedPosts';
 
 /**
@@ -59,7 +59,7 @@ const SavedPosts: React.FC = () => {
       }
 
       // Get the saved post IDs
-      const userData = userDoc.data() as {savedPosts?: string[]};
+      const userData = userDoc.data() as { savedPosts?: string[] };
       const savedPostIds = userData?.savedPosts || [];
 
       if (savedPostIds.length === 0) {
@@ -79,7 +79,7 @@ const SavedPosts: React.FC = () => {
 
           // Get post data and comments
           const postDocData = postDoc.data() as any;
-          const postData = {id: postId, ...postDocData} as FirestorePost;
+          const postData = { id: postId, ...postDocData } as FirestorePost;
           const commentsSnapshot = await getDocs(
             collection(
               doc(collection(getFirestore(), 'posts'), postId),
@@ -149,16 +149,16 @@ const SavedPosts: React.FC = () => {
   // Render the header with back button
   const renderHeader = () => (
     <View
-      style={[styles.header, {backgroundColor: isDark ? '#1a1a1a' : 'white'}]}>
+      style={[styles.header, { backgroundColor: isDark ? '#1a1a1a' : 'white' }]}>
       <TouchableOpacity
         onPress={() => navigation.goBack()}
         style={styles.backButton}>
         <Icon name="arrow-left" size={24} color={isDark ? 'white' : 'black'} />
       </TouchableOpacity>
-      <Text style={[styles.headerTitle, {color: isDark ? 'white' : 'black'}]}>
+      <Text style={[styles.headerTitle, { color: isDark ? 'white' : 'black' }]}>
         Saved Posts
       </Text>
-      <View style={{width: 24}} />
+      <View style={{ width: 24 }} />
     </View>
   );
 
@@ -170,15 +170,15 @@ const SavedPosts: React.FC = () => {
         size={80}
         color={isDark ? '#4a4a4a' : '#cccccc'}
       />
-      <Text style={[styles.emptyTitle, {color: isDark ? 'white' : 'black'}]}>
+      <Text style={[styles.emptyTitle, { color: isDark ? 'white' : 'black' }]}>
         No Saved Posts
       </Text>
-      <Text style={[styles.emptyText, {color: isDark ? '#b0b0b0' : '#666666'}]}>
+      <Text style={[styles.emptyText, { color: isDark ? '#b0b0b0' : '#666666' }]}>
         Posts you save will appear here. Tap the bookmark icon on any post to
         save it for later.
       </Text>
       <TouchableOpacity
-        style={[styles.exploreButton, {backgroundColor: primaryColor}]}
+        style={[styles.exploreButton, { backgroundColor: primaryColor }]}
         onPress={() => navigation.navigate('Home')}>
         <Text style={styles.exploreButtonText}>Explore Posts</Text>
       </TouchableOpacity>
@@ -196,7 +196,7 @@ const SavedPosts: React.FC = () => {
     <SafeAreaView
       style={[
         styles.container,
-        {backgroundColor: isDark ? '#121212' : '#f5f5f5'},
+        { backgroundColor: isDark ? '#121212' : '#f5f5f5' },
       ]}>
       {renderHeader()}
 
@@ -206,10 +206,10 @@ const SavedPosts: React.FC = () => {
         <FlatList
           data={savedPosts}
           keyExtractor={item => item.id}
-          ItemSeparatorComponent={() => <View style={{height: 10}} />}
-          renderItem={({item}) => <Post post={item} isVisible={true} />}
+          ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+          renderItem={({ item }) => <Post post={item} isVisible={true} />}
           contentContainerStyle={
-            savedPosts.length === 0 ? {flex: 1} : styles.contentContainer
+            savedPosts.length === 0 ? { flex: 1 } : styles.contentContainer
           }
           ListEmptyComponent={renderEmptyState}
           refreshControl={

@@ -23,11 +23,11 @@ import {
   serverTimestamp,
 } from '@react-native-firebase/firestore';
 import {getAuth} from '@react-native-firebase/auth';
-import {useTypedSelector} from 'shared/hooks/redux/useTypedSelector';
+import {useTypedSelector} from 'hooks/redux/useTypedSelector';
 import Config from 'react-native-config';
 import {DEFAULT_UPLOAD_PRESET} from 'shared/constants/cloudinary';
-import { MediaItem, PostFormData } from 'create-post/types/main';
-import { styles } from 'create-post/styles/CreatePost';
+import {MediaItem, PostFormData} from 'create-post/types/main';
+import {styles} from 'create-post/styles/CreatePost';
 
 // Cloudinary Configuration
 const CLOUDINARY_CONFIG = {
@@ -40,7 +40,6 @@ const CLOUDINARY_CONFIG = {
   maxTotalMedia: 6,
   maxVideos: 2,
 };
-
 
 const CreatePost = () => {
   const navigation = useNavigation();
@@ -763,8 +762,15 @@ const CreatePost = () => {
             )}
 
             {/* Upload progress */}
-            {uploadProgress > 0 && uploadProgress < 100 && (
-              <View style={styles.progressContainer}>
+            {/* {uploadProgress > 0 && uploadProgress < 100 && ( */}
+            {true && (
+              <View
+                style={[
+                  styles.progressContainer,
+                  isDark
+                    ? styles.darkProgressContainer
+                    : styles.lightProgressContainer,
+                ]}>
                 <Text
                   style={{color: isDark ? '#e0e0e0' : '#333', marginBottom: 4}}>
                   Uploading media {currentUploadIndex + 1} of{' '}

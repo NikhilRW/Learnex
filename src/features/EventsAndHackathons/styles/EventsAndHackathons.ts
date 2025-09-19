@@ -1,4 +1,4 @@
-import {SCREEN_HEIGHT, SCREEN_WIDTH} from '@/shared/constants/common';
+import {SCREEN_HEIGHT, SCREEN_WIDTH} from 'shared/constants/common';
 import {StyleSheet} from 'react-native';
 
 export const createStyles = (isDark: boolean) =>

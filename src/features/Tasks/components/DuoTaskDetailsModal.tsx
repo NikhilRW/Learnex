@@ -11,7 +11,7 @@ import {
 import Icon from 'react-native-vector-icons/Ionicons';
 import { Task, SubTask } from 'shared/types/taskTypes';
 import { styles } from 'tasks/styles/Tasks.styles';
-import { TaskService } from 'shared/service/TaskService';
+import { TaskService } from 'shared/services/TaskService';
 import { getAuth } from '@react-native-firebase/auth';
 import {
   getFirestore,

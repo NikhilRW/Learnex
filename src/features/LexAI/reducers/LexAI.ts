@@ -7,7 +7,7 @@ import {
   LexAIMode,
   PERSONALITIES,
 } from 'lex-ai/types/lexAITypes';
-import LexAIService from 'shared/service/LexAIService';
+import LexAIService from 'shared/services/LexAIService';
 import LexAIFirestoreService from 'lex-ai/services/LexAIFirestoreService';
 
 // Initial state
