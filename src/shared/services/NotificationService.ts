@@ -746,7 +746,7 @@ export class NotificationService {
 
           // Try to navigate to the conversation using DeepLinkHandler
           try {
-            const {DeepLinkHandler} = require('../navigation/DeepLinkHandler');
+            const {DeepLinkHandler} = require('shared/services/DeepLinkHandler');
             console.log('Navigating to chat from Notifee background event:', {
               conversationId: data.conversationId,
               senderId: data.senderId,

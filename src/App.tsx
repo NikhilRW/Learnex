@@ -186,7 +186,7 @@ const App = () => {
       const initNotifications = async () => {
         try {
           const notificationService =
-            require('./services/NotificationService').default;
+            require('shared/services/NotificationService').default;
           await notificationService.setupNotificationChannels();
 
           // Set up background notification handlers
@@ -264,7 +264,7 @@ const App = () => {
       if (permissionsGranted) {
         try {
           const notificationService =
-            require('./services/NotificationService').default;
+            require('shared/services/NotificationService').default;
           notificationService.removeMessageListener();
           notificationService.removeTaskListener();
         } catch (error) {

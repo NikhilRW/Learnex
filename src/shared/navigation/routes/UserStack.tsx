@@ -179,7 +179,7 @@ const UserStack = () => {
       try {
         // Import notification service
         const notificationService =
-          require('../services/NotificationService').default;
+          require('shared/services/NotificationService').default;
 
         // Set up notification channels (for Android)
         await notificationService.setupNotificationChannels();
@@ -219,7 +219,7 @@ const UserStack = () => {
       // Clean up message listener when component unmounts
       try {
         const notificationService =
-          require('../services/NotificationService').default;
+          require('shared/services/NotificationService').default;
         notificationService.removeMessageListener();
         notificationService.removeTaskListener();
         notificationService.cleanupFCM();

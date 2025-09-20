@@ -219,9 +219,9 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
           setPhotoURL(null);
         }
 
-        const { username } = await firebase.user.getNameUsernamestring();
-        setUsername(username);
-        setNewUsername(username); // Initialize new username
+        const { username: my_username } = await firebase.user.getNameUsernamestring();
+        setUsername(my_username);
+        setNewUsername(my_username); // Initialize new username
 
         // Set the user's email
         if (currentUser?.email) {

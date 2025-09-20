@@ -147,7 +147,7 @@ export class PushNotificationHandler {
 
       try {
         // Import DeepLinkHandler dynamically to avoid circular dependencies
-        const {DeepLinkHandler} = require('../navigation/DeepLinkHandler');
+        const {DeepLinkHandler} = require('shared/services/DeepLinkHandler');
 
         // Handle direct message notifications
         if (data.type === 'direct_message' || data.conversationId) {
@@ -182,7 +182,7 @@ export class PushNotificationHandler {
 
         try {
           // Import DeepLinkHandler dynamically to avoid circular dependencies
-          const {DeepLinkHandler} = require('../navigation/DeepLinkHandler');
+          const {DeepLinkHandler} = require('shared/services/DeepLinkHandler');
 
           // Handle direct message notifications
           if (data.type === 'direct_message' || data.conversationId) {

@@ -96,7 +96,7 @@ export class AuthService {
         // Start notification listeners for the logged in user
         try {
           const notificationService =
-            require('../../services/NotificationService').default;
+            require('shared/services/NotificationService').default;
           notificationService.setupMessageListener();
         } catch (error) {
           console.error('Failed to setup notification listeners:', error);
@@ -134,8 +134,7 @@ export class AuthService {
 
       // Clean up notification listeners before signing out
       try {
-        const notificationService =
-          require('../../services/NotificationService').default;
+        const notificationService = require('shared/services/NotificationService').default;
         notificationService.removeMessageListener();
       } catch (error) {
         console.error('Failed to clean up notification listeners:', error);
@@ -202,7 +201,7 @@ export class AuthService {
           // Start notification listeners for the logged in user
           try {
             const notificationService =
-              require('../../services/NotificationService').default;
+              require('shared/services/NotificationService').default;
             notificationService.setupMessageListener();
           } catch (error) {
             console.error('Failed to setup notification listeners:', error);

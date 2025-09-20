@@ -15,4 +15,9 @@ export const styles = StyleSheet.create({
     opacity: 0.8,
     zIndex: 2,
   },
+  gettingStartedImage: {
+    width: '100%',
+    height: 250,
+    zIndex: 0,
+  },
 });
