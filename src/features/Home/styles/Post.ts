@@ -537,6 +537,18 @@ export const createStyles = (isDark: boolean) =>
       width: '100%',
       height: 200,
     },
+    videoErrorContainer: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: '#121212',
+      zIndex: 1,
+    },
+
     hashtag: {
       fontWeight: '600',
       color: isDark ? '#2379C2' : '#0095f6', // Default color for hashtags (used when isDark isn't available)

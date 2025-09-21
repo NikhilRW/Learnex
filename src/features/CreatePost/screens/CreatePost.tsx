@@ -27,7 +27,7 @@ import {useTypedSelector} from 'hooks/redux/useTypedSelector';
 import Config from 'react-native-config';
 import {DEFAULT_UPLOAD_PRESET} from 'shared/constants/cloudinary';
 import {MediaItem, PostFormData} from 'create-post/types/main';
-import {styles} from 'create-post/styles/CreatePost';
+import {getStyles} from 'create-post/styles/CreatePost';
 
 // Cloudinary Configuration
 const CLOUDINARY_CONFIG = {
@@ -59,6 +59,8 @@ const CreatePost = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [pickerError, setPickerError] = useState<string | null>(null);
   const [currentUploadIndex, setCurrentUploadIndex] = useState(0);
+
+  const styles = getStyles(isDark, hasStoragePermission);
 
   // Function to extract hashtags from description
   const extractHashtags = (text: string): string[] => {
@@ -445,15 +447,15 @@ const CreatePost = () => {
       const cloudName = CLOUDINARY_CONFIG.cloudName;
       const uploadPreset = CLOUDINARY_CONFIG.uploadPreset;
 
-      const formData = new FormData();
-      formData.append('file', {
+      const newFormData = new FormData();
+      newFormData.append('file', {
         uri: mediaItem.uri,
         type: mediaItem.type,
         name:
           mediaItem.name || (mediaItem.isVideo ? 'upload.mp4' : 'upload.jpg'),
       } as any);
-      formData.append('upload_preset', DEFAULT_UPLOAD_PRESET);
-      formData.append('tags', 'learnex_post');
+      newFormData.append('upload_preset', DEFAULT_UPLOAD_PRESET);
+      newFormData.append('tags', 'learnex_post');
 
       // Set mid-point progress
       setUploadProgress((progressStart + progressEnd) / 2);
@@ -462,7 +464,7 @@ const CreatePost = () => {
         `https://api.cloudinary.com/v1_1/${cloudName}/${mediaItem.isVideo ? 'video' : 'image'}/upload`,
         {
           method: 'POST',
-          body: formData,
+          body: newFormData,
         },
       );
 
@@ -639,34 +641,27 @@ const CreatePost = () => {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={[
-        styles.container,
-        {backgroundColor: isDark ? '#121212' : '#fff'},
-      ]}>
+      style={styles.container}>
       {/* Display storage permission status */}
       {Platform.OS === 'android' && !hasStoragePermission && (
-        <View
-          style={[
-            styles.permissionStatus,
-            {
-              backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5',
-              borderColor: isDark ? '#444' : '#ddd',
-            },
-          ]}>
-          <View style={{flexDirection: 'row', alignItems: 'center'}}>
+        <View style={styles.permissionStatus}>
+          <View style={styles.permissionStatusRow}>
             <Ionicons
               name={'alert-circle'}
               size={20}
               color={hasStoragePermission ? '#4CAF50' : '#FF3B30'}
-              style={{marginRight: 8}}
+              style={styles.permissionIcon}
             />
-            <Text style={{color: isDark ? '#e0e0e0' : '#333'}}>
+            <Text style={styles.permissionStatusText}>
               {'Storage permission required for media uploads'}
             </Text>
           </View>
           {!hasStoragePermission && (
             <TouchableOpacity
-              style={[styles.troubleshootingButton, {marginTop: 8}]}
+              style={[
+                styles.troubleshootingButton,
+                styles.troubleshootingButtonAdditional,
+              ]}
               onPress={requestStoragePermissions}>
               <Text style={styles.troubleshootingButtonText}>
                 Grant Permission
@@ -681,15 +676,8 @@ const CreatePost = () => {
           {/* Upload Media First */}
           <View style={styles.inputContainer}>
             <View style={styles.labelContainer}>
-              <Text
-                style={[styles.label, {color: isDark ? '#e0e0e0' : '#333'}]}>
-                Photos & Videos *
-              </Text>
-              <Text
-                style={[
-                  styles.mediaCounter,
-                  {color: isDark ? '#999' : '#666'},
-                ]}>
+              <Text style={[styles.label]}>Photos & Videos *</Text>
+              <Text style={styles.mediaCounter}>
                 {formData.mediaItems.length}/{CLOUDINARY_CONFIG.maxTotalMedia}
                 {formData.mediaItems.filter(m => m.isVideo).length > 0 &&
                   ` (${formData.mediaItems.filter(m => m.isVideo).length}/${CLOUDINARY_CONFIG.maxVideos} videos)`}
@@ -701,24 +689,13 @@ const CreatePost = () => {
               {formData.mediaItems.map((item, index) => (
                 <View key={index} style={styles.mediaItem}>
                   {item.isVideo ? (
-                    <View
-                      style={[
-                        styles.videoPlaceholder,
-                        {backgroundColor: isDark ? '#2a2a2a' : '#f0f0f0'},
-                      ]}>
+                    <View style={styles.videoPlaceholder}>
                       <Ionicons
                         name="videocam"
                         size={30}
                         color={isDark ? '#e0e0e0' : '#666'}
                       />
-                      <Text
-                        style={{
-                          color: isDark ? '#e0e0e0' : '#666',
-                          fontSize: 10,
-                          marginTop: 4,
-                        }}>
-                        Video
-                      </Text>
+                      <Text style={styles.videoPlaceholderText}>Video</Text>
                     </View>
                   ) : (
                     <Image
@@ -737,11 +714,7 @@ const CreatePost = () => {
               {/* Add Media Button (only if we can add more) */}
               {canAddMoreMedia() && (
                 <TouchableOpacity
-                  style={[
-                    styles.addMediaButton,
-                    {borderColor: isDark ? '#444' : '#ddd'},
-                    !hasStoragePermission && {opacity: 0.7},
-                  ]}
+                  style={styles.addMediaButton}
                   onPress={
                     hasStoragePermission ? pickMedia : requestStoragePermissions
                   }
@@ -762,8 +735,7 @@ const CreatePost = () => {
             )}
 
             {/* Upload progress */}
-            {/* {uploadProgress > 0 && uploadProgress < 100 && ( */}
-            {true && (
+            {uploadProgress > 0 && uploadProgress < 100 && (
               <View
                 style={[
                   styles.progressContainer,
@@ -771,8 +743,7 @@ const CreatePost = () => {
                     ? styles.darkProgressContainer
                     : styles.lightProgressContainer,
                 ]}>
-                <Text
-                  style={{color: isDark ? '#e0e0e0' : '#333', marginBottom: 4}}>
+                <Text style={styles.progressMediaUploadStatus}>
                   Uploading media {currentUploadIndex + 1} of{' '}
                   {formData.mediaItems.length}...
                 </Text>
@@ -782,12 +753,11 @@ const CreatePost = () => {
                       styles.progressBar,
                       {
                         width: `${uploadProgress}%`,
-                        backgroundColor: isDark ? '#0A84FF' : '#007AFF',
                       },
                     ]}
                   />
                 </View>
-                <Text style={{color: isDark ? '#999' : '#666', marginTop: 4}}>
+                <Text style={styles.progressPercentage}>
                   {Math.round(uploadProgress)}%
                 </Text>
               </View>
@@ -796,18 +766,9 @@ const CreatePost = () => {
 
           {/* Description Input */}
           <View style={styles.inputContainer}>
-            <Text style={[styles.label, {color: isDark ? '#e0e0e0' : '#333'}]}>
-              Caption *
-            </Text>
+            <Text style={[styles.label]}>Caption *</Text>
             <TextInput
-              style={[
-                styles.contentInput,
-                {
-                  borderColor: isDark ? '#444' : '#ddd',
-                  color: isDark ? '#fff' : '#333',
-                  backgroundColor: isDark ? '#2a2a2a' : '#fff',
-                },
-              ]}
+              style={styles.contentInput}
               placeholder="Write a caption..."
               placeholderTextColor={isDark ? '#999' : '#999'}
               multiline
@@ -819,19 +780,10 @@ const CreatePost = () => {
 
           {/* Tags Input */}
           <View style={styles.inputContainer}>
-            <Text style={[styles.label, {color: isDark ? '#e0e0e0' : '#333'}]}>
-              Tags
-            </Text>
-            <View
-              style={[
-                styles.tagInputContainer,
-                {
-                  borderColor: isDark ? '#444' : '#ddd',
-                  backgroundColor: isDark ? '#2a2a2a' : '#fff',
-                },
-              ]}>
+            <Text style={[styles.label]}>Tags</Text>
+            <View style={styles.tagInputContainer}>
               <TextInput
-                style={[styles.tagInput, {color: isDark ? '#fff' : '#333'}]}
+                style={[styles.tagInput]}
                 placeholder="Add tags (optional)"
                 placeholderTextColor={isDark ? '#999' : '#999'}
                 value={tagInput}
@@ -844,16 +796,8 @@ const CreatePost = () => {
             </View>
             <View style={styles.tagsContainer}>
               {formData.hashtags.map((tag, index) => (
-                <View
-                  key={index}
-                  style={[
-                    styles.tag,
-                    {backgroundColor: isDark ? '#333' : '#f0f0f0'},
-                  ]}>
-                  <Text
-                    style={[styles.tagText, {color: isDark ? '#fff' : '#333'}]}>
-                    {tag}
-                  </Text>
+                <View key={index} style={[styles.tagWrapper]}>
+                  <Text style={styles.tagTextStyle}>{tag}</Text>
                   <TouchableOpacity onPress={() => removeTag(tag)}>
                     <Ionicons
                       name="close-circle"
@@ -871,7 +815,7 @@ const CreatePost = () => {
             style={[
               styles.submitButton,
               loading && styles.submitButtonDisabled,
-              isDark && {backgroundColor: '#0A84FF'},
+              isDark && styles.submitButtonDark,
             ]}
             onPress={handleSubmit}
             disabled={loading || formData.mediaItems.length === 0}>

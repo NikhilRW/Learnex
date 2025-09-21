@@ -339,14 +339,14 @@ const SignIn = () => {
                     </View>
                   </View>
                   <View className="w-full justify-center items-center">
-                    <View className="flex flex-row justify-start items-center gap-[4%]">
-                      <View className="h-0.5 w-[27%] bg-gray-500" />
+                    <View className="flex flex-row w-full justify-start items-center gap-[4%]">
+                      <View className="h-0.5 flex-1 bg-gray-500" />
                       <Text
                         className={`font-semibold text-[3.5vw] ${isDark ? 'text-white' : 'text-gray-600'
                           } `}>
                         Or Continue With
                       </Text>
-                      <View className="h-0.5 w-[27%] bg-gray-500" />
+                      <View className="h-0.5 flex-1 bg-gray-500" />
                     </View>
                     <View
                       className="flex flex-row mx-auto w-full justify-center py-[3%] items-center"

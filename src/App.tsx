@@ -1,26 +1,27 @@
-import React, { useEffect, useState } from 'react';
-import { Platform, Linking, Alert, PermissionsAndroid } from 'react-native';
+import React, {useEffect, useState} from 'react';
+import {Platform, Linking, Alert, PermissionsAndroid} from 'react-native';
 import SplashScreen from 'react-native-splash-screen';
 import Route from 'shared/navigation/routes/Route';
-import { Provider } from 'react-redux';
-import { persistor, store } from 'shared/store/store';
+import {Provider} from 'react-redux';
+import {persistor, store} from 'shared/store/store';
 import 'react-native-gesture-handler';
 import 'react-native-reanimated';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { PersistGate } from 'redux-persist/integration/react';
+import {GestureHandlerRootView} from 'react-native-gesture-handler';
+import {PersistGate} from 'redux-persist/integration/react';
 import ThemeListener from 'shared/helpers/ThemeListener';
 import Loader from 'auth/components/Loader';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { setDeepLink } from 'shared/reducers/DeepLink';
-import { fetchHackathons } from 'shared/reducers/Hackathon';
+import {SafeAreaProvider} from 'react-native-safe-area-context';
+import {setDeepLink} from 'shared/reducers/DeepLink';
+import {fetchHackathons} from 'shared/reducers/Hackathon';
 import {
   NavigationContainer,
   useNavigationContainerRef,
 } from '@react-navigation/native';
-import { DeepLinkHandler } from 'shared/services/DeepLinkHandler';
-import { PushNotificationHandler } from 'shared/utils/PushNotificationHandler';
-import { styles } from 'shared/styles/App';
-import { getMessaging } from '@react-native-firebase/messaging';
+import {DeepLinkHandler} from 'shared/services/DeepLinkHandler';
+import {PushNotificationHandler} from 'shared/utils/PushNotificationHandler';
+import {styles} from 'shared/styles/App';
+import {getMessaging} from '@react-native-firebase/messaging';
+import {changeIsLoggedIn} from './shared/reducers/User';
 
 // Interface definition for deep link event
 interface DeepLinkEvent {
@@ -61,7 +62,7 @@ const App = () => {
             Alert.alert(
               'Notifications Disabled',
               "You won't receive important notifications. You can enable them in app settings later.",
-              [{ text: 'OK' }],
+              [{text: 'OK'}],
             );
           }
         }
@@ -145,7 +146,7 @@ const App = () => {
           Alert.alert(
             'Permissions Required',
             'This app requires notification permissions to function properly. Please grant permissions in your device settings.',
-            [{ text: 'OK' }],
+            [{text: 'OK'}],
           );
         }
       } catch (error) {
@@ -154,8 +155,9 @@ const App = () => {
         setPermissionsGranted(false);
       }
     };
-
-    requestAllPermissions();
+    setTimeout(() => {
+      requestAllPermissions();
+    }, 1000);
   }, []);
 
   // Main initialization effect - only runs after permission check
@@ -171,7 +173,7 @@ const App = () => {
     DeepLinkHandler.configureDeepLinks(navigationRef);
 
     // Load hackathon data on app startup - always use 'India' as location
-    store.dispatch(fetchHackathons({ location: 'India' }));
+    store.dispatch(fetchHackathons({location: 'India'}));
 
     // Configure notification channels right away regardless of permission status
     // This doesn't need permissions and won't crash
@@ -193,7 +195,7 @@ const App = () => {
           notificationService.setupBackgroundHandler();
 
           // If user is already logged in, set up the message and task listeners
-          const { getAuth } = require('@react-native-firebase/auth');
+          const {getAuth} = require('@react-native-firebase/auth');
           if (getAuth().currentUser) {
             console.log(
               'User already logged in, setting up notification listeners',
@@ -211,6 +213,7 @@ const App = () => {
               );
             }
           } else {
+            changeIsLoggedIn(false);
             console.log('No user logged in yet, skipping notification setup');
           }
         } catch (error) {
@@ -222,7 +225,7 @@ const App = () => {
 
     // Set up deep link handler
     const handleDeepLink = (event: DeepLinkEvent) => {
-      const { url } = event;
+      const {url} = event;
       if (url) {
         console.log('Deep link received:', url);
         // Store the URL in Redux for later use

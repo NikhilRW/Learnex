@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, {useState, useRef, useEffect, useCallback} from 'react';
 import {
   View,
   Image,
@@ -13,19 +13,19 @@ import {
 import Icon from 'react-native-vector-icons/Feather';
 import AntDesign from 'react-native-vector-icons/AntDesign';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import Video, { VideoRef } from 'react-native-video';
-import { PostType } from 'shared/types/post';
-import { Comment } from 'home/types/post';
-import { useTypedSelector } from 'hooks/redux/useTypedSelector';
-import { primaryColor } from 'shared/res/strings/eng';
+import Video, {VideoRef} from 'react-native-video';
+import {PostType} from 'shared/types/post';
+import {Comment} from 'home/types/post';
+import {useTypedSelector} from 'hooks/redux/useTypedSelector';
+import {primaryColor} from 'shared/res/strings/eng';
 import CommentModal from 'home/components/CommentModal';
-import { getUsernameForLogo } from 'shared/helpers/common/stringHelpers';
-import { Avatar } from 'react-native-elements';
-import { useNavigation } from '@react-navigation/native';
-import { MessageService } from 'conversations/services/MessageService';
+import {getUsernameForLogo} from 'shared/helpers/common/stringHelpers';
+import {Avatar} from 'react-native-elements';
+import {useNavigation} from '@react-navigation/native';
+import {MessageService} from 'conversations/services/MessageService';
 import Snackbar from 'react-native-snackbar';
-import { UserStackParamList } from 'shared/navigation/routes/UserStack';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import {UserStackParamList} from 'shared/navigation/routes/UserStack';
+import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {
   getFirestore,
   collection,
@@ -35,11 +35,11 @@ import {
   deleteDoc,
   setDoc,
 } from '@react-native-firebase/firestore';
-import { getAuth } from '@react-native-firebase/auth';
+import {getAuth} from '@react-native-firebase/auth';
 import PostOptionsModal from './PostOptionsModal';
-import { FullPostModal } from './FullPostModal';
-import { createStyles } from '../styles/Post';
-import { onSnapshot } from '@react-native-firebase/firestore';
+import {FullPostModal} from './FullPostModal';
+import {createStyles} from '../styles/Post';
+import {onSnapshot} from '@react-native-firebase/firestore';
 
 /**
  * Post component that displays a social media post with images
@@ -59,7 +59,7 @@ interface VideoProgress {
 
 type UserNavigation = NativeStackNavigationProp<UserStackParamList>;
 
-const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
+const Post: React.FC<PostProps> = ({post, isVisible = false}) => {
   post;
   const isDark = useTypedSelector(state => state.user.theme) === 'dark';
   const screenWidth = Dimensions.get('window').width;
@@ -86,6 +86,7 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
   const [isSaved, setIsSaved] = useState(post.isSaved === true);
   const [isSaving, setIsSaving] = useState(false);
   const [isCurrentUserPost, setIsCurrentUserPost] = useState(false);
+  const [videoError, setVideoError] = useState<boolean>(false);
   const [formattedDescription, setFormattedDescription] =
     useState<React.ReactNode>(null);
   const [userProfileImage, setUserProfileImage] = useState<string | null>(
@@ -208,7 +209,7 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
         // Local image
         const imageSource = Image.resolveAssetSource(firstImage);
         if (imageSource) {
-          const { width, height } = imageSource;
+          const {width, height} = imageSource;
           const actualScreenWidth = Dimensions.get('window').width - 24;
           const scaledHeight = (height / width) * actualScreenWidth;
           setImageHeight(scaledHeight || (post.isVertical ? 480 : 300));
@@ -353,7 +354,7 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
     } else if (typeof videoSource === 'string') {
       source = videoSource;
     } else if (videoSource && typeof videoSource === 'object') {
-      const videoObject = videoSource as { uri?: string };
+      const videoObject = videoSource as {uri?: string};
       if (videoObject.uri) {
         source = videoObject.uri;
       } else {
@@ -387,15 +388,23 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
           }}>
           <Video
             ref={videoRef}
-            source={{ uri: source }}
+            source={{uri: source}}
             style={styles.postImage}
             resizeMode={post.isVertical ? 'cover' : 'contain'}
             paused={isPaused}
             repeat
             onProgress={handleVideoProgress}
-            onError={error => console.error('Video loading error:', error)}
+            onError={error => {
+              console.error('Video loading error:', error);
+              setVideoError(true);
+            }}
           />
           {isPaused && <View style={styles.pausedOverlay} />}
+          {videoError && (
+            <View style={[styles.videoErrorContainer]}>
+              <Text className="text-white">Failed to load video :(</Text>
+            </View>
+          )}
         </View>
       </TouchableWithoutFeedback>
     );
@@ -410,13 +419,13 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
     if (typeof imageSource === 'number') {
       source = imageSource;
     } else if (typeof imageSource === 'string') {
-      source = { uri: imageSource };
+      source = {uri: imageSource};
     } else if (
       imageSource &&
       typeof imageSource === 'object' &&
       'uri' in imageSource
     ) {
-      source = { uri: imageSource.uri };
+      source = {uri: imageSource.uri};
     } else {
       return null; // Skip invalid images
     }
@@ -535,7 +544,7 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
 
       await setDoc(newCommentRef, newCommentData);
 
-      const result = { success: true, comment: newCommentData };
+      const result = {success: true, comment: newCommentData};
 
       if (result.success) {
         // Update UI immediately with the new comment
@@ -591,8 +600,8 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
 
       const db = getFirestore();
       const postRef = doc(db, 'posts', post.id);
-      await updateDoc(postRef, { hidden: true });
-      const result = { success: true };
+      await updateDoc(postRef, {hidden: true});
+      const result = {success: true};
 
       if (result.success) {
         Snackbar.show({
@@ -630,7 +639,7 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
       const auth = getAuth();
       const currentUser = auth.currentUser;
       if (!currentUser) {
-        return { success: false, error: 'User not authenticated' };
+        return {success: false, error: 'User not authenticated'};
       }
 
       const db = getFirestore();
@@ -650,7 +659,7 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
         updatedSavedPosts = [post.id];
       }
 
-      await updateDoc(userRef, { savedPosts: updatedSavedPosts });
+      await updateDoc(userRef, {savedPosts: updatedSavedPosts});
       const result = {
         success: true,
         saved: updatedSavedPosts.includes(post.id),
@@ -714,13 +723,7 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
         backgroundColor: '#2379C2',
       });
 
-      const db = getFirestore();
-      const postRef = doc(db, 'posts', post.id);
-      await deleteDoc(postRef);
-      const result = { success: true };
-
-      // Dismiss loading indicator and show success/error message
-      Snackbar.dismiss();
+      const result = await firebase.posts.deletePost(post.id);
 
       if (result.success) {
         Snackbar.show({
@@ -799,7 +802,7 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
       const auth = getAuth();
       const currentUser = auth.currentUser;
       if (!currentUser) {
-        return { success: false, error: 'User not authenticated' };
+        return {success: false, error: 'User not authenticated'};
       }
 
       const db = getFirestore();
@@ -807,7 +810,7 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
       const postDoc = await getDoc(postRef);
 
       if (!postDoc.exists()) {
-        return { success: false, error: 'Post not found' };
+        return {success: false, error: 'Post not found'};
       }
 
       const postData = postDoc.data();
@@ -824,8 +827,8 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
         );
       }
 
-      await updateDoc(postRef, { likes: updatedLikes, likedBy: updatedLikedBy });
-      const result = { success: true };
+      await updateDoc(postRef, {likes: updatedLikes, likedBy: updatedLikedBy});
+      const result = {success: true};
 
       if (!result.success) {
         // Revert UI changes if request failed
@@ -899,7 +902,7 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
       if (part.startsWith('#')) {
         // Remove the # character
         return (
-          <Text key={index} style={styles.hashtag} onPress={() => { }}>
+          <Text key={index} style={styles.hashtag} onPress={() => {}}>
             {part}
           </Text>
         );
@@ -924,14 +927,14 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
   return (
     <Animated.View
       key={post.id}
-      style={[styles.postContainer, { opacity: fadeAnim }]}>
+      style={[styles.postContainer, {opacity: fadeAnim}]}>
       <View style={styles.header}>
         <View style={styles.userInfo}>
           {userProfileImage ? (
             <Image
               source={
                 typeof userProfileImage === 'string'
-                  ? { uri: userProfileImage }
+                  ? {uri: userProfileImage}
                   : userProfileImage
               }
               style={styles.avatar}

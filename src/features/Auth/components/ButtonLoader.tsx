@@ -4,7 +4,7 @@ import { styles } from '../styles/ButtonLoader.styles';
 const ButtonLoader = () => {
   return (
     <ActivityIndicator
-      color={'#fff'}
+      color={'white'}
       size={38}
       animating={true}
       children

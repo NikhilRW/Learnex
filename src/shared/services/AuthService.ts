@@ -179,7 +179,7 @@ export class AuthService {
           const newUserDoc: FirebaseUser = {
             uid: user.uid,
             email: user.email || '',
-            username: user.displayName || user.email?.split('@')[0] || 'User',
+            username: user.email?.split('@')[0] || 'User',
             fullName: user.displayName || 'User',
             isLoggedIn: true,
             savedPosts: [],
