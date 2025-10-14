@@ -316,6 +316,7 @@ const DuoTaskModal: React.FC<DuoTaskModalProps> = ({
             animationType="slide"
             transparent={true}
             visible={modalVisible}
+            testID='duoTaskModal'
             onRequestClose={onClose}>
             <View style={styles.modalOverlay}>
                 <View
@@ -549,39 +550,6 @@ const DuoTaskModal: React.FC<DuoTaskModalProps> = ({
                                         }
                                     />
                                 </View>
-
-                                <View style={styles.inputGroup}>
-                                    <Text
-                                        style={[
-                                            styles.inputLabel,
-                                            duoTaskModalStyles.inputLabel,
-                                            isDark
-                                                ? duoTaskModalStyles.inputLabelDark
-                                                : duoTaskModalStyles.inputLabelLight,
-                                        ]}>
-                                        Status
-                                    </Text>
-                                    <TextInput
-                                        style={[
-                                            styles.input,
-                                            duoTaskModalStyles.input,
-                                            isDark
-                                                ? duoTaskModalStyles.inputDark
-                                                : duoTaskModalStyles.inputLight,
-                                        ]}
-                                        placeholder="e.g. Work, Personal, Health"
-                                        placeholderTextColor={
-                                            isDark
-                                                ? duoTaskModalStyles.placeholderDark.color
-                                                : duoTaskModalStyles.placeholderLight.color
-                                        }
-                                        value={task.category}
-                                        onChangeText={text =>
-                                            onChangeTask({ ...task, category: text })
-                                        }
-                                    />
-                                </View>
-
                                 <View style={styles.inputGroup}>
                                     <Text
                                         style={[
@@ -665,6 +633,7 @@ const DuoTaskModal: React.FC<DuoTaskModalProps> = ({
                                                 onChangeTask({ ...task, notify: value })
                                             }
                                             value={task.notify}
+                                            testID='notifySwitch'
                                         />
                                     </View>
                                 </View>
@@ -723,7 +692,7 @@ const DuoTaskModal: React.FC<DuoTaskModalProps> = ({
                                                 ? duoTaskModalStyles.inputDark
                                                 : duoTaskModalStyles.inputLight,
                                         ]}
-                                        placeholder="Description (optional)"
+                                        placeholder="Subtask Description (optional)"
                                         placeholderTextColor={
                                             isDark
                                                 ? duoTaskModalStyles.placeholderDark.color
@@ -734,6 +703,7 @@ const DuoTaskModal: React.FC<DuoTaskModalProps> = ({
                                     />
 
                                     <TouchableOpacity
+                                        testID="addSubtask"
                                         style={duoTaskModalStyles.addButton}
                                         onPress={addSubtask}>
                                         <Text style={duoTaskModalStyles.addButtonText}>
@@ -778,6 +748,7 @@ const DuoTaskModal: React.FC<DuoTaskModalProps> = ({
                                                         alignItems: 'center',
                                                     }}>
                                                     <TouchableOpacity
+                                                        testID='taskCompletionToggleButton'
                                                         style={[
                                                             duoTaskModalStyles.subtaskCheckbox,
                                                             {
@@ -795,7 +766,7 @@ const DuoTaskModal: React.FC<DuoTaskModalProps> = ({
                                                         ]}
                                                         onPress={() => toggleSubtaskCompletion(item.id)}>
                                                         {item.completed && (
-                                                            <Icon name="checkmark" size={16} color="white" />
+                                                            <Icon testID="checkmark" name="checkmark" size={16} color="white" />
                                                         )}
                                                     </TouchableOpacity>
 

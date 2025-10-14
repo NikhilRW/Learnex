@@ -686,14 +686,7 @@ const LexAI = () => {
 
     // Check if it's a direct search command
     const isDirectSearch =
-      messageToSend.toLowerCase().startsWith('search ') ||
-      messageToSend.toLowerCase().startsWith('find ') ||
-      messageToSend.toLowerCase().startsWith('look up ') ||
-      messageToSend
-        .toLowerCase()
-        .match(
-          /^(what|who|how|when|where|why)\s+(is|are|were|was|do|does|can|could)\s+.+/,
-        );
+      messageToSend.toLowerCase().startsWith('search ');
 
     // Check if it's a post search request
     const isPostSearch =

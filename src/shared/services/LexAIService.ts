@@ -200,7 +200,7 @@ class LexAIService {
       {
         name: 'webSearch',
         description:
-          'Search the web for information not available in the knowledge base. Use this function call when user asks to search, look up, or find information online. Extract search terms from the user query.',
+          'Search the web for information not available in the knowledge base. Use this function call when user asks to search, look up, or find information online. Extract search terms from the user query. Only use this for current events, specific facts, or when the user explicitly requests online information. Do not use this for general knowledge questions that can be answered from your training data.',
         parameters: {
           query: 'string - The search query to look up on the web',
         },
@@ -283,12 +283,14 @@ You have access to several capabilities to help the user via function calls:
    - Using "webSearch" only for current events, specific facts, or when users explicitly request online information
    - Understanding when to use your own knowledge vs when to search
    - Being conversational and helpful while staying within your capabilities
+   - Only use "webSearch" when absolutely necessary to find information not in your training data
 6. You can open URLs using the "openUrl" tool when needed
 7. You can help users understand how to use the app
 
 YOU ARE REQUIRED TO USE FUNCTION CALLS FOR ACTIONS, but be intelligent about when to use them. 
 - Answer general questions directly without searching
 - Use webSearch only when truly needed or explicitly requested
+- Use webSearch for current events or very specific facts and when you cannot answer from your knowledge and training data
 - Maintain natural conversation while using tools appropriately
 EVERY action requiring app functionality MUST be a function call.
 
