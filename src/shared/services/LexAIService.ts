@@ -1,6 +1,6 @@
 import axios from 'axios';
 import Config from 'react-native-config';
-import {Linking} from 'react-native';
+import {Appearance, Linking} from 'react-native';
 import {DeepLinkHandler} from 'shared/services/DeepLinkHandler';
 import {
   LexAIMessage,
@@ -26,6 +26,8 @@ import {
   limit,
   getDocs,
 } from '@react-native-firebase/firestore';
+import { useDispatch } from 'react-redux';
+import { useTypedDispatch } from '../hooks/redux/useTypedDispatch';
 const generateUUID = (): string => {
   // Use a timestamp-based prefix to ensure uniqueness
   const timestamp = Date.now().toString(36);
@@ -111,6 +113,12 @@ class LexAIService {
           category: 'string - Category of the task',
           notify: 'boolean - Whether to send a notification for this task',
         },
+      },
+      {
+        name: 'toggleTheme',
+        description:
+          'Toggle between light and dark themes in the application. Use this function call when a user requests to switch themes, change appearance, or mentions light/dark mode.',
+        parameters: {},
       },
       {
         name: 'addTeamTask',
@@ -245,6 +253,7 @@ You have access to several capabilities to help the user via function calls:
    - "updateTask" - Use this when users mention changing any task details
    - "deleteTask" - Use this when users want to remove a task
    - "toggleTaskCompletion" - Use this when users want to mark a task as done
+   - "toggleTheme" - use this wehen user asks to toggle app theme from current one 
    
    CRITICAL FUNCTION CALL RULES:
    - You MUST RESPOND WITH FUNCTION CALLS for ANY task operations (add, delete, update, complete, list) - NO EXCEPTIONS.
@@ -1114,6 +1123,10 @@ IMPORTANT INSTRUCTIONS:
             };
           }
 
+        case 'toggleTheme':
+          return {
+            ...toolCall
+          }
         case 'addTask':
           // Validate required parameter
           if (!parameters.title) {

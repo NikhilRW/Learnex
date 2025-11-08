@@ -58,6 +58,8 @@ export const getStyles = (isDark: boolean, hasStoragePermission: boolean) =>
     tagInputContainer: {
       borderColor: isDark ? '#444' : '#ddd',
       backgroundColor: isDark ? '#2a2a2a' : '#fff',
+      borderRadius: 10,
+      borderWidth: 1,
     },
     tagInputText: {
       color: isDark ? '#fff' : '#333',
@@ -89,6 +91,7 @@ export const getStyles = (isDark: boolean, hasStoragePermission: boolean) =>
     },
     inputContainer: {
       marginBottom: 20,
+
     },
     labelContainer: {
       flexDirection: 'row',

@@ -7,15 +7,15 @@ import {
   ViewToken,
   RefreshControl,
 } from 'react-native';
-import React, { useEffect, useState, useCallback, useRef, JSX } from 'react';
-import { useTypedSelector } from 'hooks/redux/useTypedSelector';
-import { useTypedDispatch } from 'hooks/redux/useTypedDispatch';
+import React, {useEffect, useState, useCallback, useRef, JSX} from 'react';
+import {useTypedSelector} from 'hooks/redux/useTypedSelector';
+import {useTypedDispatch} from 'hooks/redux/useTypedDispatch';
 import SkeletonPlaceholder from 'react-native-skeleton-placeholder';
 import Post from 'home/components/Post';
-import { PostType } from 'shared/types/post';
-import { styles } from 'home/styles/Home';
-import { primaryColor } from 'shared/res/strings/eng';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {PostType} from 'shared/types/post';
+import {styles} from 'home/styles/Home';
+import {primaryColor} from 'shared/res/strings/eng';
+import {SafeAreaView} from 'react-native-safe-area-context';
 
 const Home = () => {
   const firebase = useTypedSelector(state => state.firebase.firebase);
@@ -24,10 +24,10 @@ const Home = () => {
 
   const [isLoaded, setIsLoaded] = useState(false);
   const [posts, setPosts] = useState<
-    (PostType & { isLiked: boolean; likes: number; isSaved: boolean })[]
+    (PostType & {isLiked: boolean; likes: number; isSaved: boolean})[]
   >([]);
   const [filteredPosts, setFilteredPosts] = useState<
-    (PostType & { isLiked: boolean; likes: number; isSaved: boolean })[]
+    (PostType & {isLiked: boolean; likes: number; isSaved: boolean})[]
   >([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +47,7 @@ const Home = () => {
       if (currentUser?.photoURL) {
         setPhotoURL(currentUser.photoURL);
       }
-      const { fullName } = await firebase.user.getNameUsernamestring();
+      const {fullName} = await firebase.user.getNameUsernamestring();
       setUsername(fullName);
     } catch (err) {
       console.error('Error fetching user data:', err);
@@ -113,10 +113,10 @@ const Home = () => {
   };
 
   const onViewableItemsChanged = useCallback(
-    ({ viewableItems }: { viewableItems: Array<ViewToken> }) => {
+    ({viewableItems}: {viewableItems: Array<ViewToken>}) => {
       // Find the first video post that is visible
       const visibleVideo = viewableItems.find(
-        ({ item }) => item.isVideo && item.postVideo,
+        ({item}) => item.isVideo && item.postVideo,
       );
       // Set the visible video ID or null if no video is visible
       setVisibleVideoId(visibleVideo ? visibleVideo.item.id : null);
@@ -137,7 +137,7 @@ const Home = () => {
     ({
       item,
     }: {
-      item: PostType & { isLiked: boolean; likes: number; isSaved: boolean };
+      item: PostType & {isLiked: boolean; likes: number; isSaved: boolean};
     }) => (
       <View style={styles.postContainer}>
         <Post
@@ -193,7 +193,7 @@ const Home = () => {
         const hashtagStats = new Map<string, number>();
 
         trendingResponse.posts.forEach(
-          (post: PostType & { likes: number; comments: number }) => {
+          (post: PostType & {likes: number; comments: number}) => {
             if (post.hashtags && Array.isArray(post.hashtags)) {
               const engagement = post.likes + post.comments;
               post.hashtags.forEach(tag => {
@@ -254,7 +254,7 @@ const Home = () => {
           const hashtagStats = new Map<string, number>();
 
           response.posts.forEach(
-            (post: PostType & { likes: number; comments: number }) => {
+            (post: PostType & {likes: number; comments: number}) => {
               console.log('Processing post:', {
                 id: post.id,
                 hashtags: post.hashtags || [],
@@ -463,7 +463,7 @@ const Home = () => {
                     <Text
                       style={[
                         styles.filterText,
-                        { color: isDark ? 'white' : 'black' },
+                        {color: isDark ? 'white' : 'black'},
                       ]}>
                       Showing posts tagged with{' '}
                       {selectedTag.includes('#')
@@ -473,7 +473,7 @@ const Home = () => {
                     <TouchableOpacity
                       onPress={() => handleTagPress(selectedTag)}
                       style={styles.clearFilterButton}>
-                      <Text style={{ color: '#0095f6' }}>Clear filter</Text>
+                      <Text style={{color: '#0095f6'}}>Clear filter</Text>
                     </TouchableOpacity>
                   </View>
                 )}

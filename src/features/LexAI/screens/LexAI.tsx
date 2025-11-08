@@ -40,6 +40,7 @@ import {useTypedSelector} from 'hooks/redux/useTypedSelector';
 import {styles} from 'lex-ai/styles/LexAI.styles';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {generateUUID, logDebug} from 'lex-ai/utils/common';
+import {changeThemeColor} from '@/shared/reducers/User';
 
 // Define search result interface
 interface SearchResult {
@@ -685,8 +686,7 @@ const LexAI = () => {
     const messageToSend = inputMessage.trim();
 
     // Check if it's a direct search command
-    const isDirectSearch =
-      messageToSend.toLowerCase().startsWith('search ');
+    const isDirectSearch = messageToSend.toLowerCase().startsWith('search ');
 
     // Check if it's a post search request
     const isPostSearch =
@@ -952,6 +952,7 @@ const LexAI = () => {
                 'openUrl',
                 'createRoom',
                 'joinRoom',
+                'toggleTheme',
               ].includes(toolCall.toolName)
             ) {
               await handleToolExecution(toolCall);
@@ -2365,6 +2366,27 @@ const LexAI = () => {
                 setConversation(updatedConv);
                 await LexAIService.saveConversation(updatedConv);
               }
+            }
+            break;
+          case 'toggleTheme':
+            dispatch(changeThemeColor(isDarkMode ? 'light' : 'dark'));
+            // Show joining message
+            const toggledTheme: LexAIMessage = {
+              id: generateUUID(),
+              role: 'assistant',
+              content: `Toggling app theme...`,
+              timestamp: Date.now(),
+            };
+
+            if (conversation) {
+              const updatedConv = {
+                ...conversation,
+                messages: [...conversation.messages, toggledTheme],
+                updatedAt: Date.now(),
+              };
+              
+              setConversation(updatedConv);
+              await LexAIService.saveConversation(updatedConv);
             }
             break;
           default:
