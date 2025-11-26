@@ -1,5 +1,5 @@
 import React from 'react';
-import {render, fireEvent, waitFor} from '@testing-library/react-native';
+import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import Tasks from '../../../../src/features/Tasks/screens/Tasks';
 
 // Mock vector icons used in the component
@@ -21,12 +21,12 @@ jest.mock('@react-navigation/native', () => ({
 
 // Mock auth to supply a current user
 jest.mock('@react-native-firebase/auth', () => ({
-  getAuth: () => ({currentUser: {uid: 'test-user'}}),
+  getAuth: () => ({ currentUser: { uid: 'test-user' } }),
 }));
 
 // Mock the svg constant used for the AI button
 jest.mock('shared/constants/svg', () => ({
-  AIGeneratedSVGXML: {light: '<svg />', dark: '<svg />'},
+  AIGeneratedSVGXML: { light: '<svg />', dark: '<svg />' },
 }));
 
 // Mock the TaskService used inside the component
@@ -55,8 +55,8 @@ jest.mock('hooks/redux/useTypedSelector', () => ({
 // a simple label when visible so we can assert modal visibility.
 jest.mock('tasks/components/TaskModal', () => {
   // Return a simple functional component
-  return ({modalVisible, onClose, onUpdateTask}: any) => {
-    const {View, Text, Button} = require('react-native');
+  return ({ modalVisible, onClose, onUpdateTask }: any) => {
+    const { View, Text, Button } = require('react-native');
     return (
       <View>
         {modalVisible ? <Text>TaskModalMock</Text> : null}
@@ -102,7 +102,7 @@ describe('Tasks screen', () => {
   it('renders header and task list', async () => {
     mockGetTasks.mockResolvedValueOnce(sampleTasks);
 
-  const {getByText, findByText} = render(<Tasks />);
+    const { getByText, findByText } = render(<Tasks />);
 
     // Static UI
     expect(getByText('Tasks')).toBeTruthy();
@@ -117,7 +117,7 @@ describe('Tasks screen', () => {
   it('filters tasks when searching', async () => {
     mockGetTasks.mockResolvedValueOnce(sampleTasks);
 
-    const {findByText, getByPlaceholderText, queryByText} = render(<Tasks />);
+    const { findByText, getByPlaceholderText, queryByText } = render(<Tasks />);
 
     // Ensure tasks loaded
     expect(await findByText('Task One')).toBeTruthy();
@@ -133,7 +133,7 @@ describe('Tasks screen', () => {
   it('opens modal when Add Task is pressed', async () => {
     mockGetTasks.mockResolvedValueOnce([]);
 
-    const {getByText, queryByText} = render(<Tasks />);
+    const { getByText, queryByText } = render(<Tasks />);
 
     // Wait for initial fetch
     await waitFor(() => expect(mockGetTasks).toHaveBeenCalled());
@@ -147,13 +147,13 @@ describe('Tasks screen', () => {
   it('navigates to DuoTasks when Team Tasks pressed', async () => {
     mockGetTasks.mockResolvedValueOnce([]);
 
-    const {getByText} = render(<Tasks />);
+    const { getByText } = render(<Tasks />);
 
     // Wait for initial fetch
     await waitFor(() => expect(mockGetTasks).toHaveBeenCalled());
 
     fireEvent.press(getByText('Team Tasks'));
 
-  expect(mockNav.navigate).toHaveBeenCalledWith('DuoTasks');
+    expect(mockNav.navigate).toHaveBeenCalledWith('DuoTasks');
   });
 });
