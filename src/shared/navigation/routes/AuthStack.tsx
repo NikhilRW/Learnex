@@ -26,6 +26,7 @@ const AuthStack = () => {
   const dispatch = useTypedDispatch();
   useEffect(() => {
     dispatch(changeUserNewlyOpenedApp(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return (
     <Stack.Navigator

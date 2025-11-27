@@ -35,7 +35,7 @@ export const fetchHackathons = createAsyncThunk(
   'hackathon/fetchHackathons',
   async (
     {
-      location = 'India',
+      // location = 'India',
       forceRefresh = false,
     }: {location?: string; forceRefresh?: boolean} = {location: 'India'},
     {rejectWithValue},
@@ -43,10 +43,7 @@ export const fetchHackathons = createAsyncThunk(
     try {
       // Always use 'India' as the location
       const finalLocation = 'India';
-      const events = await HackathonService.getHackathons(
-        finalLocation,
-        forceRefresh,
-      );
+      const events = await HackathonService.getHackathons(forceRefresh);
       return {events, location: finalLocation};
     } catch (error) {
       return rejectWithValue(
@@ -61,10 +58,12 @@ export const fetchHackathons = createAsyncThunk(
  */
 export const refreshHackathons = createAsyncThunk(
   'hackathon/refreshHackathons',
-  async (location: string = 'India', {dispatch, rejectWithValue}) => {
+  async (
+    location: string = 'India',
+    // _,
+    {dispatch, rejectWithValue},
+  ) => {
     try {
-      // Always use 'India' as location
-      const finalLocation = 'India';
 
       // First refresh the events on the server
       const refreshResult = await HackathonService.refreshEvents();
@@ -72,7 +71,7 @@ export const refreshHackathons = createAsyncThunk(
       if (refreshResult.success) {
         // Then fetch the refreshed events with forceRefresh=true to bypass any caching
         return dispatch(
-          fetchHackathons({location: finalLocation, forceRefresh: true}),
+          fetchHackathons({location: location, forceRefresh: true}),
         ).unwrap();
       } else {
         return rejectWithValue(refreshResult.message);

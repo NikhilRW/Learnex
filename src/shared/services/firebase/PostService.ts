@@ -7,11 +7,11 @@ import {
   updateDoc,
   deleteDoc,
   getDocs,
-  serverTimestamp,
-  arrayUnion,
   arrayRemove,
-  increment,
   writeBatch,
+  setDoc,
+  arrayUnion,
+  serverTimestamp,
 } from '@react-native-firebase/firestore';
 import {LikeCache} from './LikeCache';
 import {
@@ -20,12 +20,13 @@ import {
   SavePostResponse,
   AddCommentResponse,
 } from 'shared/types/responses';
-import {CommentService} from '../../features/Home/services/CommentService';
-import {SavedPostService} from '../../features/SavedPost/services/SavedPostService';
+import {CommentService} from 'home/services/CommentService';
+import {SavedPostService} from 'saved-post/services/SavedPostService';
 import {PostQueryService} from './PostQueryService';
 import axios from 'axios';
 
 export class PostService {
+  
   constructor(
     private likeCache: LikeCache,
     private commentService: CommentService,
@@ -47,9 +48,11 @@ export class PostService {
         return {success: false, error: 'Post not found'};
       }
 
-      const postData = postDoc.data();
+      const postData = postDoc.data() as any;
       const likedBy = postData?.likedBy || [];
       const isLiked = likedBy.includes(currentUser.uid);
+
+      const { increment } = await import('firebase/firestore');
 
       if (isLiked) {
         await updateDoc(postRef, {
@@ -126,7 +129,7 @@ export class PostService {
       }
 
       // Verify that the current user is the creator of the post
-      const postData = postDoc.data();
+      const postData = postDoc.data() as any;
       if (postData?.user?.id !== currentUser.uid) {
         return {success: false, error: 'Not authorized to delete this post'};
       }
@@ -145,8 +148,8 @@ export class PostService {
 
       // 1. Delete all comments
       const commentsSnapshot = await getDocs(collection(postRef, 'comments'));
-      commentsSnapshot.docs.forEach(doc => {
-        batch.delete(doc.ref);
+      commentsSnapshot.docs.forEach(d => {
+        batch.delete(d.ref);
       });
 
       // 2. Delete the post itself
@@ -240,7 +243,7 @@ export class PostService {
   }
 
   async addComment(postId: string, text: string): Promise<AddCommentResponse> {
-    return this.commentService.addComment(postId, text);
+    return await this.commentService.addComment(postId, text);
   }
 
   getPosts(options = {}): Promise<GetPostsResponse> {
@@ -258,7 +261,7 @@ export class PostService {
   }
 
   isPostLiked(postId: string): boolean | null {
-    const currentUser = auth().currentUser;
+    const currentUser = getAuth().currentUser;
     if (!currentUser) return false;
     return this.likeCache.isLikedByUser(postId, currentUser.uid);
   }

@@ -1,5 +1,5 @@
 // jest-setup.js
-import { Alert } from 'react-native';
+import {Alert} from 'react-native';
 
 jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
 

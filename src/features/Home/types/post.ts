@@ -53,6 +53,6 @@ export interface PostType {
 
 export interface AddCommentResponse {
   success: boolean;
-  comment?: FirestoreComment;
+  comment?: Comment;
   error?: string;
 }
