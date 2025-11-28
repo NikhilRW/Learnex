@@ -245,7 +245,7 @@ describe('SignUp Screen', () => {
 
     fireEvent.changeText(getByPlaceholderText('Password'), 'Password@123');
     fireEvent.changeText(getByPlaceholderText('Confirm Password'), 'Password@124');
-    
+
     fireEvent.press(getByText('Create An Account'));
 
     await waitFor(() => {
@@ -289,7 +289,7 @@ describe('SignUp Screen', () => {
   it('disables buttons while submitting', async () => {
     // Mock a slow sign up
     mockSignUpWithEmailAndPassword.mockImplementation(() => new Promise(resolve => setTimeout(() => resolve({ success: true }), 500)));
-    
+
     const { getByText, getByPlaceholderText, getByTestId } = renderWithProviders(<SignUp />, {
       preloadedState: initialState,
     });
@@ -307,10 +307,10 @@ describe('SignUp Screen', () => {
 
     // Check if OAuth buttons are disabled
     await waitFor(() => {
-        const googleBtn = getByTestId('google-signin-button');
-        // Check both direct prop and accessibilityState just in case
-        const isDisabled = googleBtn.props.disabled || googleBtn.props.accessibilityState?.disabled;
-        expect(isDisabled).toBe(true);
+      const googleBtn = getByTestId('google-signin-button');
+      // Check both direct prop and accessibilityState just in case
+      const isDisabled = googleBtn.props.disabled || googleBtn.props.accessibilityState?.disabled;
+      expect(isDisabled).toBe(true);
     });
   });
 
@@ -359,7 +359,7 @@ describe('SignUp Screen', () => {
   it('shows error if username is not available', async () => {
     mockCheckUsernameIsAvailable.mockResolvedValue({ success: false });
     jest.useFakeTimers();
-    
+
     const { getByPlaceholderText, getByText, getByTestId } = renderWithProviders(<SignUp />, {
       preloadedState: initialState,
     });
@@ -369,7 +369,7 @@ describe('SignUp Screen', () => {
     fireEvent.changeText(getByPlaceholderText('Enter Email'), 'john@example.com');
     fireEvent.changeText(getByPlaceholderText('Password'), 'Password@123');
     fireEvent.changeText(getByPlaceholderText('Confirm Password'), 'Password@123');
-    
+
     // Agree to terms
     const checkbox = getByTestId('bouncy-checkbox');
     fireEvent.press(checkbox);
@@ -382,20 +382,20 @@ describe('SignUp Screen', () => {
     });
 
     await waitFor(() => {
-        expect(mockCheckUsernameIsAvailable).toHaveBeenCalled();
+      expect(mockCheckUsernameIsAvailable).toHaveBeenCalled();
     });
 
     // Wait for the error message to appear, indicating state update is complete
     await waitFor(() => {
-        expect(getByText('Username is not available')).toBeTruthy();
+      expect(getByText('Username is not available')).toBeTruthy();
     });
-    
+
     fireEvent.press(getByText('Create An Account'));
-    
+
     await waitFor(() => {
-        expect(Snackbar.show).toHaveBeenCalledWith(expect.objectContaining({
-            text: 'Username Not Available',
-        }));
+      expect(Snackbar.show).toHaveBeenCalledWith(expect.objectContaining({
+        text: 'Username Not Available',
+      }));
     });
 
     jest.useRealTimers();
@@ -442,7 +442,7 @@ describe('SignUp Screen', () => {
 
     // Submit
     await act(async () => {
-        fireEvent.press(getByText('Create An Account'));
+      fireEvent.press(getByText('Create An Account'));
     });
 
     await waitFor(() => {
@@ -462,7 +462,7 @@ describe('SignUp Screen', () => {
 
   it('handles sign up failure', async () => {
     mockSignUpWithEmailAndPassword.mockResolvedValue({ success: false, error: 'Email already in use' });
-    
+
     const { getByText, getByPlaceholderText, getByTestId } = renderWithProviders(<SignUp />, {
       preloadedState: initialState,
     });
@@ -480,7 +480,7 @@ describe('SignUp Screen', () => {
 
     // Submit
     await act(async () => {
-        fireEvent.press(getByText('Create An Account'));
+      fireEvent.press(getByText('Create An Account'));
     });
 
     await waitFor(() => {
@@ -517,13 +517,13 @@ describe('SignUp Screen', () => {
       expect(mockNavigate).toHaveBeenCalledWith('UserStack');
     });
   });
-  
+
   it('navigates to SignIn when "Sign In" link is pressed', () => {
-      const { getByText } = renderWithProviders(<SignUp />, {
-          preloadedState: initialState,
-      });
-      
-      fireEvent.press(getByText('Sign In'));
-      expect(mockNavigate).toHaveBeenCalledWith('SignIn');
+    const { getByText } = renderWithProviders(<SignUp />, {
+      preloadedState: initialState,
+    });
+
+    fireEvent.press(getByText('Sign In'));
+    expect(mockNavigate).toHaveBeenCalledWith('SignIn');
   });
 });
