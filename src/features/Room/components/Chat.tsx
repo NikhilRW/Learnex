@@ -1,10 +1,10 @@
+import { LegendList } from '@legendapp/list';
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
-  FlatList,
   StyleSheet,
   Dimensions,
   KeyboardAvoidingView,
@@ -42,7 +42,7 @@ const Chat: React.FC<ChatProps> = ({ meetingId, isVisible, onClose, }) => {
   const isDark = useTypedSelector(state => state.user.theme) === 'dark';
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  const flatListRef = useRef<FlatList>(null);
+  const flatListRef = useRef<any>(null);
   const [userName, setUserName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -291,11 +291,13 @@ const Chat: React.FC<ChatProps> = ({ meetingId, isVisible, onClose, }) => {
           </Text>
         </View>
       ) : (
-        <FlatList
+        <LegendList
           ref={flatListRef}
           data={messages}
           keyExtractor={item => item.id}
           style={styles.messageList}
+          estimatedItemSize={100}
+          recycleItems={true}
           renderItem={({ item }) => {
             const isOwnMessage = item.senderId === getAuth().currentUser?.uid;
             const isSystemMessage = item.senderId === 'system';

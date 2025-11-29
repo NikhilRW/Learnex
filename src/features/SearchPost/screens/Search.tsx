@@ -1,11 +1,11 @@
 import {
   Text,
   View,
-  FlatList,
   ViewToken,
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
+import { LegendList } from '@legendapp/list';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { UserStackParamList } from 'shared/navigation/routes/UserStack';
 import { RouteProp } from '@react-navigation/native';
@@ -156,7 +156,7 @@ const Search = ({ route }: { route: SearchScreenRouteProp }) => {
           </Text>
         </View>
       ) : (
-        <FlatList
+        <LegendList
           data={posts}
           renderItem={renderPost}
           keyExtractor={item => item.id}
@@ -166,10 +166,8 @@ const Search = ({ route }: { route: SearchScreenRouteProp }) => {
           viewabilityConfigCallbackPairs={
             viewabilityConfigCallbackPairs.current
           }
-          initialNumToRender={2}
-          maxToRenderPerBatch={2}
-          windowSize={5}
-          removeClippedSubviews={true}
+          estimatedItemSize={500}
+          recycleItems={true}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import {
   Alert,
   BackHandler,
@@ -13,13 +13,13 @@ import {
   RouteProp,
   CommonActions,
 } from '@react-navigation/native';
-import { DrawerNavigationProp } from '@react-navigation/drawer';
-import { MeetingService } from 'room/services/MeetingService';
-import { WebRTCService, ParticipantState } from 'room/services/WebRTCService';
-import { MediaStream } from 'react-native-webrtc';
+import {DrawerNavigationProp} from '@react-navigation/drawer';
+import {MeetingService} from 'room/services/MeetingService';
+import {WebRTCService, ParticipantState} from 'room/services/WebRTCService';
+import {MediaStream} from 'react-native-webrtc';
 import Room from 'room/components/Room';
-import { useTypedSelector } from 'hooks/redux/useTypedSelector';
-import { UserStackParamList } from 'shared/navigation/routes/UserStack';
+import {useTypedSelector} from 'hooks/redux/useTypedSelector';
+import {UserStackParamList} from 'shared/navigation/routes/UserStack';
 import {
   getFirestore,
   collection,
@@ -32,10 +32,10 @@ import {
   orderBy,
   serverTimestamp,
 } from '@react-native-firebase/firestore';
-import { getAuth } from '@react-native-firebase/auth';
+import {getAuth} from '@react-native-firebase/auth';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { TaskService } from 'shared/services/TaskService';
-import { styles } from 'room/styles/RoomScreen';
+import {TaskService} from 'shared/services/TaskService';
+import {styles} from 'room/styles/RoomScreen';
 
 type RoomScreenRouteProp = RouteProp<UserStackParamList, 'RoomScreen'>;
 type RoomScreenNavigationProp = DrawerNavigationProp<UserStackParamList>;
@@ -63,7 +63,7 @@ const taskService = new TaskService();
 const RoomScreen: React.FC = () => {
   const navigation = useNavigation<RoomScreenNavigationProp>();
   const route = useRoute<RoomScreenRouteProp>();
-  const { meeting, isHost } = route.params;
+  const {meeting, isHost} = route.params;
   const userTheme = useTypedSelector(state => state.user);
   const isDark = userTheme.theme === 'dark';
   const [username, setUsername] = useState('');
@@ -97,20 +97,6 @@ const RoomScreen: React.FC = () => {
   const [streamsByParticipant, setStreamsByParticipant] = useState<
     Map<string, ExtendedMediaStream>
   >(new Map());
-
-  useEffect(() => {
-    // Handle hardware back button
-    const backHandler = BackHandler.addEventListener(
-      'hardwareBackPress',
-      () => {
-        // Show confirmation dialog instead of immediately ending call
-        confirmLeaveRoom();
-        return true;
-      },
-    );
-
-    return () => backHandler.remove();
-  }, []);
 
   useEffect(() => {
     const setupMeeting = async () => {
@@ -332,7 +318,7 @@ const RoomScreen: React.FC = () => {
           Alert.alert(
             'Connection Error',
             'Failed to join meeting after multiple attempts. Please try again later.',
-            [{ text: 'OK', onPress: () => navigation.goBack() }],
+            [{text: 'OK', onPress: () => navigation.goBack()}],
           );
         }
       }
@@ -468,7 +454,7 @@ const RoomScreen: React.FC = () => {
     }
   };
 
-  const cleanup = async () => {
+  const cleanup = useCallback(async () => {
     try {
       console.log('Cleaning up resources');
 
@@ -486,7 +472,7 @@ const RoomScreen: React.FC = () => {
     } catch (error) {
       console.error('Cleanup error:', error);
     }
-  };
+  }, [unsubscribeMessages, meeting.id]);
 
   const handleMeetingEnded = () => {
     // If we're the host and there's an associated task, we've already handled task completion
@@ -680,7 +666,7 @@ const RoomScreen: React.FC = () => {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const { fullName, username } =
+        const {fullName, username} =
           await firebase.firebase.user.getNameUsernamestring();
         console.log(fullName, username);
         setUsername(username);
@@ -693,6 +679,24 @@ const RoomScreen: React.FC = () => {
     };
     fetchUserData();
   }, [currentUser]);
+
+  useEffect(() => {
+    // Handle hardware back button
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      () => {
+        // Show confirmation dialog instead of immediately ending call
+        confirmLeaveRoom();
+        return true;
+      },
+    );
+
+    return () => {
+      backHandler.remove();
+      BackHandler.addEventListener('hardwareBackPress', () => false);
+    };
+  }, [confirmLeaveRoom]);
+
   const handleMessageReaction = async (
     messageId: string,
     reactionType: string,
@@ -725,45 +729,12 @@ const RoomScreen: React.FC = () => {
       }
 
       // Update message with new reactions
-      await updateDoc(messageRef, { reactions });
+      await updateDoc(messageRef, {reactions});
     } catch (error) {
       console.error('Error adding reaction to message:', error);
     }
   };
-
-  // Add confirmation dialog for leaving the room
-  const confirmLeaveRoom = () => {
-    Alert.alert(
-      'Leave Meeting',
-      'Are you sure you want to leave this meeting?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Leave',
-          style: 'destructive',
-          onPress: () => {
-            if (isConnecting) {
-              // If still connecting, just clean up and navigate back
-              cleanup();
-              navigation.dispatch(
-                CommonActions.navigate('Tabs', {
-                  screen: 'Home',
-                }),
-              );
-            } else {
-              // Otherwise use the normal end call flow
-              handleEndCall();
-            }
-          },
-        },
-      ],
-    );
-  };
-
-  const handleEndCall = async () => {
+  const handleEndCall = useCallback(async () => {
     try {
       if (isHost) {
         // Check if meeting has an associated task
@@ -815,7 +786,7 @@ const RoomScreen: React.FC = () => {
                 },
               },
             ],
-            { cancelable: false },
+            {cancelable: false},
           );
         } else {
           // No associated task, end meeting normally
@@ -845,7 +816,39 @@ const RoomScreen: React.FC = () => {
         }),
       );
     }
-  };
+  }, [cleanup, isHost, meeting.id, meeting.taskId, navigation]);
+
+  // Add confirmation dialog for leaving the room
+  const confirmLeaveRoom = useCallback(() => {
+    Alert.alert(
+      'Leave Meeting',
+      'Are you sure you want to leave this meeting?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Leave',
+          style: 'destructive',
+          onPress: () => {
+            if (isConnecting) {
+              // If still connecting, just clean up and navigate back
+              cleanup();
+              navigation.dispatch(
+                CommonActions.navigate('Tabs', {
+                  screen: 'Home',
+                }),
+              );
+            } else {
+              // Otherwise use the normal end call flow
+              handleEndCall();
+            }
+          },
+        },
+      ],
+    );
+  }, [cleanup, handleEndCall, isConnecting, navigation]);
 
   // Function to detect audio levels and update speaking status
   const setupAudioLevelDetection = (stream: any, participantId: string) => {
@@ -902,6 +905,23 @@ const RoomScreen: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    // Handle hardware back button
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      () => {
+        // Show confirmation dialog instead of immediately ending call
+        confirmLeaveRoom();
+        return true;
+      },
+    );
+
+    return () => {
+      backHandler.remove();
+      BackHandler.addEventListener('hardwareBackPress', () => false);
+    };
+  }, [confirmLeaveRoom]);
+
   if (isConnecting) {
     return (
       <View style={styles.loadingContainer}>
@@ -933,7 +953,7 @@ const RoomScreen: React.FC = () => {
   }
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{flex: 1}}>
       {connectionState === 'failed' ? (
         <View style={styles.errorContainer}>
           <Icon name="error" size={64} color="#EA4335" />

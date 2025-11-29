@@ -11,8 +11,8 @@ import {
     Dimensions,
     useWindowDimensions,
     Modal,
-    FlatList,
 } from 'react-native';
+import { LegendList } from '@legendapp/list';
 import { useTypedSelector } from 'hooks/redux/useTypedSelector';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
@@ -341,9 +341,11 @@ const Room = () => {
                             </Text>
                         </View>
                     ) : (
-                        <FlatList
+                        <LegendList
                             data={tasks}
                             keyExtractor={(item) => item.id}
+                            estimatedItemSize={100}
+                            recycleItems={true}
                             renderItem={({ item }) => (
                                 <TouchableOpacity
                                     style={[

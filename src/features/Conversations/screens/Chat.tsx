@@ -1,10 +1,10 @@
+import { LegendList } from '@legendapp/list';
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
-  FlatList,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
@@ -71,7 +71,7 @@ const ChatScreen: React.FC = () => {
     string | null
   >(recipientPhoto || null);
   const messageService = useMemo(() => new MessageService(), []);
-  const flatListRef = useRef<FlatList>(null);
+  const flatListRef = useRef<any>(null);
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [isContextMenuVisible, setIsContextMenuVisible] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -696,12 +696,14 @@ const ChatScreen: React.FC = () => {
             <ActivityIndicator size="large" color="#2379C2" />
           </View>
         ) : (
-          <FlatList
+          <LegendList
             ref={flatListRef}
             data={messages}
             keyExtractor={item => item.id}
             renderItem={renderMessageItem}
             contentContainerStyle={styles.messagesList}
+            estimatedItemSize={100}
+            recycleItems={true}
           />
         )}
 

@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Text,
   View,
-  FlatList,
   TouchableOpacity,
   TextInput,
   StatusBar,
@@ -11,6 +10,7 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+import { LegendList } from '@legendapp/list';
 import { useTypedSelector } from 'hooks/redux/useTypedSelector';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
@@ -862,7 +862,7 @@ const DuoTasks = () => {
               ]}>
               Invitations
             </Text>
-            <FlatList
+            <LegendList
               data={invitations}
               renderItem={renderInvitationItem}
               keyExtractor={item => item.id}
@@ -870,6 +870,8 @@ const DuoTasks = () => {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={{ paddingHorizontal: 10 }}
               ItemSeparatorComponent={() => <View style={{ width: 10 }} />}
+              estimatedItemSize={200}
+              recycleItems={true}
             />
           </View>
         )}
@@ -889,16 +891,17 @@ const DuoTasks = () => {
               style={[styles.emptyText, { color: isDark ? '#8e8e8e' : '#666' }]}>
               {searchQuery
                 ? 'No team tasks found matching your search'
-                : 'No team tasks available. Create one to collaborate!'}
+                : 'No team tasks available. Create a new team task to get started!'}
             </Text>
           </View>
         ) : (
-          <FlatList
+          <LegendList
             data={filteredTasks}
             renderItem={renderTaskItem}
             keyExtractor={item => item.id}
             contentContainerStyle={styles.taskList}
             showsVerticalScrollIndicator={false}
+            estimatedItemSize={150}
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}

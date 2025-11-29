@@ -1,8 +1,8 @@
+import { LegendList } from '@legendapp/list';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
-  FlatList,
   ActivityIndicator,
   RefreshControl,
   TouchableOpacity,
@@ -203,7 +203,7 @@ const SavedPosts: React.FC = () => {
       {loading ? (
         renderLoading()
       ) : (
-        <FlatList
+        <LegendList
           data={savedPosts}
           keyExtractor={item => item.id}
           ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
@@ -220,6 +220,7 @@ const SavedPosts: React.FC = () => {
               tintColor={isDark ? 'white' : primaryColor}
             />
           }
+          estimatedItemSize={500}
         />
       )}
     </SafeAreaView>

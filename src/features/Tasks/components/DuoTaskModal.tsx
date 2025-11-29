@@ -7,10 +7,10 @@ import {
     TextInput,
     ScrollView,
     Switch,
-    FlatList,
     Alert,
     ActivityIndicator,
 } from 'react-native';
+import { LegendList } from '@legendapp/list';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { Task, SubTask } from 'shared/types/taskTypes';
 import {
@@ -735,9 +735,11 @@ const DuoTaskModal: React.FC<DuoTaskModalProps> = ({
                                             No subtasks yet. Add some to track progress!
                                         </Text>
                                     ) : (
-                                        <FlatList
+                                        <LegendList
                                             data={subtasks}
                                             keyExtractor={item => item.id}
+                                            estimatedItemSize={50}
+                                            recycleItems={true}
                                             renderItem={({ item }) => (
                                                 <View
                                                     style={{
@@ -910,9 +912,11 @@ const DuoTaskModal: React.FC<DuoTaskModalProps> = ({
                                             together!
                                         </Text>
                                     ) : (
-                                        <FlatList
+                                        <LegendList
                                             data={collaborators}
                                             keyExtractor={item => item.id}
+                                            estimatedItemSize={60}
+                                            recycleItems={true}
                                             renderItem={({ item }) => (
                                                 <View
                                                     style={[

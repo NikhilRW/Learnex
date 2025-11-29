@@ -1,8 +1,8 @@
+import { LegendList } from '@legendapp/list';
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
-  FlatList,
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
@@ -240,7 +240,7 @@ const ContactListScreen: React.FC = () => {
         showCancel={false}
       />
 
-      <FlatList
+      <LegendList
         data={filteredUsers}
         renderItem={renderUserItem}
         keyExtractor={item => item.id}
@@ -249,6 +249,8 @@ const ContactListScreen: React.FC = () => {
           styles.listContent,
           filteredUsers.length === 0 && styles.emptyListContent,
         ]}
+        estimatedItemSize={80}
+        recycleItems={true}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}

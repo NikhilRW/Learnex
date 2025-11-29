@@ -7,10 +7,10 @@ import {
     TextInput,
     ScrollView,
     Switch,
-    FlatList,
     Alert,
     ActivityIndicator
 } from 'react-native';
+import { LegendList } from '@legendapp/list';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { Task, SubTask } from 'shared/types/taskTypes';
 import { styles } from '../styles/Tasks.styles';
@@ -515,9 +515,11 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
                                             No subtasks yet. Add some to track progress!
                                         </Text>
                                     ) : (
-                                        <FlatList
+                                        <LegendList
                                             data={subtasks}
                                             keyExtractor={(item) => item.id}
+                                            estimatedItemSize={50}
+                                            recycleItems={true}
                                             renderItem={({ item }) => (
                                                 <View style={{
                                                     flexDirection: 'row',
@@ -639,9 +641,11 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
                                             No team members added yet. Add collaborators to work together!
                                         </Text>
                                     ) : (
-                                        <FlatList
+                                        <LegendList
                                             data={collaborators}
                                             keyExtractor={(item) => item.id}
+                                            estimatedItemSize={60}
+                                            recycleItems={true}
                                             renderItem={({ item }) => (
                                                 <View style={{
                                                     flexDirection: 'row',

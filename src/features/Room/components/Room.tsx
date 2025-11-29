@@ -11,7 +11,6 @@ import {
   ToastAndroid,
   Alert,
   TextInput,
-  FlatList,
   KeyboardAvoidingView,
   Keyboard,
   Animated,
@@ -19,6 +18,7 @@ import {
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
+import { LegendList } from '@legendapp/list';
 import { MediaStream, RTCView } from 'react-native-webrtc';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import AntDesign from 'react-native-vector-icons/AntDesign';
@@ -108,8 +108,8 @@ const Room: React.FC<RoomProps> = ({
   const participantsPanelOpacity = useRef(new Animated.Value(0)).current;
   const [selectedMessage, setSelectedMessage] = useState<string | null>(null);
   const [showMessageReactions, setShowMessageReactions] = useState(false);
-  const flatListRef = useRef<FlatList>(null);
-  const participantsListRef = useRef<FlatList>(null);
+  const flatListRef = useRef<any>(null);
+  const participantsListRef = useRef<any>(null);
   const { width, height } = Dimensions.get('window');
   const [pinnedParticipantId, setPinnedParticipantId] = useState<string | null>(
     null,
@@ -951,7 +951,7 @@ const Room: React.FC<RoomProps> = ({
     };
 
     return (
-      <FlatList
+      <LegendList
         ref={participantsListRef}
         data={participantsArray}
         renderItem={renderGridItem} // Use the wrapper function
@@ -961,8 +961,7 @@ const Room: React.FC<RoomProps> = ({
         showsVerticalScrollIndicator={true}
         numColumns={numColumns}
         key={numColumns}
-        initialNumToRender={6}
-        maxToRenderPerBatch={6}
+        estimatedItemSize={300}
       />
     );
   };
@@ -1263,7 +1262,7 @@ const Room: React.FC<RoomProps> = ({
                   </Text>
                 </View>
               ) : (
-                <FlatList
+                <LegendList
                   ref={flatListRef}
                   data={messages}
                   renderItem={renderMessageItem}
@@ -1273,6 +1272,8 @@ const Room: React.FC<RoomProps> = ({
                     isDark && styles.messagesListDark,
                   ]}
                   contentContainerStyle={styles.messagesContent}
+                  estimatedItemSize={80}
+                  recycleItems={true}
                 />
               )}
 
@@ -1347,12 +1348,11 @@ const Room: React.FC<RoomProps> = ({
                 { opacity: quickMessagesMenuOpacity },
               ]}>
               <View style={styles.quickMessagesHeader}>
-                <Text style={styles.quickMessagesTitle}>Quick messages</Text>
                 <TouchableOpacity onPress={() => setShowQuickMessages(false)}>
                   <Icon name="close" size={24} color="#fff" />
                 </TouchableOpacity>
               </View>
-              <FlatList
+              <LegendList
                 data={quickMessages}
                 keyExtractor={item => item}
                 renderItem={({ item }) => (
@@ -1363,6 +1363,8 @@ const Room: React.FC<RoomProps> = ({
                   </TouchableOpacity>
                 )}
                 style={styles.quickMessagesList}
+                estimatedItemSize={50}
+                recycleItems={true}
               />
             </Animated.View>
           )}
@@ -1428,7 +1430,7 @@ const Room: React.FC<RoomProps> = ({
                 </Text>
               </View>
 
-              <FlatList
+              <LegendList
                 data={getOrderedParticipantsForList()}
                 renderItem={renderParticipantListItem}
                 keyExtractor={item => item.id}
@@ -1436,6 +1438,8 @@ const Room: React.FC<RoomProps> = ({
                   styles.participantsList,
                   isDark && styles.participantsListDark,
                 ]}
+                estimatedItemSize={70}
+                recycleItems={true}
               />
             </Animated.View>
           )}

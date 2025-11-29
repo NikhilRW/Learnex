@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Text,
   View,
-  FlatList,
   TouchableOpacity,
   TextInput,
   StatusBar,
@@ -12,6 +11,7 @@ import {
   RefreshControl,
   Pressable,
 } from 'react-native';
+import { LegendList } from '@legendapp/list';
 import { useTypedSelector } from 'hooks/redux/useTypedSelector';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
@@ -636,12 +636,13 @@ const Tasks = () => {
             </Text>
           </View>
         ) : (
-          <FlatList
+          <LegendList
             data={filteredTasks}
             renderItem={renderTaskItem}
             keyExtractor={item => item.id}
             contentContainerStyle={styles.taskList}
             showsVerticalScrollIndicator={false}
+            estimatedItemSize={150}
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}

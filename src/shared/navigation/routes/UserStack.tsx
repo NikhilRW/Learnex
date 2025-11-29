@@ -19,7 +19,7 @@ import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useTypedSelector } from 'hooks/redux/useTypedSelector';
 import NavigationIconHelper from 'shared/helpers/navigation/NavigationIconHelper';
 import { Dimensions, Alert, ImageSourcePropType } from 'react-native';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import { useTypedDispatch } from 'hooks/redux/useTypedDispatch';
 import { clearDeepLink, markDeepLinkProcessed } from 'shared/reducers/DeepLink';
@@ -157,12 +157,53 @@ const extractUserIdFromChatUrl = (url: string): string | null => {
 };
 
 /**
+ * Bottom tab navigator configuration
+ * Includes Home, Search, Create Post
+ */
+
+// Custom tab bar component to prevent recreation on each render
+const CustomTabBar = (props: any) => <FloatingBottomTabBar {...props} />;
+
+const TabNavigator = ({ isDark }: { isDark: boolean }) => {
+  const Tab = createBottomTabNavigator<UserStackParamList>();
+
+  return (
+    <Tab.Navigator
+      initialRouteName="Home"
+      tabBar={CustomTabBar}
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarShowLabel: false,
+        tabBarStyle: {
+          borderWidth: 0,
+          borderColor: isDark ? '#2a2a2a' : '#EDECEC',
+          height: Math.min(SCREEN_WIDTH * 0.1375, 55),
+          paddingBottom: Math.min(SCREEN_WIDTH * 0.0125, 5),
+        },
+        // Custom tab bar icons with theme-aware colors
+        tabBarIcon: ({ focused, color, size }) => {
+          return NavigationIconHelper(
+            route,
+            focused,
+            size + 5,
+            color,
+          ); // Slightly reduce icon size
+        },
+        animation: 'fade',
+      })}>
+      <Tab.Screen name="Home" component={Home} />
+      <Tab.Screen name="Search" component={Search} />
+      <Tab.Screen name="CreatePost" component={CreatePost} />
+    </Tab.Navigator>
+  );
+};
+
+/**
  * Main navigation stack for authenticated users
  * Combines drawer navigation with bottom tab navigation
  */
 const UserStack = () => {
   const Drawer = createDrawerNavigator();
-  const Tab = createBottomTabNavigator<UserStackParamList>();
   const isDark = useTypedSelector(state => state.user.theme) === 'dark';
   const deepLinkUrl = useTypedSelector(state => state.deepLink.url);
   const deepLinkProcessed = useTypedSelector(state => state.deepLink.processed);
@@ -172,6 +213,23 @@ const UserStack = () => {
   const messageService = useRef(new MessageService()).current;
   const firebase = useTypedSelector(state => state.firebase.firebase);
   const messaging = getMessaging();
+
+  const renderDrawerContent = useCallback(
+    (props: any) => <NavigationDrawer {...props} />,
+    [],
+  );
+
+  const renderHeader = useCallback(
+    ({ navigation: drawerNavigation }: { navigation: any }) => (
+      <NavigationDrawerButton navigation={drawerNavigation} />
+    ),
+    [],
+  );
+
+  const renderTabNavigator = useCallback(
+    () => <TabNavigator isDark={isDark} />,
+    [isDark],
+  );
 
   // Set up notification channels and handlers for direct messages and tasks
   useEffect(() => {
@@ -228,7 +286,6 @@ const UserStack = () => {
       }
     };
   }, [navigation, messaging]);
-  const { DeepLinkHandler } = require('shared/services/DeepLinkHandler');
 
   // Handle deep link navigation
   useEffect(() => {
@@ -258,7 +315,13 @@ const UserStack = () => {
               throw new Error('User not found');
             }
 
-            const userData = userDoc.data() || {};
+            const userData = userDoc.data() as {
+              fullName?: string;
+              username?: string;
+              photoURL?: string;
+              profilePicture?: string;
+              image?: string;
+            } || {};
             const recipientName =
               userData.fullName || userData.username || 'User';
             const recipientPhoto =
@@ -296,20 +359,23 @@ const UserStack = () => {
             }
 
             // Navigate to the chat screen
-            (DeepLinkHandler.navigate({
-              name: 'Chat',
-              params: {
-                conversationId: conversation.id,
-                recipientId: userId,
-                recipientName,
-                recipientPhoto,
-                isQrInitiated: true, // Pass QR flag to chat screen
-              },
-            }),
-              // Clear the deep link after successful navigation
-              setTimeout(() => {
-                dispatch(clearDeepLink());
-              }, 2000));
+            navigation.dispatch(
+              CommonActions.navigate({
+                name: 'Chat',
+                params: {
+                  conversationId: conversation.id,
+                  recipientId: userId,
+                  recipientName,
+                  recipientPhoto,
+                  isQrInitiated: true, // Pass QR flag to chat screen
+                },
+              }),
+            );
+
+            // Clear the deep link after successful navigation
+            setTimeout(() => {
+              dispatch(clearDeepLink());
+            }, 2000);
 
             return; // Exit after handling chat link
           } catch (error) {
@@ -365,51 +431,12 @@ const UserStack = () => {
     };
 
     handleDeepLink();
-  }, [deepLinkUrl, deepLinkProcessed, dispatch, navigation]);
-
-  /**
-   * Bottom tab navigator configuration
-   * Includes Home, Search, Create Post, Trends, and Announcements
-   */
-  const TabNavigator = () => {
-    return (
-      <Tab.Navigator
-        initialRouteName="Home"
-        tabBar={props => <FloatingBottomTabBar {...props} />}
-        screenOptions={({ route }) => ({
-          headerShown: false,
-          tabBarShowLabel: false,
-          tabBarStyle: {
-            borderWidth: 0,
-            borderColor: isDark ? '#2a2a2a' : '#EDECEC',
-            height: Math.min(SCREEN_WIDTH * 0.1375, 55),
-            paddingBottom: Math.min(SCREEN_WIDTH * 0.0125, 5),
-          },
-          // Custom tab bar icons with theme-aware colors
-          tabBarIcon: ({ focused, color, size }) => {
-            return NavigationIconHelper(
-              route,
-              focused,
-              size + 5,
-              color,
-              isDark,
-            ); // Slightly reduce icon size
-          },
-          animation: 'fade',
-        })}>
-        <Tab.Screen name="Home" component={Home} />
-        <Tab.Screen name="Search" component={Search} />
-        <Tab.Screen name="CreatePost" component={CreatePost} />
-      </Tab.Navigator>
-    );
-  };
+  }, [deepLinkUrl, deepLinkProcessed, dispatch, navigation, messageService, meetingService, firebase]);
 
   return (
     <Drawer.Navigator
       initialRouteName="Tabs"
-      drawerContent={props => {
-        return <NavigationDrawer {...props} />;
-      }}
+      drawerContent={renderDrawerContent}
       screenOptions={{
         headerShown: false, // Hide header for all screens by default
         drawerStyle: {
@@ -419,15 +446,10 @@ const UserStack = () => {
       }}>
       <Drawer.Screen
         name="Tabs"
-        component={TabNavigator}
+        component={renderTabNavigator}
         options={{
           headerShown: true, // Show header only for the main tabs
-          header: ({ navigation }) => (
-            <NavigationDrawerButton
-              navigation={navigation}
-              tintColor={isDark ? 'white' : 'black'}
-            />
-          ),
+          header: renderHeader,
           lazy: true,
         }}
       />

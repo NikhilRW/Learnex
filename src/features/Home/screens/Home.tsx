@@ -1,21 +1,23 @@
-import {
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
-  FlatList,
-  ViewToken,
-  RefreshControl,
-} from 'react-native';
-import React, {useEffect, useState, useCallback, useRef, JSX} from 'react';
-import {useTypedSelector} from 'hooks/redux/useTypedSelector';
-import {useTypedDispatch} from 'hooks/redux/useTypedDispatch';
+import { View, ViewToken, RefreshControl } from 'react-native';
+import React, { useEffect, useState, useCallback, useRef, JSX } from 'react';
+import { useTypedSelector } from 'hooks/redux/useTypedSelector';
 import SkeletonPlaceholder from 'react-native-skeleton-placeholder';
 import Post from 'home/components/Post';
-import {PostType} from 'shared/types/post';
-import {styles} from 'home/styles/Home';
-import {primaryColor} from 'shared/res/strings/eng';
-import {SafeAreaView} from 'react-native-safe-area-context';
+import { PostType } from 'shared/types/post';
+import { styles } from 'home/styles/Home';
+import { primaryColor } from 'shared/res/strings/eng';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { HomeHeader } from '../components/HomeHeader';
+import { LegendList } from '@legendapp/list';
+
+const HomeSkeleton = (): JSX.Element => {
+  //TODO : Add the skeleton for the home screen
+  return (
+    <SkeletonPlaceholder borderRadius={4} speed={1000} highlightColor="#edf6f7">
+      <View />
+    </SkeletonPlaceholder>
+  );
+};
 
 const Home = () => {
   const firebase = useTypedSelector(state => state.firebase.firebase);
@@ -24,35 +26,15 @@ const Home = () => {
 
   const [isLoaded, setIsLoaded] = useState(false);
   const [posts, setPosts] = useState<
-    (PostType & {isLiked: boolean; likes: number; isSaved: boolean})[]
+    (PostType & { isLiked: boolean; likes: number; isSaved: boolean })[]
   >([]);
   const [filteredPosts, setFilteredPosts] = useState<
-    (PostType & {isLiked: boolean; likes: number; isSaved: boolean})[]
+    (PostType & { isLiked: boolean; likes: number; isSaved: boolean })[]
   >([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [username, setUsername] = useState<string>('');
-  const [photoURL, setPhotoURL] = useState<string | null>(null);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
-  const dispatch = useTypedDispatch();
-  const profileColor = useTypedSelector(state => state.user.userProfileColor);
   const [visibleVideoId, setVisibleVideoId] = useState<string | null>(null);
   const [trendingTags, setTrendingTags] = useState<string[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-
-  // Fetch user data
-  const fetchUserData = async () => {
-    try {
-      const currentUser = firebase.auth.currentUser();
-      if (currentUser?.photoURL) {
-        setPhotoURL(currentUser.photoURL);
-      }
-      const {fullName} = await firebase.user.getNameUsernamestring();
-      setUsername(fullName);
-    } catch (err) {
-      console.error('Error fetching user data:', err);
-    }
-  };
 
   // Optimize post updates subscription
   useEffect(() => {
@@ -67,17 +49,10 @@ const Home = () => {
             );
             setFilteredPosts(filtered);
           }
-          setLoading(false);
           setIsLoaded(true);
         });
       } catch (err) {
         console.error('Error setting up real-time updates:', err);
-        setError(
-          err instanceof Error
-            ? err.message
-            : 'Failed to setup real-time updates',
-        );
-        setLoading(false);
       }
     };
 
@@ -86,37 +61,16 @@ const Home = () => {
   }, [firebase.posts, selectedTag]);
 
   useEffect(() => {
-    fetchUserData();
-  }, []);
-
-  useEffect(() => {
     setTimeout(() => {
       setIsLoaded(true);
     }, 2500);
   }, []);
-  const HomeSkeleton = ({
-    width,
-    height,
-  }: {
-    width: number;
-    height: number;
-  }): JSX.Element => {
-    //TODO : Add the skeleton for the home screen
-    return (
-      <SkeletonPlaceholder
-        borderRadius={4}
-        speed={1000}
-        highlightColor="#edf6f7">
-        <View></View>
-      </SkeletonPlaceholder>
-    );
-  };
 
   const onViewableItemsChanged = useCallback(
-    ({viewableItems}: {viewableItems: Array<ViewToken>}) => {
+    ({ viewableItems }: { viewableItems: Array<ViewToken> }) => {
       // Find the first video post that is visible
       const visibleVideo = viewableItems.find(
-        ({item}) => item.isVideo && item.postVideo,
+        ({ item }) => item.isVideo && item.postVideo,
       );
       // Set the visible video ID or null if no video is visible
       setVisibleVideoId(visibleVideo ? visibleVideo.item.id : null);
@@ -137,7 +91,7 @@ const Home = () => {
     ({
       item,
     }: {
-      item: PostType & {isLiked: boolean; likes: number; isSaved: boolean};
+      item: PostType & { isLiked: boolean; likes: number; isSaved: boolean };
     }) => (
       <View style={styles.postContainer}>
         <Post
@@ -193,7 +147,7 @@ const Home = () => {
         const hashtagStats = new Map<string, number>();
 
         trendingResponse.posts.forEach(
-          (post: PostType & {likes: number; comments: number}) => {
+          (post: PostType & { likes: number; comments: number }) => {
             if (post.hashtags && Array.isArray(post.hashtags)) {
               const engagement = post.likes + post.comments;
               post.hashtags.forEach(tag => {
@@ -217,14 +171,14 @@ const Home = () => {
       }
 
       // Refresh user data
-      await fetchUserData();
-    } catch (error) {
-      console.error('Error refreshing home feed:', error);
+      // await fetchUserData();
+    } catch (err) {
+      console.error('Error refreshing home feed:', err);
       // Use fallback tags if there's an error
     } finally {
       setRefreshing(false);
     }
-  }, [firebase.posts, firebase.trending, selectedTag, fetchUserData]);
+  }, [firebase.posts, firebase.trending, selectedTag]);
 
   // Optimize trending tags fetch with cleanup
   useEffect(() => {
@@ -254,7 +208,7 @@ const Home = () => {
           const hashtagStats = new Map<string, number>();
 
           response.posts.forEach(
-            (post: PostType & {likes: number; comments: number}) => {
+            (post: PostType & { likes: number; comments: number }) => {
               console.log('Processing post:', {
                 id: post.id,
                 hashtags: post.hashtags || [],
@@ -291,6 +245,8 @@ const Home = () => {
             .sort((a, b) => b[1] - a[1])
             .slice(0, 10)
             .map(([tag]) => tag);
+
+          setTrendingTags(topTags);
         } else {
           // Extract tags from available posts instead of using fallback tags
           const extractTagsFromPosts = () => {
@@ -317,8 +273,8 @@ const Home = () => {
             setTrendingTags([]);
           }
         }
-      } catch (error) {
-        console.error('Error in fetchTrendingTags:', error);
+      } catch (err) {
+        console.error('Error in fetchTrendingTags:', err);
         // Extract tags from available posts instead of using empty array
         if (mounted) {
           const extractTagsFromPosts = () => {
@@ -381,7 +337,7 @@ const Home = () => {
       className={`justify-start items-center ${isDark ? 'bg-[#1a1a1a]' : 'bg-white'}`}>
       {isLoaded ? (
         <>
-          <FlatList
+          <LegendList
             data={selectedTag ? filteredPosts : posts}
             renderItem={renderPost}
             keyExtractor={item => item.id}
@@ -391,98 +347,28 @@ const Home = () => {
             viewabilityConfigCallbackPairs={
               viewabilityConfigCallbackPairs.current
             }
-            initialNumToRender={2}
-            maxToRenderPerBatch={2}
-            windowSize={5} // Causes Scrolling To Flicker
-            removeClippedSubviews={true}
-            updateCellsBatchingPeriod={50}
-            getItemLayout={(data, index) => ({
-              length: 500, // Approximate height of each post
-              offset: 500 * index,
-              index,
-            })}
+            estimatedItemSize={500}
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
-                // onRefresh={onRefresh}
+                onRefresh={onRefresh}
                 tintColor={isDark ? '#ffffff' : '#000000'}
                 colors={[primaryColor]}
                 progressBackgroundColor={isDark ? '#1a1a1a' : '#ffffff'}
               />
             }
-            ListHeaderComponent={() => (
-              <>
-                {/* Stories */}
-                {/* <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={styles.storiesContainer}
-                >
-                  {stories.map(story => (
-                    <View key={story.id} style={styles.storyItem}>
-                      <Image source={story.image} style={styles.storyImage} />
-                    </View>
-                  ))}
-                </ScrollView> */}
-                {/* Tags */}
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={styles.tagsContainer}>
-                  {trendingTags.map(tag => (
-                    <TouchableOpacity
-                      key={tag}
-                      style={[
-                        styles.tagButton,
-                        {
-                          backgroundColor: isDark ? '#2a2a2a' : '#F0F0F0',
-                          borderWidth: selectedTag === tag ? 2 : 0,
-                          borderColor: '#0095f6',
-                        },
-                      ]}
-                      onPress={() => handleTagPress(tag)}>
-                      <Text
-                        style={[
-                          styles.tagText,
-                          {
-                            color:
-                              selectedTag === tag
-                                ? '#0095f6'
-                                : isDark
-                                  ? 'white'
-                                  : 'black',
-                          },
-                        ]}>
-                        {tag.includes('#') ? tag : `#${tag}`}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-                {selectedTag && (
-                  <View style={styles.filterInfo}>
-                    <Text
-                      style={[
-                        styles.filterText,
-                        {color: isDark ? 'white' : 'black'},
-                      ]}>
-                      Showing posts tagged with{' '}
-                      {selectedTag.includes('#')
-                        ? selectedTag
-                        : `#${selectedTag}`}
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() => handleTagPress(selectedTag)}
-                      style={styles.clearFilterButton}>
-                      <Text style={{color: '#0095f6'}}>Clear filter</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-              </>
-            )}
+            ListHeaderComponent={
+              <HomeHeader
+                handleTagPress={handleTagPress}
+                isDark={isDark}
+                selectedTag={selectedTag}
+                trendingTags={trendingTags}
+              />
+            }
           />
         </>
       ) : (
-        <HomeSkeleton width={100} height={100} />
+        <HomeSkeleton />
       )}
     </SafeAreaView>
   );

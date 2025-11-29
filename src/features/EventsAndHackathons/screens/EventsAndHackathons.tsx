@@ -1,8 +1,8 @@
+import { LegendList } from '@legendapp/list';
 import React, { useEffect, useState } from 'react';
 import {
     View,
     Text,
-    FlatList,
     TouchableOpacity,
     ActivityIndicator,
     Platform,
@@ -556,7 +556,7 @@ const EventsAndHackathons: React.FC = () => {
         }
 
         return (
-            <FlatList
+            <LegendList
                 data={filteredEvents}
                 renderItem={renderItem}
                 keyExtractor={(item, index) => {
@@ -567,6 +567,8 @@ const EventsAndHackathons: React.FC = () => {
                 }}
                 contentContainerStyle={styles.listContainer}
                 showsVerticalScrollIndicator={false}
+                estimatedItemSize={200}
+                recycleItems={true}
                 refreshControl={
                     <RefreshControl
                         refreshing={refreshing}
