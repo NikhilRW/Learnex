@@ -170,8 +170,8 @@ describe('usePostSave hook', () => {
     });
 
     it('should set isSaving to true during the save operation', async () => {
-      let resolvePromise: (value: any) => void;
-      const savePromise = new Promise(resolve => {
+      let resolvePromise: (value: {success: boolean; saved: boolean}) => void;
+      const savePromise = new Promise<{success: boolean; saved: boolean}>(resolve => {
         resolvePromise = resolve;
       });
 
@@ -196,15 +196,15 @@ describe('usePostSave hook', () => {
 
       // Resolve the promise
       await act(async () => {
-        resolvePromise!({success: true, saved: true});
+        resolvePromise({success: true, saved: true});
       });
 
       expect(result.current.isSaving).toBe(false);
     });
 
     it('should prevent multiple save operations when already saving', async () => {
-      let resolvePromise: (value: any) => void;
-      const savePromise = new Promise(resolve => {
+      let resolvePromise: (value: {success: boolean; saved: boolean}) => void;
+      const savePromise = new Promise<{success: boolean; saved: boolean}>(resolve => {
         resolvePromise = resolve;
       });
 
@@ -234,7 +234,7 @@ describe('usePostSave hook', () => {
 
       // Cleanup
       await act(async () => {
-        resolvePromise!({success: true, saved: true});
+        resolvePromise({success: true, saved: true});
       });
     });
   });

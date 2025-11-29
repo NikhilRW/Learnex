@@ -61,8 +61,8 @@ jest.mock('@react-navigation/native', () => {
   };
 });
 
-// Mock MessageService
-jest.mock('conversations/services/MessageService', () => ({
+// Mock MessageService with full path
+jest.mock('../../../../src/features/Conversations/services/MessageService', () => ({
   MessageService: jest.fn().mockImplementation(() => ({
     getOrCreateConversation: jest.fn().mockResolvedValue({id: 'conv-123'}),
   })),

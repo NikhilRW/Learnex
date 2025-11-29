@@ -244,8 +244,8 @@ describe('usePostComments hook', () => {
     });
 
     it('should set isAddingComment to true during the operation', async () => {
-      let resolvePromise: (value: any) => void;
-      const addPromise = new Promise(resolve => {
+      let resolvePromise: (value: {success: boolean; comment?: {id: string; text: string}}) => void;
+      const addPromise = new Promise<{success: boolean; comment?: {id: string; text: string}}>(resolve => {
         resolvePromise = resolve;
       });
 
@@ -274,7 +274,7 @@ describe('usePostComments hook', () => {
 
       // Resolve the promise
       await act(async () => {
-        resolvePromise!({success: true, comment: {id: '1', text: 'test'}});
+        resolvePromise({success: true, comment: {id: '1', text: 'test'}});
       });
 
       expect(result.current.isAddingComment).toBe(false);
