@@ -1,5 +1,5 @@
 import { View, ViewToken, RefreshControl } from 'react-native';
-import React, { useEffect, useState, useCallback, useRef, JSX } from 'react';
+import React, { useEffect, useState, useCallback, useRef, JSX, startTransition } from 'react';
 import { useTypedSelector } from 'hooks/redux/useTypedSelector';
 import SkeletonPlaceholder from 'react-native-skeleton-placeholder';
 import Post from 'home/components/Post';
@@ -315,18 +315,22 @@ const Home = () => {
   const handleTagPress = useCallback(
     (tag: string) => {
       if (selectedTag === tag) {
-        setSelectedTag(null);
-        setFilteredPosts([]);
+        startTransition(() => {
+          setSelectedTag(null);
+          setFilteredPosts([]);
+        });
       } else {
         console.log(`Filtering by tag: ${tag}`);
-        setSelectedTag(tag);
-        const filtered = posts.filter(post => {
-          // Ensure hashtags exists and is an array
-          const hashtags = post.hashtags || [];
-          const hasTag = Array.isArray(hashtags) && hashtags.includes(tag);
-          return hasTag;
+        startTransition(() => {
+          setSelectedTag(tag);
+          const filtered = posts.filter(post => {
+            // Ensure hashtags exists and is an array
+            const hashtags = post.hashtags || [];
+            const hasTag = Array.isArray(hashtags) && hashtags.includes(tag);
+            return hasTag;
+          });
+          setFilteredPosts(filtered);
         });
-        setFilteredPosts(filtered);
       }
     },
     [selectedTag, posts],

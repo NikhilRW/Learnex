@@ -6,7 +6,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { LegendList } from '@legendapp/list';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState, startTransition } from 'react';
 import { UserStackParamList } from 'shared/navigation/routes/UserStack';
 import { RouteProp } from '@react-navigation/native';
 import { styles } from 'shared/styles/Home'; // Reuse Home styles
@@ -49,8 +49,10 @@ const Search = ({ route }: { route: SearchScreenRouteProp }) => {
 
         if (isMounted) {
           if (response.success) {
-            setPosts(response.posts!);
-            setLoading(false);
+            startTransition(() => {
+              setPosts(response.posts!);
+              setLoading(false);
+            });
           } else if (retryCount < maxRetries) {
             // If no posts yet and within retry limit, try again after delay
             setRetryCount(prev => prev + 1);
@@ -76,7 +78,7 @@ const Search = ({ route }: { route: SearchScreenRouteProp }) => {
       isMounted = false;
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [searchText]);
+  }, [firebase.posts, retryCount, searchText]);
 
   // Handle video visibility
   const onViewableItemsChanged = useCallback(
@@ -104,14 +106,16 @@ const Search = ({ route }: { route: SearchScreenRouteProp }) => {
       setRefreshing(true);
       const response = await firebase.posts.getPostsBySearch(searchText!);
       if (response.success) {
-        setPosts(response.posts!);
+        startTransition(() => {
+          setPosts(response.posts!);
+        });
       }
     } catch (error) {
       console.error('Error refreshing search results:', error);
     } finally {
       setRefreshing(false);
     }
-  }, [searchText]);
+  }, [firebase.posts, searchText]);
 
   const renderPost = ({
     item,

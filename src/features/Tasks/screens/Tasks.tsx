@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, startTransition } from 'react';
 import {
   Text,
   View,
@@ -151,7 +151,9 @@ const Tasks = () => {
   }, [fetchTasks, selectedFilter]); // Re-fetch when filter changes
 
   const handleSearch = (text: string) => {
-    setSearchQuery(text);
+    startTransition(() => {
+      setSearchQuery(text);
+    });
   };
 
   const toggleTaskCompletion = async (id: string) => {
@@ -496,7 +498,8 @@ const Tasks = () => {
                 borderColor: isDark ? '#404040' : '#e0e0e0',
               },
             ]}
-            onPress={() => setSelectedFilter('all')}>
+            onPress={() => startTransition(() => setSelectedFilter('all'))}>
+
             <Text
               style={[
                 styles.filterText,
@@ -528,7 +531,8 @@ const Tasks = () => {
                 borderColor: isDark ? '#404040' : '#e0e0e0',
               },
             ]}
-            onPress={() => setSelectedFilter('pending')}>
+            onPress={() => startTransition(() => setSelectedFilter('pending'))}>
+
             <Text
               style={[
                 styles.filterText,
@@ -560,7 +564,8 @@ const Tasks = () => {
                 borderColor: isDark ? '#404040' : '#e0e0e0',
               },
             ]}
-            onPress={() => setSelectedFilter('completed')}>
+            onPress={() => startTransition(() => setSelectedFilter('completed'))}>
+
             <Text
               style={[
                 styles.filterText,
@@ -594,7 +599,7 @@ const Tasks = () => {
                   borderColor: isDark ? '#404040' : '#e0e0e0',
                 },
               ]}
-              onPress={() => setSelectedFilter(category)}>
+              onPress={() => startTransition(() => setSelectedFilter(category))}>
               <Text
                 style={[
                   styles.filterText,
