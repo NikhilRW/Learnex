@@ -165,3 +165,7 @@ logs/
 *~ 
 
 learnex-web/public/presentation-tech.mp3
+# Expo
+.expo
+dist/
+web-build/

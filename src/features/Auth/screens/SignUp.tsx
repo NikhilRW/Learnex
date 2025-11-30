@@ -11,7 +11,7 @@ import {styles} from 'auth/styles/SignUp';
 import React, {useCallback, useEffect, useState} from 'react';
 import FeatherIcon from 'react-native-vector-icons/Feather';
 import BouncyCheckbox from 'react-native-bouncy-checkbox';
-import {Image, Input} from 'react-native-elements';
+import {Input} from 'react-native-elements';
 import MaterialsIcon from 'react-native-vector-icons/MaterialIcons';
 import {
   emailNotAvailErrMsg,
