@@ -35,7 +35,7 @@ const Search = ({ route }: { route: SearchScreenRouteProp }) => {
     let isMounted = true;
     let timeoutId: NodeJS.Timeout;
 
-    const fetchPosts = async () => {
+    const fetchPosts = async (currentRetryCount = 0) => {
       if (!searchText) {
         if (isMounted) {
           setPosts([]);
@@ -49,15 +49,21 @@ const Search = ({ route }: { route: SearchScreenRouteProp }) => {
 
         if (isMounted) {
           if (response.success) {
+<<<<<<< HEAD
             startTransition(() => {
               setPosts(response.posts!);
               setLoading(false);
             });
           } else if (retryCount < maxRetries) {
+=======
+            setPosts(response.posts!);
+            setLoading(false);
+          } else if (currentRetryCount < maxRetries) {
+>>>>>>> day_04_tests
             // If no posts yet and within retry limit, try again after delay
-            setRetryCount(prev => prev + 1);
+            setRetryCount(currentRetryCount + 1);
             timeoutId = setTimeout(() => {
-              if (isMounted) fetchPosts();
+              if (isMounted) fetchPosts(currentRetryCount + 1);
             }, 1500);
           } else {
             // Max retries reached, stop loading
@@ -72,7 +78,7 @@ const Search = ({ route }: { route: SearchScreenRouteProp }) => {
 
     setLoading(true);
     setRetryCount(0);
-    fetchPosts();
+    fetchPosts(0);
 
     return () => {
       isMounted = false;

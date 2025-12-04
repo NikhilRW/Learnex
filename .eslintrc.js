@@ -5,9 +5,7 @@ module.exports = {
   },
   extends: [
     '@react-native',
-    'plugin:jest/recommended', 
+    'plugin:jest/recommended',
   ],
-  plugins: [
-    'jest', 
-  ],
+  plugins: ['jest'],
 };

@@ -1107,7 +1107,6 @@ export class TaskService {
           `TaskService :: rejectDuoTaskInvitation() :: Removed user from collaborators`,
         );
       }
-
       // Update notification as read
       const notificationsSnapshot = await getDocs(
         query(
