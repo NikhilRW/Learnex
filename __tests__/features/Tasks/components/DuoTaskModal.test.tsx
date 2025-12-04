@@ -1,11 +1,27 @@
 import React from 'react';
-import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
+import {render, fireEvent, act} from '@testing-library/react-native';
 import DuoTaskModal from '../../../../src/features/Tasks/components/DuoTaskModal';
+
+// Mock @legendapp/list
+jest.mock('@legendapp/list', () => ({
+  LegendList: ({data, renderItem, keyExtractor}: any) => {
+    const {View} = require('react-native');
+    return (
+      <View>
+        {data.map((item: any, index: number) => (
+          <View key={keyExtractor ? keyExtractor(item) : index}>
+            {renderItem({item, index})}
+          </View>
+        ))}
+      </View>
+    );
+  },
+}));
 
 // Mock Firebase modules
 jest.mock('@react-native-firebase/auth', () => ({
   getAuth: jest.fn(() => ({
-    currentUser: { uid: 'test-user-id' },
+    currentUser: {uid: 'test-user-id'},
   })),
 }));
 
@@ -13,8 +29,10 @@ jest.mock('@react-native-firebase/firestore', () => ({
   getFirestore: jest.fn(),
   collection: jest.fn(),
   doc: jest.fn(),
-  getDoc: jest.fn(() => Promise.resolve({ exists: () => false, data: () => null })),
-  getDocs: jest.fn(() => Promise.resolve({ docs: [] })),
+  getDoc: jest.fn(() =>
+    Promise.resolve({exists: () => false, data: () => null}),
+  ),
+  getDocs: jest.fn(() => Promise.resolve({docs: []})),
   Timestamp: {
     fromDate: jest.fn(date => date),
     now: jest.fn(() => new Date()),
@@ -69,7 +87,7 @@ describe('DuoTaskModal Component', () => {
   });
 
   it('renders correctly in add mode', async () => {
-    const { getByText } = render(<DuoTaskModal {...defaultProps} />);
+    const {getByText} = render(<DuoTaskModal {...defaultProps} />);
 
     await act(async () => {
       await new Promise(resolve => setTimeout(resolve, 0));
@@ -85,7 +103,7 @@ describe('DuoTaskModal Component', () => {
       ...defaultProps,
       isEditMode: true,
     };
-    const { getByText } = render(<DuoTaskModal {...props} />);
+    const {getByText} = render(<DuoTaskModal {...props} />);
 
     await act(async () => {
       await new Promise(resolve => setTimeout(resolve, 0));
@@ -99,18 +117,17 @@ describe('DuoTaskModal Component', () => {
       ...defaultProps,
       isDark: true,
     };
-    const { getByTestId } = render(<DuoTaskModal {...props} />);
+    const {getByTestId} = render(<DuoTaskModal {...props} />);
 
     await act(async () => {
       await new Promise(resolve => setTimeout(resolve, 0));
     });
 
     expect(getByTestId('duoTaskModal')).toBeTruthy();
-
   });
 
   it('calls onClose when close button is pressed', async () => {
-    const { getByText } = render(<DuoTaskModal {...defaultProps} />);
+    const {getByText} = render(<DuoTaskModal {...defaultProps} />);
 
     await act(async () => {
       await new Promise(resolve => setTimeout(resolve, 0));
@@ -121,7 +138,7 @@ describe('DuoTaskModal Component', () => {
   });
 
   it('calls onSave when save button is pressed', async () => {
-    const { getByText } = render(<DuoTaskModal {...defaultProps} />);
+    const {getByText} = render(<DuoTaskModal {...defaultProps} />);
 
     await act(async () => {
       await new Promise(resolve => setTimeout(resolve, 0));
@@ -132,7 +149,7 @@ describe('DuoTaskModal Component', () => {
   });
 
   it('switches between tabs correctly', async () => {
-    const { getByText } = render(<DuoTaskModal {...defaultProps} />);
+    const {getByText} = render(<DuoTaskModal {...defaultProps} />);
 
     await act(async () => {
       await new Promise(resolve => setTimeout(resolve, 0));
@@ -152,9 +169,7 @@ describe('DuoTaskModal Component', () => {
   });
 
   it('updates task title when text is entered', async () => {
-    const { getByPlaceholderText } = render(
-      <DuoTaskModal {...defaultProps} />,
-    );
+    const {getByPlaceholderText} = render(<DuoTaskModal {...defaultProps} />);
 
     await act(async () => {
       await new Promise(resolve => setTimeout(resolve, 0));
@@ -170,7 +185,7 @@ describe('DuoTaskModal Component', () => {
   });
 
   it('updates task description when text is entered', async () => {
-    const { getByPlaceholderText } = render(<DuoTaskModal {...defaultProps} />);
+    const {getByPlaceholderText} = render(<DuoTaskModal {...defaultProps} />);
 
     await act(async () => {
       await new Promise(resolve => setTimeout(resolve, 0));
@@ -186,7 +201,7 @@ describe('DuoTaskModal Component', () => {
   });
 
   it('updates due date when text is entered', async () => {
-    const { getByPlaceholderText } = render(<DuoTaskModal {...defaultProps} />);
+    const {getByPlaceholderText} = render(<DuoTaskModal {...defaultProps} />);
 
     await act(async () => {
       await new Promise(resolve => setTimeout(resolve, 0));
@@ -202,7 +217,7 @@ describe('DuoTaskModal Component', () => {
   });
 
   it('updates due time when text is entered', async () => {
-    const { getByPlaceholderText } = render(<DuoTaskModal {...defaultProps} />);
+    const {getByPlaceholderText} = render(<DuoTaskModal {...defaultProps} />);
 
     await act(async () => {
       await new Promise(resolve => setTimeout(resolve, 0));
@@ -218,7 +233,7 @@ describe('DuoTaskModal Component', () => {
   });
 
   it('updates priority when a priority option is pressed', async () => {
-    const { getByText } = render(<DuoTaskModal {...defaultProps} />);
+    const {getByText} = render(<DuoTaskModal {...defaultProps} />);
 
     await act(async () => {
       await new Promise(resolve => setTimeout(resolve, 0));
@@ -233,7 +248,7 @@ describe('DuoTaskModal Component', () => {
   });
 
   it('adds a subtask when add subtask button is pressed', async () => {
-    const { getByText, getByPlaceholderText, getByTestId } = render(
+    const {getByText, getByPlaceholderText, getByTestId} = render(
       <DuoTaskModal {...defaultProps} />,
     );
 
@@ -245,7 +260,9 @@ describe('DuoTaskModal Component', () => {
     fireEvent.press(getByText('Subtasks'));
 
     const subtaskTitleInput = getByPlaceholderText('Subtask title');
-    const subtaskDescInput = getByPlaceholderText('Subtask Description (optional)');
+    const subtaskDescInput = getByPlaceholderText(
+      'Subtask Description (optional)',
+    );
 
     fireEvent.changeText(subtaskTitleInput, 'New Subtask');
     fireEvent.changeText(subtaskDescInput, 'Subtask description');
@@ -265,7 +282,7 @@ describe('DuoTaskModal Component', () => {
         collaborationStatus: 'active' as const,
       },
     };
-    const { getByText } = render(<DuoTaskModal {...props} />);
+    const {getByText} = render(<DuoTaskModal {...props} />);
 
     await act(async () => {
       await new Promise(resolve => setTimeout(resolve, 0));
@@ -278,7 +295,7 @@ describe('DuoTaskModal Component', () => {
   });
 
   it('handles notification toggle', async () => {
-    const { getByText } = render(<DuoTaskModal {...defaultProps} />);
+    const {getByText} = render(<DuoTaskModal {...defaultProps} />);
 
     await act(async () => {
       await new Promise(resolve => setTimeout(resolve, 0));
@@ -307,7 +324,7 @@ describe('DuoTaskModal Component', () => {
         notify: true,
       },
     };
-    const { getByTestId } = render(<DuoTaskModal {...props} />);
+    const {getByTestId} = render(<DuoTaskModal {...props} />);
 
     await act(async () => {
       await new Promise(resolve => setTimeout(resolve, 0));
@@ -322,7 +339,7 @@ describe('DuoTaskModal Component', () => {
       ...defaultProps,
       isEditMode: true,
     };
-    const { getByTestId, getByText, getByPlaceholderText } = render(
+    const {getByTestId, getByText, getByPlaceholderText} = render(
       <DuoTaskModal {...props} />,
     );
 
@@ -349,7 +366,7 @@ describe('DuoTaskModal Component', () => {
   });
 
   it('shows empty team members message when no collaborators', async () => {
-    const { getByText } = render(<DuoTaskModal {...defaultProps} />);
+    const {getByText} = render(<DuoTaskModal {...defaultProps} />);
 
     await act(async () => {
       await new Promise(resolve => setTimeout(resolve, 0));

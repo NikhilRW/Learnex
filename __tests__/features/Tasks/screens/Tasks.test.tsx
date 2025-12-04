@@ -2,6 +2,22 @@ import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import Tasks from '../../../../src/features/Tasks/screens/Tasks';
 
+// Mock @legendapp/list
+jest.mock('@legendapp/list', () => ({
+  LegendList: ({ data, renderItem, keyExtractor }: any) => {
+    const { View } = require('react-native');
+    return (
+      <View>
+        {data.map((item: any, index: number) => (
+          <View key={keyExtractor ? keyExtractor(item) : index}>
+            {renderItem({ item, index })}
+          </View>
+        ))}
+      </View>
+    );
+  },
+}));
+
 // Mock vector icons used in the component
 jest.mock('react-native-vector-icons/Ionicons', () => 'Icon');
 jest.mock('react-native-vector-icons/MaterialIcons', () => 'Icon');

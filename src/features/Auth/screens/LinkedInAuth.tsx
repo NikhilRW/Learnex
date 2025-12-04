@@ -60,6 +60,7 @@ const LinkedInAuth = () => {
       Snackbar.show({ text: 'LinkedIn Authentication Failed' });
     }
   };
+  let a;
   return (
     <View className="flex-1">
       <WebView
