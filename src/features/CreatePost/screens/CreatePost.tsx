@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Text,
   View,
@@ -13,21 +13,21 @@ import {
   PermissionsAndroid,
   Linking,
 } from 'react-native';
-import {useNavigation} from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import {launchImageLibrary} from 'react-native-image-picker';
+import { launchImageLibrary } from 'react-native-image-picker';
 import {
   getFirestore,
   collection,
   addDoc,
   serverTimestamp,
 } from '@react-native-firebase/firestore';
-import {getAuth} from '@react-native-firebase/auth';
-import {useTypedSelector} from 'hooks/redux/useTypedSelector';
+import { getAuth } from '@react-native-firebase/auth';
+import { useTypedSelector } from 'hooks/redux/useTypedSelector';
 import Config from 'react-native-config';
-import {DEFAULT_UPLOAD_PRESET} from 'shared/constants/cloudinary';
-import {MediaItem, PostFormData} from 'create-post/types/main';
-import {getStyles} from 'create-post/styles/CreatePost';
+import { DEFAULT_UPLOAD_PRESET } from 'shared/constants/cloudinary';
+import { MediaItem, PostFormData } from 'create-post/types/main';
+import { getStyles } from 'create-post/styles/CreatePost';
 
 // Cloudinary Configuration
 const CLOUDINARY_CONFIG = {
@@ -182,7 +182,7 @@ const CreatePost = () => {
           'Permission Required',
           'Storage access permission is required to upload images and videos to your posts. Please enable it in your device settings.',
           [
-            {text: 'Cancel', style: 'cancel'},
+            { text: 'Cancel', style: 'cancel' },
             {
               text: 'Open Settings',
               onPress: () => Linking.openSettings(),
@@ -216,15 +216,8 @@ const CreatePost = () => {
 
   // Check if we can add more media
   const canAddMoreMedia = () => {
-    const currentVideoCount = formData.mediaItems.filter(
-      item => item.isVideo,
-    ).length;
     const totalMediaCount = formData.mediaItems.length;
-
-    return (
-      totalMediaCount < CLOUDINARY_CONFIG.maxTotalMedia &&
-      currentVideoCount < CLOUDINARY_CONFIG.maxVideos
-    );
+    return totalMediaCount < CLOUDINARY_CONFIG.maxTotalMedia;
   };
 
   // Handle image picker with validation
@@ -263,7 +256,7 @@ const CreatePost = () => {
           'Permission Required',
           'Storage access permission is required to upload images and videos to your posts. Please enable it in your device settings.',
           [
-            {text: 'Cancel', style: 'cancel'},
+            { text: 'Cancel', style: 'cancel' },
             {
               text: 'Open Settings',
               onPress: () => Linking.openSettings(),
@@ -486,11 +479,11 @@ const CreatePost = () => {
             Alert.alert(
               'Upload Preset Missing',
               `The upload preset "${uploadPreset}" doesn't exist. Please create it in your Cloudinary dashboard:\n\n` +
-                '1. Go to Settings > Upload\n' +
-                '2. Scroll to Upload Presets and click "Add Upload Preset"\n' +
-                '3. Set Mode to "Unsigned"\n' +
-                `4. Set the Preset Name to "${uploadPreset}"\n` +
-                '5. Save the preset',
+              '1. Go to Settings > Upload\n' +
+              '2. Scroll to Upload Presets and click "Add Upload Preset"\n' +
+              '3. Set Mode to "Unsigned"\n' +
+              `4. Set the Preset Name to "${uploadPreset}"\n` +
+              '5. Save the preset',
             );
           }
           throw new Error(`Cloudinary error: ${data.error.message}`);
@@ -554,7 +547,7 @@ const CreatePost = () => {
       if (!currentUser) {
         throw new Error('User not authenticated');
       }
-      const {fullName} = await firebase.user.getNameUsernamestring();
+      const { fullName } = await firebase.user.getNameUsernamestring();
 
       // Create arrays for images and videos
       const postImages = mediaUrls
@@ -609,7 +602,7 @@ const CreatePost = () => {
 
   // Update hashtags as user types description
   const handleDescriptionChange = (text: string) => {
-    setFormData(prev => ({...prev, description: text}));
+    setFormData(prev => ({ ...prev, description: text }));
 
     // Extract hashtags for preview
     const extractedTags = extractHashtags(text);
@@ -699,7 +692,7 @@ const CreatePost = () => {
                     </View>
                   ) : (
                     <Image
-                      source={{uri: item.uri}}
+                      source={{ uri: item.uri }}
                       style={styles.mediaThumbnail}
                     />
                   )}
@@ -714,6 +707,7 @@ const CreatePost = () => {
               {/* Add Media Button (only if we can add more) */}
               {canAddMoreMedia() && (
                 <TouchableOpacity
+                  testID="add-media-button"
                   style={styles.addMediaButton}
                   onPress={
                     hasStoragePermission ? pickMedia : requestStoragePermissions
@@ -812,6 +806,7 @@ const CreatePost = () => {
 
           {/* Submit Button */}
           <TouchableOpacity
+            testID="create-post-button"
             style={[
               styles.submitButton,
               loading && styles.submitButtonDisabled,
