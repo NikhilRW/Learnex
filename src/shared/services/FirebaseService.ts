@@ -160,7 +160,7 @@ class AuthModule {
         issuer: 'https://github.com',
         clientId: Config.GITHUB_CLIENT_ID!,
         clientSecret: Config.GITHUB_CLIENT_SECRET,
-        redirectUrl: 'myapp://callback',
+        redirectUrl: 'learnex://callback',
         scopes: ['user:email'],
         serviceConfiguration: {
           authorizationEndpoint: 'https://github.com/login/oauth/authorize',

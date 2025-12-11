@@ -38,10 +38,6 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 3
         versionName "1.3.0"
-        manifestPlaceholders = [
-            appAuthRedirectScheme: "myapp",
-            appAuthRedirectScheme: 'io.identityserver.demo.auth'    
-        ]
         multiDexEnabled true
     }
     packagingOptions {

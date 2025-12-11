@@ -49,17 +49,11 @@ const Search = ({ route }: { route: SearchScreenRouteProp }) => {
 
         if (isMounted) {
           if (response.success) {
-<<<<<<< HEAD
             startTransition(() => {
               setPosts(response.posts!);
               setLoading(false);
             });
           } else if (retryCount < maxRetries) {
-=======
-            setPosts(response.posts!);
-            setLoading(false);
-          } else if (currentRetryCount < maxRetries) {
->>>>>>> day_04_tests
             // If no posts yet and within retry limit, try again after delay
             setRetryCount(currentRetryCount + 1);
             timeoutId = setTimeout(() => {

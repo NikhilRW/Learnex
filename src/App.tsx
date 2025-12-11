@@ -205,16 +205,8 @@ const App = () => {
 
             // Initialize FCM
             const fcmInitialized = await notificationService.initializeFCM();
-            if (fcmInitialized) {
-              console.log('Firebase Cloud Messaging initialized successfully');
-            } else {
-              console.warn(
-                'Firebase Cloud Messaging initialization failed or permission denied',
-              );
-            }
           } else {
             changeIsLoggedIn(false);
-            console.log('No user logged in yet, skipping notification setup');
           }
         } catch (error) {
           console.error('Failed to initialize notification service:', error);
@@ -227,7 +219,6 @@ const App = () => {
     const handleDeepLink = (event: DeepLinkEvent) => {
       const {url} = event;
       if (url) {
-        console.log('Deep link received:', url);
         // Store the URL in Redux for later use
         store.dispatch(setDeepLink(url));
       }
