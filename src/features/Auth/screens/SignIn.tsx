@@ -326,7 +326,7 @@ const SignIn = () => {
                         </Text>
                       )}
                     </TouchableOpacity>
-                    <View className="w-full">
+                    <View className="w-full ml-2">
                       <Text
                         className={`w-full font-normal text-[3.5vw]  ${
                           isDark ? 'text-white' : 'text-gray-600'
@@ -353,7 +353,7 @@ const SignIn = () => {
                       </Text>
                       <View className="h-0.5 flex-1 bg-gray-500" />
                     </View>
-                    <View className="flex gap-[5px] mt-[1px] flex-row mx-auto w-full justify-center py-[3%] items-center">
+                    <View className="flex gap-4 mt-[1px] flex-row w-full justify-center py-[3%] items-center">
                       <OAuthButton
                         isOAuthLoading={isGoogleLoading}
                         isSubmitting={isSubmitting}

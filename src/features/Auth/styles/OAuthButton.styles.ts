@@ -8,5 +8,5 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  gitHubOAuthImage: {width: 40, height: 40, borderRadius: 30},
+  gitHubOAuthImage: {width: 35, height: 35, borderRadius: 30},
 });
