@@ -53,7 +53,7 @@ const Search = ({ route }: { route: SearchScreenRouteProp }) => {
               setPosts(response.posts!);
               setLoading(false);
             });
-          } else if (retryCount < maxRetries) {
+          } else if (currentRetryCount < maxRetries) {
             // If no posts yet and within retry limit, try again after delay
             setRetryCount(currentRetryCount + 1);
             timeoutId = setTimeout(() => {
@@ -78,7 +78,7 @@ const Search = ({ route }: { route: SearchScreenRouteProp }) => {
       isMounted = false;
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [firebase.posts, retryCount, searchText]);
+  }, [firebase.posts, searchText]);
 
   // Handle video visibility
   const onViewableItemsChanged = useCallback(
