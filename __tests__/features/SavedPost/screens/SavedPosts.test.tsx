@@ -186,7 +186,7 @@ describe('SavedPosts Screen', () => {
 
         const subscribeMock = jest.fn((callback) => {
             // Store callback to trigger it later
-            subscribeMock.callback = callback;
+            (subscribeMock as any).callback = callback;
             return jest.fn();
         });
 
@@ -217,9 +217,9 @@ describe('SavedPosts Screen', () => {
         });
 
         // Trigger subscription callback
-        if (subscribeMock.callback) {
+        if ((subscribeMock as any).callback) {
             await act(async () => {
-                await subscribeMock.callback();
+                await (subscribeMock as any).callback();
             });
         }
 
