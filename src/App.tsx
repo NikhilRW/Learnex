@@ -22,6 +22,8 @@ import {PushNotificationHandler} from 'shared/utils/PushNotificationHandler';
 import {styles} from 'shared/styles/App';
 import {getMessaging} from '@react-native-firebase/messaging';
 import {changeIsLoggedIn} from './shared/reducers/User';
+import {StatusBar} from 'react-native';
+import {useTypedSelector} from './shared/hooks/redux/useTypedSelector';
 
 // Interface definition for deep link event
 interface DeepLinkEvent {
@@ -39,6 +41,8 @@ const App = () => {
   const [permissionsGranted, setPermissionsGranted] = useState<boolean | null>(
     null,
   );
+
+  
 
   // Check and request all required permissions
   useEffect(() => {
@@ -109,21 +113,22 @@ const App = () => {
             }
           }
 
-          if (PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE) {
-            const readStoragePermission = await PermissionsAndroid.request(
-              PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+          // Request microphone permission if needed
+          if (PermissionsAndroid.PERMISSIONS.RECORD_AUDIO) {
+            const micPermission = await PermissionsAndroid.request(
+              PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
               {
-                title: 'Storage Permission',
-                message: 'This app needs access to read files',
+                title: 'Microphone Permission',
+                message: 'This app needs microphone access',
                 buttonNeutral: 'Ask Me Later',
                 buttonNegative: 'Cancel',
                 buttonPositive: 'OK',
               },
             );
 
-            if (readStoragePermission !== PermissionsAndroid.RESULTS.GRANTED) {
+            if (micPermission !== PermissionsAndroid.RESULTS.GRANTED) {
               allPermissionsGranted = false;
-              console.warn('Read storage permission not granted');
+              console.warn('Microphone permission not granted');
             }
           }
 
@@ -269,6 +274,7 @@ const App = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigationRef, permissionsGranted, getMessaging]);
 
+
   return (
     <>
       <GestureHandlerRootView style={styles.flex1}>
@@ -279,7 +285,6 @@ const App = () => {
               <NavigationContainer
                 ref={navigationRef}
                 onReady={() => {
-                  console.log('Navigation is ready');
                   DeepLinkHandler.checkPendingNavigation();
                 }}>
                 <Route />

@@ -632,6 +632,7 @@ const Room = () => {
     );
 
     return (
+        <SafeAreaView>
         <KeyboardAvoidingView
             style={[styles.container, isDark && styles.darkContainer]}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -695,6 +696,7 @@ const Room = () => {
                 {renderTaskModal()}
             </ScrollView>
         </KeyboardAvoidingView>
+        </SafeAreaView>
     );
 };
 

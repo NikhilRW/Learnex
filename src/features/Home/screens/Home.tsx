@@ -1,4 +1,4 @@
-import { View, ViewToken, RefreshControl } from 'react-native';
+import { View, ViewToken, RefreshControl, StatusBar } from 'react-native';
 import React, { useEffect, useState, useCallback, useRef, JSX, startTransition } from 'react';
 import { useTypedSelector } from 'hooks/redux/useTypedSelector';
 import SkeletonPlaceholder from 'react-native-skeleton-placeholder';
@@ -337,7 +337,7 @@ const Home = () => {
   );
 
   return (
-    <SafeAreaView
+    <View
       className={`justify-start items-center ${isDark ? 'bg-[#1a1a1a]' : 'bg-white'}`}>
       {isLoaded ? (
         <>
@@ -374,7 +374,7 @@ const Home = () => {
       ) : (
         <HomeSkeleton />
       )}
-    </SafeAreaView>
+    </View>
   );
 };
 

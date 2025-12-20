@@ -31,6 +31,7 @@
     "axios": "1.11.0",
     "date-fns": "4.1.0",
     "expo": "^54.0.25",
+    "expo-navigation-bar": "^5.0.10",
     "formik": "2.4.6",
     "lodash.debounce": "4.0.8",
     "nativewind": "^2.0.11",

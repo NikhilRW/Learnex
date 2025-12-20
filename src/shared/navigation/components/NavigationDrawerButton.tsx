@@ -9,11 +9,13 @@ import { TextInput } from 'react-native-gesture-handler';
 import { Avatar } from 'react-native-elements';
 import { getUsernameForLogo } from 'shared/helpers/common/stringHelpers';
 import { getStyles } from '../styles/NavigationDrawerButton.styles';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const NavigationDrawerButton = memo(
   ({ navigation }: { navigation: DrawerNavigationProp<ParamListBase> }) => {
+    const insets = useSafeAreaInsets();
     const theme = useTypedSelector(state => state.user.theme);
     const isDark = theme === 'dark';
     const firebase = useTypedSelector(state => state.firebase.firebase);
@@ -101,7 +103,8 @@ const NavigationDrawerButton = memo(
 
     return (
       <View
-        className={`${isDark ? 'bg-[#1a1a1a]' : 'bg-white'} flex-row w-full px-2 py-1 items-center`}>
+        className={`${isDark ? 'bg-[#1a1a1a]' : 'bg-white'} flex-row w-full px-2 items-center`}
+        style={{ paddingTop: insets.top, paddingBottom: 10 }}>
         <TouchableOpacity onPress={handleOpenDrawer}>
           <Image
             source={require('shared/res/pngs/menu.png')}

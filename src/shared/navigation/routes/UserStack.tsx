@@ -18,7 +18,7 @@ import SavedPosts from 'saved-post/screens/SavedPosts';
 import {BottomTabNavigationProp} from '@react-navigation/bottom-tabs';
 import {useTypedSelector} from 'hooks/redux/useTypedSelector';
 import NavigationIconHelper from 'shared/helpers/navigation/NavigationIconHelper';
-import {Dimensions, Alert, ImageSourcePropType} from 'react-native';
+import {Dimensions, Alert, ImageSourcePropType, StatusBar} from 'react-native';
 import {useEffect, useRef, useCallback} from 'react';
 import {
   useNavigation,
@@ -40,6 +40,7 @@ import {
 import FloatingBottomTabBar from 'shared/navigation/components/FloatingBottomTabBar';
 import {getMessaging} from '@react-native-firebase/messaging';
 import {RootStackParamList} from './Route';
+import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
 
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
 
@@ -171,6 +172,7 @@ const CustomTabBar = (props: any) => <FloatingBottomTabBar {...props} />;
 
 const TabNavigator = ({isDark}: {isDark: boolean}) => {
   const Tab = createBottomTabNavigator<UserStackParamList>();
+  const insets = useSafeAreaInsets();
 
   return (
     <Tab.Navigator
@@ -179,11 +181,15 @@ const TabNavigator = ({isDark}: {isDark: boolean}) => {
       screenOptions={({route}) => ({
         headerShown: false,
         tabBarShowLabel: false,
+        style: {
+          marginBottom: insets.bottom,
+        },
         tabBarStyle: {
           borderWidth: 0,
           borderColor: isDark ? '#2a2a2a' : '#EDECEC',
           height: Math.min(SCREEN_WIDTH * 0.1375, 55),
           paddingBottom: Math.min(SCREEN_WIDTH * 0.0125, 5),
+          marginBottom: insets.bottom,
         },
         // Custom tab bar icons with theme-aware colors
         tabBarIcon: ({focused, color, size}) => {
@@ -213,6 +219,10 @@ const UserStack = () => {
   const messageService = useRef(new MessageService()).current;
   const firebase = useTypedSelector(state => state.firebase.firebase);
   const messaging = getMessaging();
+
+  useEffect(() => {
+    StatusBar.setBarStyle(isDark ? 'light-content' : 'dark-content', true);
+  }, [isDark]);
 
   const renderDrawerContent = useCallback(
     (props: any) => <NavigationDrawer {...props} />,
@@ -560,7 +570,7 @@ const UserStack = () => {
         component={LexAI}
         options={{
           headerShown: false, // Hide header for LexAI screen
-          drawerItemStyle: {display: 'none'}, // Hide from drawer
+          drawerItemStyle: {display: 'none',backgroundColor: 'black'}, // Hide from drawer
         }}
       />
       <Drawer.Screen

@@ -2552,7 +2552,7 @@ const LexAI = () => {
 
   return (
     <SafeAreaView style={[styles.container]}>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+      {/* <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} /> */}
 
       <LinearGradient
         colors={

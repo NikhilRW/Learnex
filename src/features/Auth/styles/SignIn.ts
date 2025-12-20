@@ -9,7 +9,7 @@ export const getStyles = (isDark: boolean) =>
       justifyContent: 'center',
       paddingTop: '12%',
       position: 'relative',
-      minHeight: Platform.OS === 'ios' ? '100%' : 'auto',
+      minHeight: '100%',
     },
     cricle1: {
       top: '-4%',

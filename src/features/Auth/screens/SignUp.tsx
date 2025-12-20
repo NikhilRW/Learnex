@@ -129,9 +129,9 @@ const SignUp = () => {
       if (subscription) {
         // Modern React Native with subscription object
         subscription.remove();
-      } else if (Linking.removeEventListener) {
-        // Older React Native with deprecated API
-        Linking.removeEventListener('url', handleDeepLink);
+      } else if ((Linking as any).removeEventListener) {
+        // Fallback for older React Native versions if needed
+        (Linking as any).removeEventListener('url', handleDeepLink);
       }
     };
   }, []);
@@ -196,212 +196,213 @@ const SignUp = () => {
 
   return (
     <>
-      <ScrollView
-        contentContainerStyle={styles.scrollView}
-        className={`${isDark ? 'bg-[#1a1a1a]' : 'bg-white'}`}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-        keyboardDismissMode="interactive">
-        {!isKeyboardVisible && (
-          <>
-            <MaterialsIcon
-              name="circle"
-              color={'#37B6F0'}
-              size={225}
-              style={styles.cricle1}
-            />
-            <MaterialsIcon
-              name="circle"
-              color={'#37B6F0'}
-              size={225}
-              style={styles.circle2}
-            />
-          </>
-        )}
-        <Formik
-          initialValues={userData}
-          validationSchema={signUpSchema}
-          onSubmit={values => submitDataToDB(values)}>
-          {({handleChange, handleSubmit, values, errors, isSubmitting}) => (
-            <KeyboardAvoidingView
-              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-              className="w-full h-full justify-center flex items-center  gap-y-5">
-              <View className="mb-[10%] w-screen items-center">
-                <Text
-                  className={`font-[Kufam-Bold] ${isDark ? ' text-white' : 'text-black'} text-3xl`}>
-                  Welcome OnBoard!
-                </Text>
-                <Text
-                  className={`font-[Kufam-SemiBold] ${isDark ? ' text-gray-300' : 'text-gray-800'} text-sm text-center`}>
-                  {welcomeQuoteSignIn}
-                </Text>
-              </View>
-              <View className="rounded-lg border-gray-400 border-2 w-full h-12">
-                <Input
-                  inputContainerStyle={{borderBottomWidth: 0}}
-                  placeholderTextColor={`${isDark ? '#b5b5b5' : '#545454'}`}
-                  style={{color: `${isDark ? 'white' : 'black'}`}}
-                  placeholder="Enter Fullname"
-                  onChangeText={handleChange('fullName')}
-                  value={values.fullName}
-                  className="text-sm"
-                />
-              </View>
-              {errors.fullName && <ErrorMessage error={errors.fullName} />}
-              <View className="rounded-lg border-gray-400 border-2 w-full h-12">
-                <Input
-                  inputContainerStyle={{borderBottomWidth: 0}}
-                  placeholderTextColor={`${isDark ? '#b5b5b5' : '#545454'}`}
-                  style={{color: `${isDark ? 'white' : 'black'}`}}
-                  placeholder="Enter Username"
-                  onChangeText={text => {
-                    handleChange('username')(text);
-                    handleUsernameChange(text);
-                  }}
-                  value={values.username}
-                  className="text-sm"
-                />
-              </View>
-              {errors.username && <ErrorMessage error={errors.username} />}
-              {isUsernameError && (
-                <ErrorMessage error={usernameNotAvailErrMsg} />
-              )}
-              <View className="rounded-lg border-gray-400 border-2 w-full h-12">
-                <Input
-                  inputContainerStyle={{borderBottomWidth: 0}}
-                  placeholderTextColor={`${isDark ? '#b5b5b5' : '#545454'}`}
-                  style={{color: `${isDark ? 'white' : 'black'}`}}
-                  placeholder="Enter Email"
-                  onChangeText={text => {
-                    handleChange('email')(text);
-                    handleEmailChange(text);
-                  }}
-                  value={values.email}
-                  className="text-sm"
-                />
-              </View>
-              {isEmailError && <ErrorMessage error={emailNotAvailErrMsg} />}
-              {errors.email && <ErrorMessage error={errors.email} />}
-              <View className="rounded-lg border-gray-400 border-2 w-full h-12">
-                <Input
-                  placeholder="Password"
-                  secureTextEntry={isPasswordHidden}
-                  inputContainerStyle={{borderBottomWidth: 0}}
-                  placeholderTextColor={`${isDark ? '#b5b5b5' : '#545454'}`}
-                  style={{color: `${isDark ? 'white' : 'black'}`}}
-                  onChangeText={handleChange('password')}
-                  value={values.password}
-                  rightIcon={
-                    <FeatherIcon
-                      color={isDark ? 'white' : 'black'}
-                      name={isPasswordHidden ? 'eye-off' : 'eye'}
-                      onPress={() => setisPasswordHidden(!isPasswordHidden)}
-                      size={20}
-                    />
-                  }
-                  className="text-sm"
-                />
-              </View>
-              {errors.password && <ErrorMessage error={errors.password} />}
-              <View className="rounded-lg border-gray-400 border-2 w-full h-12">
-                <Input
-                  placeholder="Confirm Password"
-                  placeholderTextColor={`${isDark ? '#b5b5b5' : '#545454'}`}
-                  secureTextEntry={isConfirmPasswordHidden}
-                  inputContainerStyle={{borderBottomWidth: 0}}
-                  style={{color: `${isDark ? 'white' : 'black'}`}}
-                  onChangeText={handleChange('confirmPassword')}
-                  value={values.confirmPassword}
-                  rightIcon={
-                    <FeatherIcon
-                      color={isDark ? 'white' : 'black'}
-                      name={isConfirmPasswordHidden ? 'eye-off' : 'eye'}
-                      onPress={() =>
-                        setisConfirmPasswordHidden(!isConfirmPasswordHidden)
-                      }
-                      size={20}
-                    />
-                  }
-                  className="text-sm"
-                />
-              </View>
-              {errors.confirmPassword && (
-                <ErrorMessage error={errors.confirmPassword} />
-              )}
-              <View className="px-3">
-                <BouncyCheckbox
-                  size={28}
-                  isChecked={isAgreedTerms}
-                  fillColor={`${isDark ? primaryColor : primaryDarkColor}`}
-                  unFillColor={`${isDark ? '#1a1a1a' : '#fff'}`}
-                  textComponent={
-                    <Text
-                      className={`mx-3 ${isDark ? 'text-white' : 'text-gray-400'}`}>
-                      {privacyTitle}
-                    </Text>
-                  }
-                  iconStyle={{borderColor: primaryColor, borderRadius: 8}}
-                  innerIconStyle={{borderWidth: 2, borderRadius: 8}}
-                  textStyle={{
-                    fontFamily: 'JosefinSans-Regular',
-                    fontSize: 14,
-                    fontWeight: 'semibold',
-                    textAlign: 'left',
-                    textDecorationLine: 'none',
-                  }}
-                  onPress={(isChecked: boolean) => {
-                    setIsAgreedTerms(isChecked);
-                  }}
-                />
-              </View>
-
-              <TouchableOpacity
-                activeOpacity={0.65}
-                onPress={_ => handleSubmit()}
-                className={`${isDark ? 'bg-[#1a9cd8]' : 'bg-[#3EB9F1]'} px-[14%] py-[4%] rounded-2xl w-full`}>
-                <Text className="text-white text-center text-[5vw] font-bold">
-                  Create An Account
-                </Text>
-              </TouchableOpacity>
-              <View className="mx-auto">
-                <Text
-                  className={`w-full text-sm ${isDark ? 'text-white' : 'text-gray-400'} font-semibold text-left`}>
-                  Already Have An Account?{' '}
-                  <Text
-                    onPress={() => navigation.navigate('SignIn')}
-                    className="text-[#3EB9F1] font-bold text-[3.5vw]">
-                    Sign In
-                  </Text>
-                </Text>
-              </View>
-              <View className="flex flex-row mx-auto justify-start  items-center gap-[4%]">
-                <View className="h-0.5 flex-1 bg-gray-500" />
-                <Text
-                  className={`text-base text-gray-500 font-semibold dark:text-white`}>
-                  Or Continue With
-                </Text>
-                <View className="h-0.5 flex-1 bg-gray-500" />
-              </View>
-              <View className="flex flex-row gap-[3%] justify-center items-center">
-                <OAuthButton
-                  isOAuthLoading={isGoogleLoading}
-                  isSubmitting={isSubmitting}
-                  oauthImage={require('shared/res/pngs/google.png')}
-                  handleOAuthSignIn={handleGoogleSignIn}
-                  isGitHub={false}
-                />
-                <OAuthButton
-                  isOAuthLoading={isGithubLoading}
-                  isSubmitting={isSubmitting}
-                  oauthImage={require('shared/res/jpgs/github.jpg')}
-                  handleOAuthSignIn={handleGitHubSignIn}
-                  isGitHub={true}
-                />
-              </View>
-            </KeyboardAvoidingView>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        className={`flex-1 ${isDark ? 'bg-[#1a1a1a]' : 'bg-white'}`}>
+        <ScrollView
+          contentContainerStyle={styles.scrollView}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          keyboardDismissMode="interactive">
+          {!isKeyboardVisible && (
+            <>
+              <MaterialsIcon
+                name="circle"
+                color={'#37B6F0'}
+                size={225}
+                style={styles.cricle1}
+              />
+              <MaterialsIcon
+                name="circle"
+                color={'#37B6F0'}
+                size={225}
+                style={styles.circle2}
+              />
+            </>
           )}
-        </Formik>
-      </ScrollView>
+          <Formik
+            initialValues={userData}
+            validationSchema={signUpSchema}
+            onSubmit={values => submitDataToDB(values)}>
+            {({handleChange, handleSubmit, values, errors, isSubmitting}) => (
+              <View className="w-full justify-center flex items-center gap-y-5">
+                <View className="mb-[10%] w-screen items-center">
+                  <Text
+                    className={`font-[Kufam-Bold] ${isDark ? ' text-white' : 'text-black'} text-3xl`}>
+                    Welcome OnBoard!
+                  </Text>
+                  <Text
+                    className={`font-[Kufam-SemiBold] ${isDark ? ' text-gray-300' : 'text-gray-800'} text-sm text-center`}>
+                    {welcomeQuoteSignIn}
+                  </Text>
+                </View>
+                <View className="rounded-lg border-gray-400 border-2 w-full h-12">
+                  <Input
+                    inputContainerStyle={{borderBottomWidth: 0}}
+                    placeholderTextColor={`${isDark ? '#b5b5b5' : '#545454'}`}
+                    style={{color: `${isDark ? 'white' : 'black'}`}}
+                    placeholder="Enter Fullname"
+                    onChangeText={handleChange('fullName')}
+                    value={values.fullName}
+                    className="text-sm"
+                  />
+                </View>
+                {errors.fullName && <ErrorMessage error={errors.fullName} />}
+                <View className="rounded-lg border-gray-400 border-2 w-full h-12">
+                  <Input
+                    inputContainerStyle={{borderBottomWidth: 0}}
+                    placeholderTextColor={`${isDark ? '#b5b5b5' : '#545454'}`}
+                    style={{color: `${isDark ? 'white' : 'black'}`}}
+                    placeholder="Enter Username"
+                    onChangeText={text => {
+                      handleChange('username')(text);
+                      handleUsernameChange(text);
+                    }}
+                    value={values.username}
+                    className="text-sm"
+                  />
+                </View>
+                {errors.username && <ErrorMessage error={errors.username} />}
+                {isUsernameError && (
+                  <ErrorMessage error={usernameNotAvailErrMsg} />
+                )}
+                <View className="rounded-lg border-gray-400 border-2 w-full h-12">
+                  <Input
+                    inputContainerStyle={{borderBottomWidth: 0}}
+                    placeholderTextColor={`${isDark ? '#b5b5b5' : '#545454'}`}
+                    style={{color: `${isDark ? 'white' : 'black'}`}}
+                    placeholder="Enter Email"
+                    onChangeText={text => {
+                      handleChange('email')(text);
+                      handleEmailChange(text);
+                    }}
+                    value={values.email}
+                    className="text-sm"
+                  />
+                </View>
+                {isEmailError && <ErrorMessage error={emailNotAvailErrMsg} />}
+                {errors.email && <ErrorMessage error={errors.email} />}
+                <View className="rounded-lg border-gray-400 border-2 w-full h-12">
+                  <Input
+                    placeholder="Password"
+                    secureTextEntry={isPasswordHidden}
+                    inputContainerStyle={{borderBottomWidth: 0}}
+                    placeholderTextColor={`${isDark ? '#b5b5b5' : '#545454'}`}
+                    style={{color: `${isDark ? 'white' : 'black'}`}}
+                    onChangeText={handleChange('password')}
+                    value={values.password}
+                    rightIcon={
+                      <FeatherIcon
+                        color={isDark ? 'white' : 'black'}
+                        name={isPasswordHidden ? 'eye-off' : 'eye'}
+                        onPress={() => setisPasswordHidden(!isPasswordHidden)}
+                        size={20}
+                      />
+                    }
+                    className="text-sm"
+                  />
+                </View>
+                {errors.password && <ErrorMessage error={errors.password} />}
+                <View className="rounded-lg border-gray-400 border-2 w-full h-12">
+                  <Input
+                    placeholder="Confirm Password"
+                    placeholderTextColor={`${isDark ? '#b5b5b5' : '#545454'}`}
+                    secureTextEntry={isConfirmPasswordHidden}
+                    inputContainerStyle={{borderBottomWidth: 0}}
+                    style={{color: `${isDark ? 'white' : 'black'}`}}
+                    onChangeText={handleChange('confirmPassword')}
+                    value={values.confirmPassword}
+                    rightIcon={
+                      <FeatherIcon
+                        color={isDark ? 'white' : 'black'}
+                        name={isConfirmPasswordHidden ? 'eye-off' : 'eye'}
+                        onPress={() =>
+                          setisConfirmPasswordHidden(!isConfirmPasswordHidden)
+                        }
+                        size={20}
+                      />
+                    }
+                    className="text-sm"
+                  />
+                </View>
+                {errors.confirmPassword && (
+                  <ErrorMessage error={errors.confirmPassword} />
+                )}
+                <View className="px-3">
+                  <BouncyCheckbox
+                    size={28}
+                    isChecked={isAgreedTerms}
+                    fillColor={`${isDark ? primaryColor : primaryDarkColor}`}
+                    unFillColor={`${isDark ? '#1a1a1a' : '#fff'}`}
+                    textComponent={
+                      <Text
+                        className={`mx-3 ${isDark ? 'text-white' : 'text-gray-400'}`}>
+                        {privacyTitle}
+                      </Text>
+                    }
+                    iconStyle={{borderColor: primaryColor, borderRadius: 8}}
+                    innerIconStyle={{borderWidth: 2, borderRadius: 8}}
+                    textStyle={{
+                      fontFamily: 'JosefinSans-Regular',
+                      fontSize: 14,
+                      fontWeight: 'semibold',
+                      textAlign: 'left',
+                      textDecorationLine: 'none',
+                    }}
+                    onPress={(isChecked: boolean) => {
+                      setIsAgreedTerms(isChecked);
+                    }}
+                  />
+                </View>
+
+                <TouchableOpacity
+                  activeOpacity={0.65}
+                  onPress={_ => handleSubmit()}
+                  className={`${isDark ? 'bg-[#1a9cd8]' : 'bg-[#3EB9F1]'} px-[14%] py-[4%] rounded-2xl w-full`}>
+                  <Text className="text-white text-center text-[5vw] font-bold">
+                    Create An Account
+                  </Text>
+                </TouchableOpacity>
+                <View className="mx-auto">
+                  <Text
+                    className={`w-full text-sm ${isDark ? 'text-white' : 'text-gray-400'} font-semibold text-left`}>
+                    Already Have An Account?{' '}
+                    <Text
+                      onPress={() => navigation.navigate('SignIn')}
+                      className="text-[#3EB9F1] font-bold text-[3.5vw]">
+                      Sign In
+                    </Text>
+                  </Text>
+                </View>
+                <View className="flex flex-row mx-auto justify-start  items-center gap-[4%]">
+                  <View className="h-0.5 flex-1 bg-gray-500" />
+                  <Text
+                    className={`text-base text-gray-500 font-semibold dark:text-white`}>
+                    Or Continue With
+                  </Text>
+                  <View className="h-0.5 flex-1 bg-gray-500" />
+                </View>
+                <View className="flex flex-row gap-[3%] justify-center items-center">
+                  <OAuthButton
+                    isOAuthLoading={isGoogleLoading}
+                    isSubmitting={isSubmitting}
+                    oauthImage={require('shared/res/pngs/google.png')}
+                    handleOAuthSignIn={handleGoogleSignIn}
+                    isGitHub={false}
+                  />
+                  <OAuthButton
+                    isOAuthLoading={isGithubLoading}
+                    isSubmitting={isSubmitting}
+                    oauthImage={require('shared/res/jpgs/github.jpg')}
+                    handleOAuthSignIn={handleGitHubSignIn}
+                    isGitHub={true}
+                  />
+                </View>
+              </View>
+            )}
+          </Formik>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </>
   );
 };

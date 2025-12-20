@@ -1,10 +1,10 @@
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import {View, TouchableOpacity, StyleSheet} from 'react-native';
 import React from 'react';
-import { FloatingBottomTabBarPropsType } from 'shared/types/bottomTabBarTypes';
+import {FloatingBottomTabBarPropsType} from 'shared/types/bottomTabBarTypes';
 import navigationIconHelper from 'shared/helpers/navigation/NavigationIconHelper';
-import { NavigationRoute, ParamListBase } from '@react-navigation/native';
-import { primaryColor } from 'shared/res/strings/eng';
-import { useTheme } from 'hooks/common/useTheme';
+import {NavigationRoute, ParamListBase} from '@react-navigation/native';
+import {primaryColor} from 'shared/res/strings/eng';
+import {useTheme} from 'hooks/common/useTheme';
 import Animated, {
   FadeIn,
   FadingTransition,
@@ -13,7 +13,8 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import { useTypedSelector } from 'hooks/redux/useTypedSelector';
+import {useTypedSelector} from 'hooks/redux/useTypedSelector';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 const BUTTON_SIZE = 48;
 
@@ -24,7 +25,7 @@ const FloatingBottomTabBar = ({
   navigation,
   state,
 }: FloatingBottomTabBarPropsType) => {
-  const { isDark } = useTheme();
+  const {isDark} = useTheme();
   const onPress = (route: NavigationRoute<ParamListBase, string>) => {
     navigation.navigate(route.name);
   };
@@ -45,15 +46,18 @@ const FloatingBottomTabBar = ({
     };
   });
 
+  const insets = useSafeAreaInsets();
+
   return (
     <View
       style={[styles.mainContainer]}
-      className="bg-neutral-300 dark:bg-neutral-600">
+      className="bg-neutral-300 dark:bg-neutral-700">
       <View
         style={[
           styles.floatingTabBarContainer,
           {
             backgroundColor: isDark ? '#2A2A2A' : '#FFFFFF',
+            marginBottom: insets.bottom,
           },
         ]}>
         <View className="flex-row gap-[60]">
@@ -111,7 +115,7 @@ const TabsButton = (
           <Animated.Text
             entering={FadeIn}
             numberOfLines={1}
-            style={[{ color: isDark ? 'white' : '#0987C1' }, styles.tabIconText]}>
+            style={[{color: isDark ? 'white' : '#0987C1'}, styles.tabIconText]}>
             {route.name === 'CreatePost' ? 'Post' : route.name}
           </Animated.Text>
         )}
@@ -122,13 +126,12 @@ const TabsButton = (
 
 const styles = StyleSheet.create({
   floatingTabBarContainer: {
-    transform: [{ translateX: '-50%' }],
+    transform: [{translateX: '-50%'}],
     flexDirection: 'row',
     marginHorizontal: 'auto',
     justifyContent: 'center',
     left: '50%',
     alignItems: 'center',
-    bottom: -1,
     gap: 60,
     width: '100%',
     paddingVertical: 4,
