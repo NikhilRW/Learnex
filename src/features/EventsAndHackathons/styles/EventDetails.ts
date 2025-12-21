@@ -236,4 +236,74 @@ export const createStyles = (isDark: boolean) =>
     timePassedText: {
       color: isDark ? '#ddd' : '#555',
     },
+    sectionContent: {
+      fontSize: 16,
+      color: isDark ? '#ddd' : '#555',
+    },
+    darkSubText: {
+      color: '#ddd',
+    },
+    lightSubText: {
+      color: '#555',
+    },
+    darkText: {
+      color: '#ddd',
+    },
+    section: {
+      marginBottom: 24,
+    },
+    timelineItem: {
+      flexDirection: 'row',
+      marginBottom: 16,
+    },
+    timelineDot: {
+      width: 12,
+      height: 12,
+      borderRadius: 6,
+      backgroundColor: '#2379C2',
+      marginTop: 6,
+      marginRight: 16,
+    },
+    timelineContent: {
+      flex: 1,
+    },
+    timelineDate: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: isDark ? '#ddd' : '#555',
+      marginBottom: 2,
+    },
+    timelineEvent: {
+      fontSize: 16,
+      color: isDark ? 'white' : '#333',
+    },
+    linkButton: {
+      marginTop: 8,
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      backgroundColor: isDark ? '#2a2a2a' : '#f0f0f0',
+      borderRadius: 6,
+      alignSelf: 'flex-start',
+    },
+    linkButtonText: {
+      color: '#2379C2',
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    errorNote: {
+      fontSize: 14,
+      color: isDark ? '#bbb' : '#777',
+      marginTop: 20,
+      textAlign: 'center',
+    },
+    loadingText: {
+      marginTop: 16,
+      fontSize: 16,
+      color: isDark ? '#ddd' : '#555',
+    },
+    eventImageBanner: {
+      borderRadius: 20,
+      width: SCREEN_WIDTH * 0.9,
+      height: SCREEN_WIDTH * 0.4,
+    },
   });

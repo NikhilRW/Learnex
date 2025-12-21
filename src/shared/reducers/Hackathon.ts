@@ -36,14 +36,13 @@ export const fetchHackathons = createAsyncThunk(
   async (
     {
       // location = 'India',
-      forceRefresh = false,
     }: {location?: string; forceRefresh?: boolean} = {location: 'India'},
     {rejectWithValue},
   ) => {
     try {
       // Always use 'India' as the location
       const finalLocation = 'India';
-      const events = await HackathonService.getHackathons(forceRefresh);
+      const events = await HackathonService.getHackathons(false);
       return {events, location: finalLocation};
     } catch (error) {
       return rejectWithValue(

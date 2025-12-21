@@ -444,11 +444,9 @@ const LexAI = () => {
         logDebug('Active conversation ID:', activeConvId);
 
         if (activeConvId) {
-          logDebug('Found active conversation ID, loading conversations');
-          const conversations = await LexAIService.loadConversations();
-          logDebug(`Loaded ${conversations.length} conversations`);
-
-          const existingConv = conversations.find(c => c.id === activeConvId);
+          logDebug('Found active conversation ID, trying to load it directly');
+          // Try to load the specific conversation directly
+          const existingConv = await LexAIService.getConversation(activeConvId);
 
           if (existingConv) {
             logDebug('Found existing conversation, setting as active', {
@@ -459,12 +457,27 @@ const LexAI = () => {
             dispatch(setLexAIMode(existingConv.mode));
             return;
           } else {
-            logDebug('Conversation not found in loaded conversations');
+            logDebug('Active conversation not found in Firestore');
           }
         }
 
+        // Fallback: Load all conversations to find the most recent one
+        logDebug('Loading all conversations to find most recent');
+        const conversations = await LexAIService.loadConversations();
+
+        if (conversations.length > 0) {
+          const mostRecent = conversations[0]; // Assuming sorted by updated desc
+          logDebug('Found recent conversation, setting as active', {
+            id: mostRecent.id
+          });
+          setConversation(mostRecent);
+          dispatch(setLexAIMode(mostRecent.mode));
+          dispatch(setActiveConversation(mostRecent.id));
+          return;
+        }
+
         logDebug('Creating new conversation');
-        // If no active conversation, create a new one
+        // If no active conversation and no history, create a new one
         const newConversation = LexAIService.initConversation(
           'New Conversation',
           currentMode,
@@ -492,7 +505,8 @@ const LexAI = () => {
     };
 
     initializeConversation();
-  }, [currentMode, dispatch]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dispatch]);
 
   // Load all conversations for history
   useEffect(() => {
@@ -2617,11 +2631,11 @@ const LexAI = () => {
                   trackColor={{ false: '#767577', true: colors.primary }}
                   thumbColor={'#f4f3f4'}
                   style={{ transform: [{ scaleX: 0.7 }, { scaleY: 0.7 }] }}
-                  />
+                />
               </View>
             </View>
           </View>
-                  </LinearGradient>
+        </LinearGradient>
         <LegendList
           style={styles.messageList}
           data={conversation?.messages.filter(m => m.role !== 'system') || []}
@@ -2651,25 +2665,25 @@ const LexAI = () => {
                   styles.suggestionsContainer,
                   {
                     borderTopColor: isDarkMode
-                    ? 'rgba(255,255,255,0.1)'
-                    : 'rgba(0,0,0,0.05)',
+                      ? 'rgba(255,255,255,0.1)'
+                      : 'rgba(0,0,0,0.05)',
                   },
                 ]}>
                 {getSuggestions().map((suggestion, index) => (
                   <TouchableOpacity
-                  key={`suggestion-${index}`}
-                  style={[
-                    styles.suggestionChip,
-                    {
-                      backgroundColor: isDarkMode
-                      ? 'rgba(10, 132, 255, 0.15)'
-                      : '#EFF6FF',
-                      borderColor: isDarkMode
-                      ? 'rgba(62, 123, 250, 0.3)'
-                      : '#DBEAFE',
-                    },
-                  ]}
-                      onPress={() => handleSuggestionPress(suggestion)}>
+                    key={`suggestion-${index}`}
+                    style={[
+                      styles.suggestionChip,
+                      {
+                        backgroundColor: isDarkMode
+                          ? 'rgba(10, 132, 255, 0.15)'
+                          : '#EFF6FF',
+                        borderColor: isDarkMode
+                          ? 'rgba(62, 123, 250, 0.3)'
+                          : '#DBEAFE',
+                      },
+                    ]}
+                    onPress={() => handleSuggestionPress(suggestion)}>
                     <Text
                       style={[styles.suggestionText, { color: colors.primary }]}>
                       {suggestion}
@@ -2679,7 +2693,7 @@ const LexAI = () => {
               </View>
             </View>
           )}
-          />
+        />
 
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -2690,12 +2704,12 @@ const LexAI = () => {
               styles.inputContainer,
               {
                 backgroundColor: isDarkMode
-                ? 'rgba(20, 30, 48, 0.85)'
-                : 'rgba(230, 240, 255, 0.85)',
+                  ? 'rgba(20, 30, 48, 0.85)'
+                  : 'rgba(230, 240, 255, 0.85)',
                 borderTopWidth: 1,
                 borderTopColor: isDarkMode
-                ? 'rgba(26, 39, 64, 0.8)'
-                : 'rgba(218, 234, 255, 0.8)',
+                  ? 'rgba(26, 39, 64, 0.8)'
+                  : 'rgba(218, 234, 255, 0.8)',
               },
             ]}>
             <View style={styles.inputRow}>
@@ -2704,11 +2718,11 @@ const LexAI = () => {
                   styles.inputWrapper,
                   {
                     backgroundColor: isDarkMode
-                    ? 'rgba(15, 25, 40, 0.7)'
-                    : 'rgba(255, 255, 255, 0.7)',
+                      ? 'rgba(15, 25, 40, 0.7)'
+                      : 'rgba(255, 255, 255, 0.7)',
                     borderColor: isDarkMode
-                    ? 'rgba(36, 54, 86, 0.7)'
-                    : 'rgba(199, 221, 255, 0.7)',
+                      ? 'rgba(36, 54, 86, 0.7)'
+                      : 'rgba(199, 221, 255, 0.7)',
                   },
                 ]}>
                 <TextInput
@@ -2720,7 +2734,7 @@ const LexAI = () => {
                   multiline
                   numberOfLines={1}
                   ref={inputRef}
-                  />
+                />
               </View>
               <View style={{ position: 'relative' }}>
                 <Animated.View
@@ -2730,12 +2744,12 @@ const LexAI = () => {
                     height: 60,
                     borderRadius: 30,
                     backgroundColor:
-                    currentMode === LexAIMode.AGENT ? '#3E7BFA' : '#FF375F',
+                      currentMode === LexAIMode.AGENT ? '#3E7BFA' : '#FF375F',
                     opacity: !isButtonDisabled ? glowOpacity : 0,
                     transform: [{ translateX: -7.5 }, { translateY: -7.5 }],
                     zIndex: -1,
                   }}
-                  />
+                />
                 <Animated.View
                   style={{
                     transform: [
@@ -2753,13 +2767,13 @@ const LexAI = () => {
                     <LinearGradient
                       colors={
                         isButtonDisabled
-                        ? [
-                          isDarkMode ? '#3A3A3C' : '#D1D1D6',
-                          isDarkMode ? '#2C2C2E' : '#C7C7CC',
-                        ]
-                        : currentMode === LexAIMode.AGENT
-                        ? ['#4E7CF6', '#3E7BFA', '#2563EB']
-                        : ['#FF375F', '#FF2D55', '#E31B60']
+                          ? [
+                            isDarkMode ? '#3A3A3C' : '#D1D1D6',
+                            isDarkMode ? '#2C2C2E' : '#C7C7CC',
+                          ]
+                          : currentMode === LexAIMode.AGENT
+                            ? ['#4E7CF6', '#3E7BFA', '#2563EB']
+                            : ['#FF375F', '#FF2D55', '#E31B60']
                       }
                       style={[
                         styles.sendButton,
@@ -2767,16 +2781,16 @@ const LexAI = () => {
                           shadowColor: isButtonDisabled
                             ? 'transparent'
                             : currentMode === LexAIMode.AGENT
-                            ? '#3E7BFA'
-                            : '#FF375F',
-                            shadowOffset: { width: 0, height: 3 },
-                            shadowOpacity: isDarkMode ? 0.5 : 0.4,
-                            shadowRadius: 8,
-                            elevation: 5,
-                          },
-                        ]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}>
+                              ? '#3E7BFA'
+                              : '#FF375F',
+                          shadowOffset: { width: 0, height: 3 },
+                          shadowOpacity: isDarkMode ? 0.5 : 0.4,
+                          shadowRadius: 8,
+                          elevation: 5,
+                        },
+                      ]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}>
                       <Ionicons
                         name="send"
                         size={20}
@@ -2784,7 +2798,7 @@ const LexAI = () => {
                         style={{
                           transform: [{ translateX: -1 }],
                         }}
-                        />
+                      />
                     </LinearGradient>
                   </TouchableOpacity>
                 </Animated.View>

@@ -137,7 +137,7 @@ export class PostQueryService {
 
       const {
         lastVisible,
-        limit = 10,
+        limit: limitCount = 10,
         userId,
         hashtag,
         likedByUser,
@@ -146,7 +146,7 @@ export class PostQueryService {
 
       const cacheKey = this.getCacheKey({
         lastVisible: lastVisible?.id,
-        limit,
+        limit: limitCount,
         userId,
         hashtag,
         likedByUser,
@@ -194,7 +194,7 @@ export class PostQueryService {
           collection(getFirestore(), 'posts'),
           where('hashtags', 'array-contains', hashtag),
           orderBy('timestamp', 'desc'),
-          limit(limit),
+          limit(limitCount),
         );
 
         const hashtagArraySnapshot = await getDocs(hashtagArrayQuery);
@@ -210,11 +210,11 @@ export class PostQueryService {
         });
 
         // Second, look for hashtag in descriptions (only if we didn't fill the limit)
-        if (hashtagArrayPosts.length < limit) {
+        if (hashtagArrayPosts.length < limitCount) {
           const descQuery = query(
             collection(getFirestore(), 'posts'),
             orderBy('timestamp', 'desc'),
-            limit(limit * 2), // Get more to filter
+            limit(limitCount * 2), // Get more to filter
           );
 
           const descQuerySnapshot = await getDocs(descQuery);
@@ -248,7 +248,7 @@ export class PostQueryService {
               // Sort by timestamp descending
               return b.timestamp?.seconds - a.timestamp?.seconds;
             })
-            .slice(0, limit) // Limit to requested number
+            .slice(0, limitCount) // Limit to requested number
             .filter(post => !blockedPostIds.includes(post.id))
             .map(postData => {
               return convertFirestorePost(
@@ -274,7 +274,10 @@ export class PostQueryService {
         }
       } else {
         // Handle normal query without hashtag
-        const queryConstraints = [orderBy('timestamp', 'desc'), limit(limit)];
+        const queryConstraints = [
+          orderBy('timestamp', 'desc'),
+          limit(limitCount),
+        ];
 
         if (timeRange) {
           // Add time range filter if specified

@@ -5,7 +5,6 @@ import {
   Text,
   TouchableOpacity,
   View,
-  Keyboard,
 } from 'react-native';
 import React, {useState} from 'react';
 import FeatherIcon from 'react-native-vector-icons/Feather';
@@ -215,170 +214,178 @@ const SignIn = () => {
               style={styles.circle2}
             />
           </>
-          <TouchableOpacity
-            activeOpacity={1}
-            onPress={Keyboard.dismiss}
-            className="w-screen max-h-screen flex bg-transparent justify-center relative items-center">
+          <View style={styles.flex1}>
             <Formik
               initialValues={userData}
               validationSchema={signInSchema}
               onSubmit={(values: signInData) => signInUser(values)}>
               {({handleChange, handleSubmit, values, errors, isSubmitting}) => (
-                <>
-                  {/* 
-                  feature : Loading Effect Center
-                  {false && <Loader />} 
-                */}
-                  <View className="w-full h-full justify-center gap-y-[10%] flex items-center px-[6%]">
-                    <View className="w-full gap-y-4 items-center justify-center ">
-                      <View className="mb-[5%] w-full justify-center items-center">
-                        <Text
-                          className={`font-[Kufam-Bold] text-black text-[9vw] ${
-                            isDark ? ' text-white' : 'text-black'
-                          }`}>
-                          Welcome Back!
-                        </Text>
-                        <Image
-                          source={require('shared/res/pngs/signInHero-removebg.png')}
-                          style={styles.heroImage}
-                        />
-                      </View>
-                      <View className="rounded-lg border-gray-400 border-2 w-full h-12">
-                        <Input
-                          inputContainerStyle={
-                            styles.usernameOrEmailInputContainerStyle
-                          }
-                          placeholder="Enter Username or Email"
-                          placeholderTextColor={`${isDark ? '#b5b5b5' : '#545454'}`}
-                          style={styles.usernameOrEmailInput}
-                          onChangeText={handleChange('usernameOrEmail')}
-                          value={values.usernameOrEmail}
-                        />
-                      </View>
-                      {errors.usernameOrEmail && (
-                        <ErrorMessage error={errors.usernameOrEmail} />
-                      )}
-                      <View className="rounded-lg border-gray-400 border-2 w-full h-12">
-                        <Input
-                          placeholder="Password"
-                          secureTextEntry={isPasswordHidden}
-                          inputContainerStyle={
-                            styles.usernameOrEmailInputContainerStyle
-                          }
-                          placeholderTextColor={`${isDark ? '#b5b5b5' : '#545454'}`}
-                          style={{color: `${isDark ? 'white' : 'black'}`}}
-                          onChangeText={handleChange('password')}
-                          value={values.password}
-                          rightIcon={
-                            <FeatherIcon
-                              color={isDark ? 'white' : 'black'}
-                              name={isPasswordHidden ? 'eye-off' : 'eye'}
-                              onPress={() =>
-                                setisPasswordHidden(!isPasswordHidden)
-                              }
-                              size={20}
-                            />
-                          }
-                        />
-                      </View>
-                      {errors.password && (
-                        <ErrorMessage error={errors.password} />
-                      )}
-                      <View className="flex-row justify-between w-full items-center">
-                        <BouncyCheckbox
-                          size={28}
-                          isChecked={true}
-                          fillColor={`${isDark ? primaryColor : primaryDarkColor}`}
-                          unFillColor={`${isDark ? '#1a1a1a' : '#fff'}`}
-                          textComponent={
-                            <Text
-                              className={`mx-3 ${
-                                isDark ? 'text-white' : 'text-gray-600'
-                              } `}>
-                              Keep Me Logged In
-                            </Text>
-                          }
-                          iconStyle={styles.checkBoxIconStyle}
-                          innerIconStyle={styles.checkBoxInnerIconStyle}
-                          textStyle={styles.agreeCheckboxTextStyle}
-                        />
-                        <Text
-                          onPress={async () => {
-                            if (!isForgotPasswordLoading) {
-                              await handleForgotPassword(
-                                values.usernameOrEmail,
-                              );
-                            }
-                          }}
-                          className="text-[#3EB9F1] font-bold text-[3.5vw]">
-                          {isForgotPasswordLoading
-                            ? 'Sending...'
-                            : 'Forgot Password ?'}
-                        </Text>
-                      </View>
-                      <TouchableOpacity
-                        activeOpacity={0.65}
-                        onPress={() => handleSubmit()}
-                        className={`${
-                          isDark ? 'bg-[#1a9cd8]' : 'bg-[#3EB9F1]'
-                        }  px-[14%] py-[4%] rounded-2xl w-full`}>
-                        {isSubmitting ? (
-                          <ButtonLoader />
-                        ) : (
-                          <Text className="text-white text-center text-[5vw] font-bold">
-                            Sign In
-                          </Text>
-                        )}
-                      </TouchableOpacity>
-                      <View className="w-full ml-2">
-                        <Text
-                          className={`w-full font-normal text-[3.5vw]  ${
-                            isDark ? 'text-white' : 'text-gray-600'
-                          }`}>
-                          Don't Have An Account?{' '}
-                          <Text
-                            onPress={() => navigation.navigate('SignUp')}
-                            className={`${
-                              isDark ? 'text-[#3EB9F1]' : 'text-[#1a9cd8]'
-                            } font-medium text-[3.5vw]`}>
-                            Sign Up
-                          </Text>
-                        </Text>
-                      </View>
-                    </View>
-                    <View className="w-full justify-center items-center">
-                      <View className="flex flex-row w-full justify-start items-center gap-[4%]">
-                        <View className="h-0.5 flex-1 bg-gray-500" />
-                        <Text
-                          className={`font-semibold text-[3.5vw] ${
-                            isDark ? 'text-white' : 'text-gray-600'
-                          } `}>
-                          Or Continue With
-                        </Text>
-                        <View className="h-0.5 flex-1 bg-gray-500" />
-                      </View>
-                      <View className="flex gap-4 mt-[1px] flex-row w-full justify-center py-[3%] items-center">
-                        <OAuthButton
-                          isOAuthLoading={isGoogleLoading}
-                          isSubmitting={isSubmitting}
-                          oauthImage={require('shared/res/pngs/google.png')}
-                          handleOAuthSignIn={handleGoogleSignIn}
-                          isGitHub={false}
-                        />
-                        <OAuthButton
-                          isOAuthLoading={isGithubLoading}
-                          isSubmitting={isSubmitting}
-                          oauthImage={require('shared/res/jpgs/github.jpg')}
-                          handleOAuthSignIn={handleGithubSignIn}
-                          isGitHub={true}
-                        />
-                      </View>
-                    </View>
+                <View style={styles.flex1}>
+                  <View style={styles.headerContainer}>
+                    <Text style={[styles.title, isDark && styles.titleDark]}>
+                      Welcome Back!
+                    </Text>
+                    <Image
+                      source={require('shared/res/pngs/signInHero-removebg.png')}
+                      style={styles.heroImage}
+                      placeholderStyle={styles.transparentBackground}
+                    />
                   </View>
-                </>
+
+                  <View
+                    style={[
+                      styles.inputContainer,
+                      isDark && styles.inputContainerDark,
+                    ]}>
+                    <Input
+                      inputContainerStyle={styles.inputContainerStyleNoBorder}
+                      placeholder="Username or Email"
+                      placeholderTextColor={
+                        isDark
+                          ? styles.inputPlaceholderDark.color
+                          : styles.inputPlaceholder.color
+                      }
+                      style={[
+                        styles.inputStyle,
+                        isDark && styles.inputStyleDark,
+                      ]}
+                      onChangeText={handleChange('usernameOrEmail')}
+                      value={values.usernameOrEmail}
+                      errorStyle={styles.displayNone}
+                    />
+                  </View>
+                  {errors.usernameOrEmail && (
+                    <ErrorMessage error={errors.usernameOrEmail} />
+                  )}
+
+                  <View
+                    style={[
+                      styles.inputContainer,
+                      isDark && styles.inputContainerDark,
+                    ]}>
+                    <Input
+                      placeholder="Password"
+                      secureTextEntry={isPasswordHidden}
+                      inputContainerStyle={styles.inputContainerStyleNoBorder}
+                      placeholderTextColor={
+                        isDark
+                          ? styles.inputPlaceholderDark.color
+                          : styles.inputPlaceholder.color
+                      }
+                      style={[
+                        styles.inputStyle,
+                        isDark && styles.inputStyleDark,
+                      ]}
+                      onChangeText={handleChange('password')}
+                      value={values.password}
+                      errorStyle={styles.displayNone}
+                      rightIcon={
+                        <FeatherIcon
+                          color={isDark ? '#888' : '#AAA'}
+                          name={isPasswordHidden ? 'eye-off' : 'eye'}
+                          onPress={() => setisPasswordHidden(!isPasswordHidden)}
+                          size={20}
+                        />
+                      }
+                    />
+                  </View>
+                  {errors.password && <ErrorMessage error={errors.password} />}
+
+                  <View style={styles.controlsContainer}>
+                    <View style={styles.checkboxContainer}>
+                      <BouncyCheckbox
+                        size={22}
+                        isChecked={true}
+                        fillColor={isDark ? primaryColor : primaryDarkColor}
+                        unFillColor={isDark ? '#1a1a1a' : '#fff'}
+                        textComponent={
+                          <Text
+                            style={[
+                              styles.checkboxText,
+                              isDark && styles.checkboxTextDark,
+                            ]}>
+                            Keep Me Logged In
+                          </Text>
+                        }
+                        iconStyle={styles.checkboxIcon}
+                        innerIconStyle={styles.checkboxInnerIcon}
+                        onPress={() => {}}
+                      />
+                    </View>
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      onPress={async () => {
+                        if (!isForgotPasswordLoading) {
+                          await handleForgotPassword(values.usernameOrEmail);
+                        }
+                      }}>
+                      <Text style={styles.forgotPasswordLink}>
+                        {isForgotPasswordLoading
+                          ? 'Sending...'
+                          : 'Forgot Password?'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => handleSubmit()}
+                    style={[
+                      styles.submitButton,
+                      isDark && styles.submitButtonDark,
+                    ]}>
+                    {isSubmitting ? (
+                      <ButtonLoader />
+                    ) : (
+                      <Text style={styles.submitButtonText}>Sign In</Text>
+                    )}
+                  </TouchableOpacity>
+
+                  <View style={styles.footerTextContainer}>
+                    <Text
+                      style={[
+                        styles.footerText,
+                        isDark && styles.footerTextDark,
+                      ]}>
+                      Don't Have An Account?{' '}
+                      <Text
+                        onPress={() => navigation.navigate('SignUp')}
+                        style={styles.signUpLink}>
+                        Sign Up
+                      </Text>
+                    </Text>
+                  </View>
+
+                  <View style={styles.dividerContainer}>
+                    <View
+                      style={[styles.divider, isDark && styles.dividerDark]}
+                    />
+                    <Text style={styles.dividerText}>Or Continue With</Text>
+                    <View
+                      style={[styles.divider, isDark && styles.dividerDark]}
+                    />
+                  </View>
+
+                  <View style={styles.oauthContainer}>
+                    <OAuthButton
+                      isOAuthLoading={isGoogleLoading}
+                      isSubmitting={isSubmitting}
+                      oauthImage={require('shared/res/pngs/google.png')}
+                      handleOAuthSignIn={handleGoogleSignIn}
+                      isGitHub={false}
+                    />
+                    <OAuthButton
+                      isOAuthLoading={isGithubLoading}
+                      isSubmitting={isSubmitting}
+                      oauthImage={require('shared/res/jpgs/github.jpg')}
+                      handleOAuthSignIn={handleGithubSignIn}
+                      isGitHub={true}
+                    />
+                  </View>
+                </View>
               )}
             </Formik>
-          </TouchableOpacity>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>

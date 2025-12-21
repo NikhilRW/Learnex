@@ -26,8 +26,8 @@ import {
   limit,
   getDocs,
 } from '@react-native-firebase/firestore';
-import { useDispatch } from 'react-redux';
-import { useTypedDispatch } from '../hooks/redux/useTypedDispatch';
+import {useDispatch} from 'react-redux';
+import {useTypedDispatch} from '../hooks/redux/useTypedDispatch';
 const generateUUID = (): string => {
   // Use a timestamp-based prefix to ensure uniqueness
   const timestamp = Date.now().toString(36);
@@ -44,9 +44,8 @@ const generateUUID = (): string => {
  * LexAI Service - Handles communication with Gemini API and implements agentic capabilities
  */
 class LexAIService {
-  private API_KEY = Config.GEMINI_API_KEY;
-  private API_URL =
-    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+  private API_KEY = Config.GROQ_API_KEY;
+  private API_URL = 'https://api.groq.com/openai/v1/chat/completions';
   private taskService: TaskService;
   private systemPrompt: string;
   private availableTools: LexAITool[];
@@ -431,137 +430,85 @@ Always be helpful, respectful, and focused on the user's needs.`;
         this.setMode(conversation.mode);
       }
 
-      // Add user message to conversation
-      // const userMsg: LexAIMessage = {
-      //   id: generateUUID(),
-      //   role: 'user',
-      //   content: userMessage,
-      //   timestamp: Date.now(),
-      // };
-
       // Get messages for context (excluding system messages for API)
       const messages = conversation.messages
         .filter(msg => msg.role !== 'system')
         .map(msg => ({
           role: msg.role,
-          parts: [{text: msg.content}],
+          content: msg.content,
         }));
 
       // Add new user message
       messages.push({
         role: 'user',
-        parts: [{text: userMessage}],
+        content: userMessage,
       });
 
-      // First message of the conversation should include the system prompt
-      const firstMessage = {
-        role: 'user',
-        parts: [{text: this.systemPrompt}],
+      // System prompt message
+      const systemMessage = {
+        role: 'system',
+        content: this.systemPrompt,
       };
 
       // Prepare request for API with proper format for function calling
       const payload: any = {
-        contents: [firstMessage, ...messages],
-        generationConfig: {
-          temperature: 0.0, // Set to absolute zero for deterministic behavior
-          topK: 1,
-          topP: 0.1,
-          maxOutputTokens: 1024,
-          responseMimeType: 'text/plain',
-        },
-        safetySettings: [
-          {
-            category: 'HARM_CATEGORY_HARASSMENT',
-            threshold: 'BLOCK_MEDIUM_AND_ABOVE',
-          },
-          {
-            category: 'HARM_CATEGORY_HATE_SPEECH',
-            threshold: 'BLOCK_MEDIUM_AND_ABOVE',
-          },
-          {
-            category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-            threshold: 'BLOCK_MEDIUM_AND_ABOVE',
-          },
-          {
-            category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-            threshold: 'BLOCK_MEDIUM_AND_ABOVE',
-          },
-        ],
+        messages: [systemMessage, ...messages],
+        model: 'openai/gpt-oss-120b',
+        temperature: 0.6,
+        max_completion_tokens: 4096,
+        top_p: 0.95,
+        stream: false, // Set to false to simplify handling for now, user requested true but code handles response.data directly
+        stop: null,
       };
 
       // Add tools to payload based on mode
       this.addToolsToPayload(payload);
 
       // Make API request without streaming
-      console.log('LexAI :: processMessage() :: Sending request to Gemini API');
+      console.log('LexAI :: processMessage() :: Sending request to Groq API');
 
       // Log debug information about the request
       console.log('LexAI :: processMessage() :: Request details:');
-      console.log(`  - Model: gemini-2.0-flash`);
-      console.log(`  - Temperature: ${payload.generationConfig?.temperature}`);
-      console.log(
-        `  - Max output tokens: ${payload.generationConfig?.maxOutputTokens}`,
-      );
+      console.log(`  - Model: ${payload.model}`);
+      console.log(`  - Temperature: ${payload.temperature}`);
 
       if (payload.tools && payload.tools.length > 0) {
-        const functionNames = payload.tools[0].functionDeclarations
-          .map((fn: any) => fn.name)
+        const functionNames = payload.tools
+          .map((t: any) => t.function.name)
           .join(', ');
         console.log(
-          `  - Available tools (${payload.tools[0].functionDeclarations.length}): ${functionNames}`,
+          `  - Available tools (${payload.tools.length}): ${functionNames}`,
         );
       }
 
-      const response = await axios.post(
-        `${this.API_URL}?key=${this.API_KEY}`,
-        payload,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
+      const response = await axios.post(`${this.API_URL}`, payload, {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${this.API_KEY}`,
         },
-      );
+      });
 
       // Process the response
       console.log(
-        'LexAI :: processMessage() :: Received response from Gemini API',
+        'LexAI :: processMessage() :: Received response from Groq API',
       );
 
       // Debug logging for function calls
-      if (response.data.candidates && response.data.candidates.length > 0) {
-        const firstCandidate = response.data.candidates[0];
-        console.log(
-          'Response candidate:',
-          JSON.stringify(firstCandidate, null, 2),
-        );
+      if (response.data.choices && response.data.choices.length > 0) {
+        const firstChoice = response.data.choices[0];
+        console.log('Response choice:', JSON.stringify(firstChoice, null, 2));
 
-        // Check for function call in any part of the response
-        let foundFunctionCall = false;
-        let functionCallPart = null;
-        let functionCallIndex = -1;
-
-        if (firstCandidate.content?.parts) {
-          firstCandidate.content.parts.forEach((part: any, index: number) => {
-            if (part.functionCall) {
-              foundFunctionCall = true;
-              functionCallPart = part.functionCall;
-              functionCallIndex = index;
-              console.log(`FUNCTION CALL DETECTED in parts[${index}]:`, {
-                name: part.functionCall.name,
-                args: JSON.stringify(part.functionCall.args, null, 2),
-              });
-            }
-          });
-        }
-
-        if (!foundFunctionCall) {
+        // Check for function call in the response
+        if (firstChoice.message?.tool_calls) {
           console.log(
-            'NO FUNCTION CALL IN RESPONSE - Content parts:',
-            JSON.stringify(firstCandidate.content?.parts, null, 2),
+            `FUNCTION CALLS DETECTED:`,
+            firstChoice.message.tool_calls,
           );
+        } else {
+          console.log('NO FUNCTION CALL IN RESPONSE');
         }
       } else {
-        console.log('No candidates in response');
+        console.log('No choices in response');
       }
 
       console.log(
@@ -570,63 +517,33 @@ Always be helpful, respectful, and focused on the user's needs.`;
       );
 
       const responseData = response.data;
+      const message = responseData.choices?.[0]?.message;
 
-      // Check if this response contains a function call in ANY part
-      let functionCallData = null;
-      let functionCallFound = false;
+      // Check if this response contains tool calls
+      if (message?.tool_calls && message.tool_calls.length > 0) {
+        const toolCallData = message.tool_calls[0]; // Handle first tool call for now
 
-      console.log(
-        'LexAI :: processMessage() :: Checking for function calls in response',
-      );
-      if (responseData.candidates?.[0]?.content?.parts) {
-        const parts = responseData.candidates[0].content.parts;
         console.log(
-          `LexAI :: processMessage() :: Response contains ${parts.length} parts`,
+          `LexAI :: processMessage() :: Processing tool call: ${toolCallData.function.name}`,
         );
 
-        for (let i = 0; i < parts.length; i++) {
-          console.log(
-            `LexAI :: processMessage() :: Examining part ${i}: ${
-              parts[i].text
-                ? 'text content'
-                : parts[i].functionCall
-                  ? 'function call'
-                  : 'unknown content'
-            }`,
-          );
-
-          if (parts[i].functionCall) {
-            functionCallFound = true;
-            functionCallData = parts[i].functionCall;
-            console.log(
-              `LexAI :: processMessage() :: Found function call in part ${i}:`,
-              JSON.stringify({
-                name: parts[i].functionCall.name,
-                args: parts[i].functionCall.args,
-              }),
-            );
-            break;
-          }
+        // Parse arguments which are returned as a JSON string
+        let args = {};
+        try {
+          args = JSON.parse(toolCallData.function.arguments);
+        } catch (e) {
+          console.error('Error parsing tool arguments:', e);
         }
-      } else {
-        console.log(
-          'LexAI :: processMessage() :: No content parts found in response',
-        );
-      }
 
-      if (functionCallFound && functionCallData) {
-        console.log(
-          `LexAI :: processMessage() :: Processing function call: ${functionCallData.name}`,
-        );
         console.log(
           `LexAI :: processMessage() :: Function parameters:`,
-          JSON.stringify(functionCallData.args || {}),
+          JSON.stringify(args),
         );
 
         const toolCall: LexAIToolCall = {
           id: generateUUID(),
-          toolName: functionCallData.name,
-          parameters: functionCallData.args || {},
+          toolName: toolCallData.function.name,
+          parameters: args,
         };
 
         // Execute the function call
@@ -656,41 +573,24 @@ Always be helpful, respectful, and focused on the user's needs.`;
         return followUpResponse;
       } else {
         console.log(
-          'LexAI :: processMessage() :: No function call found, processing as text response',
+          'LexAI :: processMessage() :: No tool calls found, processing as text response',
         );
-        // Extract text content
-        let textContent = '';
-        if (responseData.candidates?.[0]?.content?.parts) {
-          console.log('Processing text parts from response');
-          console.log(
-            'Parts:',
-            JSON.stringify(responseData.candidates[0].content.parts),
-          );
 
-          for (const part of responseData.candidates[0].content.parts) {
-            if (part.text) {
-              textContent += part.text;
-            }
-          }
-
-          console.log('Extracted text content length:', textContent.length);
-        } else {
-          console.log('No content parts found in response');
-          console.log('Full response structure:', JSON.stringify(responseData));
-        }
+        const textContent = message?.content || '';
 
         // Provide a fallback message if no text is found
         if (!textContent.trim()) {
           console.log('No text content found, using fallback message');
-          textContent =
-            "I'm sorry, I couldn't generate a proper response. Please try asking in a different way.";
+          // If strictly empty content and no tool calls, it might be an error or empty completion
+          // But usually Groq returns content.
         }
 
-        // No function call, just return the text response
+        // Return the text response
         const aiMsg: LexAIMessage = {
           id: generateUUID(),
           role: 'assistant',
-          content: textContent,
+          content:
+            textContent || "I'm sorry, I couldn't generate a proper response.",
           timestamp: Date.now(),
         };
 
@@ -715,87 +615,75 @@ Always be helpful, respectful, and focused on the user's needs.`;
   private addToolsToPayload(payload: any): void {
     if (this.mode === LexAIMode.AGENT) {
       // Include all tools in agent mode
-      payload.tools = [
-        {
-          functionDeclarations: this.availableTools.map(tool => {
-            // Format each tool according to the Gemini API documentation
-            const functionDeclaration: any = {
-              name: tool.name,
-              description: tool.description,
-              parameters: {
-                type: 'object',
-                properties: {},
-                required: [],
-              },
+      payload.tools = this.availableTools.map(tool => {
+        // Format each tool according to the OpenAI API documentation
+        const functionDefinition: any = {
+          name: tool.name,
+          description: tool.description,
+          parameters: {
+            type: 'object',
+            properties: {},
+            required: [],
+          },
+        };
+
+        // Convert parameters to the correct format
+        Object.entries(tool.parameters).forEach(([key, value]) => {
+          const description = value.toString();
+
+          // Parse the parameter description to identify type
+          const typeMatch = description.match(/^(.*?)\s+-\s+/);
+          const typeStr = typeMatch ? typeMatch[1].toLowerCase() : 'string';
+
+          // Check if parameter is required (doesn't contain "Optional")
+          if (!description.includes('Optional')) {
+            functionDefinition.parameters.required.push(key);
+          }
+
+          // Set up property with appropriate type
+          if (typeStr.includes('array')) {
+            functionDefinition.parameters.properties[key] = {
+              type: 'array',
+              items: {type: 'string'},
+              description: description,
             };
+          } else if (typeStr.includes('boolean')) {
+            functionDefinition.parameters.properties[key] = {
+              type: 'boolean',
+              description: description,
+            };
+          } else if (typeStr.includes('number')) {
+            functionDefinition.parameters.properties[key] = {
+              type: 'number',
+              description: description,
+            };
+          } else if (typeStr.includes('object')) {
+            functionDefinition.parameters.properties[key] = {
+              type: 'object',
+              description: description,
+            };
+          } else {
+            // Default to string for all other types
+            functionDefinition.parameters.properties[key] = {
+              type: 'string',
+              description: description,
+            };
+          }
+        });
 
-            // Convert parameters to the correct format
-            Object.entries(tool.parameters).forEach(([key, value]) => {
-              const description = value.toString();
+        return {
+          type: 'function',
+          function: functionDefinition,
+        };
+      });
 
-              // Parse the parameter description to identify type
-              const typeMatch = description.match(/^(.*?)\s+-\s+/);
-              const typeStr = typeMatch ? typeMatch[1].toLowerCase() : 'string';
-
-              // Check if parameter is required (doesn't contain "Optional")
-              if (!description.includes('Optional')) {
-                functionDeclaration.parameters.required.push(key);
-              }
-
-              // Set up property with appropriate type
-              if (typeStr.includes('array')) {
-                functionDeclaration.parameters.properties[key] = {
-                  type: 'array',
-                  items: {type: 'string'},
-                  description: description,
-                };
-              } else if (typeStr.includes('boolean')) {
-                functionDeclaration.parameters.properties[key] = {
-                  type: 'boolean',
-                  description: description,
-                };
-              } else if (typeStr.includes('number')) {
-                functionDeclaration.parameters.properties[key] = {
-                  type: 'number',
-                  description: description,
-                };
-              } else if (typeStr.includes('object')) {
-                functionDeclaration.parameters.properties[key] = {
-                  type: 'object',
-                  description: description,
-                };
-              } else {
-                // Default to string for all other types
-                functionDeclaration.parameters.properties[key] = {
-                  type: 'string',
-                  description: description,
-                };
-              }
-            });
-
-            return functionDeclaration;
-          }),
-        },
-      ];
-
-      // Set temperature for more reliable function calls
-      if (!payload.generationConfig) {
-        payload.generationConfig = {};
-      }
-
-      // Set extremely low temperature for more deterministic function calls
-      payload.generationConfig.temperature = 0.0;
-      payload.generationConfig.topP = 0.1;
-      payload.generationConfig.topK = 1;
+      // OpenAI/Groq Tool Choice
+      payload.tool_choice = 'auto';
 
       // Update system prompt in first message to enhance function calling behavior
-      if (payload.contents && payload.contents.length > 0) {
-        const firstMessage = payload.contents[0];
-        if (
-          firstMessage.role === 'user' &&
-          firstMessage.parts &&
-          firstMessage.parts.length > 0
-        ) {
+      if (payload.messages && payload.messages.length > 0) {
+        const firstMessage = payload.messages[0];
+        if (firstMessage.role === 'system') {
           // Add clear function call instructions to the system prompt
           const functionCallInstructions = `
 IMPORTANT FUNCTION CALL INSTRUCTIONS:
@@ -818,8 +706,8 @@ EXAMPLES OF CORRECT RESPONSES:
 `;
 
           // Append to existing system prompt
-          const currentText = firstMessage.parts[0].text;
-          firstMessage.parts[0].text = currentText + functionCallInstructions;
+          firstMessage.content =
+            firstMessage.content + functionCallInstructions;
 
           console.log('Enhanced system prompt with function call instructions');
         }
@@ -828,22 +716,10 @@ EXAMPLES OF CORRECT RESPONSES:
       // In simple chat mode, don't include any tools
       // This ensures the model will rely on its built-in knowledge
 
-      // Set a moderate temperature for more natural conversation
-      if (!payload.generationConfig) {
-        payload.generationConfig = {};
-      }
-      payload.generationConfig.temperature = 0.7; // More natural conversation
-      payload.generationConfig.topP = 0.95;
-      payload.generationConfig.topK = 40;
-
       // Update system prompt for simple chat mode
-      if (payload.contents && payload.contents.length > 0) {
-        const firstMessage = payload.contents[0];
-        if (
-          firstMessage.role === 'user' &&
-          firstMessage.parts &&
-          firstMessage.parts.length > 0
-        ) {
+      if (payload.messages && payload.messages.length > 0) {
+        const firstMessage = payload.messages[0];
+        if (firstMessage.role === 'system') {
           // Add reminders about using internal knowledge
           const simpleModeInstructions = `
 IMPORTANT INSTRUCTIONS:
@@ -856,8 +732,7 @@ IMPORTANT INSTRUCTIONS:
 `;
 
           // Append to existing system prompt
-          const currentText = firstMessage.parts[0].text;
-          firstMessage.parts[0].text = currentText + simpleModeInstructions;
+          firstMessage.content = firstMessage.content + simpleModeInstructions;
 
           console.log(
             'Enhanced system prompt with instructions for simple chat mode',
@@ -868,10 +743,8 @@ IMPORTANT INSTRUCTIONS:
 
     // Log information about the tools being included
     console.log(`Adding tools to payload for ${this.mode} mode`);
-    if (payload.tools && payload.tools[0].functionDeclarations) {
-      console.log(
-        `Number of tools: ${payload.tools[0].functionDeclarations.length}`,
-      );
+    if (payload.tools) {
+      console.log(`Number of tools: ${payload.tools.length}`);
     }
   }
 
@@ -1125,8 +998,8 @@ IMPORTANT INSTRUCTIONS:
 
         case 'toggleTheme':
           return {
-            ...toolCall
-          }
+            ...toolCall,
+          };
         case 'addTask':
           // Validate required parameter
           if (!parameters.title) {
@@ -1761,69 +1634,47 @@ IMPORTANT INSTRUCTIONS:
         .filter(msg => msg.role !== 'system')
         .map(msg => ({
           role: msg.role,
-          parts: [{text: msg.content}],
+          content: msg.content,
         }));
 
-      // Prepare request for API
+      // Create a comprehensive system message that includes context + tool result
+      // This simulates a tool result follow-up in a single turn if we aren't maintaining full tool history on client
+
       const payload = {
-        contents: [
+        messages: [
+          {
+            role: 'system',
+            content: this.systemPrompt,
+          },
           {
             role: 'user',
-            parts: [
-              {
-                text: `${
-                  this.systemPrompt
-                }\n\nHere's the conversation so far: ${JSON.stringify(
-                  messages,
-                )}\n\nI executed the tool ${
-                  toolResult.toolName
-                } with parameters ${JSON.stringify(
-                  toolResult.parameters,
-                )} and got this result: ${JSON.stringify(
-                  toolResult.response || toolResult.error,
-                )}. Please provide an appropriate response to the user based on this result.`,
-              },
-            ],
+            content: `Here's the conversation so far: ${JSON.stringify(
+              messages,
+            )}\n\nI executed the tool ${
+              toolResult.toolName
+            } with parameters ${JSON.stringify(
+              toolResult.parameters,
+            )} and got this result: ${JSON.stringify(
+              toolResult.response || toolResult.error,
+            )}. Please provide an appropriate response to the user based on this result.`,
           },
         ],
-        generationConfig: {
-          temperature: 0.1, // Lower temperature for more deterministic responses
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: 1024,
-          responseMimeType: 'text/plain',
-        },
-        safetySettings: [
-          {
-            category: 'HARM_CATEGORY_HARASSMENT',
-            threshold: 'BLOCK_MEDIUM_AND_ABOVE',
-          },
-          {
-            category: 'HARM_CATEGORY_HATE_SPEECH',
-            threshold: 'BLOCK_MEDIUM_AND_ABOVE',
-          },
-          {
-            category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-            threshold: 'BLOCK_MEDIUM_AND_ABOVE',
-          },
-          {
-            category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-            threshold: 'BLOCK_MEDIUM_AND_ABOVE',
-          },
-        ],
+        model: 'openai/gpt-oss-120b',
+        temperature: 0.6,
+        max_completion_tokens: 4096,
+        top_p: 0.95,
+        stream: false,
+        stop: null,
       };
 
       // Make API request without streaming
-      console.log('Sending tool result follow-up request to Gemini API');
-      const response = await axios.post(
-        `${this.API_URL}?key=${this.API_KEY}`,
-        payload,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
+      console.log('Sending tool result follow-up request to Groq API');
+      const response = await axios.post(`${this.API_URL}`, payload, {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${this.API_KEY}`,
         },
-      );
+      });
 
       console.log('Received tool result follow-up response');
       console.log(
@@ -1832,28 +1683,20 @@ IMPORTANT INSTRUCTIONS:
       );
 
       // Extract text content
-      let textContent = '';
-      if (response.data.candidates?.[0]?.content?.parts) {
-        console.log('Processing tool result text parts');
-        for (const part of response.data.candidates[0].content.parts) {
-          if (part.text) {
-            textContent += part.text;
-          }
-        }
-        console.log(
-          'Extracted tool result text content length:',
-          textContent.length,
-        );
-      } else {
-        console.log('No content parts found in tool result response');
-      }
+      const textContent = response.data.choices?.[0]?.message?.content || '';
+
+      console.log(
+        'Extracted tool result text content length:',
+        textContent.length,
+      );
 
       // Provide a fallback message if no text is found
-      if (!textContent.trim()) {
+      let finalContent = textContent;
+      if (!finalContent.trim()) {
         console.log(
           'No text content found in tool result, using fallback message',
         );
-        textContent =
+        finalContent =
           "I processed your request but couldn't generate a proper response. Here's what happened: " +
           (toolResult.error
             ? `There was an error: ${toolResult.error}`
@@ -1864,7 +1707,7 @@ IMPORTANT INSTRUCTIONS:
       const aiMsg: LexAIMessage = {
         id: generateUUID(),
         role: 'assistant',
-        content: textContent,
+        content: finalContent,
         timestamp: Date.now(),
       };
 
@@ -1908,6 +1751,20 @@ IMPORTANT INSTRUCTIONS:
     } catch (error) {
       console.error('Error saving LexAI conversation:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Get a specific conversation
+   */
+  public async getConversation(
+    conversationId: string,
+  ): Promise<LexAIConversation | null> {
+    try {
+      return await LexAIFirestoreService.getConversation(conversationId);
+    } catch (error) {
+      console.error('Error getting LexAI conversation:', error);
+      return null;
     }
   }
 
@@ -2423,73 +2280,55 @@ IMPORTANT INSTRUCTIONS:
 
       // Format conversation for the API
       const formattedConversation = recentMessages.map(msg => ({
-        role: 'user', // All messages are treated as user context
-        parts: [
-          {
-            text: `${
-              msg.senderId === getAuth().currentUser?.uid ? 'Me' : recipientName
-            }: ${msg.text}`,
-          },
-        ],
+        role: 'user',
+        content: `${
+          msg.senderId === getAuth().currentUser?.uid ? 'Me' : recipientName
+        }: ${msg.text}`,
       }));
 
       // Prepare request payload
       const payload = {
-        contents: [
+        messages: [
           {
             role: 'user',
-            parts: [
-              {
-                text: `Given this conversation with ${recipientName}, suggest 3 short, natural-sounding replies I could send next. Format as a JSON array of strings, and keep suggestions brief (under 10 words when possible). Don't include descriptions, just the message text in conversational language:
-                ${JSON.stringify(formattedConversation)}`,
-              },
-            ],
+            content: `Given this conversation with ${recipientName}, suggest 3 short, natural-sounding replies I could send next. Format as a JSON array of strings, and keep suggestions brief (under 10 words when possible). Don't include descriptions, just the message text in conversational language:
+            ${JSON.stringify(formattedConversation)}`,
           },
         ],
-        generationConfig: {
-          temperature: 0.7,
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: 256,
-          responseMimeType: 'application/json',
-        },
+        model: 'openai/gpt-oss-120b',
+        temperature: 0.6,
+        max_completion_tokens: 4096,
+        top_p: 0.95,
+        stream: false,
+        stop: null,
       };
 
       // Make the API request
       console.log('Requesting message suggestions from API');
-      const response = await axios.post(
-        `${this.API_URL}?key=${this.API_KEY}`,
-        payload,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
+      const response = await axios.post(`${this.API_URL}`, payload, {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${this.API_KEY}`,
         },
-      );
+      });
 
       // Extract suggestions from response
       let suggestions: string[] = defaultSuggestions;
 
       try {
-        if (response.data.candidates && response.data.candidates.length > 0) {
-          const content = response.data.candidates[0].content;
-          if (content && content.parts && content.parts.length > 0) {
-            const responseText = content.parts[0].text;
+        const content = response.data.choices?.[0]?.message?.content;
 
-            // Try to parse the JSON array
-            if (responseText) {
-              // Look for array pattern
-              const match = responseText.match(/\[.*\]/s);
-              if (match) {
-                const jsonArray = match[0];
-                const parsedSuggestions = JSON.parse(jsonArray);
-                if (
-                  Array.isArray(parsedSuggestions) &&
-                  parsedSuggestions.length > 0
-                ) {
-                  suggestions = parsedSuggestions.slice(0, 3); // Limit to 3 suggestions
-                }
-              }
+        if (content) {
+          // Look for array pattern
+          const match = content.match(/\[.*\]/s);
+          if (match) {
+            const jsonArray = match[0];
+            const parsedSuggestions = JSON.parse(jsonArray);
+            if (
+              Array.isArray(parsedSuggestions) &&
+              parsedSuggestions.length > 0
+            ) {
+              suggestions = parsedSuggestions.slice(0, 3); // Limit to 3 suggestions
             }
           }
         }

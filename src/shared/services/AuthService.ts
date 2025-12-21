@@ -55,7 +55,7 @@ export class AuthService {
         isLoggedIn: true,
         savedPosts: [],
         createdAt: serverTimestamp(),
-        image: `https://avatar.iran.liara.run/username?username=${encodeURIComponent(
+        image: `https://ui-avatars.com/api/?name=${encodeURIComponent(
           fullName,
         )}`,
       };
@@ -134,7 +134,8 @@ export class AuthService {
 
       // Clean up notification listeners before signing out
       try {
-        const notificationService = require('shared/services/NotificationService').default;
+        const notificationService =
+          require('shared/services/NotificationService').default;
         notificationService.removeMessageListener();
       } catch (error) {
         console.error('Failed to clean up notification listeners:', error);
@@ -186,7 +187,7 @@ export class AuthService {
             createdAt: serverTimestamp() as any,
             image:
               user.photoURL ||
-              `https://avatar.iran.liara.run/username?username=${encodeURIComponent(
+              `https://ui-avatars.com/api/?name=${encodeURIComponent(
                 user.displayName || 'Anonymous',
               )}`,
           };
@@ -266,7 +267,7 @@ export class AuthService {
             createdAt: serverTimestamp() as any,
             image:
               user.photoURL ||
-              `https://avatar.iran.liara.run/username?username=${encodeURIComponent(
+              `https://ui-avatars.com/api/?name=${encodeURIComponent(
                 user.displayName || 'Anonymous',
               )}`,
           };
@@ -319,7 +320,7 @@ export class AuthService {
             createdAt: serverTimestamp() as any,
             image:
               user.photoURL ||
-              `https://avatar.iran.liara.run/username?username=${encodeURIComponent(
+              `https://ui-avatars.com/api/?name=${encodeURIComponent(
                 user.displayName || 'Anonymous',
               )}`,
           };

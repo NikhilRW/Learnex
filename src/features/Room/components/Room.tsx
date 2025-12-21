@@ -74,7 +74,6 @@ interface RoomProps {
 const Room: React.FC<RoomProps> = ({
   meeting,
   localStream,
-  updateLocalStream,
   remoteStreams,
   onToggleAudio,
   onToggleVideo,
@@ -110,11 +109,10 @@ const Room: React.FC<RoomProps> = ({
   const [showMessageReactions, setShowMessageReactions] = useState(false);
   const flatListRef = useRef<any>(null);
   const participantsListRef = useRef<any>(null);
-  const { width, height } = Dimensions.get('window');
+  const {  height } = Dimensions.get('window');
   const [pinnedParticipantId, setPinnedParticipantId] = useState<string | null>(
     null,
   );
-  const firebase = useTypedSelector(state => state.firebase.firebase);
   const [userInfoCache, setUserInfoCache] = useState<
     Map<
       string,
@@ -449,19 +447,11 @@ const Room: React.FC<RoomProps> = ({
 
   const renderParticipantItem = ({
     item,
-    index,
     isPinned = false,
   }: {
     item: any;
-    index: number;
     isPinned?: boolean;
   }) => {
-    // Access numColumns and itemHeight from the outer scope (renderParticipantGrid)
-    // Note: This relies on renderParticipantItem being called ONLY from within renderParticipantGrid
-    // where numColumns and itemHeight are defined.
-    const outerScopeNumColumns = (renderParticipantGrid as any).numColumns; // Need a way to access these... this is tricky
-    const outerScopeItemHeight = (renderParticipantGrid as any).itemHeight;
-
     // Corrected renderParticipantItem (doesn't need height/numColumns passed in)
     const participantState = item.state || {};
     const isCurrentUser = item.id === currentUserId;
@@ -1662,7 +1652,7 @@ const styles = StyleSheet.create({
   },
   controls: {
     flexDirection: 'row',
-    justifyContent: 'space-evenly',
+    justifyContent: 'center',
     alignItems: 'center',
     flexWrap: 'nowrap',
     paddingVertical: 8,

@@ -130,9 +130,9 @@ const QRCode = () => {
           logo={{
             uri:
               currentUser?.photoURL ||
-              'https://avatar.iran.liara.run/username?username=' +
+              'https://ui-avatars.com/api/?name==' +
               encodeURIComponent(fullName) ||
-              'Anonymous',
+              'Anonymous'
           }}
           logoSize={100}
           logoMargin={-20}

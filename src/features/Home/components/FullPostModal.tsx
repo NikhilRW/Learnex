@@ -329,7 +329,7 @@ export const FullPostModal = ({
                           ? { uri: comment.userImage }
                           : {
                             uri:
-                              'https://avatar.iran.liara.run/username?username=' +
+                              'https://ui-avatars.com/api/?name=' +
                               encodeURIComponent(
                                 comment.username || 'Anonymous',
                               ),

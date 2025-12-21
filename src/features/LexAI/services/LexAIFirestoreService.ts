@@ -93,6 +93,45 @@ export class LexAIFirestoreService {
   }
 
   /**
+   * Get a specific conversation by ID
+   */
+  async getConversation(
+    conversationId: string,
+  ): Promise<LexAIConversation | null> {
+    try {
+      const userId = getAuth().currentUser?.uid;
+      if (!userId) {
+        throw new Error('User not authenticated');
+      }
+
+      const docRef = doc(this.conversationsCollection, conversationId);
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists) {
+        const data = docSnap.data();
+        // Verify ownership
+        if (data?.userId !== userId) {
+          console.warn('Unauthorized access to conversation');
+          return null;
+        }
+
+        return {
+          id: docSnap.id,
+          title: data.title,
+          messages: data.messages,
+          createdAt: data.createdAt,
+          updatedAt: data.updatedAt,
+          mode: data.mode,
+        } as LexAIConversation;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error getting LexAI conversation from Firestore:', error);
+      return null;
+    }
+  }
+
+  /**
    * Delete a conversation from Firestore
    */
   async deleteConversation(conversationId: string): Promise<void> {

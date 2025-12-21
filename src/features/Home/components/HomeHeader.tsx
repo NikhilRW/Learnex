@@ -47,9 +47,9 @@ export const HomeHeader = ({
           return (
             <TouchableOpacity
               key={tag}
-              style={[styles.tagButton, tagButtonStyle]}
+              style={[styles.tagButton, tagButtonStyle,trendingTagStyle]}
               onPress={() => handleTagPress(tag)}>
-              <Text style={[styles.tagText, trendingTagStyle]}>
+              <Text style={[styles.tagText,{color:trendingTagStyle.color}]}>
                 {tag.includes('#') ? tag : `#${tag}`}
               </Text>
             </TouchableOpacity>

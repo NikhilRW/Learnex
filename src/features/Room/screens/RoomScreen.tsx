@@ -36,6 +36,7 @@ import {getAuth} from '@react-native-firebase/auth';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import {TaskService} from 'shared/services/TaskService';
 import {styles} from 'room/styles/RoomScreen';
+import {SafeAreaView} from 'react-native-safe-area-context';
 
 type RoomScreenRouteProp = RouteProp<UserStackParamList, 'RoomScreen'>;
 type RoomScreenNavigationProp = DrawerNavigationProp<UserStackParamList>;
@@ -953,7 +954,7 @@ const RoomScreen: React.FC = () => {
   }
 
   return (
-    <View style={{flex: 1}}>
+    <SafeAreaView style={{flex: 1, backgroundColor: '#202124'}}>
       {connectionState === 'failed' ? (
         <View style={styles.errorContainer}>
           <Icon name="error" size={64} color="#EA4335" />
@@ -993,7 +994,7 @@ const RoomScreen: React.FC = () => {
           isFrontCamera={isFrontCamera}
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 };
 

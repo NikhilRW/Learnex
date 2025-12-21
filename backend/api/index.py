@@ -247,74 +247,20 @@ def get_hackathons():
     global hackerearth_events, devfolio_events, last_fetched, is_refreshing
 
     location = request.args.get('location', 'India').lower()
-    force = request.args.get('force', 'false').lower() == 'true'
 
-    # If force is true, trigger a refresh
-    if force:
-        print("Force refresh requested via /api/hackathons endpoint")
-        # Start background thread for refresh
-        threading.Thread(target=refresh_events_background).start()
-        # We'll continue and return existing data, refresh will happen in background
+    print("Fetching hackathons from local HTML files...")
 
-    # Check if a refresh is currently in progress
-    if is_refreshing:
-        # If we don't have any data yet, return a loading placeholder
-        if not hackerearth_events and not devfolio_events:
-            return jsonify([{
-                "id": "loading",
-                "title": "Refreshing Events...",
-                "description": "We're currently refreshing event data from our sources. This may take a minute or two. Please check back soon!",
-                "source": "loading",
-                "mode": "online",
-                "startDate": datetime.now().isoformat(),
-                "endDate": (datetime.now() + timedelta(days=1)).isoformat(),
-                "location": "Loading...",
-                "imageUrl": "",
-                "url": ""
-            }])
+    # Force use of local HTML files as requested
+    he_events = scrape_hackerearth(use_cached_html=True)
+    df_events = scrape_devfolio(use_cached_html=True)
 
-    # Check if we need to initialize or refresh data
-    current_time = datetime.now()
-
-    # Initialize if needed
-    if not hackerearth_events and not devfolio_events:
-        print("Initial data load...")
-        # Try to load from cache first
-        cached_hackerearth = get_from_cache("hackerearth_events")
-        cached_devfolio = get_from_cache("devfolio_events")
-
-        if cached_hackerearth and cached_devfolio:
-            hackerearth_events = cached_hackerearth
-            devfolio_events = cached_devfolio
-            last_fetched = current_time
-            print(
-                f"Loaded {len(hackerearth_events)} HackerEarth events and {len(devfolio_events)} Devfolio events from cache")
-        else:
-            # Start background thread to load data if not in cache
-            threading.Thread(target=refresh_events_background).start()
-
-            # Return a small placeholder response immediately
-            return jsonify([{
-                "id": "loading",
-                "title": "Loading Events...",
-                "description": "Please wait or check back in a minute while we fetch the latest hackathons.",
-                "source": "loading",
-                "mode": "online",
-                "startDate": datetime.now().isoformat(),
-                "endDate": (datetime.now() + timedelta(days=1)).isoformat(),
-                "location": "Loading...",
-                "imageUrl": "",
-                "url": ""
-            }])
-
-    # Auto-refresh if data is older than the cache duration (5 minutes)
-    elif last_fetched and (current_time - last_fetched > timedelta(seconds=CACHE_DURATION)):
-        print(
-            f"Auto-refreshing data after cache duration ({CACHE_DURATION} seconds)...")
-        threading.Thread(target=refresh_events_background).start()
+    # Update global state so detail route can find them
+    hackerearth_events = he_events
+    devfolio_events = df_events
+    last_fetched = datetime.now()
 
     # Combine events from both sources
-    all_events = hackerearth_events + devfolio_events
+    all_events = he_events + df_events
 
     # Apply location filter if provided
     if location and location != "all":
@@ -331,19 +277,39 @@ def get_hackathons():
 @app.route('/api/hackathons/<source>/<event_id>', methods=['GET'])
 def get_hackathon_details(source, event_id):
     """Get details for a specific hackathon"""
+    global hackerearth_events, devfolio_events
+
+    # If lists are empty, try to populate them from local HTML
+    if not hackerearth_events or not devfolio_events:
+        print(f"In-memory lists empty, loading from local HTML for detail lookup...")
+        if not hackerearth_events:
+            hackerearth_events = scrape_hackerearth(use_cached_html=True)
+        if not devfolio_events:
+            devfolio_events = scrape_devfolio(use_cached_html=True)
+
     if source == EventSource.HACKEREARTH:
         # Find the event in hackerearth_events
         for event in hackerearth_events:
             if event.get('id') == event_id:
-                # Fetch additional details if needed
                 return jsonify(event)
 
     elif source == EventSource.DEVFOLIO:
         # Find the event in devfolio_events
         for event in devfolio_events:
             if event.get('id') == event_id:
-                # Fetch additional details if needed
+                # If we have the basic info but maybe not all details,
+                # we could theoretically call scrape_hackathon_details here,
+                # but scrape_devfolio already calls it for each event when use_cached_html is True.
                 return jsonify(event)
+
+        # Special case: if not in list, try to fetch detail directly from file if it's devfolio
+        if source == EventSource.DEVFOLIO:
+            # Reconstruct URL from event_id (approximation)
+            event_url = f"https://{event_id}.devfolio.co/"
+            print(f"Event {event_id} not in main list, trying direct file lookup for {event_url}")
+            detail = scrape_hackathon_details(event_url, None, use_cached_html=True)
+            if detail:
+                return jsonify(detail)
 
     return jsonify({"error": "Event not found"}), 404
 
@@ -466,6 +432,8 @@ def refresh_events():
 def refresh_status():
     """Get the current status of the refresh operation"""
     global is_refreshing, last_fetched
+
+    return get_hackathons()
 
     status = "in_progress" if is_refreshing else "idle"
     message = "Refresh operation in progress" if is_refreshing else "No refresh operation is currently running"
@@ -745,7 +713,7 @@ def send_message_notification():
 # Scraping functions
 
 
-def scrape_hackerearth():
+def scrape_hackerearth(use_cached_html=False):
     """Scrape events from HackerEarth"""
     events = []
     try:
@@ -757,15 +725,25 @@ def scrape_hackerearth():
         # Check if we have a recent HTML file (less than 2 hours old)
         fallback_file_path = find_local_html_file("hackerearth_response.html")
 
-        if fallback_file_path and is_html_file_recent(fallback_file_path):
+        if fallback_file_path and (use_cached_html or is_html_file_recent(fallback_file_path)):
             # Use the recent cached HTML file directly without attempting a new scrape
-            print("Using recent cached HTML file for HackerEarth (less than 2 hours old)")
+            if use_cached_html:
+                print("Using local HTML file for HackerEarth (forced)")
+            else:
+                print("Using recent cached HTML file for HackerEarth (less than 2 hours old)")
+            
             html_content = load_html_from_file(fallback_file_path)
             if html_content:
                 soup = BeautifulSoup(html_content, 'html.parser')
             else:
+                if use_cached_html:
+                    print("Failed to load local HTML for HackerEarth, returning empty list")
+                    return []
                 print("Failed to load recent cached HTML, will try live scraping")
                 soup = None
+        elif use_cached_html:
+            print("No local HTML file found for HackerEarth, returning empty list")
+            return []
         else:
             # Either no cached file or it's too old, try live scraping
             try:
@@ -989,10 +967,11 @@ def get_scraper_api_key():
     return os.environ.get('SCRAPER_API_KEY', None)
 
 
-def scrape_devfolio(force_refresh=False):
+def scrape_devfolio(force_refresh=False, use_cached_html=False):
     """
     Scrape events from Devfolio using ScraperAPI if available, otherwise use direct scraping
     @param force_refresh: If True, bypass cache and force a fresh scrape
+    @param use_cached_html: If True, force loading from local HTML files
     """
     # Get the ScraperAPI key
     api_key = get_scraper_api_key()
@@ -1008,15 +987,18 @@ def scrape_devfolio(force_refresh=False):
     main_fallback_file = find_local_html_file(
         "devfolio_response_scraperapi.html")
 
-    # If we have a recent file and not forcing refresh, use the direct scraping method with cached HTML
-    if main_fallback_file and is_html_file_recent(main_fallback_file) and not force_refresh:
-        print("Using recent cached HTML file for Devfolio (less than 2 hours old)")
+    # If we have a local HTML file or forced cached mode
+    if use_cached_html or (main_fallback_file and is_html_file_recent(main_fallback_file) and not force_refresh):
+        if use_cached_html:
+            print("Using local HTML file for Devfolio (forced)")
+        else:
+            print("Using recent cached HTML file for Devfolio (less than 2 hours old)")
         return scrape_devfolio_direct(force_refresh, use_cached_html=True)
 
     # If no API key is available, fall back to direct scraping
     if not api_key:
         print("💡 No ScraperAPI key found, falling back to direct scraping method")
-        return scrape_devfolio_direct(force_refresh)
+        return scrape_devfolio_direct(force_refresh, use_cached_html=use_cached_html)
     elif api_key == "your_api_key_here":
         print(
             "⚠️  Using placeholder ScraperAPI key - please replace with your actual API key")
@@ -1128,7 +1110,7 @@ def scrape_devfolio(force_refresh=False):
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
             # Submit all scraping tasks
             future_to_url = {
-                executor.submit(scrape_hackathon_details, event_url, API_KEY): event_url
+                executor.submit(scrape_hackathon_details, event_url, API_KEY, use_cached_html=use_cached_html): event_url
                 for event_url in hackathon_links
             }
 
@@ -1178,7 +1160,7 @@ def scrape_devfolio(force_refresh=False):
     return events
 
 
-def scrape_hackathon_details(event_url, api_key):
+def scrape_hackathon_details(event_url, api_key, use_cached_html=False):
     """Scrape details of a single hackathon (for parallel processing)"""
     try:
         # Extract hackathon ID from URL
@@ -1190,17 +1172,25 @@ def scrape_hackathon_details(event_url, api_key):
         fallback_file_path = find_local_html_file(
             f"devfolio_detail_{event_id}*.html")
 
-        if fallback_file_path and is_html_file_recent(fallback_file_path):
-            # Use the recent cached HTML file directly without attempting a new scrape
-            print(
-                f"Using recent cached HTML file for hackathon {event_id} (less than 2 hours old)")
+        if fallback_file_path and (use_cached_html or is_html_file_recent(fallback_file_path)):
+            # Use the local HTML file直接 without attempting a new scrape
+            if use_cached_html:
+                print(f"Using local HTML file for hackathon {event_id} (forced)")
+            else:
+                print(
+                    f"Using recent cached HTML file for hackathon {event_id} (less than 2 hours old)")
+            
             html_content = load_html_from_file(fallback_file_path)
             if html_content:
                 detail_soup = BeautifulSoup(html_content, 'html.parser')
             else:
+                if use_cached_html:
+                    return None
                 print("Failed to load recent cached HTML, will try live scraping")
                 detail_soup = None
                 # Continue with live scraping
+        elif use_cached_html:
+            return None
         else:
             print(f"Fetching details for {event_url} via ScraperAPI")
 
@@ -1401,29 +1391,8 @@ def scrape_devfolio_direct(force_refresh=False, use_cached_html=False):
     """Original direct scraping method for Devfolio without using ScraperAPI"""
     events = []
     try:
-        # First try to get the list from the main page
-        list_url = "https://devfolio.co/hackathons/open"
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-            'Accept-Language': 'en-US,en;q=0.9',
-            'Referer': 'https://devfolio.co/',
-            'Cache-Control': 'max-age=0',
-            'Connection': 'keep-alive',
-            'Sec-Fetch-Dest': 'document',
-            'Sec-Fetch-Mode': 'navigate',
-            'Sec-Fetch-Site': 'same-origin',
-            'Sec-Fetch-User': '?1',
-            'Upgrade-Insecure-Requests': '1'
-        }
-
-        # Initialize session to maintain cookies
-        session = requests.Session()
-        session.headers.update(headers)
-
-        print(f"Fetching hackathon list from {list_url} using direct method")
-
         hackathon_links = []
+        list_url = "https://devfolio.co/hackathons/open"
 
         # If use_cached_html is True, skip the live scraping and use cached HTML directly
         if use_cached_html:
@@ -1459,20 +1428,6 @@ def scrape_devfolio_direct(force_refresh=False, use_cached_html=False):
                                 href not in hackathon_links):
                             hackathon_links.append(href)
                             print(f"  Added cached link: {href}")
-
-                # If we still have no links, use example list
-                if not hackathon_links:
-                    print("No hackathon links found in cached HTML, using example list")
-                    example_hackathons = [
-                        "https://rns-hackoverflow-2.devfolio.co/",
-                        "https://hackhazards-25.devfolio.co/",
-                        "https://bitbox-5-0.devfolio.co/",
-                        "https://synapses-25.devfolio.co/",
-                        "https://amuhacks-4-0.devfolio.co/"
-                    ]
-                    hackathon_links.extend(example_hackathons)
-
-                print(f"Using {len(hackathon_links)} links from cached HTML")
             else:
                 # Fall back to example list if cached HTML couldn't be loaded
                 print("Failed to load cached HTML, using example list")
@@ -1486,11 +1441,55 @@ def scrape_devfolio_direct(force_refresh=False, use_cached_html=False):
                 hackathon_links.extend(example_hackathons)
         else:
             # Try to get links from the main page using live request
-            try:
-                response = None
-                # First try using the ScraperAPI
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Referer': 'https://devfolio.co/',
+                'Cache-Control': 'max-age=0',
+                'Connection': 'keep-alive',
+                'Sec-Fetch-Dest': 'document',
+                'Sec-Fetch-Mode': 'navigate',
+                'Sec-Fetch-Site': 'same-origin',
+                'Sec-Fetch-User': '?1',
+                'Upgrade-Insecure-Requests': '1'
+            }
+
+            # Initialize session to maintain cookies
+            session = requests.Session()
+            session.headers.update(headers)
+
+            print(f"Fetching hackathon list from {list_url} using direct method")
+
+            # If we still have no links, use example list
+            if not hackathon_links:
+                print("No hackathon links found in cached HTML, using example list")
+                example_hackathons = [
+                    "https://rns-hackoverflow-2.devfolio.co/",
+                    "https://hackhazards-25.devfolio.co/",
+                    "https://bitbox-5-0.devfolio.co/",
+                    "https://synapses-25.devfolio.co/",
+                    "https://amuhacks-4-0.devfolio.co/"
+                ]
+                hackathon_links.extend(example_hackathons)
+
+                print(f"Using {len(hackathon_links)} links from cached HTML")
+            else:
+                # Fall back to example list if cached HTML couldn't be loaded
+                print("Failed to load cached HTML, using example list")
+                example_hackathons = [
+                    "https://rns-hackoverflow-2.devfolio.co/",
+                    "https://hackhazards-25.devfolio.co/",
+                    "https://bitbox-5-0.devfolio.co/",
+                    "https://synapses-25.devfolio.co/",
+                    "https://amuhacks-4-0.devfolio.co/"
+                ]
+                hackathon_links.extend(example_hackathons)
+                # Try to get links from the main page using live request
                 try:
-                    # Check if the api_url is defined - if not, define it
+                    response = None
+                    # First try using the ScraperAPI
+                        # Check if the api_url is defined - if not, define it
                     if 'api_url' not in locals() and 'api_url' not in globals():
                         API_KEY = get_scraper_api_key()
                         if API_KEY:
@@ -1504,9 +1503,6 @@ def scrape_devfolio_direct(force_refresh=False, use_cached_html=False):
                         else:
                             # No API key available
                             raise Exception("No ScraperAPI key available")
-
-                    # Request through ScraperAPI with JS rendering
-                    # Reduced timeout from 60 to 45
                     response = requests.get(api_url, timeout=45)
                 except Exception as e:
                     print(f"Error with ScraperAPI request: {e}")
@@ -1672,11 +1668,6 @@ def scrape_devfolio_direct(force_refresh=False, use_cached_html=False):
                     print(
                         f"Found {len(hackathon_links)} hackathon links from fallbacks")
 
-            except Exception as e:
-                print(f"Error fetching main page: {e}")
-                import traceback
-                traceback.print_exc()
-
                 # Use fallback HTML
                 html_file_path = find_local_html_file(
                     "devfolio_response_scraperapi.html")
@@ -1816,7 +1807,7 @@ def scrape_devfolio_direct(force_refresh=False, use_cached_html=False):
 
                 # Try to use scrape_hackathon_details for consistent processing
                 API_KEY = get_scraper_api_key()
-                event_data = scrape_hackathon_details(event_url, API_KEY)
+                event_data = scrape_hackathon_details(event_url, API_KEY, use_cached_html=use_cached_html)
 
                 if event_data:
                     events.append(event_data)

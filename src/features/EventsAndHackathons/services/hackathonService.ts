@@ -35,24 +35,20 @@ export class HackathonService {
       const finalLocation = 'India';
 
       // Check cache first if not forcing a refresh
-      if (!forceRefresh) {
-        const cachedData =
-          await StorageService.getCachedHackathons(finalLocation);
+      // if (!forceRefresh) {
+      //   const cachedData =
+      //     await StorageService.getCachedHackathons(finalLocation);
 
-        // If we have valid cached data, use it
-        if (cachedData && cachedData.isSameLocation) {
-          console.log('Using cached hackathon data');
-          return cachedData.hackathons;
-        }
-      }
+      //   // If we have valid cached data, use it
+      //   if (cachedData && cachedData.isSameLocation) {
+      //     console.log('Using cached hackathon data');
+      //     return cachedData.hackathons;
+      //   }
+      // }
 
       // If we're here, either forceRefresh is true, there's no cache,
       // or the location has changed - fetch from API
-      const response = await axios.get(
-        `${this.baseUrl}/hackathons?location=${encodeURIComponent(
-          finalLocation,
-        )}${forceRefresh ? '&force=true' : ''}`,
-      );
+      const response = await axios.get(`${this.baseUrl}/hackathons`);
 
       // Process the data to ensure image URLs are valid
       const hackathons = response.data.map((hackathon: any) => ({

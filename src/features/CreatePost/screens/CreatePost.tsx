@@ -565,7 +565,7 @@ const CreatePost = () => {
           username: currentUser.displayName || fullName || 'Anonymous',
           image:
             currentUser.photoURL ||
-            `https://avatar.iran.liara.run/username?username=${encodeURIComponent(currentUser.displayName || fullName || 'Anonymous')}`,
+            `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.displayName || fullName || 'Anonymous')}`,
         },
         description: formData.description,
         postImages: postImages,

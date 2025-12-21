@@ -51,7 +51,7 @@ const FloatingBottomTabBar = ({
   return (
     <View
       style={[styles.mainContainer]}
-      className="bg-neutral-300 dark:bg-neutral-700">
+      className="bg-neutral-300 dark:bg-black">
       <View
         style={[
           styles.floatingTabBarContainer,
@@ -109,7 +109,6 @@ const TabsButton = (
           isFocused,
           24,
           isFocused ? (isDark ? 'white' : '#0987C1') : primaryColor,
-          true,
         )}
         {isFocused && (
           <Animated.Text
