@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
+import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import SignIn from '../../../../src/features/Auth/screens/SignIn';
 import Snackbar from 'react-native-snackbar';
 
@@ -87,10 +87,10 @@ describe('SignIn Screen', () => {
     it('renders correctly', () => {
         const { getByPlaceholderText, getByText } = render(<SignIn />);
 
-        expect(getByPlaceholderText('Enter Username or Email')).toBeTruthy();
+        expect(getByPlaceholderText('Username or Email')).toBeTruthy();
         expect(getByPlaceholderText('Password')).toBeTruthy();
         expect(getByText('Sign In')).toBeTruthy();
-        expect(getByText('Forgot Password ?')).toBeTruthy();
+        expect(getByText('Forgot Password?')).toBeTruthy();
     });
 
     it('shows validation errors for empty submission', async () => {
@@ -118,7 +118,7 @@ describe('SignIn Screen', () => {
 
         // Fill form
         fireEvent.changeText(
-            getByPlaceholderText('Enter Username or Email'),
+            getByPlaceholderText('Username or Email'),
             'testuser',
         );
         fireEvent.changeText(getByPlaceholderText('Password'), 'password123');
@@ -148,7 +148,7 @@ describe('SignIn Screen', () => {
         const { getByPlaceholderText, getByText } = render(<SignIn />);
 
         fireEvent.changeText(
-            getByPlaceholderText('Enter Username or Email'),
+            getByPlaceholderText('Username or Email'),
             'unknownuser',
         );
         fireEvent.changeText(getByPlaceholderText('Password'), 'password123');
@@ -178,7 +178,7 @@ describe('SignIn Screen', () => {
         const { getByPlaceholderText, getByText } = render(<SignIn />);
 
         fireEvent.changeText(
-            getByPlaceholderText('Enter Username or Email'),
+            getByPlaceholderText('Username or Email'),
             'testuser',
         );
         fireEvent.changeText(getByPlaceholderText('Password'), 'wrongpass');
@@ -205,11 +205,11 @@ describe('SignIn Screen', () => {
 
         // Enter email (required for forgot password logic in component)
         fireEvent.changeText(
-            getByPlaceholderText('Enter Username or Email'),
+            getByPlaceholderText('Username or Email'),
             'test@example.com',
         );
 
-        fireEvent.press(getByText('Forgot Password ?'));
+        fireEvent.press(getByText('Forgot Password?'));
 
         await waitFor(() => {
             expect(

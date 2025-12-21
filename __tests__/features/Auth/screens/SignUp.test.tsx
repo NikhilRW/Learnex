@@ -212,9 +212,9 @@ describe('SignUp Screen', () => {
       preloadedState: initialState,
     });
 
-    expect(getByPlaceholderText('Enter Fullname')).toBeTruthy();
-    expect(getByPlaceholderText('Enter Username')).toBeTruthy();
-    expect(getByPlaceholderText('Enter Email')).toBeTruthy();
+    expect(getByPlaceholderText('Full Name')).toBeTruthy();
+    expect(getByPlaceholderText('Username')).toBeTruthy();
+    expect(getByPlaceholderText('Email Address')).toBeTruthy();
     expect(getByPlaceholderText('Password')).toBeTruthy();
     expect(getByPlaceholderText('Confirm Password')).toBeTruthy();
     expect(getByText('Create An Account')).toBeTruthy();
@@ -258,7 +258,7 @@ describe('SignUp Screen', () => {
       preloadedState: initialState,
     });
 
-    fireEvent.changeText(getByPlaceholderText('Enter Email'), 'invalid-email');
+    fireEvent.changeText(getByPlaceholderText('Email Address'), 'invalid-email');
     fireEvent.press(getByText('Create An Account'));
 
     await waitFor(() => {
@@ -295,9 +295,9 @@ describe('SignUp Screen', () => {
     });
 
     // Fill valid form
-    fireEvent.changeText(getByPlaceholderText('Enter Fullname'), 'John Doe');
-    fireEvent.changeText(getByPlaceholderText('Enter Username'), 'johndoe');
-    fireEvent.changeText(getByPlaceholderText('Enter Email'), 'john@example.com');
+    fireEvent.changeText(getByPlaceholderText('Full Name'), 'John Doe');
+    fireEvent.changeText(getByPlaceholderText('Username'), 'johndoe');
+    fireEvent.changeText(getByPlaceholderText('Email Address'), 'john@example.com');
     fireEvent.changeText(getByPlaceholderText('Password'), 'Password@123');
     fireEvent.changeText(getByPlaceholderText('Confirm Password'), 'Password@123');
     fireEvent.press(getByTestId('bouncy-checkbox'));
@@ -319,7 +319,7 @@ describe('SignUp Screen', () => {
       preloadedState: initialState,
     });
 
-    const fullNameInput = getByPlaceholderText('Enter Fullname');
+    const fullNameInput = getByPlaceholderText('Full Name');
     fireEvent.changeText(fullNameInput, 'John Doe');
     expect(fullNameInput.props.value).toBe('John Doe');
 
@@ -342,7 +342,7 @@ describe('SignUp Screen', () => {
       preloadedState: initialState,
     });
 
-    const usernameInput = getByPlaceholderText('Enter Username');
+    const usernameInput = getByPlaceholderText('Username');
     fireEvent.changeText(usernameInput, 'newuser');
 
     // Fast forward debounce time (500ms)
@@ -365,8 +365,8 @@ describe('SignUp Screen', () => {
     });
 
     // Fill all fields to pass Formik validation
-    fireEvent.changeText(getByPlaceholderText('Enter Fullname'), 'John Doe');
-    fireEvent.changeText(getByPlaceholderText('Enter Email'), 'john@example.com');
+    fireEvent.changeText(getByPlaceholderText('Full Name'), 'John Doe');
+    fireEvent.changeText(getByPlaceholderText('Email Address'), 'john@example.com');
     fireEvent.changeText(getByPlaceholderText('Password'), 'Password@123');
     fireEvent.changeText(getByPlaceholderText('Confirm Password'), 'Password@123');
 
@@ -374,7 +374,7 @@ describe('SignUp Screen', () => {
     const checkbox = getByTestId('bouncy-checkbox');
     fireEvent.press(checkbox);
 
-    const usernameInput = getByPlaceholderText('Enter Username');
+    const usernameInput = getByPlaceholderText('Username');
     fireEvent.changeText(usernameInput, 'takenuser');
 
     act(() => {
@@ -407,9 +407,9 @@ describe('SignUp Screen', () => {
     });
 
     // Fill form with valid data
-    fireEvent.changeText(getByPlaceholderText('Enter Fullname'), 'John Doe');
-    fireEvent.changeText(getByPlaceholderText('Enter Username'), 'johndoe');
-    fireEvent.changeText(getByPlaceholderText('Enter Email'), 'john@example.com');
+    fireEvent.changeText(getByPlaceholderText('Full Name'), 'John Doe');
+    fireEvent.changeText(getByPlaceholderText('Username'), 'johndoe');
+    fireEvent.changeText(getByPlaceholderText('Email Address'), 'john@example.com');
     fireEvent.changeText(getByPlaceholderText('Password'), 'Password@123');
     fireEvent.changeText(getByPlaceholderText('Confirm Password'), 'Password@123');
 
@@ -430,9 +430,9 @@ describe('SignUp Screen', () => {
     });
 
     // Fill form
-    fireEvent.changeText(getByPlaceholderText('Enter Fullname'), 'John Doe');
-    fireEvent.changeText(getByPlaceholderText('Enter Username'), 'johndoe');
-    fireEvent.changeText(getByPlaceholderText('Enter Email'), 'john@example.com');
+    fireEvent.changeText(getByPlaceholderText('Full Name'), 'John Doe');
+    fireEvent.changeText(getByPlaceholderText('Username'), 'johndoe');
+    fireEvent.changeText(getByPlaceholderText('Email Address'), 'john@example.com');
     fireEvent.changeText(getByPlaceholderText('Password'), 'Password@123');
     fireEvent.changeText(getByPlaceholderText('Confirm Password'), 'Password@123');
 
@@ -468,9 +468,9 @@ describe('SignUp Screen', () => {
     });
 
     // Fill form
-    fireEvent.changeText(getByPlaceholderText('Enter Fullname'), 'John Doe');
-    fireEvent.changeText(getByPlaceholderText('Enter Username'), 'johndoe');
-    fireEvent.changeText(getByPlaceholderText('Enter Email'), 'john@example.com');
+    fireEvent.changeText(getByPlaceholderText('Full Name'), 'John Doe');
+    fireEvent.changeText(getByPlaceholderText('Username'), 'johndoe');
+    fireEvent.changeText(getByPlaceholderText('Email Address'), 'john@example.com');
     fireEvent.changeText(getByPlaceholderText('Password'), 'Password@123');
     fireEvent.changeText(getByPlaceholderText('Confirm Password'), 'Password@123');
 

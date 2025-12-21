@@ -313,7 +313,7 @@ const EventsAndHackathons: React.FC = () => {
             try {
                 const result = await dispatch(fetchHackathons({
                     location: 'India',
-                    forceRefresh: true
+                    forceRefresh: false
                 }) as unknown as AnyAction);
 
                 const receivedData = result.type.includes('/fulfilled') &&

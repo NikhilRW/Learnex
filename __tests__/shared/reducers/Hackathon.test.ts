@@ -4,8 +4,8 @@ import hackathonReducer, {
   setFilterType,
   clearHackathonCache,
 } from 'shared/reducers/Hackathon';
-import { HackathonService } from '@/features/EventsAndHackathons/services/hackathonService';
-import { configureStore } from '@reduxjs/toolkit';
+import {HackathonService} from '@/features/EventsAndHackathons/services/hackathonService';
+import {configureStore} from '@reduxjs/toolkit';
 
 // Mock HackathonService
 jest.mock('@/features/EventsAndHackathons/services/hackathonService', () => ({
@@ -31,13 +31,18 @@ describe('HackathonReducer', () => {
   });
 
   it('should return initial state', () => {
-    expect(hackathonReducer(undefined, { type: 'unknown' })).toEqual(initialState);
+    expect(hackathonReducer(undefined, {type: 'unknown'})).toEqual(
+      initialState,
+    );
   });
 
   it('should handle setFilterType', () => {
     const stateWithEvents = {
       ...initialState,
-      events: [{ id: '1', mode: 'online' }, { id: '2', mode: 'offline' }] as any,
+      events: [
+        {id: '1', mode: 'online'},
+        {id: '2', mode: 'offline'},
+      ] as any,
     };
     const actual = hackathonReducer(stateWithEvents, setFilterType('online'));
     expect(actual.filterType).toEqual('online');
@@ -46,17 +51,17 @@ describe('HackathonReducer', () => {
   });
 
   it('should handle fetchHackathons.pending', () => {
-    const action = { type: fetchHackathons.pending.type };
+    const action = {type: fetchHackathons.pending.type};
     const actual = hackathonReducer(initialState, action);
     expect(actual.loading).toEqual(true);
     expect(actual.error).toBeNull();
   });
 
   it('should handle fetchHackathons.fulfilled', () => {
-    const mockEvents = [{ id: '1', title: 'Hackathon 1', mode: 'online' }];
-    const action = { 
-        type: fetchHackathons.fulfilled.type, 
-        payload: { events: mockEvents, location: 'India' } 
+    const mockEvents = [{id: '1', title: 'Hackathon 1', mode: 'online'}];
+    const action = {
+      type: fetchHackathons.fulfilled.type,
+      payload: {events: mockEvents, location: 'India'},
     };
     const actual = hackathonReducer(initialState, action);
     expect(actual.loading).toEqual(false);
@@ -66,9 +71,9 @@ describe('HackathonReducer', () => {
   });
 
   it('should handle fetchHackathons.rejected', () => {
-    const action = { 
-        type: fetchHackathons.rejected.type, 
-        payload: 'Error fetching' 
+    const action = {
+      type: fetchHackathons.rejected.type,
+      payload: 'Error fetching',
     };
     const actual = hackathonReducer(initialState, action);
     expect(actual.loading).toEqual(false);
@@ -76,45 +81,52 @@ describe('HackathonReducer', () => {
   });
 
   it('should handle clearHackathonCache', () => {
-      const stateWithData = {
-          ...initialState,
-          events: [{ id: '1' }] as any,
-          filteredEvents: [{ id: '1' }] as any,
-          lastFetched: 123456,
-      };
-      const actual = hackathonReducer(stateWithData, clearHackathonCache());
-      expect(actual.events).toEqual([]);
-      expect(actual.filteredEvents).toEqual([]);
-      expect(actual.lastFetched).toBeNull();
+    const stateWithData = {
+      ...initialState,
+      events: [{id: '1'}] as any,
+      filteredEvents: [{id: '1'}] as any,
+      lastFetched: 123456,
+    };
+    const actual = hackathonReducer(stateWithData, clearHackathonCache());
+    expect(actual.events).toEqual([]);
+    expect(actual.filteredEvents).toEqual([]);
+    expect(actual.lastFetched).toBeNull();
   });
 
   describe('refreshHackathons', () => {
-    it('should call getHackathons with forceRefresh=true when refreshEvents is successful', async () => {
-        const store = configureStore({ reducer: { hackathon: hackathonReducer } });
-        (HackathonService.refreshEvents as jest.Mock).mockResolvedValue({ success: true });
-        (HackathonService.getHackathons as jest.Mock).mockResolvedValue([{ id: '1', title: 'Refreshed Event' }]);
+    it('should call getHackathons with forceRefresh=false which is default value when refreshEvents is successful', async () => {
+      const store = configureStore({reducer: {hackathon: hackathonReducer}});
+      (HackathonService.refreshEvents as jest.Mock).mockResolvedValue({
+        success: true,
+      });
+      (HackathonService.getHackathons as jest.Mock).mockResolvedValue([
+        {id: '1', title: 'Refreshed Event'},
+      ]);
 
-        await store.dispatch(refreshHackathons('India'));
+      await store.dispatch(refreshHackathons('India'));
 
-        expect(HackathonService.refreshEvents).toHaveBeenCalled();
-        expect(HackathonService.getHackathons).toHaveBeenCalledWith(true);
-        
-        const state = store.getState().hackathon;
-        expect(state.events).toHaveLength(1);
-        expect(state.events[0].id).toEqual('1');
-        expect(state.events[0].title).toEqual('Refreshed Event');
+      expect(HackathonService.refreshEvents).toHaveBeenCalled();
+      expect(HackathonService.getHackathons).toHaveBeenCalledWith(false);
+
+      const state = store.getState().hackathon;
+      expect(state.events).toHaveLength(1);
+      expect(state.events[0].id).toEqual('1');
+      expect(state.events[0].title).toEqual('Refreshed Event');
     });
 
     it('should reject when refreshEvents fails', async () => {
-        const store = configureStore({ reducer: { hackathon: hackathonReducer } });
-        (HackathonService.refreshEvents as jest.Mock).mockResolvedValue({ success: false, message: 'Refresh failed' });
+      const store = configureStore({reducer: {hackathon: hackathonReducer}});
+      (HackathonService.refreshEvents as jest.Mock).mockResolvedValue({
+        success: false,
+        message: 'Refresh failed',
+      });
 
-        const result = await store.dispatch(refreshHackathons('India'));
-        
-        expect(HackathonService.refreshEvents).toHaveBeenCalled();
-        expect(HackathonService.getHackathons).not.toHaveBeenCalled();
-        expect(result.type).toEqual(refreshHackathons.rejected.type);
-        expect(result.payload).toEqual('Refresh failed');
+      const result = await store.dispatch(refreshHackathons('India'));
+
+      expect(HackathonService.refreshEvents).toHaveBeenCalled();
+      expect(HackathonService.getHackathons).not.toHaveBeenCalled();
+      expect(result.type).toEqual(refreshHackathons.rejected.type);
+      expect(result.payload).toEqual('Refresh failed');
     });
   });
 });

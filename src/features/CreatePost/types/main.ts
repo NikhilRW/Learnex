@@ -14,4 +14,5 @@ export interface PostFormData {
   description: string;
   mediaItems: MediaItem[];
   hashtags: string[];
+  isPublic: boolean;
 }

@@ -91,7 +91,6 @@ export const getStyles = (isDark: boolean, hasStoragePermission: boolean) =>
     },
     inputContainer: {
       marginBottom: 20,
-
     },
     labelContainer: {
       flexDirection: 'row',
@@ -102,12 +101,12 @@ export const getStyles = (isDark: boolean, hasStoragePermission: boolean) =>
       fontSize: 16,
       fontWeight: '600',
       marginBottom: 8,
-      color: isDark ? '#e0e0e0' : '#333'
+      color: isDark ? '#e0e0e0' : '#333',
     },
     mediaCounter: {
       fontSize: 14,
       fontWeight: '500',
-      color: isDark ? '#999' : '#666'
+      color: isDark ? '#999' : '#666',
     },
     mediaGrid: {
       flexDirection: 'row',
@@ -128,7 +127,7 @@ export const getStyles = (isDark: boolean, hasStoragePermission: boolean) =>
       justifyContent: 'center',
       width: '100%',
       height: '100%',
-      backgroundColor: isDark ? '#2a2a2a' : '#f0f0f0'
+      backgroundColor: isDark ? '#2a2a2a' : '#f0f0f0',
     },
     removeMediaButton: {
       position: 'absolute',
@@ -147,8 +146,8 @@ export const getStyles = (isDark: boolean, hasStoragePermission: boolean) =>
       borderColor: isDark ? '#444' : '#ddd',
       ...(!hasStoragePermission && {opacity: 0.7}),
     },
-    videoPlaceholderText:{
-       borderColor: isDark ? '#444' : '#ddd'
+    videoPlaceholderText: {
+      borderColor: isDark ? '#444' : '#ddd',
     },
     contentInput: {
       borderWidth: 1,
@@ -314,5 +313,102 @@ export const getStyles = (isDark: boolean, hasStoragePermission: boolean) =>
     },
     permissionStatusText: {
       color: isDark ? '#e0e0e0' : '#333',
+    },
+    visibilityContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 20,
+      padding: 12,
+      borderRadius: 10,
+      backgroundColor: isDark ? '#2a2a2a' : '#f9f9f9',
+      borderColor: isDark ? '#444' : '#eee',
+      borderWidth: 1,
+    },
+    visibilityLabel: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: isDark ? '#e0e0e0' : '#333',
+    },
+    visibilityButtons: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    visibilityButton: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 15,
+      borderWidth: 1,
+      borderColor: '#007AFF',
+    },
+    visibilityButtonActive: {
+      backgroundColor: '#007AFF',
+    },
+    visibilityText: {
+      fontSize: 12,
+      color: '#007AFF',
+      fontWeight: '600',
+    },
+    visibilityTextActive: {
+      color: '#fff',
+    },
+    characterCounter: {
+      position: 'absolute',
+      bottom: 12,
+      right: 12,
+      fontSize: 12,
+      color: isDark ? '#999' : '#666',
+    },
+    draftBanner: {
+      backgroundColor: '#007AFF',
+      padding: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    draftBannerText: {
+      color: '#fff',
+      fontSize: 14,
+      fontWeight: '500',
+      flex: 1,
+    },
+    draftBannerButtons: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    draftButton: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 4,
+      backgroundColor: 'rgba(255,255,255,0.2)',
+    },
+    draftButtonText: {
+      color: '#fff',
+      fontSize: 12,
+      fontWeight: 'bold',
+    },
+    autocompleteContainer: {
+      position: 'absolute',
+      bottom: '100%',
+      left: 0,
+      right: 0,
+      backgroundColor: isDark ? '#2a2a2a' : '#fff',
+      borderRadius: 8,
+      elevation: 5,
+      shadowColor: '#000',
+      shadowOffset: {width: 0, height: -2},
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      maxHeight: 150,
+      zIndex: 1000,
+    },
+    suggestionItem: {
+      padding: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: isDark ? '#444' : '#eee',
+    },
+    suggestionText: {
+      color: isDark ? '#e0e0e0' : '#333',
+      fontSize: 14,
     },
   });

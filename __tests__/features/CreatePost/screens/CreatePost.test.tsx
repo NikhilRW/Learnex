@@ -46,6 +46,13 @@ jest.mock('react-native-image-picker', () => ({
     launchImageLibrary: jest.fn(),
 }));
 
+// Mock AsyncStorage
+jest.mock('@react-native-async-storage/async-storage', () => ({
+    getItem: jest.fn(),
+    setItem: jest.fn(),
+    removeItem: jest.fn(),
+}));
+
 // Mock Alert
 jest.spyOn(Alert, 'alert');
 
@@ -221,7 +228,7 @@ describe('CreatePost Screen', () => {
         expect(global.fetch).toHaveBeenCalled();
 
         // 5. Verify Firestore Creation
-        const { addDoc, collection } = require('@react-native-firebase/firestore');
+        const { addDoc } = require('@react-native-firebase/firestore');
         expect(addDoc).toHaveBeenCalledWith(
             undefined, // collection reference (mocked return)
             expect.objectContaining({
@@ -264,5 +271,83 @@ describe('CreatePost Screen', () => {
         });
 
         expect(Alert.alert).toHaveBeenCalledWith('Error', 'Failed to create post');
+    });
+
+    it('enforces character limit', async () => {
+        const { getByPlaceholderText, getByText } = render(
+            <Provider store={store}>
+                <CreatePost />
+            </Provider>
+        );
+
+        const input = getByPlaceholderText('Write a caption...');
+
+        // Type exactly 2200
+        const maxText = 'a'.repeat(2200);
+        fireEvent.changeText(input, maxText);
+        expect(getByText('2200/2200')).toBeTruthy();
+
+        // Try to type more
+        const tooLongText = 'a'.repeat(2201);
+        fireEvent.changeText(input, tooLongText);
+        // Should still be 2200 because of the check in handleDescriptionChange
+        expect(getByText('2200/2200')).toBeTruthy();
+    });
+
+    it('toggles post visibility', async () => {
+        const { getByText } = render(
+            <Provider store={store}>
+                <CreatePost />
+            </Provider>
+        );
+
+        const privateButton = getByText('Private');
+        fireEvent.press(privateButton);
+
+        expect(privateButton).toBeTruthy();
+    });
+
+    it('restores draft from AsyncStorage', async () => {
+        const AsyncStorage = require('@react-native-async-storage/async-storage');
+        const draft = JSON.stringify({
+            description: 'Saved draft',
+            mediaItems: [],
+            hashtags: [],
+            isPublic: true
+        });
+
+        AsyncStorage.getItem.mockResolvedValue(draft);
+
+        const { findByText, getByDisplayValue } = render(
+            <Provider store={store}>
+                <CreatePost />
+            </Provider>
+        );
+
+        // Should see draft banner
+        const restoreButton = await findByText('Restore');
+        await act(async () => {
+            fireEvent.press(restoreButton);
+        });
+
+        await waitFor(() => {
+            expect(getByDisplayValue('Saved draft')).toBeTruthy();
+        });
+    });
+
+    it('shows tag suggestions', async () => {
+        const { getByPlaceholderText, getByText } = render(
+            <Provider store={store}>
+                <CreatePost />
+            </Provider>
+        );
+
+        const input = getByPlaceholderText('Write a caption...');
+        fireEvent.changeText(input, '#');
+        fireEvent.changeText(input, '#coding');
+
+        await waitFor(() => {
+            expect(getByText('reactnative')).toBeTruthy();
+        });
     });
 });

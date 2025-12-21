@@ -14,6 +14,7 @@ import {
   Linking,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { launchImageLibrary } from 'react-native-image-picker';
 import {
@@ -54,7 +55,11 @@ const CreatePost = () => {
     description: '',
     mediaItems: [],
     hashtags: [],
+    isPublic: true,
   });
+  const [showDraftBanner, setShowDraftBanner] = useState(false);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [tagInput, setTagInput] = useState('');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [pickerError, setPickerError] = useState<string | null>(null);
@@ -204,7 +209,55 @@ const CreatePost = () => {
   // Check permissions when component mounts
   useEffect(() => {
     requestStoragePermissions();
+    checkDraft();
   }, []);
+
+  // Save draft whenever formData changes (except initial load)
+  useEffect(() => {
+    if (formData.description || formData.mediaItems.length > 0) {
+      saveDraft(formData);
+    }
+  }, [formData]);
+
+  const checkDraft = async () => {
+    try {
+      const savedDraft = await AsyncStorage.getItem('create_post_draft');
+      if (savedDraft) {
+        setShowDraftBanner(true);
+      }
+    } catch (e) {
+      console.error('Failed to check draft', e);
+    }
+  };
+
+  const saveDraft = async (data: PostFormData) => {
+    try {
+      await AsyncStorage.setItem('create_post_draft', JSON.stringify(data));
+    } catch (e) {
+      console.error('Failed to save draft', e);
+    }
+  };
+
+  const clearDraft = async () => {
+    try {
+      await AsyncStorage.removeItem('create_post_draft');
+      setShowDraftBanner(false);
+    } catch (e) {
+      console.error('Failed to clear draft', e);
+    }
+  };
+
+  const restoreDraft = async () => {
+    try {
+      const savedDraft = await AsyncStorage.getItem('create_post_draft');
+      if (savedDraft) {
+        setFormData(JSON.parse(savedDraft));
+      }
+      setShowDraftBanner(false);
+    } catch (e) {
+      console.error('Failed to restore draft', e);
+    }
+  };
 
   // Handle removing a media item
   const removeMediaItem = (index: number) => {
@@ -575,6 +628,7 @@ const CreatePost = () => {
         isVertical: formData.mediaItems[0]?.isVertical || false,
         hashtags: allHashtags,
         searchKeywords,
+        isPublic: formData.isPublic,
         likes: 0,
         likedBy: [],
         comments: 0,
@@ -589,6 +643,7 @@ const CreatePost = () => {
       // Add to Firestore with explicit type annotation to ensure hashtags field
       await addDoc(collection(getFirestore(), 'posts'), postData);
 
+      await clearDraft();
       Alert.alert('Success', 'Post created successfully!');
       navigation.goBack();
     } catch (error) {
@@ -602,7 +657,22 @@ const CreatePost = () => {
 
   // Update hashtags as user types description
   const handleDescriptionChange = (text: string) => {
+    if (text.length > 2200) return;
+
     setFormData(prev => ({ ...prev, description: text }));
+
+    // Autocomplete Logic
+    const lastWord = text.split(/\s+/).pop() || '';
+
+    if (lastWord.startsWith('#') && lastWord.length > 1) {
+      setSuggestions(['trending', 'coding', 'reactnative', 'learnex']);
+      setShowSuggestions(true);
+    } else if (lastWord.startsWith('@') && lastWord.length > 1) {
+      setSuggestions(['nikhil', 'admin', 'moderator']);
+      setShowSuggestions(true);
+    } else {
+      setShowSuggestions(false);
+    }
 
     // Extract hashtags for preview
     const extractedTags = extractHashtags(text);
@@ -614,27 +684,40 @@ const CreatePost = () => {
       if (newTags.length > 0) {
         setFormData(prev => ({
           ...prev,
-          description: text,
-          hashtags: [...prev.hashtags, ...newTags],
-        }));
-      } else {
-        setFormData(prev => ({
-          ...prev,
-          description: text,
+          hashtags: [...new Set([...prev.hashtags, ...newTags])],
         }));
       }
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        description: text,
-      }));
     }
+  };
+
+  const applySuggestion = (suggestion: string) => {
+    const words = formData.description.split(/\s+/);
+    words.pop();
+    const prefix = formData.description.includes('@') ? '@' : '#';
+    const newDescription = [...words, `${prefix}${suggestion} `].join(' ');
+    setFormData(prev => ({ ...prev, description: newDescription }));
+    setShowSuggestions(false);
   };
 
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}>
+      {showDraftBanner && (
+        <View style={styles.draftBanner}>
+          <Text style={styles.draftBannerText}>
+            You have an unfinished post draft.
+          </Text>
+          <View style={styles.draftBannerButtons}>
+            <TouchableOpacity style={styles.draftButton} onPress={restoreDraft}>
+              <Text style={styles.draftButtonText}>Restore</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.draftButton} onPress={clearDraft}>
+              <Text style={styles.draftButtonText}>Discard</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
       {/* Display storage permission status */}
       {Platform.OS === 'android' && !hasStoragePermission && (
         <View style={styles.permissionStatus}>
@@ -761,15 +844,37 @@ const CreatePost = () => {
           {/* Description Input */}
           <View style={styles.inputContainer}>
             <Text style={[styles.label]}>Caption *</Text>
-            <TextInput
-              style={styles.contentInput}
-              placeholder="Write a caption..."
-              placeholderTextColor={isDark ? '#999' : '#999'}
-              multiline
-              numberOfLines={5}
-              value={formData.description}
-              onChangeText={handleDescriptionChange}
-            />
+            <View>
+              <TextInput
+                style={styles.contentInput}
+                placeholder="Write a caption..."
+                placeholderTextColor={isDark ? '#999' : '#999'}
+                multiline
+                numberOfLines={5}
+                value={formData.description}
+                onChangeText={handleDescriptionChange}
+              />
+              <Text style={styles.characterCounter}>
+                {formData.description.length}/2200
+              </Text>
+
+              {showSuggestions && (
+                <View style={styles.autocompleteContainer}>
+                  <ScrollView>
+                    {suggestions.map((suggestion, index) => (
+                      <TouchableOpacity
+                        key={index}
+                        style={styles.suggestionItem}
+                        onPress={() => applySuggestion(suggestion)}>
+                        <Text style={styles.suggestionText}>
+                          {suggestion}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+            </View>
           </View>
 
           {/* Tags Input */}
@@ -801,6 +906,43 @@ const CreatePost = () => {
                   </TouchableOpacity>
                 </View>
               ))}
+            </View>
+          </View>
+
+          {/* Visibility Toggle */}
+          <View style={styles.visibilityContainer}>
+            <Text style={styles.visibilityLabel}>Post Visibility</Text>
+            <View style={styles.visibilityButtons}>
+              <TouchableOpacity
+                style={[
+                  styles.visibilityButton,
+                  formData.isPublic && styles.visibilityButtonActive,
+                ]}
+                onPress={() => setFormData(prev => ({ ...prev, isPublic: true }))}>
+                <Text
+                  style={[
+                    styles.visibilityText,
+                    formData.isPublic && styles.visibilityTextActive,
+                  ]}>
+                  Public
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.visibilityButton,
+                  !formData.isPublic && styles.visibilityButtonActive,
+                ]}
+                onPress={() =>
+                  setFormData(prev => ({ ...prev, isPublic: false }))
+                }>
+                <Text
+                  style={[
+                    styles.visibilityText,
+                    !formData.isPublic && styles.visibilityTextActive,
+                  ]}>
+                  Private
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
 
