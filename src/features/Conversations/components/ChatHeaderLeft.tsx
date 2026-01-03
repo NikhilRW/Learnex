@@ -5,6 +5,7 @@ import {Avatar} from 'react-native-elements';
 import {Image} from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {ChatNavigationObjectType} from 'conversations/types/main';
+import {createStyles} from '../styles/ChatHeaderLeft.styles';
 
 const ChatHeaderLeft = ({
   currentRecipientPhoto,
@@ -17,10 +18,11 @@ const ChatHeaderLeft = ({
   recipientName: string;
   navigation: ChatNavigationObjectType;
 }) => {
+  const styles = createStyles(isDark);
   return (
-    <View style={{flexDirection: 'row', alignItems: 'center'}}>
+    <View style={styles.backButtonContainer}>
       <TouchableOpacity
-        style={{marginLeft: 10, marginRight: 8}}
+        style={styles.backButton}
         onPress={() => navigation.navigate('Conversations')}>
         <Ionicons
           name="arrow-back"
@@ -29,7 +31,7 @@ const ChatHeaderLeft = ({
         />
       </TouchableOpacity>
 
-      <View style={{flexDirection: 'row', alignItems: 'center'}}>
+      <View style={styles.recipientPhotoContainer}>
         {currentRecipientPhoto ? (
           <Image
             source={
@@ -37,25 +39,17 @@ const ChatHeaderLeft = ({
                 ? {uri: currentRecipientPhoto}
                 : currentRecipientPhoto
             }
-            style={{width: 36, height: 36, borderRadius: 18}}
+            style={styles.recipientPhoto}
           />
         ) : (
           <Avatar
             rounded
             title={getUsernameForLogo(recipientName)}
             size={36}
-            containerStyle={{backgroundColor: '#2379C2'}}
+            containerStyle={styles.avatar}
           />
         )}
-        <Text
-          style={{
-            marginLeft: 8,
-            fontSize: 17,
-            fontWeight: '600',
-            color: isDark ? 'white' : 'black',
-          }}>
-          {recipientName}
-        </Text>
+        <Text style={styles.recipientName}>{recipientName}</Text>
       </View>
     </View>
   );
