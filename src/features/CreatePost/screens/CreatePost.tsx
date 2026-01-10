@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   Text,
   View,
@@ -13,22 +13,22 @@ import {
   PermissionsAndroid,
   Linking,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import {useNavigation} from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { launchImageLibrary } from 'react-native-image-picker';
+import {launchImageLibrary} from 'react-native-image-picker';
 import {
   getFirestore,
   collection,
   addDoc,
   serverTimestamp,
 } from '@react-native-firebase/firestore';
-import { getAuth } from '@react-native-firebase/auth';
-import { useTypedSelector } from 'hooks/redux/useTypedSelector';
+import {getAuth} from '@react-native-firebase/auth';
+import {useTypedSelector} from 'hooks/redux/useTypedSelector';
 import Config from 'react-native-config';
-import { DEFAULT_UPLOAD_PRESET } from 'shared/constants/cloudinary';
-import { MediaItem, PostFormData } from 'create-post/types/main';
-import { getStyles } from 'create-post/styles/CreatePost';
+import {DEFAULT_UPLOAD_PRESET} from 'shared/constants/cloudinary';
+import {MediaItem, PostFormData} from 'create-post/types/main';
+import {getStyles} from 'create-post/styles/CreatePost';
 
 // Cloudinary Configuration
 const CLOUDINARY_CONFIG = {
@@ -187,7 +187,7 @@ const CreatePost = () => {
           'Permission Required',
           'Storage access permission is required to upload images and videos to your posts. Please enable it in your device settings.',
           [
-            { text: 'Cancel', style: 'cancel' },
+            {text: 'Cancel', style: 'cancel'},
             {
               text: 'Open Settings',
               onPress: () => Linking.openSettings(),
@@ -309,7 +309,7 @@ const CreatePost = () => {
           'Permission Required',
           'Storage access permission is required to upload images and videos to your posts. Please enable it in your device settings.',
           [
-            { text: 'Cancel', style: 'cancel' },
+            {text: 'Cancel', style: 'cancel'},
             {
               text: 'Open Settings',
               onPress: () => Linking.openSettings(),
@@ -493,13 +493,17 @@ const CreatePost = () => {
       const cloudName = CLOUDINARY_CONFIG.cloudName;
       const uploadPreset = CLOUDINARY_CONFIG.uploadPreset;
 
-      const newFormData = new FormData();
-      newFormData.append('file', {
+      const file = {
         uri: mediaItem.uri,
         type: mediaItem.type,
         name:
           mediaItem.name || (mediaItem.isVideo ? 'upload.mp4' : 'upload.jpg'),
-      } as any);
+      } as any;
+
+      console.log(file);
+
+      const newFormData = new FormData();
+      newFormData.append('file', file);
       newFormData.append('upload_preset', DEFAULT_UPLOAD_PRESET);
       newFormData.append('tags', 'learnex_post');
 
@@ -532,11 +536,11 @@ const CreatePost = () => {
             Alert.alert(
               'Upload Preset Missing',
               `The upload preset "${uploadPreset}" doesn't exist. Please create it in your Cloudinary dashboard:\n\n` +
-              '1. Go to Settings > Upload\n' +
-              '2. Scroll to Upload Presets and click "Add Upload Preset"\n' +
-              '3. Set Mode to "Unsigned"\n' +
-              `4. Set the Preset Name to "${uploadPreset}"\n` +
-              '5. Save the preset',
+                '1. Go to Settings > Upload\n' +
+                '2. Scroll to Upload Presets and click "Add Upload Preset"\n' +
+                '3. Set Mode to "Unsigned"\n' +
+                `4. Set the Preset Name to "${uploadPreset}"\n` +
+                '5. Save the preset',
             );
           }
           throw new Error(`Cloudinary error: ${data.error.message}`);
@@ -600,7 +604,7 @@ const CreatePost = () => {
       if (!currentUser) {
         throw new Error('User not authenticated');
       }
-      const { fullName } = await firebase.user.getNameUsernamestring();
+      const {fullName} = await firebase.user.getNameUsernamestring();
 
       // Create arrays for images and videos
       const postImages = mediaUrls
@@ -659,7 +663,7 @@ const CreatePost = () => {
   const handleDescriptionChange = (text: string) => {
     if (text.length > 2200) return;
 
-    setFormData(prev => ({ ...prev, description: text }));
+    setFormData(prev => ({...prev, description: text}));
 
     // Autocomplete Logic
     const lastWord = text.split(/\s+/).pop() || '';
@@ -695,7 +699,7 @@ const CreatePost = () => {
     words.pop();
     const prefix = formData.description.includes('@') ? '@' : '#';
     const newDescription = [...words, `${prefix}${suggestion} `].join(' ');
-    setFormData(prev => ({ ...prev, description: newDescription }));
+    setFormData(prev => ({...prev, description: newDescription}));
     setShowSuggestions(false);
   };
 
@@ -775,7 +779,7 @@ const CreatePost = () => {
                     </View>
                   ) : (
                     <Image
-                      source={{ uri: item.uri }}
+                      source={{uri: item.uri}}
                       style={styles.mediaThumbnail}
                     />
                   )}
@@ -866,9 +870,7 @@ const CreatePost = () => {
                         key={index}
                         style={styles.suggestionItem}
                         onPress={() => applySuggestion(suggestion)}>
-                        <Text style={styles.suggestionText}>
-                          {suggestion}
-                        </Text>
+                        <Text style={styles.suggestionText}>{suggestion}</Text>
                       </TouchableOpacity>
                     ))}
                   </ScrollView>
@@ -918,7 +920,9 @@ const CreatePost = () => {
                   styles.visibilityButton,
                   formData.isPublic && styles.visibilityButtonActive,
                 ]}
-                onPress={() => setFormData(prev => ({ ...prev, isPublic: true }))}>
+                onPress={() =>
+                  setFormData(prev => ({...prev, isPublic: true}))
+                }>
                 <Text
                   style={[
                     styles.visibilityText,
@@ -933,7 +937,7 @@ const CreatePost = () => {
                   !formData.isPublic && styles.visibilityButtonActive,
                 ]}
                 onPress={() =>
-                  setFormData(prev => ({ ...prev, isPublic: false }))
+                  setFormData(prev => ({...prev, isPublic: false}))
                 }>
                 <Text
                   style={[
