@@ -20,7 +20,7 @@
 .env.production.local
 nativewind-env.d.ts
 
-# Credentials and secrets
+# Credentials,secrets backups
 **/credentials.json
 **/service-account*.json
 **/*-credentials.json
@@ -31,6 +31,7 @@ nativewind-env.d.ts
 **/*.p12
 **/*.pem
 **/*.key
+**/*.backup
 
 # Xcode
 build/
