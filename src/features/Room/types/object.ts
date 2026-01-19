@@ -9,6 +9,7 @@ export interface RoomParams {
     id: string;
     title: string;
     description: string;
+    
     duration: number;
     maxParticipants: number;
     isPrivate: boolean;
