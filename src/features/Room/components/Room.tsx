@@ -1,13 +1,11 @@
-import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
+import React, {useEffect, useState, useRef, useMemo, useCallback} from 'react';
 import {
   View,
   StyleSheet,
-  SafeAreaView,
   TouchableOpacity,
   Text,
   Platform,
   Share,
-  Clipboard,
   ToastAndroid,
   Alert,
   TextInput,
@@ -17,59 +15,18 @@ import {
   Dimensions,
   ScrollView,
   ActivityIndicator,
+  Clipboard,
 } from 'react-native';
-import { LegendList } from '@legendapp/list';
-import { MediaStream, RTCView } from 'react-native-webrtc';
+import {LegendList} from '@legendapp/list';
+import {RTCView} from 'react-native-webrtc';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import AntDesign from 'react-native-vector-icons/AntDesign';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { Meeting } from 'room/services/MeetingService';
-import { ParticipantState } from 'room/services/WebRTCService';
-import { useTypedSelector } from 'hooks/redux/useTypedSelector';
-import { UserService } from 'shared/services/UserService';
+import {UserService} from 'shared/services/UserService';
 import ReactionText from 'room/components/common/ReactionText';
 import MessageReactionIcon from 'room/components/common/MessageReactionIcon';
-
-interface Message {
-  id: string;
-  senderId: string;
-  senderName: string;
-  text: string;
-  timestamp: Date;
-  isMe: boolean;
-  reactions?: {
-    [userId: string]: string; // userId: reactionType
-  };
-}
-interface ExtendedMediaStream extends MediaStream {
-  participantId?: string; // Add any additional properties you need
-}
-
-interface RoomProps {
-  meeting: Meeting;
-  localStream?: any;
-  remoteStreams: any[];
-  updateLocalStream: (stream: ExtendedMediaStream | null) => void;
-  onToggleAudio: () => void;
-  onToggleVideo: () => void;
-  onEndCall: () => void;
-  onSendMessage: (text: string) => void;
-  onMessageReaction: (messageId: string, reactionType: string) => void;
-  messages: Message[];
-  isAudioEnabled: boolean;
-  isVideoEnabled: boolean;
-  isDark?: boolean;
-  currentUserId: string;
-  currentUserName: string;
-  onRaiseHand: (raised: boolean) => void;
-  onReaction: (
-    reaction: 'thumbsUp' | 'thumbsDown' | 'clapping' | 'waving' | 'smiling',
-  ) => void;
-  participantStates: Map<string, ParticipantState>;
-  isConnecting: boolean;
-  onFlipCamera?: () => void;
-  isFrontCamera?: boolean;
-}
+import {Message, RoomProps} from '../types/props';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const Room: React.FC<RoomProps> = ({
   meeting,
@@ -109,14 +66,14 @@ const Room: React.FC<RoomProps> = ({
   const [showMessageReactions, setShowMessageReactions] = useState(false);
   const flatListRef = useRef<any>(null);
   const participantsListRef = useRef<any>(null);
-  const {  height } = Dimensions.get('window');
+  const {height} = Dimensions.get('window');
   const [pinnedParticipantId, setPinnedParticipantId] = useState<string | null>(
     null,
   );
   const [userInfoCache, setUserInfoCache] = useState<
     Map<
       string,
-      { email: string | null; fullName: string | null; username: string | null }
+      {email: string | null; fullName: string | null; username: string | null}
     >
   >(new Map());
   const userService = useMemo(() => new UserService(), []);
@@ -172,7 +129,7 @@ const Room: React.FC<RoomProps> = ({
   useEffect(() => {
     // Scroll to bottom when new messages arrive
     if (messages.length > 0 && flatListRef.current) {
-      flatListRef.current.scrollToEnd({ animated: true });
+      flatListRef.current.scrollToEnd({animated: true});
     }
   }, [messages]);
 
@@ -253,7 +210,7 @@ const Room: React.FC<RoomProps> = ({
         await getUserInfo(participantId);
       }
     });
-  }, [remoteStreams, getUserInfo]);
+  }, [remoteStreams, getUserInfo, userInfoCache]);
 
   const handleShareInvite = async () => {
     try {
@@ -494,7 +451,7 @@ const Room: React.FC<RoomProps> = ({
           isParticipantSpeaking && styles.participantSpeakingContainer,
           styles.participantPinnedContainer,
           isCurrentUser && styles.currentUserContainer,
-          !isPinned && !isVideoOn && { backgroundColor: 'rgba(0,0,0,0.2)' }, // Adjust to a lighter semi-transparent overlay for unpinned participants without video
+          !isPinned && !isVideoOn && {backgroundColor: 'rgba(0,0,0,0.2)'}, // Adjust to a lighter semi-transparent overlay for unpinned participants without video
         ]}>
         {/* RTCView or Placeholder */}
         {item.stream && isVideoOn ? (
@@ -508,15 +465,15 @@ const Room: React.FC<RoomProps> = ({
           <View
             style={[
               styles.videoPlaceholder,
-              { backgroundColor: isPinned ? '#1f1f1f' : 'rgba(0,0,0,0.2)' },
+              {backgroundColor: isPinned ? '#1f1f1f' : 'rgba(0,0,0,0.2)'},
             ]}>
             <View
               style={[
                 styles.avatarCircle,
-                { backgroundColor: avatarColor },
+                {backgroundColor: avatarColor},
                 isParticipantSpeaking && styles.avatarCircleSpeaking,
               ]}>
-              <Text style={[styles.avatarText, { color: avatarTextColor }]}>
+              <Text style={[styles.avatarText, {color: avatarTextColor}]}>
                 {initials}
               </Text>
             </View>
@@ -604,7 +561,7 @@ const Room: React.FC<RoomProps> = ({
     );
   };
 
-  const renderParticipantListItem = ({ item }: { item: any }) => {
+  const renderParticipantListItem = ({item}: {item: any}) => {
     const participantState = item.state || {};
     const isCurrentUser = item.id === currentUserId;
     const isVideoOn = isCurrentUser
@@ -642,12 +599,12 @@ const Room: React.FC<RoomProps> = ({
           <View
             style={[
               styles.participantListItemAvatar,
-              { backgroundColor: avatarColor },
+              {backgroundColor: avatarColor},
             ]}>
             <Text
               style={[
                 styles.participantListItemAvatarText,
-                { color: avatarTextColor },
+                {color: avatarTextColor},
               ]}>
               {initials}
             </Text>
@@ -657,7 +614,7 @@ const Room: React.FC<RoomProps> = ({
           <Text
             style={[
               styles.participantListItemName,
-              { color: isDark ? 'white' : 'black' },
+              {color: isDark ? 'white' : 'black'},
             ]}
             numberOfLines={1}>
             {displayName} {isCurrentUser && '(You)'}
@@ -699,8 +656,8 @@ const Room: React.FC<RoomProps> = ({
     );
   };
 
-  const renderMessageItem = ({ item }: { item: Message }) => {
-    const reactionCounts: { [type: string]: number } = {};
+  const renderMessageItem = ({item}: {item: Message}) => {
+    const reactionCounts: {[type: string]: number} = {};
     if (item.reactions) {
       Object.values(item.reactions).forEach(type => {
         reactionCounts[type] = (reactionCounts[type] || 0) + 1;
@@ -909,7 +866,7 @@ const Room: React.FC<RoomProps> = ({
     (renderParticipantGrid as any).itemHeight = itemHeight;
 
     // Define renderItem directly for FlatList
-    const renderGridItem = ({ item, index }: { item: any; index: number }) => {
+    const renderGridItem = ({item, index}: {item: any; index: number}) => {
       // Check if this participant is screen sharing
       const isItemScreenSharing = participantStates.get(
         item.id,
@@ -935,7 +892,7 @@ const Room: React.FC<RoomProps> = ({
             },
           ]}>
           {/* Call the inner content renderer */}
-          {renderParticipantItem({ item, index, isPinned })}
+          {renderParticipantItem({item, index, isPinned})}
         </TouchableOpacity>
       );
     };
@@ -976,51 +933,51 @@ const Room: React.FC<RoomProps> = ({
               {(!localStream ||
                 (remoteStreams.length === 0 &&
                   participantStates.size <= 1)) && (
-                  <View style={styles.emptyStateContainer}>
-                    {isConnecting ? (
-                      <>
-                        <ActivityIndicator size="large" color="#4285F4" />
-                        <Text style={styles.emptyStateTitle}>
-                          Connecting to meeting...
+                <View style={styles.emptyStateContainer}>
+                  {isConnecting ? (
+                    <>
+                      <ActivityIndicator size="large" color="#4285F4" />
+                      <Text style={styles.emptyStateTitle}>
+                        Connecting to meeting...
+                      </Text>
+                      <Text style={styles.emptyStateSubtitle}>
+                        Please wait while we connect to the meeting
+                      </Text>
+                    </>
+                  ) : (
+                    <>
+                      <Text style={styles.emptyStateTitle}>
+                        You're the only one here
+                      </Text>
+                      <Text style={styles.emptyStateSubtitle}>
+                        Share this meeting link with others you want in the
+                        meeting
+                      </Text>
+                      <View style={styles.meetingLinkContainer}>
+                        <Text style={styles.meetingLink}>
+                          {meeting.roomCode}
                         </Text>
-                        <Text style={styles.emptyStateSubtitle}>
-                          Please wait while we connect to the meeting
-                        </Text>
-                      </>
-                    ) : (
-                      <>
-                        <Text style={styles.emptyStateTitle}>
-                          You're the only one here
-                        </Text>
-                        <Text style={styles.emptyStateSubtitle}>
-                          Share this meeting link with others you want in the
-                          meeting
-                        </Text>
-                        <View style={styles.meetingLinkContainer}>
-                          <Text style={styles.meetingLink}>
-                            {meeting.roomCode}
-                          </Text>
-                          <TouchableOpacity
-                            style={styles.copyButton}
-                            onPress={copyToClipboard}>
-                            <Icon name="content-copy" size={24} color="#fff" />
-                          </TouchableOpacity>
-                        </View>
                         <TouchableOpacity
-                          style={styles.shareInviteButton}
-                          onPress={handleShareInvite}>
-                          <Icon
-                            name="share"
-                            size={20}
-                            color="#fff"
-                            style={styles.shareIcon}
-                          />
-                          <Text style={styles.shareButtonText}>Share invite</Text>
+                          style={styles.copyButton}
+                          onPress={copyToClipboard}>
+                          <Icon name="content-copy" size={24} color="#fff" />
                         </TouchableOpacity>
-                      </>
-                    )}
-                  </View>
-                )}
+                      </View>
+                      <TouchableOpacity
+                        style={styles.shareInviteButton}
+                        onPress={handleShareInvite}>
+                        <Icon
+                          name="share"
+                          size={20}
+                          color="#fff"
+                          style={styles.shareIcon}
+                        />
+                        <Text style={styles.shareButtonText}>Share invite</Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
+                </View>
+              )}
             </View>
 
             <View
@@ -1167,7 +1124,7 @@ const Room: React.FC<RoomProps> = ({
           {/* Reactions Menu */}
           {showReactions && (
             <Animated.View
-              style={[styles.reactionsMenu, { opacity: reactionsMenuOpacity }]}>
+              style={[styles.reactionsMenu, {opacity: reactionsMenuOpacity}]}>
               <TouchableOpacity
                 style={styles.reactionButton}
                 onPress={() => handleReaction('thumbsUp')}>
@@ -1222,7 +1179,7 @@ const Room: React.FC<RoomProps> = ({
                 isDark
                   ? styles.fullScreenChatPanelDark
                   : styles.fullScreenChatPanelLight,
-                { opacity: chatPanelOpacity },
+                {opacity: chatPanelOpacity},
               ]}>
               <View
                 style={[styles.chatHeader, isDark && styles.chatHeaderDark]}>
@@ -1335,7 +1292,7 @@ const Room: React.FC<RoomProps> = ({
             <Animated.View
               style={[
                 styles.quickMessagesMenu,
-                { opacity: quickMessagesMenuOpacity },
+                {opacity: quickMessagesMenuOpacity},
               ]}>
               <View style={styles.quickMessagesHeader}>
                 <TouchableOpacity onPress={() => setShowQuickMessages(false)}>
@@ -1345,7 +1302,7 @@ const Room: React.FC<RoomProps> = ({
               <LegendList
                 data={quickMessages}
                 keyExtractor={item => item}
-                renderItem={({ item }) => (
+                renderItem={({item}) => (
                   <TouchableOpacity
                     style={styles.quickMessageItem}
                     onPress={() => sendQuickMessage(item)}>
@@ -1401,7 +1358,7 @@ const Room: React.FC<RoomProps> = ({
                 isDark
                   ? styles.fullScreenPanelDark
                   : styles.fullScreenPanelLight,
-                { opacity: participantsPanelOpacity },
+                {opacity: participantsPanelOpacity},
               ]}>
               <View
                 style={[styles.panelHeader, isDark && styles.panelHeaderDark]}>
@@ -1511,7 +1468,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
     textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: 0, height: 1 },
+    textShadowOffset: {width: 0, height: 1},
     textShadowRadius: 2,
   },
   currentUserNameText: {
@@ -1548,7 +1505,7 @@ const styles = StyleSheet.create({
     borderColor: '#4285f4',
     borderWidth: 3,
     shadowColor: '#4285f4',
-    shadowOffset: { width: 0, height: 0 },
+    shadowOffset: {width: 0, height: 0},
     shadowOpacity: 0.5,
     shadowRadius: 8,
     elevation: 5,

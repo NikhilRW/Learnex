@@ -4,7 +4,7 @@ import Animated, {
   FadeOut,
 } from 'react-native-reanimated';
 
-const MessageReactionIcon = ({text}: {text: string}) => {
+const MessageReactionIcon = ({ text }: { text: string }) => {
   return (
     <Animated.Text
       className={'text-[11px] font-bold'}

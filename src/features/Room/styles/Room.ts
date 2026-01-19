@@ -1,7 +1,7 @@
-import {SCREEN_WIDTH} from 'shared/constants/common';
 import {Platform, StyleSheet} from 'react-native';
+import { isSmallDevice } from '../constants/common';
 
-const isSmallDevice = SCREEN_WIDTH < 380;
+
 
 export const styles = StyleSheet.create({
   container: {
