@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import {
   Text,
   View,
@@ -11,20 +11,20 @@ import {
   useWindowDimensions,
   Modal,
 } from 'react-native';
-import { LegendList } from '@legendapp/list';
-import { useTypedSelector } from 'hooks/redux/useTypedSelector';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { DrawerNavigationProp } from '@react-navigation/drawer';
-import { userState } from 'shared/types/userType';
-import { MeetingService } from 'room/services/MeetingService';
-import { UserStackParamList } from 'shared/navigation/routes/UserStack';
-import { TaskService } from 'shared/services/TaskService';
-import { Task } from 'shared/types/taskTypes';
-import { styles } from 'room/styles/Room';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { RoomParams, MeetingRoom } from '../types/object';
+import {LegendList} from '@legendapp/list';
+import {useTypedSelector} from 'hooks/redux/useTypedSelector';
+import {useNavigation, useRoute, RouteProp} from '@react-navigation/native';
+import {DrawerNavigationProp} from '@react-navigation/drawer';
+import {userState} from 'shared/types/userType';
+import {MeetingService} from 'room/services/MeetingService';
+import {UserStackParamList} from 'shared/navigation/routes/UserStack';
+import {TaskService} from 'shared/services/TaskService';
+import {Task} from 'shared/types/taskTypes';
+import {styles} from 'room/styles/Room';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {RoomParams, MeetingRoom} from '../types/object';
 
-type RoomScreenRouteProp = RouteProp<{ Room: RoomParams }, 'Room'>;
+type RoomScreenRouteProp = RouteProp<{Room: RoomParams}, 'Room'>;
 
 const meetingService = new MeetingService();
 const taskService = new TaskService();
@@ -39,7 +39,7 @@ const Room = () => {
   // const [showEndPicker, setShowEndPicker] = useState(false);
   const [roomCode, setRoomCode] = useState('');
   const [loading, setLoading] = useState(false);
-  const { width, height } = useWindowDimensions();
+  const {width} = useWindowDimensions();
   const isSmallScreen = width < 380;
 
   // Task related states
@@ -145,20 +145,6 @@ const Room = () => {
     };
     main();
   }, [navigation, route.params]);
-
-  // Fetch tasks when component mounts and when screen is focused
-  useEffect(() => {
-    fetchTasks();
-
-    // Add focus listener to refresh tasks when returning to this screen
-    const unsubscribe = navigation.addListener('focus', () => {
-      fetchTasks();
-    });
-
-    // Clean up the listener when the component is unmounted
-    return unsubscribe;
-  }, [fetchTasks, navigation]);
-
   // Function to fetch user's tasks
   const fetchTasks = useCallback(async () => {
     try {
@@ -177,7 +163,7 @@ const Room = () => {
         if (!taskStillExists) {
           // Selected task no longer exists or is completed, clear selection
           setSelectedTask(null);
-          setMeetingRoom(prev => ({ ...prev, taskId: '' }));
+          setMeetingRoom(prev => ({...prev, taskId: ''}));
         }
       }
     } catch (error) {
@@ -187,6 +173,19 @@ const Room = () => {
       setIsTasksLoading(false);
     }
   }, [selectedTask]);
+
+  // Fetch tasks when component mounts and when screen is focused
+  useEffect(() => {
+    fetchTasks();
+
+    // Add focus listener to refresh tasks when returning to this screen
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchTasks();
+    });
+
+    // Clean up the listener when the component is unmounted
+    return unsubscribe;
+  }, [fetchTasks, navigation]);
 
   const handleCreateRoom = async () => {
     // Validate form
@@ -249,7 +248,7 @@ const Room = () => {
   // Function to handle task selection
   const handleTaskSelect = (task: Task) => {
     setSelectedTask(task);
-    setMeetingRoom(prev => ({ ...prev, taskId: task.id }));
+    setMeetingRoom(prev => ({...prev, taskId: task.id}));
     setShowTaskModal(false);
   };
 
@@ -272,17 +271,17 @@ const Room = () => {
         <View
           style={[
             styles.modalContent,
-            { backgroundColor: isDark ? '#1a1a1a' : 'white' },
+            {backgroundColor: isDark ? '#1a1a1a' : 'white'},
           ]}>
           <View style={styles.modalHeader}>
             <Text
-              style={[styles.modalTitle, { color: isDark ? 'white' : 'black' }]}>
+              style={[styles.modalTitle, {color: isDark ? 'white' : 'black'}]}>
               Select a Team Task
             </Text>
-            <View style={{ flexDirection: 'row' }}>
+            <View style={{flexDirection: 'row'}}>
               <TouchableOpacity
                 onPress={fetchTasks}
-                style={{ marginRight: 15 }}
+                style={{marginRight: 15}}
                 disabled={isTasksLoading}>
                 <Text
                   style={{
@@ -299,7 +298,7 @@ const Room = () => {
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => setShowTaskModal(false)}>
-                <Text style={{ color: isDark ? 'white' : 'black', fontSize: 16 }}>
+                <Text style={{color: isDark ? 'white' : 'black', fontSize: 16}}>
                   Cancel
                 </Text>
               </TouchableOpacity>
@@ -308,16 +307,16 @@ const Room = () => {
 
           {isTasksLoading ? (
             <View style={styles.loadingContainer}>
-              <Text style={{ color: isDark ? 'white' : 'black' }}>
+              <Text style={{color: isDark ? 'white' : 'black'}}>
                 Loading team tasks...
               </Text>
             </View>
           ) : tasks.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Text style={{ color: isDark ? 'white' : 'black' }}>
+              <Text style={{color: isDark ? 'white' : 'black'}}>
                 No team tasks found
               </Text>
-              <Text style={{ color: isDark ? '#aaa' : '#666', marginTop: 5 }}>
+              <Text style={{color: isDark ? '#aaa' : '#666', marginTop: 5}}>
                 Create team tasks in the Team Tasks section first
               </Text>
             </View>
@@ -327,11 +326,11 @@ const Room = () => {
               keyExtractor={item => item.id}
               estimatedItemSize={100}
               recycleItems={true}
-              renderItem={({ item }) => (
+              renderItem={({item}) => (
                 <TouchableOpacity
                   style={[
                     styles.taskItem,
-                    { backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5' },
+                    {backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5'},
                   ]}
                   onPress={() => handleTaskSelect(item)}>
                   <View>
@@ -345,7 +344,7 @@ const Room = () => {
                     </Text>
                     {item.description ? (
                       <Text
-                        style={{ color: isDark ? '#bbb' : '#666', marginTop: 5 }}
+                        style={{color: isDark ? '#bbb' : '#666', marginTop: 5}}
                         numberOfLines={2}>
                         {item.description}
                       </Text>
@@ -357,7 +356,7 @@ const Room = () => {
                         justifyContent: 'space-between',
                         alignItems: 'center',
                       }}>
-                      <View style={{ flexDirection: 'row' }}>
+                      <View style={{flexDirection: 'row'}}>
                         <Text
                           style={{
                             color: isDark ? '#aaa' : '#888',
@@ -473,7 +472,7 @@ const Room = () => {
           placeholderTextColor={isDark ? '#888888' : '#666666'}
           value={meetingRoom.title}
           onChangeText={text =>
-            setMeetingRoom(prev => ({ ...prev, title: text }))
+            setMeetingRoom(prev => ({...prev, title: text}))
           }
         />
       </View>
@@ -495,7 +494,7 @@ const Room = () => {
           numberOfLines={4}
           value={meetingRoom.description}
           onChangeText={text =>
-            setMeetingRoom(prev => ({ ...prev, description: text }))
+            setMeetingRoom(prev => ({...prev, description: text}))
           }
         />
       </View>
@@ -505,20 +504,20 @@ const Room = () => {
         <Text style={[styles.label, isDark && styles.darkText]}>
           Associated Team Task (Optional)
         </Text>
-        <View style={{ flexDirection: 'row' }}>
+        <View style={{flexDirection: 'row'}}>
           <TouchableOpacity
             style={[
               styles.input,
               styles.taskSelector,
               isDark && styles.darkInput,
-              { flex: 1 },
+              {flex: 1},
             ]}
             onPress={handleShowTaskModal}>
             <Text
               style={[
                 selectedTask
-                  ? { color: isDark ? 'white' : 'black' }
-                  : { color: isDark ? '#888888' : '#666666' },
+                  ? {color: isDark ? 'white' : 'black'}
+                  : {color: isDark ? '#888888' : '#666666'},
               ]}>
               {selectedTask
                 ? selectedTask.title
@@ -537,7 +536,7 @@ const Room = () => {
               ]}
               onPress={() => {
                 setSelectedTask(null);
-                setMeetingRoom(prev => ({ ...prev, taskId: '' }));
+                setMeetingRoom(prev => ({...prev, taskId: ''}));
               }}>
               <Text
                 style={{
@@ -638,18 +637,18 @@ const Room = () => {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={{ flex: 1, backgroundColor: isDark ? '#121212' : '#f5f5f5' }}>
+    <View style={{flex: 1, backgroundColor: isDark ? '#121212' : '#f5f5f5'}}>
       <KeyboardAvoidingView
         style={[
           styles.container,
           isDark && styles.darkContainer,
-          { marginBottom: insets.bottom, marginTop: insets.top },
+          {marginBottom: insets.bottom, marginTop: insets.top},
         ]}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           contentContainerStyle={[
             styles.scrollContent,
-            { padding: isSmallScreen ? 12 : 20 },
+            {padding: isSmallScreen ? 12 : 20},
           ]}>
           <View style={styles.header}>
             <Text

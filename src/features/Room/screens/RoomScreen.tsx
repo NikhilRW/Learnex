@@ -11,7 +11,6 @@ import { getAuth } from '@react-native-firebase/auth';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { TaskService } from 'shared/services/TaskService';
 import { styles } from 'room/styles/RoomScreen';
-import { SafeAreaView } from 'react-native-safe-area-context';
 // Import hooks
 import {
   useRoomConnection,
@@ -144,7 +143,7 @@ const RoomScreen: React.FC = () => {
   }
 
   return (
-    <SafeAreaView style={styles.safeAreaViewContainer}>
+    <View style={styles.safeAreaViewContainer}>
       {connectionState === 'failed' ? (
         <View style={styles.errorContainer}>
           <Icon name="error" size={64} color="#EA4335" />
@@ -184,7 +183,7 @@ const RoomScreen: React.FC = () => {
           isFrontCamera={isFrontCamera}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 };
 

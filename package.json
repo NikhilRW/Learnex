@@ -137,5 +137,12 @@
         "webview"
       ]
     }
-  }
+  },
+  "trustedDependencies": [
+    "@firebase/util",
+    "protobufjs",
+    "react-native-elements",
+    "react-native-inappbrowser-reborn",
+    "unrs-resolver"
+  ]
 }
