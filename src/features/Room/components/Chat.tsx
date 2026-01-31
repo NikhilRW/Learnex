@@ -3,182 +3,74 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
-  TextInput,
-  TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
   Alert,
   ActivityIndicator,
-  Modal,
+  TouchableOpacity,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import {
-  getFirestore,
-  collection,
-  query,
-  orderBy,
-  getDocs,
-  doc,
-  setDoc,
-  deleteDoc,
-  serverTimestamp,
-  Timestamp,
-} from '@react-native-firebase/firestore';
 import { getAuth } from '@react-native-firebase/auth';
 import { useTypedSelector } from 'hooks/redux/useTypedSelector';
 import { UserService } from 'shared/services/UserService';
 import { styles } from '../styles/Chat.styles';
-import { ChatMessage, ChatProps, Message } from '../types/props';
+import { ChatProps } from '../types/props';
+import { useChatMessages } from '../hooks/useChatMessages';
+import { useChatActions } from '../hooks/useChatActions';
+import { ChatMessageItem } from './ChatMessageItem';
+import { ChatInput } from './ChatInput';
+import { EditMessageModal } from './EditMessageModal';
+import { MessageContextMenu } from './MessageContextMenu';
 
 const Chat: React.FC<ChatProps> = ({ meetingId, isVisible, onClose }) => {
   const isDark = useTypedSelector(state => state.user.theme) === 'dark';
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [newMessage, setNewMessage] = useState('');
-  const flatListRef = useRef<any>(null);
   const [userName, setUserName] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedMessage, setSelectedMessage] = useState<ChatMessage | null>(null);
+  const [newMessage, setNewMessage] = useState('');
+  const [selectedMessage, setSelectedMessage] = useState<any>(null);
   const [isContextMenuVisible, setIsContextMenuVisible] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editText, setEditText] = useState('');
+  const flatListRef = useRef<any>(null);
 
+  // Initialize user name
   useEffect(() => {
-    let unsubscribe: (() => void) | null = null;
-    const initializeChat = async () => {
-      const userId = getAuth().currentUser?.uid;
-      const { username } = await UserService.getNameUsernamestring();
+    const initUserName = async () => {
+      const userService = new UserService();
+      const { username } = await userService.getNameUsernamestring();
       const fullName = getAuth().currentUser?.displayName;
-      setUserName(username || fullName!);
-      if (!userId || !meetingId) {
-        setError('User not authenticated or invalid meeting');
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        // Ensure messages subcollection exists
-        const meetingRef = doc(getFirestore(), 'meetings', meetingId);
-        const messagesRef = collection(meetingRef, 'messages');
-
-        // Create initial message if collection is empty
-        const messagesSnapshot = await getDocs(messagesRef);
-        if (messagesSnapshot.empty) {
-          await setDoc(doc(messagesRef), {
-            text: 'Chat started',
-            senderId: 'system',
-            senderName: 'System',
-            timestamp: serverTimestamp(),
-          });
-        }
-
-        // Subscribe to messages
-        unsubscribe = query(
-          messagesRef,
-          orderBy('timestamp', 'asc'),
-        ).onSnapshot(
-          snapshot => {
-            if (!snapshot) {
-              console.warn('Received null snapshot');
-              return;
-            }
-
-            try {
-              const newMessages: ChatMessage[] = [];
-              snapshot.docChanges().forEach(change => {
-                if (change.type === 'added' || change.type === 'modified') {
-                  const data = change.doc.data();
-                  if (data) {
-                    newMessages.push({
-                      id: change.doc.id,
-                      text: data.text || '',
-                      senderId: data.senderId || '',
-                      senderName: data.senderName || 'Anonymous',
-                      timestamp: data.timestamp || Timestamp.now(),
-                    });
-                  }
-                }
-              });
-
-              if (newMessages.length > 0) {
-                setMessages(prevMessages => {
-                  const uniqueMessages = [...prevMessages];
-                  newMessages.forEach(newMsg => {
-                    if (!uniqueMessages.find(msg => msg.id === newMsg.id)) {
-                      uniqueMessages.push(newMsg);
-                    }
-                  });
-                  return uniqueMessages.sort(
-                    (a, b) => a.timestamp.seconds - b.timestamp.seconds,
-                  );
-                });
-              }
-            } catch (err) {
-              console.error('Error processing messages:', err);
-              setError('Error processing messages');
-            }
-
-            setIsLoading(false);
-            // Scroll to bottom on new messages
-            setTimeout(() => {
-              flatListRef.current?.scrollToEnd({ animated: true });
-            }, 100);
-          },
-          error => {
-            console.error('Error listening to messages:', error);
-            setError('Failed to load messages');
-            setIsLoading(false);
-          },
-        );
-      } catch (err) {
-        console.error('Error initializing chat:', err);
-        setError('Failed to initialize chat');
-        setIsLoading(false);
-      }
+      setUserName(username || fullName || '');
     };
+    initUserName();
+  }, []);
 
-    initializeChat();
+  // Hooks for chat functionality
+  const { messages, isLoading, error, setError } = useChatMessages({
+    meetingId,
+    userName,
+  });
 
-    return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    };
-  }, [meetingId]);
+  const { sendMessage: sendMessageAction, editMessage, deleteMessage } = useChatActions({
+    meetingId,
+    userName,
+    onError: setError,
+  });
 
-  const sendMessage = async () => {
-    if (!newMessage.trim() || !meetingId) return;
-
-    const userId = getAuth().currentUser?.uid;
-    if (!userId) {
-      Alert.alert('Error', 'You must be logged in to send messages');
-      return;
+  // Auto-scroll on new messages
+  useEffect(() => {
+    if (messages.length > 0) {
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 100);
     }
+  }, [messages.length]);
 
-    setError(null);
-    try {
-      const messagesRef = collection(
-        doc(getFirestore(), 'meetings', meetingId),
-        'messages',
-      );
-
-      await messagesRef.add({
-        text: newMessage.trim(),
-        senderId: userId,
-        senderName: userName || 'Anonymous',
-        timestamp: serverTimestamp(),
-      });
-      setNewMessage('');
-    } catch (err) {
-      console.error('Error sending message:', err);
-      setError('Failed to send message');
-      Alert.alert('Error', 'Failed to send message');
-    }
+  // Handlers
+  const handleSendMessage = async () => {
+    await sendMessageAction(newMessage);
+    setNewMessage('');
   };
 
-  const handleMessageLongPress = (message: Message) => {
-    // Only allow actions on user's own messages
+  const handleMessageLongPress = (message: any) => {
     if (message.senderId === getAuth().currentUser?.uid) {
       setSelectedMessage(message);
       setIsContextMenuVisible(true);
@@ -193,33 +85,23 @@ const Chat: React.FC<ChatProps> = ({ meetingId, isVisible, onClose }) => {
     }
   };
 
-  const saveEditedMessage = async () => {
-    if (!selectedMessage || !editText.trim() || !meetingId) return;
-
-    try {
-      const messageRef = doc(
-        collection(doc(getFirestore(), 'meetings', meetingId), 'messages'),
-        selectedMessage.id,
-      );
-
-      await messageRef.update({
-        text: editText.trim(),
-        edited: true,
-        editedAt: serverTimestamp(),
-      });
-
+  const handleSaveEdit = async () => {
+    if (selectedMessage && editText.trim()) {
+      await editMessage(selectedMessage.id, editText);
       setIsEditMode(false);
       setSelectedMessage(null);
       setEditText('');
-    } catch (err) {
-      console.error('Error editing message:', err);
-      setError('Failed to edit message');
-      Alert.alert('Error', 'Failed to edit message');
     }
   };
 
+  const handleCancelEdit = () => {
+    setIsEditMode(false);
+    setSelectedMessage(null);
+    setEditText('');
+  };
+
   const handleDeleteMessage = () => {
-    if (!selectedMessage || !meetingId) return;
+    if (!selectedMessage) return;
 
     Alert.alert(
       'Delete Message',
@@ -234,23 +116,9 @@ const Chat: React.FC<ChatProps> = ({ meetingId, isVisible, onClose }) => {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            try {
-              await deleteDoc(
-                doc(
-                  collection(
-                    doc(getFirestore(), 'meetings', meetingId),
-                    'messages',
-                  ),
-                  selectedMessage.id,
-                ),
-              );
-              setIsContextMenuVisible(false);
-              setSelectedMessage(null);
-            } catch (err) {
-              console.error('Error deleting message:', err);
-              setError('Failed to delete message');
-              Alert.alert('Error', 'Failed to delete message');
-            }
+            await deleteMessage(selectedMessage.id);
+            setIsContextMenuVisible(false);
+            setSelectedMessage(null);
           },
         },
       ],
@@ -307,158 +175,40 @@ const Chat: React.FC<ChatProps> = ({ meetingId, isVisible, onClose }) => {
           style={styles.messageList}
           estimatedItemSize={100}
           recycleItems={true}
-          renderItem={({ item }) => {
-            const isOwnMessage = item.senderId === getAuth().currentUser?.uid;
-            const isSystemMessage = item.senderId === 'system';
-            return (
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onLongPress={() => handleMessageLongPress(item)}
-                disabled={isSystemMessage}
-                style={[
-                  styles.messageContainer,
-                  isSystemMessage
-                    ? styles.systemMessage
-                    : isOwnMessage
-                      ? styles.ownMessage
-                      : styles.otherMessage,
-                  isDark &&
-                  (isSystemMessage
-                    ? styles.darkSystemMessage
-                    : isOwnMessage
-                      ? styles.darkOwnMessage
-                      : styles.darkOtherMessage),
-                ]}>
-                {!isOwnMessage && !isSystemMessage && (
-                  <Text style={[styles.senderName, isDark && styles.darkText]}>
-                    {item.senderName || 'Unknown User'}
-                  </Text>
-                )}
-                <Text
-                  style={[
-                    styles.messageText,
-                    isDark && styles.darkText,
-                    isOwnMessage && styles.ownMessageText,
-                    isSystemMessage && styles.systemMessageText,
-                  ]}>
-                  {item.text}
-                </Text>
-                {!isSystemMessage && (
-                  <Text
-                    style={[styles.timestamp, isDark && styles.darkTimestamp]}>
-                    {isOwnMessage ? 'You' : ''} •{' '}
-                    {item.timestamp?.toDate().toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                    {item.edited && ' • Edited'}
-                  </Text>
-                )}
-              </TouchableOpacity>
-            );
-          }}
+          renderItem={({ item }) => (
+            <ChatMessageItem
+              message={item}
+              isDark={isDark}
+              onLongPress={handleMessageLongPress}
+            />
+          )}
         />
       )}
 
       {isEditMode ? (
-        <View
-          style={[styles.editContainer, isDark && styles.darkEditContainer]}>
-          <View style={styles.editHeader}>
-            <Text style={[styles.editHeaderText, isDark && styles.darkText]}>
-              Edit Message
-            </Text>
-            <TouchableOpacity
-              onPress={() => setIsEditMode(false)}
-              style={styles.closeEditButton}>
-              <Icon
-                name="close"
-                size={24}
-                color={isDark ? '#ffffff' : '#000000'}
-              />
-            </TouchableOpacity>
-          </View>
-          <TextInput
-            style={[styles.editInput, isDark && styles.darkEditInput]}
-            value={editText}
-            onChangeText={setEditText}
-            multiline
-            autoFocus
-          />
-          <View style={styles.editActions}>
-            <TouchableOpacity
-              onPress={() => setIsEditMode(false)}
-              style={[styles.editButton, styles.cancelButton]}>
-              <Text style={styles.editButtonText}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={saveEditedMessage}
-              style={[styles.editButton, styles.saveButton]}
-              disabled={!editText.trim()}>
-              <Text style={styles.editButtonText}>Save</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+        <EditMessageModal
+          editText={editText}
+          isDark={isDark}
+          onChangeText={setEditText}
+          onSave={handleSaveEdit}
+          onCancel={handleCancelEdit}
+        />
       ) : (
-        <View style={styles.inputArea}>
-          <TextInput
-            style={[styles.textInput, isDark && styles.darkTextInput]}
-            placeholder="Type a message..."
-            placeholderTextColor={isDark ? '#9e9e9e' : '#9e9e9e'}
-            value={newMessage}
-            onChangeText={setNewMessage}
-            multiline
-          />
-          <TouchableOpacity
-            style={[
-              styles.sendButton,
-              !newMessage.trim() && styles.disabledSendButton,
-            ]}
-            onPress={sendMessage}
-            disabled={!newMessage.trim()}>
-            <Icon
-              name="send"
-              size={24}
-              color={
-                newMessage.trim() ? (isDark ? '#ffffff' : '#ffffff') : '#9e9e9e'
-              }
-            />
-          </TouchableOpacity>
-        </View>
+        <ChatInput
+          value={newMessage}
+          isDark={isDark}
+          onChangeText={setNewMessage}
+          onSend={handleSendMessage}
+        />
       )}
 
-      {/* Context Menu Modal */}
-      <Modal
+      <MessageContextMenu
         visible={isContextMenuVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setIsContextMenuVisible(false)}>
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setIsContextMenuVisible(false)}>
-          <View style={[styles.contextMenu, isDark && styles.darkContextMenu]}>
-            <TouchableOpacity
-              style={styles.contextMenuItem}
-              onPress={handleEditMessage}>
-              <MaterialIcons
-                name="edit"
-                size={20}
-                color={isDark ? '#ffffff' : '#333333'}
-              />
-              <Text style={[styles.contextMenuText, isDark && styles.darkText]}>
-                Edit Message
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.contextMenuItem, styles.deleteMenuItem]}
-              onPress={handleDeleteMessage}>
-              <MaterialIcons name="delete" size={20} color="#ff3b30" />
-              <Text style={styles.deleteText}>Delete Message</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+        isDark={isDark}
+        onEdit={handleEditMessage}
+        onDelete={handleDeleteMessage}
+        onClose={() => setIsContextMenuVisible(false)}
+      />
     </KeyboardAvoidingView>
   );
 };

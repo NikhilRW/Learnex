@@ -61,6 +61,7 @@ const RoomScreen: React.FC = () => {
   const { messages, sendMessage, handleMessageReaction, unsubscribeMessages } =
     useRoomChat({
       meetingId: meeting.id,
+      currentUserName: fullName || username || currentUser?.email || 'Anonymous',
     });
 
   // Use actions hook (needs cleanup and unsubscribeMessages)

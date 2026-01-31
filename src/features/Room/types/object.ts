@@ -9,7 +9,7 @@ export interface RoomParams {
     id: string;
     title: string;
     description: string;
-    
+
     duration: number;
     maxParticipants: number;
     isPrivate: boolean;
@@ -39,4 +39,41 @@ export interface MeetingRoom {
   isPrivate: boolean;
   host: string;
   taskId: string;
+}
+
+export interface ValidationError {
+  field: string;
+  message: string;
+}
+
+export interface MeetingConstraints {
+  minCapacity: number;
+  maxCapacity: number;
+  minDuration: number;
+}
+
+export interface ParticipantInfo {
+  id: string;
+  name: string;
+  email?: string | null;
+  isLocal: boolean;
+  stream?: any;
+  state?: any;
+}
+
+export interface UserInfoCache {
+  email: string | null;
+  fullName: string | null;
+  username: string | null;
+}
+
+export interface LayoutConfig {
+  numColumns: number;
+  itemHeight: number;
+}
+
+export interface AvatarInfo {
+  initials: string;
+  backgroundColor: string;
+  textColor: string;
 }

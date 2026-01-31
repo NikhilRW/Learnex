@@ -28,6 +28,7 @@ export interface Message {
 
 export interface UseRoomChatParams {
   meetingId: string;
+  currentUserName?: string;
 }
 
 export interface UseRoomChatReturn {
@@ -42,6 +43,7 @@ export interface UseRoomChatReturn {
 
 export const useRoomChat = ({
   meetingId,
+  currentUserName,
 }: UseRoomChatParams): UseRoomChatReturn => {
   const currentUser = getAuth().currentUser;
 
@@ -135,7 +137,11 @@ export const useRoomChat = ({
           ),
           {
             senderId: currentUser!.uid,
-            senderName: currentUser?.displayName || 'Anonymous',
+            senderName:
+              currentUserName?.split(' ')[0] ||
+              currentUser?.displayName?.split(' ')[0] ||
+              currentUser?.email ||
+              'Anonymous',
             text: text.trim(),
             timestamp: serverTimestamp(),
             reactions: {}, // Initialize empty reactions object
@@ -146,7 +152,7 @@ export const useRoomChat = ({
         Alert.alert('Error', 'Failed to send message');
       }
     },
-    [currentUser, meetingId],
+    [currentUser, currentUserName, meetingId],
   );
 
   const handleMessageReaction = useCallback(
