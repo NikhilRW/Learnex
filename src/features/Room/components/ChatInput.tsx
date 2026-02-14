@@ -2,13 +2,7 @@ import React from 'react';
 import { View, TextInput, TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { styles } from '../styles/Chat.styles';
-
-export interface ChatInputProps {
-    value: string;
-    isDark: boolean;
-    onChangeText: (text: string) => void;
-    onSend: () => void;
-}
+import { ChatInputProps } from '../types';
 
 export const ChatInput: React.FC<ChatInputProps> = ({
     value,

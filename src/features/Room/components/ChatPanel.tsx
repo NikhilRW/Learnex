@@ -10,7 +10,7 @@ import { LegendList } from '@legendapp/list';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import MessageReactionIcon from 'room/components/common/MessageReactionIcon';
-import { ChatPanelProps, Message } from '../types/props';
+import { ChatPanelProps, Message } from '../types';
 import { styles } from '../styles/RoomComponent.styles';
 
 const ChatPanel: React.FC<ChatPanelProps> = ({

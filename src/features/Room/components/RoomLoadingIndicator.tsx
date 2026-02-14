@@ -1,7 +1,7 @@
-import {View, Text, ActivityIndicator, TouchableOpacity} from 'react-native';
+import { View, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
 import React from 'react';
-import {styles} from 'room/styles/RoomScreen';
-import {RoomLoadingIndicatorProps} from '../types/props';
+import { styles } from 'room/styles/RoomScreen';
+import { RoomLoadingIndicatorProps } from '../types';
 import { MAX_CONNECTION_ATTEMPTS } from '../constants/common';
 
 const RoomLoadingIndicator: React.FC<RoomLoadingIndicatorProps> = ({

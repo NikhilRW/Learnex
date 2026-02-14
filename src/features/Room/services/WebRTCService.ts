@@ -21,6 +21,7 @@ import {
   MediaStream as RNMediaStream,
 } from 'react-native-webrtc';
 import {Platform, Alert, Linking} from 'react-native';
+import {ParticipantState} from '../types';
 
 // Extend MediaStream type to include participantId
 interface MediaStream extends RNMediaStream {
@@ -1901,23 +1902,4 @@ export class WebRTCService {
       throw error;
     }
   }
-}
-
-// Add interface for participant state
-export interface ParticipantState {
-  isAudioEnabled: boolean;
-  isVideoEnabled: boolean;
-  isHandRaised: boolean;
-  isScreenSharing: boolean;
-  // Add new gesture states
-  isThumbsUp: boolean;
-  isThumbsDown: boolean;
-  isClapping: boolean;
-  isWaving: boolean;
-  // Add speaking status
-  isSpeaking: boolean;
-  isSmiling: boolean;
-  // Add reaction timestamp to auto-expire reactions
-  reactionTimestamp: Date | null;
-  lastUpdated: Date;
 }

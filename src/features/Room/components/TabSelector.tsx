@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, TouchableOpacity, Text } from 'react-native';
-import { TabSelectorProps } from '../types/props';
+import { TabSelectorProps } from '../types';
 import { styles } from '../styles/Room';
 
 /**

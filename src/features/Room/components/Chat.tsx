@@ -14,7 +14,7 @@ import { getAuth } from '@react-native-firebase/auth';
 import { useTypedSelector } from 'hooks/redux/useTypedSelector';
 import { UserService } from 'shared/services/UserService';
 import { styles } from '../styles/Chat.styles';
-import { ChatProps } from '../types/props';
+import { ChatProps } from '../types';
 import { useChatMessages } from '../hooks/useChatMessages';
 import { useChatActions } from '../hooks/useChatActions';
 import { ChatMessageItem } from './ChatMessageItem';

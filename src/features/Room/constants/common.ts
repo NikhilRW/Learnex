@@ -1,5 +1,5 @@
 import {SCREEN_WIDTH} from '@/shared/constants/common';
-import {MeetingRoom, MeetingConstraints} from '../types/object';
+import {MeetingRoom, MeetingConstraints} from '../types';
 
 export const MAX_CONNECTION_ATTEMPTS = 3;
 

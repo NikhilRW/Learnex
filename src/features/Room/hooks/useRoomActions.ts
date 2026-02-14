@@ -2,34 +2,14 @@ import {useCallback, useEffect} from 'react';
 import {Alert, BackHandler} from 'react-native';
 import {CommonActions, useNavigation} from '@react-navigation/native';
 import {DrawerNavigationProp} from '@react-navigation/drawer';
-import {MeetingService} from 'room/services/MeetingService';
-import {WebRTCService, ParticipantState} from 'room/services/WebRTCService';
-import {TaskService} from 'shared/services/TaskService';
 import {UserStackParamList} from 'shared/navigation/routes/UserStack';
-import {Meeting} from './useRoomConnection';
+import {
+  ParticipantState,
+  UseRoomActionsParams,
+  UseRoomActionsReturn,
+} from '../types';
 
 type RoomScreenNavigationProp = DrawerNavigationProp<UserStackParamList>;
-
-export interface UseRoomActionsParams {
-  meeting: Meeting;
-  isHost: boolean;
-  isConnecting: boolean;
-  meetingService: MeetingService;
-  webRTCService: WebRTCService;
-  taskService: TaskService;
-  cleanup: () => Promise<void>;
-  unsubscribeMessages: (() => void) | null;
-}
-
-export interface UseRoomActionsReturn {
-  handleRaiseHand: (raised: boolean) => Promise<void>;
-  handleReaction: (
-    reaction: 'thumbsUp' | 'thumbsDown' | 'clapping' | 'waving' | 'smiling',
-  ) => Promise<void>;
-  handleEndCall: () => Promise<void>;
-  confirmLeaveRoom: () => void;
-  handleMeetingEnded: () => void;
-}
 
 export const useRoomActions = ({
   meeting,

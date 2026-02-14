@@ -13,33 +13,7 @@ import {
   orderBy,
   serverTimestamp,
 } from '@react-native-firebase/firestore';
-
-export interface Message {
-  id: string;
-  senderId: string;
-  senderName: string;
-  text: string;
-  timestamp: Date;
-  isMe: boolean;
-  reactions?: {
-    [userId: string]: string; // userId: reactionType
-  };
-}
-
-export interface UseRoomChatParams {
-  meetingId: string;
-  currentUserName?: string;
-}
-
-export interface UseRoomChatReturn {
-  messages: Message[];
-  sendMessage: (text: string) => Promise<void>;
-  handleMessageReaction: (
-    messageId: string,
-    reactionType: string,
-  ) => Promise<void>;
-  unsubscribeMessages: (() => void) | null;
-}
+import {Message, UseRoomChatParams, UseRoomChatReturn} from '../types';
 
 export const useRoomChat = ({
   meetingId,

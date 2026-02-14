@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-import { TaskListItemProps } from '../types/props';
+import { TaskListItemProps } from '../types';
 import { getPriorityColor } from '../utils/helpers';
 import { styles } from '../styles/Room';
 

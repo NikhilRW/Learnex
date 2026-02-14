@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TextInput, TouchableOpacity } from 'react-native';
-import { JoinRoomFormProps } from '../types/props';
+import { JoinRoomFormProps } from '../types';
 import { styles } from '../styles/Room';
 
 /**

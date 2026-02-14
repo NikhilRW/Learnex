@@ -2,7 +2,7 @@ import React from 'react';
 import { View, TouchableOpacity, ScrollView, Text } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { ControlBarProps } from '../types/props';
+import { ControlBarProps } from '../types';
 import { styles } from '../styles/RoomComponent.styles';
 
 const ControlBar: React.FC<ControlBarProps> = ({

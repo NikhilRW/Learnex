@@ -1,14 +1,8 @@
 import React from 'react';
-import {  Text, TouchableOpacity } from 'react-native';
+import { Text, TouchableOpacity } from 'react-native';
 import { getAuth } from '@react-native-firebase/auth';
 import { styles } from '../styles/Chat.styles';
-import { ChatMessage } from '../types/props';
-
-export interface ChatMessageItemProps {
-    message: ChatMessage;
-    isDark: boolean;
-    onLongPress: (message: ChatMessage) => void;
-}
+import { ChatMessageItemProps } from '../types';
 
 export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
     message,

@@ -11,7 +11,7 @@ import {
   Timestamp,
 } from '@react-native-firebase/firestore';
 import {getAuth} from '@react-native-firebase/auth';
-import {ChatMessage} from '../types/props';
+import {ChatMessage} from '../types';
 
 export interface UseChatMessagesParams {
   meetingId: string;

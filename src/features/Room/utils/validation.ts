@@ -1,5 +1,5 @@
 import {Alert} from 'react-native';
-import {MeetingRoom, ValidationError} from '../types/object';
+import {MeetingRoom, ValidationError} from '../types';
 import {MEETING_CONSTRAINTS} from '../constants/common';
 
 /**

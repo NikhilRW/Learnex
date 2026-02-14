@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import { RTCView } from 'react-native-webrtc';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import ReactionText from 'room/components/common/ReactionText';
-import { ParticipantItemProps } from '../types/props';
+import { ParticipantItemProps } from '../types';
 import { getAvatarInfo } from '../utils/avatar';
 import { styles } from '../styles/RoomComponent.styles';
 

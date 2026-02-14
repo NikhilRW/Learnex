@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, TouchableOpacity, Text, ActivityIndicator } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { EmptyStateProps } from '../types/props';
+import { EmptyStateProps } from '../types';
 import { copyRoomCode, shareMeetingInvite } from '../utils/sharing';
 import { styles } from '../styles/RoomComponent.styles';
 

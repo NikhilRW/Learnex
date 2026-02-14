@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, Modal, TouchableOpacity } from 'react-native';
 import { LegendList } from '@legendapp/list';
-import { TaskSelectionModalProps } from '../types/props';
+import { TaskSelectionModalProps } from '../types';
 import { TaskListItem } from './TaskListItem';
 import { styles } from '../styles/Room';
 

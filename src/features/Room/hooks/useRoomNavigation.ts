@@ -2,7 +2,7 @@ import {useEffect} from 'react';
 import {Alert} from 'react-native';
 import {useRoute, useNavigation, RouteProp} from '@react-navigation/native';
 import {DrawerNavigationProp} from '@react-navigation/drawer';
-import {RoomParams} from '../types/object';
+import {RoomParams} from '../types';
 import {DEFAULT_MEETING_SETTINGS} from '../constants/common';
 import {MeetingService} from '../services/MeetingService';
 import {TaskService} from 'shared/services/TaskService';

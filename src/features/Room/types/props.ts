@@ -1,8 +1,108 @@
-import {ConnectionState} from './object';
-import {Meeting} from 'room/services/MeetingService';
-import {ParticipantState} from 'room/services/WebRTCService';
+import {ConnectionState, Meeting, ParticipantState} from './object';
 import {MediaStream} from 'react-native-webrtc';
 
+export interface ExtendedMediaStream extends MediaStream {
+  participantId?: string;
+}
+
+export interface Message {
+  id: string;
+  senderId: string;
+  senderName: string;
+  text: string;
+  timestamp: Date;
+  isMe: boolean;
+  reactions?: {
+    [userId: string]: string; // userId: reactionType
+  };
+}
+
+export interface ChatMessage {
+  id: string;
+  text: string;
+  senderId: string;
+  senderName: string;
+  timestamp: any;
+  edited?: boolean;
+  editedAt?: any;
+}
+
+// Hook parameter and return types
+export interface UseRoomMediaParams {
+  meetingId: string;
+  localStream: ExtendedMediaStream | null;
+  setLocalStream: React.Dispatch<
+    React.SetStateAction<ExtendedMediaStream | null>
+  >;
+  webRTCService: any; // WebRTCService
+}
+
+export interface UseRoomMediaReturn {
+  isAudioEnabled: boolean;
+  isVideoEnabled: boolean;
+  isFrontCamera: boolean;
+  handleToggleAudio: () => Promise<void>;
+  handleToggleVideo: () => Promise<void>;
+  handleFlipCamera: () => Promise<void>;
+  handleLocalStreamUpdate: (stream: ExtendedMediaStream | null) => void;
+}
+
+export interface UseRoomChatParams {
+  meetingId: string;
+  currentUserName?: string;
+}
+
+export interface UseRoomChatReturn {
+  messages: Message[];
+  sendMessage: (text: string) => Promise<void>;
+  handleMessageReaction: (
+    messageId: string,
+    reactionType: string,
+  ) => Promise<void>;
+  unsubscribeMessages: (() => void) | null;
+}
+
+export interface UseRoomActionsParams {
+  meeting: Meeting;
+  isHost: boolean;
+  isConnecting: boolean;
+  meetingService: any; // MeetingService
+  webRTCService: any; // WebRTCService
+  taskService: any; // TaskService
+  cleanup: () => Promise<void>;
+  unsubscribeMessages: (() => void) | null;
+}
+
+export interface UseRoomActionsReturn {
+  handleRaiseHand: (raised: boolean) => Promise<void>;
+  handleReaction: (
+    reaction: 'thumbsUp' | 'thumbsDown' | 'clapping' | 'waving' | 'smiling',
+  ) => Promise<void>;
+  handleEndCall: () => Promise<void>;
+  confirmLeaveRoom: () => void;
+  handleMeetingEnded: () => void;
+}
+
+export interface UseRoomConnectionParams {
+  meeting: Meeting;
+  meetingService: any; // MeetingService
+  webRTCService: any; // WebRTCService
+  onMeetingEnded: () => void;
+}
+
+export interface UseRoomConnectionReturn {
+  localStream: ExtendedMediaStream | null;
+  remoteStreams: ExtendedMediaStream[];
+  isConnecting: boolean;
+  connectionAttempts: number;
+  connectionError: string | null;
+  connectionState: ConnectionState;
+  participantStates: Map<string, ParticipantState>;
+  streamsByParticipant: Map<string, ExtendedMediaStream>;
+  cleanup: () => Promise<void>;
+}
+
+// Component props
 export interface RoomLoadingIndicatorProps {
   connectionState: ConnectionState;
   connectionError: string | null;
@@ -204,28 +304,38 @@ export interface MessageReactionsMenuProps {
   onClose: () => void;
 }
 
-export interface ChatMessage {
-  id: string;
-  text: string;
-  senderId: string;
-  senderName: string;
-  timestamp: any;
-  edited?: boolean;
-  editedAt?: any;
-}
-
 export interface ChatProps {
   meetingId: string;
   isVisible: boolean;
   onClose: () => void;
 }
 
-export interface ChatMessage {
-  id: string;
-  senderId: string;
-  senderName: string;
-  text: string;
-  timestamp: any;
-  edited?: boolean;
-  editedAt?: any;
+// Component-specific prop types
+export interface ChatMessageItemProps {
+  message: ChatMessage;
+  isDark: boolean;
+  onLongPress: (message: ChatMessage) => void;
+}
+
+export interface MessageContextMenuProps {
+  visible: boolean;
+  isDark: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+  onClose: () => void;
+}
+
+export interface EditMessageModalProps {
+  editText: string;
+  isDark: boolean;
+  onChangeText: (text: string) => void;
+  onSave: () => void;
+  onCancel: () => void;
+}
+
+export interface ChatInputProps {
+  value: string;
+  isDark: boolean;
+  onChangeText: (text: string) => void;
+  onSend: () => void;
 }

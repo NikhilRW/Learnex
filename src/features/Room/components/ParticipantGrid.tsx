@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Dimensions } from 'react-native';
 import { LegendList } from '@legendapp/list';
 import ParticipantItem from './ParticipantItem';
-import { ParticipantGridProps } from '../types/props';
+import { ParticipantGridProps } from '../types';
 import { calculateGridLayout, calculateUnpinnedLayout } from '../utils/layout';
 import { styles } from '../styles/RoomComponent.styles';
 

@@ -2,26 +2,11 @@ import {useState, useCallback} from 'react';
 import {Alert} from 'react-native';
 import {WebRTCService} from 'room/services/WebRTCService';
 import {getAuth} from '@react-native-firebase/auth';
-import {ExtendedMediaStream} from './useRoomConnection';
-
-export interface UseRoomMediaParams {
-  meetingId: string;
-  localStream: ExtendedMediaStream | null;
-  setLocalStream: React.Dispatch<
-    React.SetStateAction<ExtendedMediaStream | null>
-  >;
-  webRTCService: WebRTCService;
-}
-
-export interface UseRoomMediaReturn {
-  isAudioEnabled: boolean;
-  isVideoEnabled: boolean;
-  isFrontCamera: boolean;
-  handleToggleAudio: () => Promise<void>;
-  handleToggleVideo: () => Promise<void>;
-  handleFlipCamera: () => Promise<void>;
-  handleLocalStreamUpdate: (stream: ExtendedMediaStream | null) => void;
-}
+import {
+  ExtendedMediaStream,
+  UseRoomMediaParams,
+  UseRoomMediaReturn,
+} from '../types';
 
 export const useRoomMedia = ({
   meetingId,

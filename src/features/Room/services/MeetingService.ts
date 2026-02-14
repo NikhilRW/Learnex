@@ -20,33 +20,7 @@ import {
   FirebaseFirestoreTypes,
 } from '@react-native-firebase/firestore';
 import {generateRoomCode} from 'shared/helpers/common/roomCodeGenerator';
-
-export interface Meeting {
-  id: string;
-  title: string;
-  description: string;
-  duration: number; // in minutes
-  status: 'scheduled' | 'active' | 'completed' | 'cancelled';
-  host: string;
-  participants: string[];
-  roomCode: string;
-  isPrivate: boolean;
-  maxParticipants: number;
-  taskId?: string; // Associated task ID for the meeting
-  settings: {
-    muteOnEntry: boolean;
-    allowChat: boolean;
-    allowScreenShare: boolean;
-    recordingEnabled: boolean;
-  };
-  createdAt: FirebaseFirestoreTypes.Timestamp;
-  updatedAt: FirebaseFirestoreTypes.Timestamp;
-}
-
-export interface MeetingError extends Error {
-  code?: string;
-  details?: any;
-}
+import {Meeting, MeetingError} from '../types';
 
 export class MeetingService {
   private meetingsCollection = collection(

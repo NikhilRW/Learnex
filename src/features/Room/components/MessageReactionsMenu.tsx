@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, TouchableOpacity, Text } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { MessageReactionsMenuProps } from '../types/props';
+import { MessageReactionsMenuProps } from '../types';
 import { styles } from '../styles/RoomComponent.styles';
 
 const MessageReactionsMenu: React.FC<MessageReactionsMenuProps> = ({

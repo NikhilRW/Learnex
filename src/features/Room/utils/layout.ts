@@ -1,4 +1,4 @@
-import {LayoutConfig} from '../types/object';
+import {LayoutConfig} from '../types';
 
 /**
  * Calculate grid layout configuration for participants

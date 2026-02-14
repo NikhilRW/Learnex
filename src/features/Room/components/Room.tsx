@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { View, TouchableOpacity, KeyboardAvoidingView, Platform, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { UserService } from 'shared/services/UserService';
-import { RoomProps } from '../types/props';
+import { RoomProps } from '../types';
 import { useRoomUIState } from '../hooks';
 import ParticipantGrid from './ParticipantGrid';
 import ControlBar from './ControlBar';

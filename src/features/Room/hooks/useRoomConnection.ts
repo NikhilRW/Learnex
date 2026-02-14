@@ -1,11 +1,12 @@
 import {useState, useEffect, useCallback} from 'react';
 import {Alert} from 'react-native';
-import {MediaStream} from 'react-native-webrtc';
-import {MeetingService} from 'room/services/MeetingService';
-import {WebRTCService, ParticipantState} from 'room/services/WebRTCService';
 import {getAuth} from '@react-native-firebase/auth';
-import {ConnectionState, ExtendedMediaStream, Meeting} from '../types/object';
-import {UseRoomConnectionParams, UseRoomConnectionReturn} from '../types/props';
+import {
+  ExtendedMediaStream,
+  ParticipantState,
+  UseRoomConnectionParams,
+  UseRoomConnectionReturn,
+} from '../types';
 import {MAX_CONNECTION_ATTEMPTS} from '../constants/common';
 
 export const useRoomConnection = ({
@@ -124,7 +125,7 @@ export const useRoomConnection = ({
         // Subscribe to meeting updates with improved error handling
         meetingService.subscribeMeeting(
           meeting.id,
-          updatedMeeting => {
+          (updatedMeeting: any) => {
             console.log('Meeting updated:', updatedMeeting.status);
             console.log('Updated participants:', updatedMeeting.participants);
 

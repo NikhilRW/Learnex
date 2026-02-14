@@ -3,7 +3,7 @@ import { View, TouchableOpacity, Text, Animated } from 'react-native';
 import { LegendList } from '@legendapp/list';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import AntDesign from 'react-native-vector-icons/AntDesign';
-import { ParticipantsPanelProps } from '../types/props';
+import { ParticipantsPanelProps } from '../types';
 import { getAvatarInfo } from '../utils/avatar';
 import { styles } from '../styles/RoomComponent.styles';
 

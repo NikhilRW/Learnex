@@ -2,7 +2,7 @@ import React from 'react';
 import { View, TouchableOpacity, Text, Animated } from 'react-native';
 import { LegendList } from '@legendapp/list';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { QuickMessagesMenuProps } from '../types/props';
+import { QuickMessagesMenuProps } from '../types';
 import { QUICK_MESSAGES } from '../constants/common';
 import { styles } from '../styles/RoomComponent.styles';
 

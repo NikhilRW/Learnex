@@ -2,14 +2,7 @@ import React from 'react';
 import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { styles } from '../styles/Chat.styles';
-
-export interface EditMessageModalProps {
-    editText: string;
-    isDark: boolean;
-    onChangeText: (text: string) => void;
-    onSave: () => void;
-    onCancel: () => void;
-}
+import { EditMessageModalProps } from '../types';
 
 export const EditMessageModal: React.FC<EditMessageModalProps> = ({
     editText,

@@ -1,5 +1,5 @@
 import {AVATAR_COLORS} from '../constants/common';
-import {AvatarInfo} from '../types/object';
+import {AvatarInfo} from '../types';
 
 /**
  * Generate consistent avatar color based on user ID

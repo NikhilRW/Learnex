@@ -2,14 +2,7 @@ import React from 'react';
 import { Modal, View, Text, TouchableOpacity } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { styles } from '../styles/Chat.styles';
-
-export interface MessageContextMenuProps {
-    visible: boolean;
-    isDark: boolean;
-    onEdit: () => void;
-    onDelete: () => void;
-    onClose: () => void;
-}
+import { MessageContextMenuProps } from '../types';
 
 export const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
     visible,

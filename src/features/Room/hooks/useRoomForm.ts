@@ -2,7 +2,7 @@ import {useState, useCallback} from 'react';
 import {Alert} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {DrawerNavigationProp} from '@react-navigation/drawer';
-import {MeetingRoom} from '../types/object';
+import {MeetingRoom} from '../types';
 import {
   DEFAULT_MEETING_ROOM,
   DEFAULT_MEETING_SETTINGS,

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, TouchableOpacity, Text, Animated } from 'react-native';
-import { ReactionsMenuProps } from '../types/props';
+import { ReactionsMenuProps } from '../types';
 import { styles } from '../styles/RoomComponent.styles';
 
 const ReactionsMenu: React.FC<ReactionsMenuProps> = ({
