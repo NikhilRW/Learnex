@@ -1,12 +1,5 @@
 import {format, parseISO, isAfter, isWithinInterval} from 'date-fns';
-
-/**
- * Event status type
- */
-export interface EventStatus {
-  type: 'upcoming' | 'live' | 'ended';
-  text: string;
-}
+import {EventStatus} from '../types';
 
 /**
  * Format a date for display

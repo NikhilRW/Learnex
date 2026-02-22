@@ -324,4 +324,26 @@ export const createStyles = (isDark: boolean) =>
     dangerOption: {
       color: '#FF3B30',
     },
+    emptyStateContainer: {
+      padding: 16,
+      alignItems: 'center' as const,
+    },
+    emptyStateText: {
+      color: isDark ? '#8e8e8e' : '#666666',
+    },
+    lastOptionItem: {
+      borderBottomWidth: 0,
+    },
+    replyButtonContainer: {
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+    },
+    optionsButtonContainer: {
+      padding: 4,
+      borderRadius: 12,
+      backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5',
+    },
+    commentAvatarWithBg: {
+      backgroundColor: '#3EB9F1',
+    },
   });

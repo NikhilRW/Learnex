@@ -1,4 +1,3 @@
-
 // Event source enum for better type safety
 export enum EventSource {
   HACKEREARTH = 'hackerearth',
@@ -10,6 +9,12 @@ export enum EventMode {
   ONLINE = 'online',
   IN_PERSON = 'in-person',
   HYBRID = 'hybrid',
+}
+
+// Event status type
+export interface EventStatus {
+  type: 'upcoming' | 'live' | 'ended';
+  text: string;
 }
 
 // Interface for a hackathon/event summary
@@ -72,4 +77,3 @@ export interface HackathonResponse {
   success: boolean;
   data: HackathonDetails;
 }
-

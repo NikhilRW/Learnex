@@ -1,19 +1,7 @@
 import axios from 'axios';
-import {
-  HackathonSummary,
-  HackathonDetails,
-  EventSource,
-} from 'events-and-hackathons/types/hackathon';
-import {StorageService} from 'events-and-hackathons/services/storageService';
-
-// Base URL for the API For Vercel
-const API_BASE_URL = 'https://learnex-backend.vercel.app/api';
-
-// Base URL for the API For Localhost (Android Emulator)
-// const API_BASE_URL = 'http://10.0.2.2:5000/api';
-
-// Base URL for the API For Localhost (Physical Device)
-// const API_BASE_URL = 'http://192.168.1.10:5000/api';
+import {HackathonSummary, HackathonDetails, EventSource} from '../types';
+import {StorageService} from './storageService';
+import {API_BASE_URL} from '../constants';
 
 /**
  * Service for fetching hackathon and event data from the backend API

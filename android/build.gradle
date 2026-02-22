@@ -10,12 +10,14 @@ buildscript {
     repositories {
         google()
         mavenCentral()
+        maven { url "https://packages.rnrepo.org/releases" }
     }
     dependencies {
         classpath('com.android.tools.build:gradle:8.2.0')
         classpath("com.facebook.react:react-native-gradle-plugin")
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:${kotlinVersion}")
-        classpath("com.google.gms:google-services:4.4.2")     
+        classpath("com.google.gms:google-services:4.4.2")
+        classpath("org.rnrepo.tools:prebuilds-plugin:0.2.2")
     }
 }
 
@@ -24,6 +26,7 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+        maven { url "https://packages.rnrepo.org/releases" }
         
         // New repository configuration for Notifee
         maven {

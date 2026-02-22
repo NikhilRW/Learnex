@@ -1,28 +1,16 @@
 import {useEffect, useState, useCallback} from 'react';
-import {Platform, ToastAndroid} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {useDispatch} from 'react-redux';
 import {AnyAction} from '@reduxjs/toolkit';
 import {useTypedSelector} from 'hooks/redux/useTypedSelector';
-import {HackathonService} from '@/features/EventsAndHackathons/services/hackathonService';
-import {HackathonSummary} from 'events-and-hackathons/types/hackathon';
+import {HackathonService} from '../services';
+import {HackathonSummary} from '../types';
+import {showToast} from '../utils';
 import {
   fetchHackathons,
   setFilterType,
   clearHackathonCache,
 } from 'shared/reducers/Hackathon';
-
-/**
- * Toast helper to show messages on Android
- */
-const showToast = (message: string, duration: 'short' | 'long' = 'short') => {
-  if (Platform.OS === 'android') {
-    ToastAndroid.show(
-      message,
-      duration === 'short' ? ToastAndroid.SHORT : ToastAndroid.LONG,
-    );
-  }
-};
 
 /**
  * Custom hook for Events and Hackathons screen logic

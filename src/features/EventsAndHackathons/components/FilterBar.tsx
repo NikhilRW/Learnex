@@ -1,11 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-
-interface FilterBarProps {
-    filterType: string;
-    onFilterChange: (filter: string) => void;
-    styles: any;
-}
+import { FilterBarProps } from '../types';
 
 /**
  * FilterBar component - renders filter buttons for event types

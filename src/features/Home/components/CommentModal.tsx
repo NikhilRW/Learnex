@@ -34,18 +34,7 @@ import {
   addDoc,
 } from '@react-native-firebase/firestore';
 import { createStyles } from '../styles/CommentModal.styles';
-
-interface CommentModalProps {
-  visible: boolean;
-  onClose: () => void;
-  comments: Comment[];
-  isDark: boolean;
-  onAddComment?: () => Promise<void>;
-  newComment?: string;
-  setNewComment?: (text: string) => void;
-  isAddingComment?: boolean;
-  postId?: string;
-}
+import { CommentModalProps } from '../types';
 
 /**
  * CommentModal displays a list of comments and allows users to add new comments
@@ -200,7 +189,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
 
                 {canDelete && (
                   <TouchableOpacity
-                    style={[styles.optionItem, { borderBottomWidth: 0 }]}
+                    style={[styles.optionItem, styles.lastOptionItem]}
                     onPress={() => {
                       setShowOptions(false);
                       setTimeout(() => {
@@ -505,10 +494,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
             rounded
             title={getUsernameForLogo(comment.username)}
             size={40}
-            containerStyle={[
-              styles.commentAvatar,
-              { backgroundColor: primaryColor },
-            ]}
+            containerStyle={[styles.commentAvatar, styles.commentAvatarWithBg]}
             titleStyle={{ fontSize: 16 }}
           />
         )}
@@ -642,8 +628,8 @@ const CommentModal: React.FC<CommentModalProps> = ({
                 </React.Fragment>
               ))
             ) : (
-              <View style={{ padding: 16, alignItems: 'center' }}>
-                <Text style={{ color: isDark ? '#8e8e8e' : '#666666' }}>
+              <View style={styles.emptyStateContainer}>
+                <Text style={styles.emptyStateText}>
                   No comments yet. Be the first to comment!
                 </Text>
               </View>

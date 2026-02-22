@@ -1,17 +1,9 @@
 import React from 'react';
-import { View, Text, StyleSheet, ViewStyle } from 'react-native';
-import { EventSource } from '@/features/EventsAndHackathons/types/hackathon';
+import { View, Text, StyleSheet } from 'react-native';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-
-interface EventLogoProps {
-  source: EventSource;
-  size: number;
-  style?: ViewStyle;
-  isDark: boolean;
-  imageUrl?: string;
-}
+import { EventLogoProps } from '../types';
 
 // Default icons for each source
 // const DEFAULT_HACKEREARTH_ICON = 'code';
@@ -41,30 +33,20 @@ const EventLogo: React.FC<EventLogoProps> = ({ source, size, style, isDark }) =>
         ? '#563D7C'
         : '#6C4AA0';
 
-  const textColor = 'white';
+  const dynamicContainerStyle = {
+    width: containerSize,
+    height: containerSize,
+    backgroundColor: bgColor,
+    borderRadius: containerSize / 2,
+  };
+  const dynamicLogoTextStyle = { fontSize: size * 0.12 };
 
   return (
-    <View
-      style={[
-        styles.container,
-        {
-          width: containerSize,
-          height: containerSize,
-          backgroundColor: bgColor,
-          borderRadius: containerSize / 2,
-          borderWidth: 1,
-          borderColor: 'rgba(255,255,255,0.3)',
-        },
-        style,
-      ]}>
+    <View style={[styles.container, dynamicContainerStyle, style]}>
       {sourceStr === 'hackerearth' && (
         <>
-          <FontAwesome name={'code'} size={iconSize} color={textColor} />
-          <Text
-            style={[
-              styles.logoText,
-              { fontSize: size * 0.12, color: textColor },
-            ]}>
+          <FontAwesome name={'code'} size={iconSize} color="white" />
+          <Text style={[styles.logoText, dynamicLogoTextStyle]}>
             HackerEarth
           </Text>
         </>
@@ -75,13 +57,9 @@ const EventLogo: React.FC<EventLogoProps> = ({ source, size, style, isDark }) =>
           <MaterialCommunityIcons
             name={'rocket-launch'}
             size={iconSize}
-            color={textColor}
+            color="white"
           />
-          <Text
-            style={[
-              styles.logoText,
-              { fontSize: size * 0.12, color: textColor },
-            ]}>
+          <Text style={[styles.logoText, dynamicLogoTextStyle]}>
             Devfolio
           </Text>
         </>
@@ -93,13 +71,9 @@ const EventLogo: React.FC<EventLogoProps> = ({ source, size, style, isDark }) =>
           <Ionicons
             name={DEFAULT_GENERIC_ICON}
             size={iconSize}
-            color={textColor}
+            color="white"
           />
-          <Text
-            style={[
-              styles.logoText,
-              { fontSize: size * 0.12, color: textColor },
-            ]}>
+          <Text style={[styles.logoText, dynamicLogoTextStyle]}>
             Event
           </Text>
         </>
@@ -113,10 +87,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
   },
   logoText: {
     fontWeight: 'bold',
     marginTop: 4,
+    color: 'white',
   },
 });
 

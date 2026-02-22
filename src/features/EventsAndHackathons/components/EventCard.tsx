@@ -2,15 +2,9 @@ import React from 'react';
 import { View, Text, TouchableOpacity, Image } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { HackathonSummary, EventMode } from 'events-and-hackathons/types/hackathon';
+import { EventMode } from '../types';
 import { getEventStatus, getSourceString, getSourceBackgroundColor } from '../utils';
-
-interface EventCardProps {
-    item: HackathonSummary;
-    isDark: boolean;
-    styles: any;
-    onPress: (event: HackathonSummary) => void;
-}
+import { EventCardProps } from '../types';
 
 /**
  * EventCard component - renders a single hackathon/event card
@@ -19,6 +13,8 @@ const EventCard: React.FC<EventCardProps> = ({ item, isDark, styles, onPress }) 
     const sourceStr = getSourceString(item.source);
     const bgColor = getSourceBackgroundColor(sourceStr);
     const status = getEventStatus(item.startDate, item.endDate);
+    const logoOpacityStyle = { opacity: status.type === 'ended' ? 0.7 : 1 };
+    const logoPlaceholderBgStyle = { backgroundColor: bgColor };
 
     return (
         <TouchableOpacity
@@ -41,27 +37,11 @@ const EventCard: React.FC<EventCardProps> = ({ item, isDark, styles, onPress }) 
                 {item.imageUrl && item.imageUrl.startsWith('http') ? (
                     <Image
                         source={{ uri: item.imageUrl }}
-                        style={[styles.eventLogo, {
-                            width: 56,
-                            height: 56,
-                            borderRadius: 12,
-                            marginRight: 12,
-                            opacity: status.type === 'ended' ? 0.7 : 1
-                        }]}
+                        style={[styles.eventLogo, logoOpacityStyle]}
                         resizeMode="cover"
                     />
                 ) : (
-                    <View style={[styles.eventLogo, {
-                        width: 56,
-                        height: 56,
-                        backgroundColor: bgColor,
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        borderRadius: 12,
-                        borderWidth: 1,
-                        borderColor: 'rgba(255,255,255,0.3)',
-                        opacity: status.type === 'ended' ? 0.7 : 1
-                    }]}>
+                    <View style={[styles.eventLogo, styles.eventLogoPlaceholder, logoPlaceholderBgStyle, logoOpacityStyle]}>
                         {sourceStr === 'hackerearth' ? (
                             <MaterialCommunityIcons name="rocket-launch" size={24} color="#ffffff" />
                         ) : (

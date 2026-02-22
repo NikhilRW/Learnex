@@ -1,14 +1,26 @@
-import { View, ViewToken, RefreshControl, StatusBar } from 'react-native';
-import React, { useEffect, useState, useCallback, useRef, JSX, startTransition } from 'react';
+import { View, ViewToken, RefreshControl } from 'react-native';
+import React, {
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+  JSX,
+  startTransition,
+} from 'react';
 import { useTypedSelector } from 'hooks/redux/useTypedSelector';
 import SkeletonPlaceholder from 'react-native-skeleton-placeholder';
 import Post from 'home/components/Post';
 import { PostType } from 'shared/types/post';
 import { styles } from 'home/styles/Home';
 import { primaryColor } from 'shared/res/strings/eng';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { HomeHeader } from '../components/HomeHeader';
 import { LegendList } from '@legendapp/list';
+import {
+  VIEWABLE_ITEM_THRESHOLD,
+  ESTIMATED_POST_ITEM_SIZE,
+  TRENDING_TAGS_LIMIT,
+  TRENDING_POSTS_LIMIT,
+} from '../constants';
 
 const HomeSkeleton = (): JSX.Element => {
   //TODO : Add the skeleton for the home screen
@@ -81,7 +93,7 @@ const Home = () => {
   const viewabilityConfigCallbackPairs = useRef([
     {
       viewabilityConfig: {
-        itemVisiblePercentThreshold: 90, // Only play when fully visible
+        itemVisiblePercentThreshold: VIEWABLE_ITEM_THRESHOLD, // Only play when fully visible
       },
       onViewableItemsChanged,
     },
@@ -141,7 +153,7 @@ const Home = () => {
       // Refresh trending tags
       const trendingResponse = await firebase.trending.getTrendingPosts(
         'day',
-        20,
+        TRENDING_POSTS_LIMIT,
       );
       if (trendingResponse.success && trendingResponse.posts) {
         const hashtagStats = new Map<string, number>();
@@ -161,7 +173,7 @@ const Home = () => {
         const hashtagEntries = Array.from(hashtagStats.entries());
         const topTags = hashtagEntries
           .sort((a, b) => b[1] - a[1])
-          .slice(0, 10)
+          .slice(0, TRENDING_TAGS_LIMIT)
           .map(([tag]) => tag);
 
         // Use fallback tags if no trending tags are found
@@ -186,7 +198,7 @@ const Home = () => {
     const fetchTrendingTags = async () => {
       try {
         console.log('Starting to fetch trending tags...');
-        const response = await firebase.trending.getTrendingPosts('day', 20);
+        const response = await firebase.trending.getTrendingPosts('day', TRENDING_POSTS_LIMIT);
 
         if (!mounted) {
           console.log('Component unmounted, skipping update');
@@ -243,7 +255,7 @@ const Home = () => {
 
           const topTags = hashtagEntries
             .sort((a, b) => b[1] - a[1])
-            .slice(0, 10)
+            .slice(0, TRENDING_TAGS_LIMIT)
             .map(([tag]) => tag);
 
           setTrendingTags(topTags);
@@ -351,7 +363,7 @@ const Home = () => {
             viewabilityConfigCallbackPairs={
               viewabilityConfigCallbackPairs.current
             }
-            estimatedItemSize={500}
+            estimatedItemSize={ESTIMATED_POST_ITEM_SIZE}
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}

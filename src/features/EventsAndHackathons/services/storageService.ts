@@ -1,15 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {HackathonSummary} from 'events-and-hackathons/types/hackathon';
-
-// Constants for cache keys
-const KEYS = {
-  HACKATHONS: 'hackathons',
-  HACKATHONS_TIMESTAMP: 'hackathons_timestamp',
-  HACKATHONS_LOCATION: 'hackathons_location',
-};
-
-// Cache expiration time (in minutes)
-const CACHE_EXPIRATION = 60; // 1 hour
+import {HackathonSummary} from '../types';
+import {STORAGE_KEYS, CACHE_EXPIRATION_MINUTES} from '../constants';
 
 /**
  * Service for storing and retrieving data from device storage
@@ -26,16 +17,19 @@ export class StorageService {
   ): Promise<void> {
     try {
       // Store the hackathons
-      await AsyncStorage.setItem(KEYS.HACKATHONS, JSON.stringify(hackathons));
+      await AsyncStorage.setItem(
+        STORAGE_KEYS.HACKATHONS,
+        JSON.stringify(hackathons),
+      );
 
       // Store the timestamp
       await AsyncStorage.setItem(
-        KEYS.HACKATHONS_TIMESTAMP,
+        STORAGE_KEYS.HACKATHONS_TIMESTAMP,
         Date.now().toString(),
       );
 
       // Store the location filter
-      await AsyncStorage.setItem(KEYS.HACKATHONS_LOCATION, location);
+      await AsyncStorage.setItem(STORAGE_KEYS.HACKATHONS_LOCATION, location);
 
       console.log(
         `Cached ${hackathons.length} hackathons for location: ${location}`,
@@ -55,12 +49,14 @@ export class StorageService {
   ): Promise<{hackathons: HackathonSummary[]; isSameLocation: boolean} | null> {
     try {
       // Check if we have cached hackathons
-      const hackathonsJson = await AsyncStorage.getItem(KEYS.HACKATHONS);
+      const hackathonsJson = await AsyncStorage.getItem(
+        STORAGE_KEYS.HACKATHONS,
+      );
       const timestampStr = await AsyncStorage.getItem(
-        KEYS.HACKATHONS_TIMESTAMP,
+        STORAGE_KEYS.HACKATHONS_TIMESTAMP,
       );
       const cachedLocation = await AsyncStorage.getItem(
-        KEYS.HACKATHONS_LOCATION,
+        STORAGE_KEYS.HACKATHONS_LOCATION,
       );
 
       if (!hackathonsJson || !timestampStr || !cachedLocation) {
@@ -71,7 +67,7 @@ export class StorageService {
       // Check if cache is expired
       const timestamp = parseInt(timestampStr, 10);
       const now = Date.now();
-      const expirationTime = CACHE_EXPIRATION * 60 * 1000; // Convert minutes to ms
+      const expirationTime = CACHE_EXPIRATION_MINUTES * 60 * 1000; // Convert minutes to ms
 
       if (now - timestamp > expirationTime) {
         console.log('Cached hackathons expired');
@@ -103,9 +99,9 @@ export class StorageService {
   public static async clearCache(): Promise<void> {
     try {
       await AsyncStorage.multiRemove([
-        KEYS.HACKATHONS,
-        KEYS.HACKATHONS_TIMESTAMP,
-        KEYS.HACKATHONS_LOCATION,
+        STORAGE_KEYS.HACKATHONS,
+        STORAGE_KEYS.HACKATHONS_TIMESTAMP,
+        STORAGE_KEYS.HACKATHONS_LOCATION,
       ]);
       console.log('Cache cleared successfully');
     } catch (error) {

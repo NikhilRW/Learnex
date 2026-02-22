@@ -1,15 +1,11 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-
-interface LoadingStateProps {
-    styles: any;
-}
-
+import { ListLoadingProps, ListErrorProps, ListEmptyProps } from '../types';
 /**
  * LoadingState component - renders loading indicator
  */
-export const LoadingState: React.FC<LoadingStateProps> = ({ styles }) => {
+export const LoadingState: React.FC<ListLoadingProps> = ({ styles }) => {
     return (
         <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#2379C2" />
@@ -20,17 +16,10 @@ export const LoadingState: React.FC<LoadingStateProps> = ({ styles }) => {
     );
 };
 
-interface ErrorStateProps {
-    error: string | null;
-    isDark: boolean;
-    styles: any;
-    onRetry: () => void;
-}
-
 /**
  * ErrorState component - renders error message with retry button
  */
-export const ErrorState: React.FC<ErrorStateProps> = ({ error, isDark, styles, onRetry }) => {
+export const ErrorState: React.FC<ListErrorProps> = ({ error, isDark, styles, onRetry }) => {
     return (
         <View style={styles.errorContainer}>
             <MaterialCommunityIcons
@@ -48,16 +37,10 @@ export const ErrorState: React.FC<ErrorStateProps> = ({ error, isDark, styles, o
     );
 };
 
-interface EmptyStateProps {
-    isDark: boolean;
-    styles: any;
-    onResetFilters: () => void;
-}
-
 /**
  * EmptyState component - renders empty state with reset filters button
  */
-export const EmptyState: React.FC<EmptyStateProps> = ({ isDark, styles, onResetFilters }) => {
+export const EmptyState: React.FC<ListEmptyProps> = ({ isDark, styles, onResetFilters }) => {
     return (
         <View style={styles.noEventsContainer}>
             <MaterialCommunityIcons

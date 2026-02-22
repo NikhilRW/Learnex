@@ -16,47 +16,9 @@ import { primaryColor } from 'shared/res/strings/eng';
 import { getUsernameForLogo } from 'shared/helpers/common/stringHelpers';
 import { Avatar } from 'react-native-elements';
 import { useTheme } from 'hooks/common/useTheme';
-import { PostType } from 'shared/types/post';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { createStyles } from '@/features/Home/styles/Post';
-
-type FullPostModalProps = {
-  currentMediaIndex: number;
-  allMedia: {
-    type: string;
-    source: string | number;
-  }[];
-  renderImageContent: (source: any, isFullModal: boolean) => React.ReactNode;
-  renderVideoContent: (source: any) => React.ReactNode;
-
-  // Modal control
-  showFullPostModal: boolean;
-  setShowFullPostModal: React.Dispatch<React.SetStateAction<boolean>>;
-
-  // Comment modal control
-  setShowComments: React.Dispatch<React.SetStateAction<boolean>>;
-
-  // Post data
-  post: PostType;
-  userProfileImage?: string;
-
-  // Actions
-  handleLikePost: () => Promise<void>;
-  handleMessageUser: () => void;
-  handleSavePost: () => void;
-
-  // State flags
-  isLiked: boolean;
-  isSaved: boolean;
-  isSaving: boolean;
-
-  // Layout
-  screenWidth: number;
-  imageHeight: number;
-
-  // Helpers
-  formattedDescription?: React.ReactNode;
-};
+import { FullPostModalProps } from '../types';
 
 // Update the FullPostModal component to memoize media content and improve scrolling
 export const FullPostModal = ({
@@ -129,28 +91,29 @@ export const FullPostModal = ({
   // Memoize pagination dots
   const paginationDots = React.useMemo(() => {
     if (allMedia.length <= 1) return null;
-    const bgColor = (index: number) =>
-      index === modalMediaIndex ? '#fff' : 'rgba(255, 255, 255, 0.5)';
 
     return (
       <View style={styles.paginationDots}>
-        {allMedia.map((_, index) => (
-          <Animated.View
-            key={index}
-            style={[
-              styles.dot,
-              {
-                backgroundColor: bgColor(index),
-              },
-            ]}
-          />
-        ))}
+        {allMedia.map((_, index) => {
+          const dotBgColor =
+            index === modalMediaIndex ? '#fff' : 'rgba(255, 255, 255, 0.5)';
+          const dotBgStyle = { backgroundColor: dotBgColor };
+          return (
+            <Animated.View key={index} style={[styles.dot, dotBgStyle]} />
+          );
+        })}
       </View>
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allMedia, modalMediaIndex]);
 
   const styles = createStyles(isDark);
+  const mediaContentStyle = {
+    width: screenWidth,
+    height: imageHeight,
+    ...styles.mediaContent,
+  };
+  const viewAllStyle = { color: primaryColor };
 
   return (
     <Modal
@@ -207,12 +170,7 @@ export const FullPostModal = ({
           contentContainerStyle={styles.fullPostScrollContent}>
           <View style={styles.fullPostMediaContainer}>
             {/* Render the memoized media content to prevent re-renders */}
-            <View
-              style={{
-                width: screenWidth,
-                height: imageHeight,
-                ...styles.mediaContent,
-              }}>
+            <View style={mediaContentStyle}>
               {currentMediaContent}
             </View>
 
@@ -294,7 +252,7 @@ export const FullPostModal = ({
               <Text style={[styles.username, {}]} numberOfLines={1}>
                 {post.user.username}
               </Text>
-              <Text style={[styles.fullPostDescription]}>
+              <Text style={styles.fullPostDescription}>
                 {formattedDescription || post.description}
               </Text>
             </View>
@@ -302,27 +260,21 @@ export const FullPostModal = ({
             <Text style={styles.timestamp}>{post.timestamp}</Text>
 
             {post.commentsList && post.commentsList.length > 0 && (
-              <View style={[styles.fullPostCommentsSection]}>
+              <View style={styles.fullPostCommentsSection}>
                 <View style={styles.commentsHeaderContainer}>
-                  <Text style={[styles.commentsHeader]}>
+                  <Text style={styles.commentsHeader}>
                     Comments ({post.comments})
                   </Text>
                   <TouchableOpacity
                     onPress={handleCommentButtonInModal}
                     style={styles.viewAllCommentsButton}>
-                    <Text style={{ color: primaryColor }}>View all</Text>
+                    <Text style={viewAllStyle}>View all</Text>
                   </TouchableOpacity>
                 </View>
 
                 {/* Show just a few comments in the modal */}
                 {post.commentsList.slice(0, 3).map((comment, index) => (
-                  <View
-                    key={index}
-                    style={[
-                      styles.commentItem,
-                      index < Math.min(post.commentsList?.length || 0, 3) - 1 &&
-                      {},
-                    ]}>
+                  <View key={index} style={styles.commentItem}>
                     <Image
                       source={
                         comment.userImage
@@ -339,13 +291,13 @@ export const FullPostModal = ({
                     />
                     <View style={styles.commentContent}>
                       <Text style={styles.commentText}>
-                        <Text style={[styles.commentUsername]}>
+                        <Text style={styles.commentUsername}>
                           {comment.username || 'Anonymous'}{' '}
                         </Text>
                         {comment.text}
                       </Text>
                       <View style={styles.commentMeta}>
-                        <Text style={[styles.commentTimestamp]}>
+                        <Text style={styles.commentTimestamp}>
                           {comment.timestamp || ''}
                         </Text>
                       </View>

@@ -1,17 +1,6 @@
 import React from 'react';
-import {View, Text, TouchableOpacity, TouchableWithoutFeedback} from 'react-native';
-
-interface PostFooterProps {
-  likes: number;
-  username: string;
-  formattedDescription: React.ReactNode;
-  commentsCount: number;
-  hasComments: boolean;
-  timestamp: string;
-  onViewCommentsPress: () => void;
-  onCaptionPress: () => void;
-  styles: any;
-}
+import { View, Text, TouchableOpacity, TouchableWithoutFeedback } from 'react-native';
+import { PostFooterProps } from '../../types';
 
 export const PostFooter: React.FC<PostFooterProps> = ({
   likes,

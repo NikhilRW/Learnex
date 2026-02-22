@@ -3,9 +3,9 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { Modal, TouchableOpacity, TouchableWithoutFeedback } from 'react-native';
 import { Text } from 'react-native-elements';
 import { useTheme } from 'hooks/common/useTheme';
-import { PostType } from 'home/types/post';
 import Feather from 'react-native-vector-icons/Feather';
 import { getClassicDarkLightThemeColor } from 'shared/utils/UserInterface';
+import { PostOptionsModalProps } from '../types';
 
 const PostOptionsModal = ({
   showOptions,
@@ -17,17 +17,7 @@ const PostOptionsModal = ({
   handleHidePost,
   handleMessageUser,
   isDeleting,
-}: {
-  showOptions: boolean;
-  setShowOptions: React.Dispatch<React.SetStateAction<boolean>>;
-  isCurrentUserPost: boolean;
-  isHiding: boolean;
-  post: PostType;
-  isDeleting: boolean;
-  handleDeletePost: () => void;
-  handleMessageUser: () => void;
-  handleHidePost: () => void;
-}) => {
+}: PostOptionsModalProps) => {
   const { isDark } = useTheme();
   const optionTextColor = useMemo(
     () => (isDark ? '#ff3b30' : '#ff3b30'),

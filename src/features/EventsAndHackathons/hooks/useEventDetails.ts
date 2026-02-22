@@ -2,8 +2,8 @@ import {useEffect, useState} from 'react';
 import {Share, Linking, Alert} from 'react-native';
 import {useNavigation, useRoute, RouteProp} from '@react-navigation/native';
 import {useTypedSelector} from 'hooks/redux/useTypedSelector';
-import {HackathonService} from 'events-and-hackathons/services/hackathonService';
-import {HackathonDetails} from 'events-and-hackathons/types/hackathon';
+import {HackathonService} from '../services';
+import {HackathonDetails} from '../types';
 import {UserStackParamList} from 'shared/navigation/routes/UserStack';
 
 type EventDetailsRouteProp = RouteProp<UserStackParamList, 'EventDetails'>;

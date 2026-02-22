@@ -1,19 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-
-interface EventDetailsHeaderProps {
-    isDark: boolean;
-    styles: any;
-    onBackPress: () => void;
-}
-
-interface EventDetailsFooterProps {
-    isDark: boolean;
-    styles: any;
-    onRegister: () => void;
-    onShare: () => void;
-}
+import { EventDetailsHeaderProps, EventDetailsFooterProps } from '../types';
 
 /**
  * Header component for Event Details screen

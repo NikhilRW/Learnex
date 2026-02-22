@@ -1,11 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Linking } from 'react-native';
-import { HackathonDetails } from 'events-and-hackathons/types/hackathon';
-
-interface EventSectionsProps {
-    event: HackathonDetails;
-    styles: any;
-}
+import { EventSectionsProps } from '../types';
 
 /**
  * Render the event timeline section

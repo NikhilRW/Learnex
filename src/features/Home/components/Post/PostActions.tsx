@@ -1,21 +1,10 @@
 import React from 'react';
-import {View, TouchableOpacity, ActivityIndicator} from 'react-native';
+import { View, TouchableOpacity, ActivityIndicator } from 'react-native';
 import AntDesign from 'react-native-vector-icons/AntDesign';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Icon from 'react-native-vector-icons/Feather';
-import {primaryColor} from 'shared/res/strings/eng';
-
-interface PostActionsProps {
-  isLiked: boolean;
-  isSaved: boolean;
-  isSaving: boolean;
-  isDark: boolean;
-  onLikePress: () => void;
-  onCommentPress: () => void;
-  onSharePress: () => void;
-  onSavePress: () => void;
-  styles: any;
-}
+import { primaryColor } from 'shared/res/strings/eng';
+import { PostActionsProps } from '../../types';
 
 export const PostActions: React.FC<PostActionsProps> = ({
   isLiked,

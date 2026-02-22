@@ -82,4 +82,7 @@ export const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 16,
   },
+  clearFilterText: {
+    color: '#0095f6',
+  },
 });

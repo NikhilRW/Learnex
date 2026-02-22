@@ -1,16 +1,9 @@
 import React from 'react';
-import {View, Image, Text, TouchableOpacity} from 'react-native';
+import { View, Image, Text, TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
-import {Avatar} from 'react-native-elements';
-import {getUsernameForLogo} from 'shared/helpers/common/stringHelpers';
-
-interface PostHeaderProps {
-  username: string;
-  userProfileImage: string | null;
-  isDark: boolean;
-  onOptionsPress: () => void;
-  styles: any;
-}
+import { Avatar } from 'react-native-elements';
+import { getUsernameForLogo } from 'shared/helpers/common/stringHelpers';
+import { PostHeaderProps } from '../../types';
 
 export const PostHeader: React.FC<PostHeaderProps> = ({
   username,
@@ -26,7 +19,7 @@ export const PostHeader: React.FC<PostHeaderProps> = ({
           <Image
             source={
               typeof userProfileImage === 'string'
-                ? {uri: userProfileImage}
+                ? { uri: userProfileImage }
                 : userProfileImage
             }
             style={styles.avatar}

@@ -3,7 +3,7 @@ import React, { useCallback } from 'react';
 import { RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { createStyles } from 'events-and-hackathons/styles/EventsAndHackathons';
-import { HackathonSummary } from 'events-and-hackathons/types/hackathon';
+import { HackathonSummary } from '../types';
 
 // Import modular components and hooks
 import {

@@ -178,6 +178,12 @@ export const createStyles = (isDark: boolean) =>
       marginRight: 12,
       backgroundColor: '#f1f1f1',
     },
+    eventLogoPlaceholder: {
+      justifyContent: 'center' as const,
+      alignItems: 'center' as const,
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.3)',
+    },
     eventTitle: {
       fontSize: 16,
       fontWeight: 'bold',

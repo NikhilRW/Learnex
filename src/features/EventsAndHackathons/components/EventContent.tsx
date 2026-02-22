@@ -1,23 +1,22 @@
-import {View, Text} from 'react-native';
+import { View, Text } from 'react-native';
 import React from 'react';
-import {createStyles} from 'events-and-hackathons/styles/EventDetails';
-import {useTypedSelector} from '@/shared/hooks/redux/useTypedSelector';
-import {HackathonDetails} from '../types/hackathon';
-import {formatDate} from '../utils';
+import { createStyles } from 'events-and-hackathons/styles/EventDetails';
+import { useTypedSelector } from '@/shared/hooks/redux/useTypedSelector';
+import { formatDate } from '../utils';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {
-    TimelineSection,
-    PrizeSection,
-    RulesSection,
-    AdditionalInfoSection,
-    SponsorsSection,
-    TagsSection,
-    EligibilitySection,
-    TeamSizeSection,
+  TimelineSection,
+  PrizeSection,
+  RulesSection,
+  AdditionalInfoSection,
+  SponsorsSection,
+  TagsSection,
+  EligibilitySection,
+  TeamSizeSection,
 } from '../components';
+import { EventContentProps } from '../types';
 
-// Import modular components and hooks
-const EventContent = ({event}: {event: HackathonDetails}) => {
+const EventContent: React.FC<EventContentProps> = ({ event }) => {
   const isDark = useTypedSelector(state => state.user.theme) === 'dark';
   const styles = createStyles(isDark);
   return (

@@ -1,25 +1,15 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
-
-interface LoadingStateProps {
-    styles: any;
-}
-
-interface ErrorStateProps {
-    error: string;
-    styles: any;
-    onRetry: () => void;
-}
-
-interface NotFoundStateProps {
-    styles: any;
-    onGoBack: () => void;
-}
+import {
+    EventDetailsLoadingProps,
+    EventDetailsErrorProps,
+    EventDetailsNotFoundProps,
+} from '../types';
 
 /**
  * Loading state for event details
  */
-export const EventDetailsLoading: React.FC<LoadingStateProps> = ({ styles }) => {
+export const EventDetailsLoading: React.FC<EventDetailsLoadingProps> = ({ styles }) => {
     return (
         <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#2379C2" />
@@ -31,7 +21,7 @@ export const EventDetailsLoading: React.FC<LoadingStateProps> = ({ styles }) => 
 /**
  * Error state for event details
  */
-export const EventDetailsError: React.FC<ErrorStateProps> = ({
+export const EventDetailsError: React.FC<EventDetailsErrorProps> = ({
     error,
     styles,
     onRetry,
@@ -54,7 +44,7 @@ export const EventDetailsError: React.FC<ErrorStateProps> = ({
 /**
  * Not found state for event details
  */
-export const EventDetailsNotFound: React.FC<NotFoundStateProps> = ({
+export const EventDetailsNotFound: React.FC<EventDetailsNotFoundProps> = ({
     styles,
     onGoBack,
 }) => {

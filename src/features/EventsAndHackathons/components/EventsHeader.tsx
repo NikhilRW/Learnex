@@ -3,14 +3,7 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import FontAwesome5Icon from 'react-native-vector-icons/FontAwesome5';
 import LinearGradient from 'react-native-linear-gradient';
-
-interface EventsHeaderProps {
-    isDark: boolean;
-    loading: boolean;
-    styles: any;
-    onBackPress: () => void;
-    onRefreshPress: () => void;
-}
+import { EventsHeaderProps } from '../types';
 
 /**
  * EventsHeader component - renders the header with title and navigation

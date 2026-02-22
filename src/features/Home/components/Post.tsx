@@ -1,4 +1,4 @@
-import React, {useState, useRef, useEffect, useMemo} from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   View,
   Image,
@@ -6,34 +6,27 @@ import {
   TouchableWithoutFeedback,
   Animated,
   Text,
-  ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
-import AntDesign from 'react-native-vector-icons/AntDesign';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Video from 'react-native-video';
-import {PostType} from 'shared/types/post';
-import {useTypedSelector} from 'hooks/redux/useTypedSelector';
-import {primaryColor} from 'shared/res/strings/eng';
+import { useTypedSelector } from 'hooks/redux/useTypedSelector';
 import CommentModal from 'home/components/CommentModal';
-import {getUsernameForLogo} from 'shared/helpers/common/stringHelpers';
-import {Avatar} from 'react-native-elements';
-import {useNavigation} from '@react-navigation/native';
-import {MessageService} from 'conversations/services/MessageService';
+import { useNavigation } from '@react-navigation/native';
+import { MessageService } from 'conversations/services/MessageService';
 import Snackbar from 'react-native-snackbar';
-import {UserStackParamList} from 'shared/navigation/routes/UserStack';
-import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import { UserStackParamList } from 'shared/navigation/routes/UserStack';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   getFirestore,
   collection,
   doc,
   updateDoc,
 } from '@react-native-firebase/firestore';
-import {getAuth} from '@react-native-firebase/auth';
+import { getAuth } from '@react-native-firebase/auth';
 import PostOptionsModal from './PostOptionsModal';
-import {FullPostModal} from './FullPostModal';
-import {createStyles} from '../styles/Post';
-import {onSnapshot} from '@react-native-firebase/firestore';
+import { FullPostModal } from './FullPostModal';
+import { createStyles } from '../styles/Post';
+import { onSnapshot } from '@react-native-firebase/firestore';
 
 // Custom hooks for business logic
 import {
@@ -43,6 +36,9 @@ import {
   usePostComments,
 } from './Post/hooks';
 
+// Post sub-components
+import { PostHeader, PostActions, PostFooter } from './Post/index';
+
 // Utility functions
 import {
   extractHashtags,
@@ -50,19 +46,15 @@ import {
   combineMediaArray,
 } from './Post/utils/postHelpers';
 
+import { PostProps } from '../types';
+
 /**
  * Post component that displays a social media post with images
  * Refactored for better maintainability and separation of concerns
  */
-
-interface PostProps {
-  post: PostType;
-  isVisible?: boolean;
-}
-
 type UserNavigation = NativeStackNavigationProp<UserStackParamList>;
 
-const Post: React.FC<PostProps> = ({post, isVisible = false}) => {
+const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
   // Theme and navigation
   const isDark = useTypedSelector(state => state.user.theme) === 'dark';
   const firebase = useTypedSelector(state => state.firebase.firebase);
@@ -81,12 +73,12 @@ const Post: React.FC<PostProps> = ({post, isVisible = false}) => {
   );
 
   // Custom hooks for business logic
-  const {isLiked, handleLikePost} = usePostLike(
+  const { isLiked, handleLikePost } = usePostLike(
     post.id,
     post.isLiked || false,
     firebase,
   );
-  const {isSaved, isSaving, handleSavePost} = usePostSave(
+  const { isSaved, isSaving, handleSavePost } = usePostSave(
     post.id,
     post.isSaved,
     firebase,
@@ -235,15 +227,11 @@ const Post: React.FC<PostProps> = ({post, isVisible = false}) => {
                   index === currentMediaIndex
                     ? '#fff'
                     : 'rgba(255, 255, 255, 0.5)';
+                const dotBgStyle = { backgroundColor: bgColor };
                 return (
                   <Animated.View
                     key={index}
-                    style={[
-                      styles.dot,
-                      {
-                        backgroundColor: bgColor,
-                      },
-                    ]}
+                    style={[styles.dot, dotBgStyle]}
                   />
                 );
               })}
@@ -262,7 +250,7 @@ const Post: React.FC<PostProps> = ({post, isVisible = false}) => {
     } else if (typeof videoSource === 'string') {
       source = videoSource;
     } else if (videoSource && typeof videoSource === 'object') {
-      const videoObject = videoSource as {uri?: string};
+      const videoObject = videoSource as { uri?: string };
       if (videoObject.uri) {
         source = videoObject.uri;
       } else {
@@ -287,7 +275,7 @@ const Post: React.FC<PostProps> = ({post, isVisible = false}) => {
         <View style={videoContainerStyle}>
           <Video
             ref={videoRef}
-            source={{uri: source}}
+            source={{ uri: source }}
             style={styles.postImage}
             resizeMode={post.isVertical ? 'cover' : 'contain'}
             paused={isPaused}
@@ -310,13 +298,13 @@ const Post: React.FC<PostProps> = ({post, isVisible = false}) => {
     if (typeof imageSource === 'number') {
       source = imageSource;
     } else if (typeof imageSource === 'string') {
-      source = {uri: imageSource};
+      source = { uri: imageSource };
     } else if (
       imageSource &&
       typeof imageSource === 'object' &&
       'uri' in imageSource
     ) {
-      source = {uri: imageSource.uri};
+      source = { uri: imageSource.uri };
     } else {
       return null; // Skip invalid images
     }
@@ -399,8 +387,8 @@ const Post: React.FC<PostProps> = ({post, isVisible = false}) => {
 
       const db = getFirestore();
       const postRef = doc(db, 'posts', post.id);
-      await updateDoc(postRef, {hidden: true});
-      const result = {success: true};
+      await updateDoc(postRef, { hidden: true });
+      const result = { success: true };
 
       if (result.success) {
         Snackbar.show({
@@ -511,114 +499,43 @@ const Post: React.FC<PostProps> = ({post, isVisible = false}) => {
     });
   };
 
+  const fadeStyle = { opacity: fadeAnim };
+
   return (
-    <Animated.View
-      key={post.id}
-      style={[styles.postContainer, {opacity: fadeAnim}]}>
-      <View style={styles.header}>
-        <View style={styles.userInfo}>
-          {userProfileImage ? (
-            <Image
-              source={
-                typeof userProfileImage === 'string'
-                  ? {uri: userProfileImage}
-                  : userProfileImage
-              }
-              style={styles.avatar}
-              onError={e =>
-                console.log('Avatar loading error:', e.nativeEvent.error)
-              }
-            />
-          ) : (
-            <Avatar
-              titleStyle={styles.titleStyle}
-              title={getUsernameForLogo(post.user.username || 'Anonymous')}
-              activeOpacity={0.7}
-            />
-          )}
-          <Text style={[styles.username]}>{post.user.username}</Text>
-        </View>
-        <TouchableOpacity onPress={() => setShowOptions(true)}>
-          <Icon
-            name="more-horizontal"
-            size={24}
-            color={isDark ? 'white' : 'black'}
-          />
-        </TouchableOpacity>
-      </View>
+    <Animated.View key={post.id} style={[styles.postContainer, fadeStyle]}>
+      <PostHeader
+        username={post.user.username}
+        userProfileImage={userProfileImage}
+        isDark={isDark}
+        onOptionsPress={() => setShowOptions(true)}
+        styles={styles}
+      />
       {/* Make the post content clickable to open the full post modal */}
       <TouchableWithoutFeedback onPress={handleOpenFullPost}>
         <View>{renderMedia()}</View>
       </TouchableWithoutFeedback>
-      <View style={styles.postActions}>
-        <View style={styles.leftActions}>
-          <TouchableOpacity onPress={onLikePress} style={styles.actionButton}>
-            <AntDesign
-              name={isLiked ? 'heart' : 'hearto'}
-              size={24}
-              color={isLiked ? 'red' : isDark ? 'white' : 'black'}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => setShowComments(true)}>
-            <MaterialIcons
-              name="comment"
-              size={24}
-              color={isDark ? 'white' : 'black'}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={handleMessageUser}>
-            <Icon name="send" size={24} color={isDark ? 'white' : 'black'} />
-          </TouchableOpacity>
-        </View>
-        <TouchableOpacity onPress={handleSavePost} disabled={isSaving}>
-          {isSaving ? (
-            <ActivityIndicator
-              size="small"
-              color={isDark ? 'white' : '#2379C2'}
-            />
-          ) : (
-            <MaterialIcons
-              name={isSaved ? 'bookmark' : 'bookmark-outline'}
-              size={26}
-              color={isSaved ? primaryColor : isDark ? 'white' : 'black'}
-            />
-          )}
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.postFooter}>
-        <Text style={[styles.likes]}>{post.likes} likes</Text>
-        <TouchableWithoutFeedback onPress={handleOpenFullPost}>
-          <View style={styles.captionContainer}>
-            <Text
-              style={[styles.caption]}
-              numberOfLines={3}
-              ellipsizeMode="tail">
-              <Text style={[styles.username]} numberOfLines={1}>
-                {post.user.username + ' '.repeat(2)}
-              </Text>
-              {formattedDescription || post.description}
-            </Text>
-          </View>
-        </TouchableWithoutFeedback>
-
-        {post.commentsList && post.commentsList.length > 0 && (
-          <TouchableOpacity
-            style={styles.viewCommentsButton}
-            onPress={() => setShowComments(true)}>
-            <Text style={styles.viewAllComments}>
-              View all {post.comments} comments
-            </Text>
-          </TouchableOpacity>
-        )}
-
-        <Text style={styles.timestamp}>{post.timestamp}</Text>
-      </View>
-
+      <PostActions
+        isLiked={isLiked}
+        isSaved={isSaved}
+        isSaving={isSaving}
+        isDark={isDark}
+        onLikePress={onLikePress}
+        onCommentPress={() => setShowComments(true)}
+        onSharePress={handleMessageUser}
+        onSavePress={handleSavePost}
+        styles={styles}
+      />
+      <PostFooter
+        likes={post.likes}
+        username={post.user.username}
+        formattedDescription={formattedDescription}
+        commentsCount={post.comments}
+        hasComments={!!(post.commentsList && post.commentsList.length > 0)}
+        timestamp={post.timestamp}
+        onViewCommentsPress={() => setShowComments(true)}
+        onCaptionPress={handleOpenFullPost}
+        styles={styles}
+      />
       <CommentModal
         visible={showComments}
         onClose={() => setShowComments(false)}
