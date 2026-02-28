@@ -155,4 +155,100 @@ export const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 3,
   },
+
+  // ─── Themed variants for dynamic styling ───────────────────────────────────
+  darkContainer: {
+    backgroundColor: '#1a1a1a',
+    paddingTop: 10,
+  },
+  lightContainer: {
+    backgroundColor: 'white',
+    paddingTop: 10,
+  },
+  darkText: {
+    color: 'white',
+  },
+  lightText: {
+    color: 'black',
+  },
+  darkSearchBackground: {
+    backgroundColor: '#1a1a1a',
+  },
+  lightSearchBackground: {
+    backgroundColor: 'white',
+  },
+  darkSearchInputBackground: {
+    backgroundColor: '#333',
+  },
+  lightSearchInputBackground: {
+    backgroundColor: '#f5f5f5',
+  },
+  darkEmptyText: {
+    color: '#aaa',
+  },
+  lightEmptyText: {
+    color: '#888',
+  },
+  darkEmptySubText: {
+    color: '#888',
+  },
+  lightEmptySubText: {
+    color: '#aaa',
+  },
+  emptyButtonMarginTop: {
+    marginTop: 20,
+  },
+  avatarPlaceholderBg: {
+    backgroundColor: '#2379C2',
+  },
+  darkConversationItem: {
+    backgroundColor: '#1a1a1a',
+  },
+  lightConversationItem: {
+    backgroundColor: 'white',
+  },
+  darkUnreadConversationItem: {
+    backgroundColor: '#293b59',
+  },
+  lightUnreadConversationItem: {
+    backgroundColor: '#f0f7ff',
+  },
+  darkParticipantName: {
+    color: 'white',
+  },
+  lightParticipantName: {
+    color: 'black',
+  },
+  unreadParticipantName: {
+    fontWeight: '700',
+  },
+  darkTimeText: {
+    color: '#aaa',
+  },
+  lightTimeText: {
+    color: '#777',
+  },
+  typingHighlight: {
+    color: '#2379C2',
+  },
+  darkUnreadMessageText: {
+    color: 'white',
+    fontWeight: '600',
+  },
+  darkReadMessageText: {
+    color: '#bbb',
+  },
+  lightUnreadMessageText: {
+    color: 'black',
+    fontWeight: '600',
+  },
+  lightReadMessageText: {
+    color: '#777',
+  },
+  darkRowBack: {
+    backgroundColor: '#331111',
+  },
+  lightRowBack: {
+    backgroundColor: '#ffebee',
+  },
 });

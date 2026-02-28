@@ -2,28 +2,16 @@ import { LegendList } from '@legendapp/list';
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import {
   View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  Dimensions,
   ActivityIndicator,
   StatusBar,
   Alert,
-  Modal,
 } from 'react-native';
-import { Avatar } from 'react-native-elements';
-import Ionicons from 'react-native-vector-icons/Ionicons';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useTypedSelector } from 'hooks/redux/useTypedSelector';
 import { MessageService } from 'conversations/services/MessageService';
 import { Message } from 'conversations/models/Message';
-import { format } from 'date-fns';
-import { getUsernameForLogo } from 'shared/helpers/common/stringHelpers';
 import Snackbar from 'react-native-snackbar';
 import notificationService from 'shared/services/NotificationService';
 import {
@@ -40,9 +28,12 @@ import ChatHeaderLeft from 'conversations/components/ChatHeaderLeft';
 import { ChatNavigationObjectType, ChatScreenRouteParams } from 'conversations/types/main';
 import ChatHeaderRight from 'conversations/components/ChatHeaderRight';
 import { styles } from 'conversations/styles/Chat';
-
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+import MessageItem from 'conversations/components/MessageItem';
+import MessageContextMenu from 'conversations/components/MessageContextMenu';
+import ChatInputBar from 'conversations/components/ChatInputBar';
+import EditMessageInput from 'conversations/components/EditMessageInput';
+import MessageSuggestions from 'conversations/components/MessageSuggestions';
+import LoadingOverlay from 'conversations/components/LoadingOverlay';
 
 const ChatScreen: React.FC = () => {
   const route =
@@ -148,42 +139,6 @@ const ChatScreen: React.FC = () => {
 
     return () => unsubscribe();
   }, [conversationId, recipientId, currentRecipientPhoto]);
-
-  // Display loading overlay when coming from a post
-  const renderLoadingOverlay = () => {
-    if (loading && fromPost) {
-      return (
-        <View
-          style={[
-            StyleSheet.absoluteFill,
-            {
-              backgroundColor: 'rgba(0,0,0,0.4)',
-              justifyContent: 'center',
-              alignItems: 'center',
-              zIndex: 1000,
-            },
-          ]}>
-          <View
-            style={{
-              backgroundColor: isDark ? '#2a2a2a' : 'white',
-              padding: 20,
-              borderRadius: 10,
-              alignItems: 'center',
-            }}>
-            <ActivityIndicator size="large" color="#2379C2" />
-            <Text
-              style={{
-                marginTop: 10,
-                color: isDark ? '#fff' : '#000',
-              }}>
-              Loading conversation...
-            </Text>
-          </View>
-        </View>
-      );
-    }
-    return null;
-  };
 
   // Function to mark messages as read
   const markMessagesAsRead = useCallback(async () => {
@@ -468,74 +423,19 @@ const ChatScreen: React.FC = () => {
     );
   };
 
-  // Render message item
-  const renderMessageItem = ({ item }: { item: Message }) => {
-    const isMyMessage = item.senderId === currentUser?.uid;
-    const messageTime = format(new Date(item.timestamp), 'h:mm a');
-
-    return (
-      <TouchableOpacity
-        activeOpacity={0.8}
-        onLongPress={() => handleMessageLongPress(item)}
-        style={[
-          styles.messageContainer,
-          isMyMessage
-            ? styles.myMessageContainer
-            : styles.theirMessageContainer,
-        ]}>
-        {!isMyMessage && (
-          <View style={styles.avatarContainer}>
-            {item.senderPhoto ? (
-              <Avatar
-                rounded
-                source={{ uri: item.senderPhoto }}
-                size={Math.min(SCREEN_WIDTH * 0.08, 30)}
-              />
-            ) : (
-              <Avatar
-                rounded
-                title={getUsernameForLogo(item.senderName)}
-                size={Math.min(SCREEN_WIDTH * 0.08, 30)}
-                containerStyle={{ backgroundColor: '#2379C2' }}
-              />
-            )}
-          </View>
-        )}
-
-        <View
-          style={[
-            styles.messageBubble,
-            isMyMessage
-              ? { backgroundColor: '#2379C2' }
-              : { backgroundColor: isDark ? '#333' : '#f0f0f0' },
-          ]}>
-          <Text
-            style={[
-              styles.messageText,
-              { color: isMyMessage ? 'white' : isDark ? 'white' : 'black' },
-            ]}>
-            {item.text}
-          </Text>
-
-          <Text
-            style={[
-              styles.timeText,
-              {
-                color: isMyMessage
-                  ? 'rgba(255,255,255,0.7)'
-                  : isDark
-                    ? 'rgba(255,255,255,0.5)'
-                    : 'rgba(0,0,0,0.5)',
-              },
-            ]}>
-            {messageTime}
-            {item.edited && <Text> • Edited</Text>}
-            {isMyMessage && <Text> {item.read ? ' • Read' : ''}</Text>}
-          </Text>
-        </View>
-      </TouchableOpacity>
-    );
-  };
+  // Render message item using sub-component
+  const renderMessageItemCallback = useCallback(
+    ({ item }: { item: Message }) => (
+      <MessageItem
+        item={item}
+        isDark={isDark}
+        currentUserId={currentUser?.uid || ''}
+        onLongPress={handleMessageLongPress}
+      />
+    ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isDark, currentUser?.uid],
+  );
 
   const headerLeft = useCallback(
     () => (
@@ -679,7 +579,7 @@ const ChatScreen: React.FC = () => {
     <SafeAreaView
       style={[
         styles.container,
-        { backgroundColor: isDark ? '#1a1a1a' : '#f9f9f9' },
+        isDark ? styles.darkChatContainer : styles.lightChatContainer,
       ]}>
       <StatusBar
         barStyle={isDark ? 'light-content' : 'dark-content'}
@@ -690,7 +590,7 @@ const ChatScreen: React.FC = () => {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardAvoidingView}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}>
-        {renderLoadingOverlay()}
+        {loading && fromPost && <LoadingOverlay isDark={isDark} />}
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#2379C2" />
@@ -700,7 +600,7 @@ const ChatScreen: React.FC = () => {
             ref={flatListRef}
             data={messages}
             keyExtractor={item => item.id}
-            renderItem={renderMessageItem}
+            renderItem={renderMessageItemCallback}
             contentContainerStyle={styles.messagesList}
             estimatedItemSize={100}
             recycleItems={true}
@@ -709,216 +609,45 @@ const ChatScreen: React.FC = () => {
 
         {/* Message Suggestions */}
         {showSuggestions && !isEditMode && !isContextMenuVisible && (
-          <View
-            style={[
-              styles.suggestionsContainer,
-              isDark && styles.darkSuggestionsContainer,
-            ]}>
-            {isFetchingSuggestions ? (
-              <View style={styles.suggestionsLoading}>
-                <ActivityIndicator
-                  size="small"
-                  color={isDark ? '#8ab4f8' : '#2379C2'}
-                />
-                <Text
-                  style={[
-                    styles.suggestionsLoadingText,
-                    isDark && { color: '#8ab4f8' },
-                  ]}>
-                  Thinking...
-                </Text>
-              </View>
-            ) : suggestions.length > 0 ? (
-              suggestions.map((suggestion, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={[
-                    styles.suggestionButton,
-                    isDark && styles.darkSuggestionButton,
-                  ]}
-                  onPress={() => handleSuggestionClick(suggestion)}>
-                  <Text
-                    style={[
-                      styles.suggestionText,
-                      isDark && styles.darkSuggestionText,
-                    ]}
-                    numberOfLines={1}>
-                    {suggestion}
-                  </Text>
-                </TouchableOpacity>
-              ))
-            ) : null}
-          </View>
+          <MessageSuggestions
+            isDark={isDark}
+            suggestions={suggestions}
+            isFetchingSuggestions={isFetchingSuggestions}
+            onSuggestionClick={handleSuggestionClick}
+          />
         )}
 
         {isEditMode ? (
-          <View
-            style={[styles.editContainer, isDark && { backgroundColor: '#333' }]}>
-            <View style={styles.editHeader}>
-              <Text
-                style={[
-                  styles.editHeaderText,
-                  { color: isDark ? 'white' : 'black' },
-                ]}>
-                Edit Message
-              </Text>
-              <TouchableOpacity
-                onPress={() => setIsEditMode(false)}
-                style={styles.closeEditButton}>
-                <Ionicons
-                  name="close"
-                  size={24}
-                  color={isDark ? 'white' : 'black'}
-                />
-              </TouchableOpacity>
-            </View>
-            <TextInput
-              style={[
-                styles.editInput,
-                isDark && {
-                  backgroundColor: '#222',
-                  color: 'white',
-                  borderColor: '#444',
-                },
-              ]}
-              value={editText}
-              onChangeText={setEditText}
-              multiline
-              autoFocus
-            />
-            <View style={styles.editActions}>
-              <TouchableOpacity
-                onPress={() => setIsEditMode(false)}
-                style={[styles.editButton, styles.cancelButton]}>
-                <Text style={styles.editButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={saveEditedMessage}
-                style={[styles.editButton, styles.saveButton]}
-                disabled={!editText.trim()}>
-                <Text style={styles.editButtonText}>Save</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+          <EditMessageInput
+            isDark={isDark}
+            editText={editText}
+            onChangeText={setEditText}
+            onClose={() => setIsEditMode(false)}
+            onSave={saveEditedMessage}
+          />
         ) : (
-          <View
-            style={[
-              styles.inputContainer,
-              isDark && { backgroundColor: '#333' },
-            ]}>
-            <TouchableOpacity
-              style={[
-                styles.suggestionToggleButton,
-                showSuggestions && styles.suggestionToggleButtonActive,
-                isDark && styles.darkSuggestionToggleButton,
-                showSuggestions &&
-                isDark &&
-                styles.darkSuggestionToggleButtonActive,
-              ]}
-              onPress={handleRequestSuggestions}
-              disabled={messages.length === 0}>
-              <MaterialCommunityIcons
-                name="lightbulb-outline"
-                size={22}
-                color={
-                  messages.length === 0
-                    ? isDark
-                      ? '#555'
-                      : '#ccc'
-                    : showSuggestions
-                      ? isDark
-                        ? '#8ab4f8'
-                        : '#2379C2'
-                      : isDark
-                        ? '#aaa'
-                        : '#777'
-                }
-              />
-            </TouchableOpacity>
-            <TextInput
-              style={[
-                styles.input,
-                isDark && {
-                  backgroundColor: '#222',
-                  color: 'white',
-                  borderColor: '#444',
-                },
-              ]}
-              placeholder="Type a message..."
-              placeholderTextColor={isDark ? '#999' : '#777'}
-              value={newMessage}
-              onChangeText={setNewMessage}
-              multiline
-            />
-            <TouchableOpacity
-              style={[
-                styles.sendButton,
-                {
-                  backgroundColor: !newMessage.trim()
-                    ? isDark
-                      ? '#333'
-                      : '#e0e0e0'
-                    : '#2379C2',
-                },
-              ]}
-              onPress={sendMessage}
-              disabled={!newMessage.trim() || sending}>
-              {sending ? (
-                <ActivityIndicator size="small" color="white" />
-              ) : (
-                <Ionicons
-                  name="send"
-                  size={20}
-                  color={
-                    !newMessage.trim() ? (isDark ? '#777' : '#999') : 'white'
-                  }
-                />
-              )}
-            </TouchableOpacity>
-          </View>
+          <ChatInputBar
+            isDark={isDark}
+            newMessage={newMessage}
+            onChangeText={setNewMessage}
+            onSend={sendMessage}
+            sending={sending}
+            showSuggestions={showSuggestions}
+            onRequestSuggestions={handleRequestSuggestions}
+            hasMessages={messages.length > 0}
+          />
         )}
       </KeyboardAvoidingView>
 
-      {/* Context Menu Modal */}
-      <Modal
+      <MessageContextMenu
         visible={isContextMenuVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setIsContextMenuVisible(false)}>
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setIsContextMenuVisible(false)}>
-          <View
-            style={[styles.contextMenu, isDark && { backgroundColor: '#333' }]}>
-            <TouchableOpacity
-              style={styles.contextMenuItem}
-              onPress={handleEditMessage}>
-              <MaterialIcons
-                name="edit"
-                size={20}
-                color={isDark ? '#fff' : '#333'}
-              />
-              <Text style={[styles.contextMenuText, isDark && { color: '#fff' }]}>
-                Edit Message
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.contextMenuItem, styles.deleteMenuItem]}
-              onPress={handleDeleteMessage}>
-              <MaterialIcons name="delete" size={20} color="#ff3b30" />
-              <Text style={[styles.contextMenuText, { color: '#ff3b30' }]}>
-                Delete Message
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+        isDark={isDark}
+        onClose={() => setIsContextMenuVisible(false)}
+        onEdit={handleEditMessage}
+        onDelete={handleDeleteMessage}
+      />
     </SafeAreaView>
   );
 };
-
-
 
 export default ChatScreen;

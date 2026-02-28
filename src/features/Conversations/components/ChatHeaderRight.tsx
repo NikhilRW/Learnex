@@ -3,8 +3,8 @@ import React from 'react';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Snackbar from 'react-native-snackbar';
-import {ChatNavigationObjectType} from 'conversations/types/main';
-import { MessageService } from '../services/MessageService';
+import { styles } from '../styles/ChatHeaderRight.styles';
+import { ChatHeaderRightProps } from '../types';
 
 const ChatHeaderRight = ({
   isMuted,
@@ -13,17 +13,10 @@ const ChatHeaderRight = ({
   navigation,
   messageService,
   conversationId,
-}: {
-  isMuted: boolean;
-  isDark: boolean;
-  toggleNotifications: () => void;
-  navigation: ChatNavigationObjectType;
-  messageService: MessageService;
-  conversationId: string;
-}) => {
+}: ChatHeaderRightProps) => {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-      <TouchableOpacity style={{ marginRight: 15 }} onPress={toggleNotifications}>
+    <View style={styles.container}>
+      <TouchableOpacity style={styles.notificationsButton} onPress={toggleNotifications}>
         <Ionicons
           name={isMuted ? 'notifications-off' : 'notifications'}
           size={24}
@@ -31,7 +24,7 @@ const ChatHeaderRight = ({
         />
       </TouchableOpacity>
       <TouchableOpacity
-        style={{ marginRight: 10 }}
+        style={styles.deleteButton}
         onPress={() => {
           Alert.alert(
             'Delete Conversation',

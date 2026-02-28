@@ -3,9 +3,7 @@ import {
   View,
   Text,
   TouchableOpacity,
-  StyleSheet,
   ActivityIndicator,
-  Dimensions,
   RefreshControl,
   Alert,
   Platform,
@@ -25,8 +23,9 @@ import { formatDistanceToNow } from 'date-fns';
 import { getUsernameForLogo } from 'shared/helpers/common/stringHelpers';
 import Snackbar from 'react-native-snackbar';
 import { styles } from 'conversations/styles/Conversations';
+import { SCREEN_WIDTH } from 'shared/constants/common';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+// TODO: refactor the component logic into hook.
 
 const ConversationsScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp<UserStackParamList>>();
@@ -167,15 +166,15 @@ const ConversationsScreen: React.FC = () => {
             size={80}
             color={isDark ? '#555' : '#ccc'}
           />
-          <Text style={[styles.emptyText, { color: isDark ? '#aaa' : '#888' }]}>
+          <Text style={[styles.emptyText, isDark ? styles.darkEmptyText : styles.lightEmptyText]}>
             No conversations yet
           </Text>
           <Text
-            style={[styles.emptySubText, { color: isDark ? '#888' : '#aaa' }]}>
+            style={[styles.emptySubText, isDark ? styles.darkEmptySubText : styles.lightEmptySubText]}>
             Start messaging with your peers
           </Text>
           <TouchableOpacity
-            style={[styles.newMessageButton, { marginTop: 20 }]}
+            style={[styles.newMessageButton, styles.emptyButtonMarginTop]}
             onPress={handleNewMessage}>
             <Text style={styles.newMessageButtonText}>Start New Chat</Text>
           </TouchableOpacity>
@@ -203,15 +202,9 @@ const ConversationsScreen: React.FC = () => {
       <TouchableOpacity
         style={[
           styles.conversationItem,
-          {
-            backgroundColor: isDark
-              ? isUnread
-                ? '#293b59'
-                : '#1a1a1a'
-              : isUnread
-                ? '#f0f7ff'
-                : 'white',
-          },
+          isDark
+            ? isUnread ? styles.darkUnreadConversationItem : styles.darkConversationItem
+            : isUnread ? styles.lightUnreadConversationItem : styles.lightConversationItem,
         ]}
         onPress={() => {
           navigation.navigate('Chat', {
@@ -234,7 +227,7 @@ const ConversationsScreen: React.FC = () => {
             rounded
             title={getUsernameForLogo(otherParticipant.name)}
             size={Math.min(SCREEN_WIDTH * 0.12, 50)}
-            containerStyle={[styles.avatar, { backgroundColor: '#2379C2' }]}
+            containerStyle={[styles.avatar, styles.avatarPlaceholderBg]}
           />
         )}
 
@@ -243,38 +236,29 @@ const ConversationsScreen: React.FC = () => {
             <Text
               style={[
                 styles.participantName,
-                {
-                  color: isDark ? 'white' : 'black',
-                  fontWeight: isUnread ? '700' : '400',
-                },
+                isDark ? styles.darkParticipantName : styles.lightParticipantName,
+                isUnread && styles.unreadParticipantName,
               ]}
               numberOfLines={1}>
               {otherParticipant.name}
             </Text>
-            <Text style={[styles.timeText, { color: isDark ? '#aaa' : '#777' }]}>
+            <Text style={[styles.timeText, isDark ? styles.darkTimeText : styles.lightTimeText]}>
               {lastMessageTime}
             </Text>
           </View>
 
           <View style={styles.lastMessageContainer}>
             {otherParticipant.typing ? (
-              <Text style={[styles.typingText, { color: '#2379C2' }]}>
+              <Text style={[styles.typingText, styles.typingHighlight]}>
                 typing...
               </Text>
             ) : (
               <Text
                 style={[
                   styles.lastMessageText,
-                  {
-                    color: isDark
-                      ? isUnread
-                        ? 'white'
-                        : '#bbb'
-                      : isUnread
-                        ? 'black'
-                        : '#777',
-                    fontWeight: isUnread ? '600' : '400',
-                  },
+                  isDark
+                    ? isUnread ? styles.darkUnreadMessageText : styles.darkReadMessageText
+                    : isUnread ? styles.lightUnreadMessageText : styles.lightReadMessageText,
                 ]}
                 numberOfLines={1}
                 ellipsizeMode="tail">
@@ -302,7 +286,7 @@ const ConversationsScreen: React.FC = () => {
     <View
       style={[
         styles.rowBack,
-        { backgroundColor: isDark ? '#331111' : '#ffebee' },
+        isDark ? styles.darkRowBack : styles.lightRowBack,
       ]}>
       <TouchableOpacity
         style={[styles.deleteButton]}
@@ -317,13 +301,10 @@ const ConversationsScreen: React.FC = () => {
     <SafeAreaView
       style={[
         styles.container,
-        {
-          backgroundColor: isDark ? '#1a1a1a' : 'white',
-          paddingTop: 10,
-        },
+        isDark ? styles.darkContainer : styles.lightContainer,
       ]}>
       <View style={styles.header}>
-        <Text style={[styles.title, { color: isDark ? 'white' : 'black' }]}>
+        <Text style={[styles.title, isDark ? styles.darkText : styles.lightText]}>
           Messages
         </Text>
         <TouchableOpacity
@@ -344,13 +325,13 @@ const ConversationsScreen: React.FC = () => {
         value={search}
         containerStyle={[
           styles.searchContainer,
-          { backgroundColor: isDark ? '#1a1a1a' : 'white' },
+          isDark ? styles.darkSearchBackground : styles.lightSearchBackground,
         ]}
         inputContainerStyle={[
           styles.searchInputContainer,
-          { backgroundColor: isDark ? '#333' : '#f5f5f5' },
+          isDark ? styles.darkSearchInputBackground : styles.lightSearchInputBackground,
         ]}
-        inputStyle={{ color: isDark ? 'white' : 'black' }}
+        inputStyle={isDark ? styles.darkText : styles.lightText}
         placeholderTextColor={isDark ? '#aaa' : '#999'}
         round
         lightTheme={!isDark}

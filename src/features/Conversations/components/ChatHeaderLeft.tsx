@@ -1,23 +1,18 @@
-import {View, Text, TouchableOpacity} from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import React from 'react';
-import {getUsernameForLogo} from 'shared/helpers/common/stringHelpers';
-import {Avatar} from 'react-native-elements';
-import {Image} from 'react-native';
+import { getUsernameForLogo } from 'shared/helpers/common/stringHelpers';
+import { Avatar } from 'react-native-elements';
+import { Image } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import {ChatNavigationObjectType} from 'conversations/types/main';
-import {createStyles} from '../styles/ChatHeaderLeft.styles';
+import { createStyles } from '../styles/ChatHeaderLeft.styles';
+import { ChatHeaderLeftProps } from '../types';
 
 const ChatHeaderLeft = ({
   currentRecipientPhoto,
   isDark,
   navigation,
   recipientName,
-}: {
-  isDark: boolean;
-  currentRecipientPhoto: string;
-  recipientName: string;
-  navigation: ChatNavigationObjectType;
-}) => {
+}: ChatHeaderLeftProps) => {
   const styles = createStyles(isDark);
   return (
     <View style={styles.backButtonContainer}>
@@ -36,7 +31,7 @@ const ChatHeaderLeft = ({
           <Image
             source={
               typeof currentRecipientPhoto === 'string'
-                ? {uri: currentRecipientPhoto}
+                ? { uri: currentRecipientPhoto }
                 : currentRecipientPhoto
             }
             style={styles.recipientPhoto}

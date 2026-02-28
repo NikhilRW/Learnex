@@ -1,4 +1,4 @@
-import { StyleSheet } from "react-native";
+import {StyleSheet} from 'react-native';
 
 export const styles = StyleSheet.create({
   container: {
@@ -85,7 +85,7 @@ export const styles = StyleSheet.create({
     overflow: 'hidden',
     elevation: 4,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
   },
@@ -218,5 +218,90 @@ export const styles = StyleSheet.create({
   },
   darkSuggestionToggleButtonActive: {
     backgroundColor: '#293b59',
+  },
+
+  // ─── MessageItem themed variants ───────────────────────────────────────────
+  myMessageBubble: {
+    backgroundColor: '#2379C2',
+  },
+  darkTheirMessageBubble: {
+    backgroundColor: '#333',
+  },
+  lightTheirMessageBubble: {
+    backgroundColor: '#f0f0f0',
+  },
+  myAvatarBg: {
+    backgroundColor: '#2379C2',
+  },
+  myMessageText: {
+    color: 'white',
+  },
+  darkTheirMessageText: {
+    color: 'white',
+  },
+  lightTheirMessageText: {
+    color: 'black',
+  },
+  myMessageTime: {
+    color: 'rgba(255,255,255,0.7)',
+  },
+  darkTheirMessageTime: {
+    color: 'rgba(255,255,255,0.5)',
+  },
+  lightTheirMessageTime: {
+    color: 'rgba(0,0,0,0.5)',
+  },
+
+  // ─── ChatInputBar themed variants ──────────────────────────────────────────
+  darkInputContainer: {
+    backgroundColor: '#333',
+  },
+  darkInput: {
+    backgroundColor: '#222',
+    color: 'white',
+    borderColor: '#444',
+  },
+  darkInactiveSendButton: {
+    backgroundColor: '#333',
+  },
+  lightInactiveSendButton: {
+    backgroundColor: '#e0e0e0',
+  },
+
+  // ─── EditMessageInput themed variants ──────────────────────────────────────
+  darkEditContainer: {
+    backgroundColor: '#333',
+  },
+  darkEditHeaderText: {
+    color: 'white',
+  },
+  darkEditInput: {
+    backgroundColor: '#222',
+    color: 'white',
+    borderColor: '#444',
+  },
+
+  // ─── MessageContextMenu themed variants ────────────────────────────────────
+  darkContextMenu: {
+    backgroundColor: '#333',
+  },
+  darkContextMenuText: {
+    color: '#fff',
+  },
+  deleteMenuText: {
+    color: '#ff3b30',
+  },
+
+  // ─── MessageSuggestions themed variant ─────────────────────────────────────
+  darkSuggestionsLoadingText: {
+    color: '#8ab4f8',
+  },
+
+  // ─── Chat screen container themed variants ─────────────────────────────────
+  darkChatContainer: {
+    backgroundColor: '#1a1a1a',
+  },
+  lightChatContainer: {
+    backgroundColor: '#f9f9f9',
   },
 });
