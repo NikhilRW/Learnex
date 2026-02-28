@@ -348,6 +348,8 @@ const Home = () => {
     [selectedTag, posts],
   );
 
+  // TODO: fix not loading automatically when app opens
+
   return (
     <View
       className={`justify-start items-center ${isDark ? 'bg-[#1a1a1a]' : 'bg-white'}`}>

@@ -253,6 +253,7 @@ export const getStyles = (isDark: boolean, hasStoragePermission: boolean) =>
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: 8,
+      marginTop:12,
     },
     tagWrapper: {
       flexDirection: 'row',
