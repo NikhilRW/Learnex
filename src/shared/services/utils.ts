@@ -135,8 +135,15 @@ export function convertFirestoreComment(comment: FirestoreComment): Comment {
     ? comment.replies.map(reply => convertFirestoreComment(reply))
     : undefined;
 
+  // Extract numeric values safely for optimistic updates
+  const extractNumber = (val: any, fallback = 0): number => {
+    if (typeof val === 'number') return val;
+    return fallback;
+  };
+
   return {
     ...comment,
+    likes: extractNumber(comment.likes),
     userImage: comment.userImage, // Keep as string as required by Comment interface
     timestamp: formatFirestoreTimestamp(comment.timestamp),
     isLiked: false,
@@ -184,6 +191,17 @@ export function convertFirestorePost(
 
   console.log(`Converting post ${postData.id} with hashtags:`, hashtags);
 
+  // Extract numeric values, handle Firebase FieldValue objects from optimistic updates
+  const extractNumber = (val: any, fallback = 0): number => {
+    if (typeof val === 'number') return val;
+    return fallback; // When val is an optimistic FieldValue (like increment), default it
+  };
+
+  // Handle FieldValue.arrayUnion optimistic updates
+  const isLikedVal = Array.isArray(postData.likedBy)
+    ? postData.likedBy.includes(currentUserId)
+    : false;
+
   return {
     id: postData.id,
     user: {
@@ -192,15 +210,15 @@ export function convertFirestorePost(
       image: toImageSource(postData.user.image), // Convert string to ImageSourcePropType
     },
     description: postData.description,
-    likes: postData.likes || 0,
-    comments: postData.comments || 0,
+    likes: extractNumber(postData.likes),
+    comments: extractNumber(postData.comments),
     timestamp: formatFirestoreTimestamp(postData.timestamp),
     postImages: convertedPostImages, // Use converted images array
     postVideo: postData.postVideo,
     hashtags: hashtags, // Use the combined hashtags array
     isVideo: postData.isVideo,
     commentsList: postData.commentsList?.map(convertFirestoreComment),
-    isLiked: (postData.likedBy || []).includes(currentUserId),
+    isLiked: isLikedVal,
     isSaved: false, // Adding missing required property
   };
 }

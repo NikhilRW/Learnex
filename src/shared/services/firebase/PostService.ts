@@ -8,6 +8,7 @@ import {
   deleteDoc,
   getDocs,
   arrayRemove,
+  increment,
   writeBatch,
   setDoc,
   arrayUnion,
@@ -26,7 +27,6 @@ import {PostQueryService} from './PostQueryService';
 import axios from 'axios';
 
 export class PostService {
-  
   constructor(
     private likeCache: LikeCache,
     private commentService: CommentService,
@@ -51,8 +51,6 @@ export class PostService {
       const postData = postDoc.data() as any;
       const likedBy = postData?.likedBy || [];
       const isLiked = likedBy.includes(currentUser.uid);
-
-      const { increment } = await import('firebase/firestore');
 
       if (isLiked) {
         await updateDoc(postRef, {
