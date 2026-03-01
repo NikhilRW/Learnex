@@ -13,7 +13,7 @@ import {
 import { LegendList } from '@legendapp/list';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { Task, SubTask } from 'shared/types/taskTypes';
-import { styles } from '../styles/Tasks.styles';
+import { styles, duoTaskModalStyles } from '../styles/Tasks.styles';
 import { getFirestore, collection, doc, getDocs, Timestamp, query, where, limit } from '@react-native-firebase/firestore';
 import { getAuth } from '@react-native-firebase/auth';
 
@@ -283,10 +283,10 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
             <View style={styles.modalOverlay}>
                 <View style={[
                     styles.modalContent,
-                    { backgroundColor: isDark ? '#1a1a1a' : 'white' }
+                    isDark ? styles.modalContentBgDark : styles.modalContentBgLight,
                 ]}>
                     <View style={styles.modalHeader}>
-                        <Text style={[styles.modalTitle, { color: isDark ? 'white' : 'black' }]}>
+                        <Text style={[styles.modalTitle, isDark ? styles.textDark : styles.textLight]}>
                             {isEditMode ? 'Edit Team Task' : 'Create Team Task'}
                         </Text>
                         <TouchableOpacity onPress={onClose}>
@@ -333,7 +333,7 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
                         {activeTab === 'details' && (
                             <>
                                 <View style={styles.inputGroup}>
-                                    <Text style={[styles.inputLabel, { color: isDark ? 'white' : 'black' }]}>Title *</Text>
+                                    <Text style={[styles.inputLabel, isDark ? styles.textDark : styles.textLight]}>Title *</Text>
                                     <TextInput
                                         style={[
                                             styles.input,
@@ -347,7 +347,7 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
                                 </View>
 
                                 <View style={styles.inputGroup}>
-                                    <Text style={[styles.inputLabel, { color: isDark ? 'white' : 'black' }]}>Description</Text>
+                                    <Text style={[styles.inputLabel, isDark ? styles.textDark : styles.textLight]}>Description</Text>
                                     <TextInput
                                         style={[
                                             styles.input,
@@ -364,7 +364,7 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
                                 </View>
 
                                 <View style={styles.inputGroup}>
-                                    <Text style={[styles.inputLabel, { color: isDark ? 'white' : 'black' }]}>Due Date</Text>
+                                    <Text style={[styles.inputLabel, isDark ? styles.textDark : styles.textLight]}>Due Date</Text>
                                     <TextInput
                                         style={[
                                             styles.input,
@@ -378,7 +378,7 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
                                 </View>
 
                                 <View style={styles.inputGroup}>
-                                    <Text style={[styles.inputLabel, { color: isDark ? 'white' : 'black' }]}>Due Time</Text>
+                                    <Text style={[styles.inputLabel, isDark ? styles.textDark : styles.textLight]}>Due Time</Text>
                                     <TextInput
                                         style={[
                                             styles.input,
@@ -392,7 +392,7 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
                                 </View>
 
                                 <View style={styles.inputGroup}>
-                                    <Text style={[styles.inputLabel, { color: isDark ? 'white' : 'black' }]}>Category</Text>
+                                    <Text style={[styles.inputLabel, isDark ? styles.textDark : styles.textLight]}>Category</Text>
                                     <TextInput
                                         style={[
                                             styles.input,
@@ -406,40 +406,39 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
                                 </View>
 
                                 <View style={styles.inputGroup}>
-                                    <Text style={[styles.inputLabel, { color: isDark ? 'white' : 'black' }]}>Priority</Text>
+                                    <Text style={[styles.inputLabel, isDark ? styles.textDark : styles.textLight]}>Priority</Text>
                                     <View style={styles.prioritySelector}>
-                                        {['low', 'medium', 'high'].map((priority) => (
-                                            <TouchableOpacity
-                                                key={priority}
-                                                style={[
-                                                    styles.priorityOption,
-                                                    {
-                                                        backgroundColor: task.priority === priority
-                                                            ? getPriorityColor(priority)
-                                                            : isDark ? '#2a2a2a' : '#f5f5f5',
-                                                        borderColor: isDark ? '#404040' : '#e0e0e0'
-                                                    }
-                                                ]}
-                                                onPress={() => onChangeTask({ ...task, priority: priority as 'low' | 'medium' | 'high' })}
-                                            >
-                                                <Text style={[
-                                                    styles.priorityText,
-                                                    {
-                                                        color: task.priority === priority
-                                                            ? 'white'
-                                                            : isDark ? 'white' : 'black'
-                                                    }
-                                                ]}>
-                                                    {priority.charAt(0).toUpperCase() + priority.slice(1)}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        ))}
+                                        {['low', 'medium', 'high'].map((priority) => {
+                                            const selectedBg = task.priority === priority
+                                                ? { backgroundColor: getPriorityColor(priority) }
+                                                : undefined;
+                                            return (
+                                                <TouchableOpacity
+                                                    key={priority}
+                                                    style={[
+                                                        styles.priorityOption,
+                                                        isDark ? styles.unselectedBgDark : styles.unselectedBgLight,
+                                                        selectedBg,
+                                                    ]}
+                                                    onPress={() => onChangeTask({ ...task, priority: priority as 'low' | 'medium' | 'high' })}
+                                                >
+                                                    <Text style={[
+                                                        styles.priorityText,
+                                                        task.priority === priority
+                                                            ? styles.selectedTextWhite
+                                                            : isDark ? styles.textDark : styles.textLight,
+                                                    ]}>
+                                                        {priority.charAt(0).toUpperCase() + priority.slice(1)}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
                                     </View>
                                 </View>
 
                                 <View style={styles.inputGroup}>
                                     <View style={styles.notifyContainer}>
-                                        <Text style={[styles.inputLabel, { color: isDark ? 'white' : 'black' }]}>Send Notification</Text>
+                                        <Text style={[styles.inputLabel, isDark ? styles.textDark : styles.textLight]}>Send Notification</Text>
                                         <Switch
                                             trackColor={{ false: isDark ? '#555' : '#ccc', true: '#34C759' }}
                                             thumbColor={task.notify ? '#fff' : isDark ? '#888' : '#f4f3f4'}
@@ -456,7 +455,7 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
                         {activeTab === 'subtasks' && (
                             <>
                                 <View style={styles.inputGroup}>
-                                    <Text style={[styles.inputLabel, { color: isDark ? 'white' : 'black' }]}>
+                                    <Text style={[styles.inputLabel, isDark ? styles.textDark : styles.textLight]}>
                                         Add Subtasks
                                     </Text>
                                     <Text style={isDark ? styles.darkSubtaskDescription : styles.subtaskDescription}>
@@ -467,7 +466,7 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
                                         style={[
                                             styles.input,
                                             isDark ? styles.inputDark : styles.inputLight,
-                                            { marginBottom: 5 }
+                                            styles.subtaskInputMargin,
                                         ]}
                                         placeholder="Subtask title"
                                         placeholderTextColor={isDark ? styles.placeholderDark.color : styles.placeholderLight.color}
@@ -478,12 +477,8 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
                                     <TextInput
                                         style={[
                                             styles.input,
-                                            {
-                                                backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5',
-                                                color: isDark ? 'white' : 'black',
-                                                borderColor: isDark ? '#404040' : '#e0e0e0',
-                                                marginBottom: 10
-                                            }
+                                            isDark ? styles.inputDark : styles.inputLight,
+                                            styles.subtaskInput,
                                         ]}
                                         placeholder="Description (optional)"
                                         placeholderTextColor={isDark ? '#8e8e8e' : '#999'}
@@ -492,26 +487,20 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
                                     />
 
                                     <TouchableOpacity
-                                        style={{
-                                            backgroundColor: '#1a9cd8',
-                                            padding: 10,
-                                            borderRadius: 5,
-                                            alignItems: 'center',
-                                            marginBottom: 20
-                                        }}
+                                        style={styles.addSubtaskBtn}
                                         onPress={addSubtask}
                                     >
-                                        <Text style={{ color: 'white' }}>Add Subtask</Text>
+                                        <Text style={styles.addSubtaskBtnText}>Add Subtask</Text>
                                     </TouchableOpacity>
                                 </View>
 
                                 <View style={styles.inputGroup}>
-                                    <Text style={[styles.inputLabel, { color: isDark ? 'white' : 'black', marginBottom: 10 }]}>
+                                    <Text style={[styles.inputLabel, isDark ? styles.textDark : styles.textLight, styles.subtaskCountMargin]}>
                                         Subtasks ({subtasks.length})
                                     </Text>
 
                                     {subtasks.length === 0 ? (
-                                        <Text style={{ color: isDark ? '#8e8e8e' : '#666', textAlign: 'center', padding: 20 }}>
+                                        <Text style={[isDark ? styles.metaTextDark : styles.metaTextLight, styles.emptySubtasksText]}>
                                             No subtasks yet. Add some to track progress!
                                         </Text>
                                     ) : (
@@ -521,25 +510,16 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
                                             estimatedItemSize={50}
                                             recycleItems={true}
                                             renderItem={({ item }) => (
-                                                <View style={{
-                                                    flexDirection: 'row',
-                                                    padding: 10,
-                                                    borderBottomWidth: 1,
-                                                    borderColor: isDark ? '#404040' : '#e0e0e0',
-                                                    alignItems: 'center'
-                                                }}>
+                                                <View style={[
+                                                    styles.teamSubtaskListItem,
+                                                    isDark ? styles.teamSubtaskListItemDark : styles.teamSubtaskListItemLight,
+                                                ]}>
                                                     <TouchableOpacity
-                                                        style={{
-                                                            width: 24,
-                                                            height: 24,
-                                                            borderRadius: 12,
-                                                            borderWidth: 2,
-                                                            borderColor: isDark ? '#8e8e8e' : '#666',
-                                                            justifyContent: 'center',
-                                                            alignItems: 'center',
-                                                            backgroundColor: item.completed ? '#1a9cd8' : 'transparent',
-                                                            marginRight: 10
-                                                        }}
+                                                        style={[
+                                                            duoTaskModalStyles.subtaskCheckbox,
+                                                            isDark ? duoTaskModalStyles.subtaskCheckboxLight : duoTaskModalStyles.subtaskCheckboxDark,
+                                                            item.completed ? duoTaskModalStyles.subtaskCheckboxActive : duoTaskModalStyles.subtaskCheckboxInactive,
+                                                        ]}
                                                         onPress={() => toggleSubtaskCompletion(item.id)}
                                                     >
                                                         {item.completed && (
@@ -547,21 +527,19 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
                                                         )}
                                                     </TouchableOpacity>
 
-                                                    <View style={{ flex: 1 }}>
-                                                        <Text style={{
-                                                            color: isDark ? 'white' : 'black',
-                                                            textDecorationLine: item.completed ? 'line-through' : 'none',
-                                                            opacity: item.completed ? 0.7 : 1
-                                                        }}>
+                                                    <View style={styles.flexOne}>
+                                                        <Text style={[
+                                                            isDark ? styles.textDark : styles.textLight,
+                                                            item.completed && duoTaskModalStyles.subtaskTitleCompleted,
+                                                        ]}>
                                                             {item.title}
                                                         </Text>
                                                         {item.description && (
-                                                            <Text style={{
-                                                                color: isDark ? '#8e8e8e' : '#666',
-                                                                fontSize: 12,
-                                                                textDecorationLine: item.completed ? 'line-through' : 'none',
-                                                                opacity: item.completed ? 0.7 : 1
-                                                            }}>
+                                                            <Text style={[
+                                                                isDark ? styles.metaTextDark : styles.metaTextLight,
+                                                                styles.taskMetaText,
+                                                                item.completed && duoTaskModalStyles.subtaskDescriptionCompleted,
+                                                            ]}>
                                                                 {item.description}
                                                             </Text>
                                                         )}
@@ -582,24 +560,19 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
                         {activeTab === 'collaboration' && (
                             <>
                                 <View style={styles.inputGroup}>
-                                    <Text style={[styles.inputLabel, { color: isDark ? 'white' : 'black' }]}>
+                                    <Text style={[styles.inputLabel, isDark ? styles.textDark : styles.textLight]}>
                                         Add Team Members
                                     </Text>
-                                    <Text style={[{ color: isDark ? '#8e8e8e' : '#666', marginBottom: 10, fontSize: 12 }]}>
+                                    <Text style={[isDark ? styles.metaTextDark : styles.metaTextLight, styles.teamMemberDescText]}>
                                         Enter email of the person you want to add to the team
                                     </Text>
 
-                                    <View style={{ flexDirection: 'row', marginBottom: 10 }}>
+                                    <View style={duoTaskModalStyles.collaboratorInputContainer}>
                                         <TextInput
                                             style={[
                                                 styles.input,
-                                                {
-                                                    backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5',
-                                                    color: isDark ? 'white' : 'black',
-                                                    borderColor: isDark ? '#404040' : '#e0e0e0',
-                                                    flex: 1,
-                                                    marginRight: 5
-                                                }
+                                                isDark ? styles.inputDark : styles.inputLight,
+                                                duoTaskModalStyles.collaboratorInput,
                                             ]}
                                             placeholder="Collaborator email"
                                             placeholderTextColor={isDark ? '#8e8e8e' : '#999'}
@@ -609,35 +582,30 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
                                         />
 
                                         <TouchableOpacity
-                                            style={{
-                                                backgroundColor: '#1a9cd8',
-                                                padding: 10,
-                                                borderRadius: 5,
-                                                justifyContent: 'center'
-                                            }}
+                                            style={duoTaskModalStyles.addCollaboratorButton}
                                             onPress={searchCollaborator}
                                             disabled={isSearching}
                                         >
                                             {isSearching ? (
                                                 <ActivityIndicator size="small" color="white" />
                                             ) : (
-                                                <Text style={{ color: 'white' }}>Add</Text>
+                                                <Text style={duoTaskModalStyles.addCollaboratorButtonText}>Add</Text>
                                             )}
                                         </TouchableOpacity>
                                     </View>
 
                                     {error && (
-                                        <Text style={{ color: '#FF3B30', marginBottom: 10 }}>
+                                        <Text style={duoTaskModalStyles.errorText}>
                                             {error}
                                         </Text>
                                     )}
 
-                                    <Text style={[styles.inputLabel, { color: isDark ? 'white' : 'black', marginTop: 20, marginBottom: 10 }]}>
+                                    <Text style={[styles.inputLabel, isDark ? styles.textDark : styles.textLight, duoTaskModalStyles.teamMembersCount]}>
                                         Team Members ({collaborators.length})
                                     </Text>
 
                                     {collaborators.length === 0 ? (
-                                        <Text style={{ color: isDark ? '#8e8e8e' : '#666', textAlign: 'center', padding: 10 }}>
+                                        <Text style={[isDark ? styles.metaTextDark : styles.metaTextLight, duoTaskModalStyles.emptyTeamMembersText]}>
                                             No team members added yet. Add collaborators to work together!
                                         </Text>
                                     ) : (
@@ -647,19 +615,15 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
                                             estimatedItemSize={60}
                                             recycleItems={true}
                                             renderItem={({ item }) => (
-                                                <View style={{
-                                                    flexDirection: 'row',
-                                                    padding: 10,
-                                                    backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5',
-                                                    borderRadius: 5,
-                                                    alignItems: 'center',
-                                                    marginBottom: 10
-                                                }}>
-                                                    <View style={{ flex: 1 }}>
-                                                        <Text style={{ color: isDark ? 'white' : 'black' }}>
+                                                <View style={[
+                                                    duoTaskModalStyles.collaboratorItem,
+                                                    isDark ? duoTaskModalStyles.collaboratorItemDark : duoTaskModalStyles.collaboratorItemLight,
+                                                ]}>
+                                                    <View style={duoTaskModalStyles.collaboratorDetails}>
+                                                        <Text style={isDark ? duoTaskModalStyles.collaboratorNameDark : duoTaskModalStyles.collaboratorNameLight}>
                                                             {item.displayName}
                                                         </Text>
-                                                        <Text style={{ color: isDark ? '#8e8e8e' : '#666', fontSize: 12 }}>
+                                                        <Text style={isDark ? duoTaskModalStyles.collaboratorEmailDark : duoTaskModalStyles.collaboratorEmailLight}>
                                                             {item.email}
                                                         </Text>
                                                     </View>
@@ -674,20 +638,14 @@ const TeamTaskModal: React.FC<TeamTaskModalProps> = ({
 
                                     {collaborators.length > 0 && (
                                         <TouchableOpacity
-                                            style={{
-                                                marginTop: 10,
-                                                padding: 10,
-                                                borderRadius: 5,
-                                                backgroundColor: '#FF3B30',
-                                                alignItems: 'center'
-                                            }}
+                                            style={duoTaskModalStyles.removeAllCollaboratorsButton}
                                             onPress={resetCollaboration}
                                         >
-                                            <Text style={{ color: 'white' }}>Remove All Collaborators</Text>
+                                            <Text style={duoTaskModalStyles.removeAllCollaboratorsButtonText}>Remove All Collaborators</Text>
                                         </TouchableOpacity>
                                     )}
 
-                                    <Text style={[{ color: isDark ? '#8e8e8e' : '#666', marginTop: 20, fontSize: 12 }]}>
+                                    <Text style={[duoTaskModalStyles.collaborationHintText, isDark ? duoTaskModalStyles.collaborationHintTextDark : duoTaskModalStyles.collaborationHintTextLight]}>
                                         Once you save the task, your team members will receive invitations.
                                     </Text>
                                 </View>

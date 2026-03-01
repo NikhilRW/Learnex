@@ -1,4 +1,4 @@
-import { Platform, StyleSheet } from "react-native";
+import {Platform, StyleSheet} from 'react-native';
 
 export const styles = StyleSheet.create({
   container: {
@@ -765,5 +765,29 @@ export const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: '#3c4043',
     position: 'relative',
+  },
+  flex1: {
+    flex: 1,
+  },
+  participantVideoOffBg: {
+    backgroundColor: 'rgba(0,0,0,0.2)',
+  },
+  videoPlaceholderPinned: {
+    backgroundColor: '#1f1f1f',
+  },
+  videoPlaceholderUnpinned: {
+    backgroundColor: 'rgba(0,0,0,0.2)',
+  },
+  textWhite: {
+    color: 'white',
+  },
+  textBlack: {
+    color: 'black',
+  },
+  pinnedZIndex: {
+    zIndex: 10,
+  },
+  unpinnedZIndex: {
+    zIndex: 1,
   },
 });

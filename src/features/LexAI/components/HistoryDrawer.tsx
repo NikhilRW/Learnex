@@ -60,11 +60,9 @@ export const HistoryDrawer: React.FC<HistoryDrawerProps> = ({
                 <TouchableOpacity
                     style={[
                         styles.historyBackdrop,
-                        {
-                            backgroundColor: isDarkMode
-                                ? 'rgba(10, 20, 35, 0.7)'
-                                : 'rgba(0, 0, 0, 0.5)',
-                        },
+                        isDarkMode
+                            ? styles.historyBackdropDark
+                            : styles.historyBackdropLight,
                     ]}
                     activeOpacity={1}
                     onPress={onHideHistory}
@@ -72,12 +70,12 @@ export const HistoryDrawer: React.FC<HistoryDrawerProps> = ({
                 <Animated.View
                     style={[
                         styles.historyDrawer,
+                        isDarkMode
+                            ? styles.historyDrawerDark
+                            : styles.historyDrawerLight,
                         {
-                            backgroundColor: isDarkMode ? '#121C2E' : '#F5F9FF',
                             transform: [{ translateX: historyTranslateX }],
                             opacity: historyOpacity,
-                            borderTopLeftRadius: 16,
-                            borderBottomLeftRadius: 16,
                         },
                     ]}>
                     <LinearGradient
@@ -86,52 +84,36 @@ export const HistoryDrawer: React.FC<HistoryDrawerProps> = ({
                         }
                         style={[
                             styles.historyHeader,
-                            {
-                                borderBottomWidth: 0,
-                                paddingVertical: 18,
-                                borderTopLeftRadius: 16,
-                            },
+                            styles.historyHeaderCustom,
                         ]}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <View style={styles.historyHeaderRow}>
                             <LinearGradient
                                 colors={
                                     isDarkMode ? ['#4E7CF6', '#6A5AE0'] : ['#3E7BFA', '#6A5AE0']
                                 }
-                                style={{
-                                    width: 32,
-                                    height: 32,
-                                    borderRadius: 16,
-                                    justifyContent: 'center',
-                                    alignItems: 'center',
-                                    marginRight: 12,
-                                }}>
+                                style={styles.historyHeaderIcon}>
                                 <Ionicons name="time-outline" size={18} color="#FFFFFF" />
                             </LinearGradient>
                             <Text
                                 style={[
                                     styles.historyTitle,
-                                    {
-                                        color: isDarkMode ? '#FFFFFF' : '#16213E',
-                                        fontSize: 20,
-                                        fontWeight: '600',
-                                    },
+                                    styles.historyTitleCustom,
+                                    isDarkMode
+                                        ? styles.historyTitleDark
+                                        : styles.historyTitleLight,
                                 ]}>
                                 Chat History
                             </Text>
                         </View>
                         <TouchableOpacity
-                            style={{
-                                width: 36,
-                                height: 36,
-                                borderRadius: 18,
-                                backgroundColor: isDarkMode
-                                    ? 'rgba(255,255,255,0.1)'
-                                    : 'rgba(0,0,0,0.05)',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                            }}
+                            style={[
+                                styles.historyCloseButton,
+                                isDarkMode
+                                    ? styles.historyCloseButtonDark
+                                    : styles.historyCloseButtonLight,
+                            ]}
                             onPress={onHideHistory}>
                             <Ionicons
                                 name="close"
@@ -153,40 +135,31 @@ export const HistoryDrawer: React.FC<HistoryDrawerProps> = ({
                                 <Animated.View
                                     style={[
                                         styles.historyItemContainer,
+                                        styles.historyItemSpacing,
+                                        isDarkMode && styles.historyItemBorderDark,
                                         {
                                             transform: [
                                                 { scale: animation.scale },
                                                 { translateX: animation.translateX },
                                             ],
-                                            borderBottomWidth: isDarkMode ? 1 : 0,
-                                            borderBottomColor: isDarkMode
-                                                ? 'rgba(255,255,255,0.07)'
-                                                : 'transparent',
-                                            marginHorizontal: 8,
-                                            marginVertical: 4,
                                         },
                                     ]}>
                                     <TouchableOpacity
                                         style={[
                                             styles.historyItem,
-                                            {
-                                                backgroundColor: isActive
-                                                    ? isDarkMode
-                                                        ? 'rgba(62, 123, 250, 0.2)'
-                                                        : 'rgba(62, 123, 250, 0.1)'
-                                                    : isDarkMode
-                                                        ? 'rgba(255, 255, 255, 0.03)'
-                                                        : 'rgba(255, 255, 255, 0.7)',
-                                                borderRadius: 12,
-                                                padding: 14,
-                                                borderLeftWidth: isActive ? 3 : 0,
-                                                borderLeftColor:
-                                                    item.mode === LexAIMode.AGENT ? '#3E7BFA' : '#FF375F',
-                                                shadowColor: isActive ? '#3E7BFA' : 'transparent',
-                                                shadowOffset: { width: 0, height: 2 },
-                                                shadowOpacity: isActive ? 0.2 : 0,
-                                                shadowRadius: 4,
-                                            },
+                                            isActive
+                                                ? isDarkMode
+                                                    ? styles.historyItemActiveDark
+                                                    : styles.historyItemActiveLight
+                                                : isDarkMode
+                                                    ? styles.historyItemInactiveDark
+                                                    : styles.historyItemInactiveLight,
+                                            isActive
+                                                ? styles.historyItemActiveBorder
+                                                : styles.historyItemInactiveBorder,
+                                            isActive && (item.mode === LexAIMode.AGENT
+                                                ? styles.historyItemBorderAgent
+                                                : styles.historyItemBorderChat),
                                         ]}
                                         onPress={() => {
                                             historyItemAnimations.animateItem(item.id);
@@ -198,13 +171,10 @@ export const HistoryDrawer: React.FC<HistoryDrawerProps> = ({
                                                 <Text
                                                     style={[
                                                         styles.historyItemDate,
-                                                        {
-                                                            color: isDarkMode
-                                                                ? 'rgba(255,255,255,0.7)'
-                                                                : 'rgba(0,0,0,0.6)',
-                                                            fontSize: 12,
-                                                            fontWeight: isActive ? '500' : 'normal',
-                                                        },
+                                                        isDarkMode
+                                                            ? styles.historyItemDateDark
+                                                            : styles.historyItemDateLight,
+                                                        isActive && styles.historyItemDateActive,
                                                     ]}>
                                                     {formatDate(item.updatedAt)}
                                                 </Text>
@@ -214,21 +184,11 @@ export const HistoryDrawer: React.FC<HistoryDrawerProps> = ({
                                                             ? ['#4E7CF6', '#3E7BFA']
                                                             : ['#FF375F', '#FF2D55']
                                                     }
-                                                    style={{
-                                                        paddingHorizontal: 8,
-                                                        paddingVertical: 4,
-                                                        borderRadius: 12,
-                                                        flexDirection: 'row',
-                                                        alignItems: 'center',
-                                                    }}
+                                                    style={styles.modeBadge}
                                                     start={{ x: 0, y: 0 }}
                                                     end={{ x: 1, y: 0 }}>
                                                     <Text
-                                                        style={{
-                                                            color: '#FFFFFF',
-                                                            fontSize: 11,
-                                                            fontWeight: '600',
-                                                        }}>
+                                                        style={styles.modeBadgeText}>
                                                         {item.mode === LexAIMode.AGENT ? 'Agent' : 'Chat'}
                                                     </Text>
                                                 </LinearGradient>
@@ -236,23 +196,19 @@ export const HistoryDrawer: React.FC<HistoryDrawerProps> = ({
                                             <Text
                                                 style={[
                                                     styles.historyItemPreview,
-                                                    {
-                                                        color: isDarkMode ? colors.text : '#16213E',
-                                                        fontWeight: isActive ? '500' : 'normal',
-                                                        fontSize: 14,
-                                                        marginTop: 6,
-                                                        opacity: isActive ? 1 : 0.85,
-                                                    },
+                                                    styles.historyItemPreviewCustom,
+                                                    isDarkMode
+                                                        ? styles.historyPreviewDark
+                                                        : styles.historyPreviewLight,
+                                                    isActive
+                                                        ? styles.historyPreviewActive
+                                                        : styles.historyPreviewInactive,
                                                 ]}
                                                 numberOfLines={2}>
                                                 {getConversationPreview(item)}
                                             </Text>
                                             <View
-                                                style={{
-                                                    flexDirection: 'row',
-                                                    alignItems: 'center',
-                                                    marginTop: 6,
-                                                }}>
+                                                style={styles.historyMetaRow}>
                                                 <Ionicons
                                                     name="chatbubble-outline"
                                                     size={12}
@@ -261,17 +217,14 @@ export const HistoryDrawer: React.FC<HistoryDrawerProps> = ({
                                                             ? 'rgba(255,255,255,0.6)'
                                                             : 'rgba(0,0,0,0.5)'
                                                     }
-                                                    style={{ marginRight: 4 }}
+                                                    style={styles.historyIconMargin}
                                                 />
                                                 <Text
                                                     style={[
                                                         styles.historyItemCount,
-                                                        {
-                                                            color: isDarkMode
-                                                                ? 'rgba(255,255,255,0.6)'
-                                                                : 'rgba(0,0,0,0.5)',
-                                                            fontSize: 12,
-                                                        },
+                                                        isDarkMode
+                                                            ? styles.historyItemCountDark
+                                                            : styles.historyItemCountLight,
                                                     ]}>
                                                     {
                                                         item.messages.filter(m => m.role !== 'system')
@@ -284,21 +237,12 @@ export const HistoryDrawer: React.FC<HistoryDrawerProps> = ({
                                     </TouchableOpacity>
 
                                     <TouchableOpacity
-                                        style={{
-                                            backgroundColor: isDarkMode
-                                                ? 'rgba(28, 39, 57, 0.8)'
-                                                : 'rgba(243, 244, 246, 0.8)',
-                                            borderRadius: 22,
-                                            width: 38,
-                                            height: 38,
-                                            justifyContent: 'center',
-                                            alignItems: 'center',
-                                            margin: 8,
-                                            shadowColor: '#000',
-                                            shadowOffset: { width: 0, height: 1 },
-                                            shadowOpacity: 0.2,
-                                            shadowRadius: 2,
-                                        }}
+                                        style={[
+                                            styles.deleteButton,
+                                            isDarkMode
+                                                ? styles.deleteButtonDark
+                                                : styles.deleteButtonLight,
+                                        ]}
                                         onPress={() => onDeleteConversation(item)}
                                         activeOpacity={0.7}>
                                         <Ionicons
@@ -312,22 +256,14 @@ export const HistoryDrawer: React.FC<HistoryDrawerProps> = ({
                         }}
                         contentContainerStyle={[
                             styles.historyList,
-                            {
-                                padding: 12,
-                                paddingTop: 16,
-                            },
+                            styles.historyListPadding,
                         ]}
                         showsVerticalScrollIndicator={false}
                         ListEmptyComponent={() => (
                             <View
                                 style={[
                                     styles.emptyHistoryContainer,
-                                    {
-                                        justifyContent: 'center',
-                                        alignItems: 'center',
-                                        padding: 30,
-                                        marginTop: 30,
-                                    },
+                                    styles.emptyHistoryCustom,
                                 ]}>
                                 <LinearGradient
                                     colors={
@@ -335,14 +271,7 @@ export const HistoryDrawer: React.FC<HistoryDrawerProps> = ({
                                             ? ['rgba(62, 123, 250, 0.15)', 'rgba(62, 123, 250, 0.05)']
                                             : ['rgba(62, 123, 250, 0.1)', 'rgba(62, 123, 250, 0.03)']
                                     }
-                                    style={{
-                                        width: 80,
-                                        height: 80,
-                                        borderRadius: 40,
-                                        justifyContent: 'center',
-                                        alignItems: 'center',
-                                        marginBottom: 20,
-                                    }}>
+                                    style={styles.emptyHistoryIconContainer}>
                                     <Ionicons
                                         name="chatbubbles-outline"
                                         size={40}
@@ -356,25 +285,18 @@ export const HistoryDrawer: React.FC<HistoryDrawerProps> = ({
                                 <Text
                                     style={[
                                         styles.emptyHistoryText,
-                                        {
-                                            color: isDarkMode ? 'rgba(255,255,255,0.8)' : '#16213E',
-                                            fontSize: 18,
-                                            fontWeight: '600',
-                                            marginBottom: 8,
-                                        },
+                                        isDarkMode
+                                            ? styles.emptyHistoryTitleDark
+                                            : styles.emptyHistoryTitleLight,
                                     ]}>
                                     No conversations yet
                                 </Text>
                                 <Text
-                                    style={{
-                                        color: isDarkMode
-                                            ? 'rgba(255,255,255,0.5)'
-                                            : 'rgba(0,0,0,0.5)',
-                                        fontSize: 14,
-                                        textAlign: 'center',
-                                        lineHeight: 20,
-                                        maxWidth: '80%',
-                                    }}>
+                                    style={
+                                        isDarkMode
+                                            ? styles.emptyHistorySubtextDark
+                                            : styles.emptyHistorySubtextLight
+                                    }>
                                     Start a new conversation with LexAI to see your chat history
                                     here
                                 </Text>
@@ -384,45 +306,24 @@ export const HistoryDrawer: React.FC<HistoryDrawerProps> = ({
 
                     <LinearGradient
                         colors={['#3E7BFA', '#6A5AE0']}
-                        style={{
-                            margin: 16,
-                            borderRadius: 14,
-                            shadowColor: '#3E7BFA',
-                            shadowOffset: { width: 0, height: 4 },
-                            shadowOpacity: isDarkMode ? 0.4 : 0.3,
-                            shadowRadius: 8,
-                            elevation: 5,
-                        }}
+                        style={[
+                            styles.newConversationGradient,
+                            isDarkMode
+                                ? styles.newConversationShadowDark
+                                : styles.newConversationShadowLight,
+                        ]}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 0 }}>
                         <TouchableOpacity
-                            style={{
-                                width: '100%',
-                                flexDirection: 'row',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                padding: 16,
-                            }}
+                            style={styles.newConversationButton}
                             onPress={onNewConversation}
                             activeOpacity={0.8}>
                             <View
-                                style={{
-                                    width: 28,
-                                    height: 28,
-                                    borderRadius: 14,
-                                    backgroundColor: 'rgba(255,255,255,0.25)',
-                                    justifyContent: 'center',
-                                    alignItems: 'center',
-                                    marginRight: 12,
-                                }}>
+                                style={styles.newConversationIcon}>
                                 <Ionicons name="add" size={20} color="#FFFFFF" />
                             </View>
                             <Text
-                                style={{
-                                    color: '#FFFFFF',
-                                    fontSize: 16,
-                                    fontWeight: '600',
-                                }}>
+                                style={styles.newConversationText}>
                                 New Conversation
                             </Text>
                         </TouchableOpacity>

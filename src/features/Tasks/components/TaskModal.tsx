@@ -9,21 +9,8 @@ import {
   Switch,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import {Task} from 'shared/types/taskTypes';
-import {styles} from 'tasks/styles/Tasks.styles';
-
-interface TaskModalProps {
-  modalVisible: boolean;
-  isEditMode: boolean;
-  isDark: boolean;
-  newTask: Omit<Task, 'id' | 'userId' | 'createdAt' | 'updatedAt'>;
-  onClose: () => void;
-  onUpdateTask: () => void;
-  onChangeTask: (
-    task: Omit<Task, 'id' | 'userId' | 'createdAt' | 'updatedAt'>,
-  ) => void;
-  getPriorityColor: (priority: string) => string;
-}
+import { styles } from 'tasks/styles/Tasks.styles';
+import { TaskModalProps } from '../types';
 
 const TaskModal = ({
   modalVisible,
@@ -45,11 +32,11 @@ const TaskModal = ({
         <View
           style={[
             styles.modalContent,
-            {backgroundColor: isDark ? '#1a1a1a' : 'white'},
+            isDark ? styles.modalContentBgDark : styles.modalContentBgLight,
           ]}>
           <View style={styles.modalHeader}>
             <Text
-              style={[styles.modalTitle, {color: isDark ? 'white' : 'black'}]}>
+              style={[styles.modalTitle, isDark ? styles.textDark : styles.textLight]}>
               {isEditMode ? 'Edit Task' : 'Add New Task'}
             </Text>
             <TouchableOpacity onPress={onClose}>
@@ -62,23 +49,19 @@ const TaskModal = ({
               <Text
                 style={[
                   styles.inputLabel,
-                  {color: isDark ? 'white' : 'black'},
+                  isDark ? styles.textDark : styles.textLight,
                 ]}>
                 Title *
               </Text>
               <TextInput
                 style={[
                   styles.input,
-                  {
-                    backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5',
-                    color: isDark ? 'white' : 'black',
-                    borderColor: isDark ? '#404040' : '#e0e0e0',
-                  },
+                  isDark ? styles.inputFieldDark : styles.inputFieldLight,
                 ]}
                 placeholder="Task title"
                 placeholderTextColor={isDark ? '#8e8e8e' : '#999'}
                 value={newTask.title}
-                onChangeText={text => onChangeTask({...newTask, title: text})}
+                onChangeText={text => onChangeTask({ ...newTask, title: text })}
               />
             </View>
 
@@ -86,7 +69,7 @@ const TaskModal = ({
               <Text
                 style={[
                   styles.inputLabel,
-                  {color: isDark ? 'white' : 'black'},
+                  isDark ? styles.textDark : styles.textLight,
                 ]}>
                 Description
               </Text>
@@ -94,17 +77,13 @@ const TaskModal = ({
                 style={[
                   styles.input,
                   styles.textArea,
-                  {
-                    backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5',
-                    color: isDark ? 'white' : 'black',
-                    borderColor: isDark ? '#404040' : '#e0e0e0',
-                  },
+                  isDark ? styles.inputFieldDark : styles.inputFieldLight,
                 ]}
                 placeholder="Task description"
                 placeholderTextColor={isDark ? '#8e8e8e' : '#999'}
                 value={newTask.description}
                 onChangeText={text =>
-                  onChangeTask({...newTask, description: text})
+                  onChangeTask({ ...newTask, description: text })
                 }
                 multiline
                 numberOfLines={4}
@@ -115,23 +94,19 @@ const TaskModal = ({
               <Text
                 style={[
                   styles.inputLabel,
-                  {color: isDark ? 'white' : 'black'},
+                  isDark ? styles.textDark : styles.textLight,
                 ]}>
                 Due Date
               </Text>
               <TextInput
                 style={[
                   styles.input,
-                  {
-                    backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5',
-                    color: isDark ? 'white' : 'black',
-                    borderColor: isDark ? '#404040' : '#e0e0e0',
-                  },
+                  isDark ? styles.inputFieldDark : styles.inputFieldLight,
                 ]}
                 placeholder="YYYY-MM-DD"
                 placeholderTextColor={isDark ? '#8e8e8e' : '#999'}
                 value={newTask.dueDate}
-                onChangeText={text => onChangeTask({...newTask, dueDate: text})}
+                onChangeText={text => onChangeTask({ ...newTask, dueDate: text })}
               />
             </View>
 
@@ -139,23 +114,19 @@ const TaskModal = ({
               <Text
                 style={[
                   styles.inputLabel,
-                  {color: isDark ? 'white' : 'black'},
+                  isDark ? styles.textDark : styles.textLight,
                 ]}>
                 Due Time
               </Text>
               <TextInput
                 style={[
                   styles.input,
-                  {
-                    backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5',
-                    color: isDark ? 'white' : 'black',
-                    borderColor: isDark ? '#404040' : '#e0e0e0',
-                  },
+                  isDark ? styles.inputFieldDark : styles.inputFieldLight,
                 ]}
                 placeholder="HH:MM (24-hour format)"
                 placeholderTextColor={isDark ? '#8e8e8e' : '#999'}
                 value={newTask.dueTime}
-                onChangeText={text => onChangeTask({...newTask, dueTime: text})}
+                onChangeText={text => onChangeTask({ ...newTask, dueTime: text })}
               />
             </View>
 
@@ -163,24 +134,20 @@ const TaskModal = ({
               <Text
                 style={[
                   styles.inputLabel,
-                  {color: isDark ? 'white' : 'black'},
+                  isDark ? styles.textDark : styles.textLight,
                 ]}>
                 Category
               </Text>
               <TextInput
                 style={[
                   styles.input,
-                  {
-                    backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5',
-                    color: isDark ? 'white' : 'black',
-                    borderColor: isDark ? '#404040' : '#e0e0e0',
-                  },
+                  isDark ? styles.inputFieldDark : styles.inputFieldLight,
                 ]}
                 placeholder="e.g. Work, Personal, Health"
                 placeholderTextColor={isDark ? '#8e8e8e' : '#999'}
                 value={newTask.category}
                 onChangeText={text =>
-                  onChangeTask({...newTask, category: text})
+                  onChangeTask({ ...newTask, category: text })
                 }
               />
             </View>
@@ -189,7 +156,7 @@ const TaskModal = ({
               <Text
                 style={[
                   styles.inputLabel,
-                  {color: isDark ? 'white' : 'black'},
+                  isDark ? styles.textDark : styles.textLight,
                 ]}>
                 Priority
               </Text>
@@ -199,15 +166,12 @@ const TaskModal = ({
                     key={priority}
                     style={[
                       styles.priorityOption,
-                      {
-                        backgroundColor:
-                          newTask.priority === priority
-                            ? getPriorityColor(priority)
-                            : isDark
-                              ? '#2a2a2a'
-                              : '#f5f5f5',
-                        borderColor: isDark ? '#404040' : '#e0e0e0',
-                      },
+                      isDark ? styles.borderColorDark : styles.borderColorLight,
+                      newTask.priority === priority
+                        ? { backgroundColor: getPriorityColor(priority) }
+                        : isDark
+                          ? styles.unselectedBgDark
+                          : styles.unselectedBgLight,
                     ]}
                     onPress={() =>
                       onChangeTask({
@@ -218,14 +182,9 @@ const TaskModal = ({
                     <Text
                       style={[
                         styles.priorityText,
-                        {
-                          color:
-                            newTask.priority === priority
-                              ? 'white'
-                              : isDark
-                                ? 'white'
-                                : 'black',
-                        },
+                        newTask.priority === priority || isDark
+                          ? styles.selectedTextWhite
+                          : styles.textLight,
                       ]}>
                       {priority.charAt(0).toUpperCase() + priority.slice(1)}
                     </Text>
@@ -238,7 +197,7 @@ const TaskModal = ({
                 <Text
                   style={[
                     styles.inputLabel,
-                    {color: isDark ? 'white' : 'black'},
+                    isDark ? styles.textDark : styles.textLight,
                   ]}>
                   Send Notification
                 </Text>
@@ -253,7 +212,7 @@ const TaskModal = ({
                   }
                   ios_backgroundColor={isDark ? '#555' : '#ccc'}
                   onValueChange={value =>
-                    onChangeTask({...newTask, notify: value})
+                    onChangeTask({ ...newTask, notify: value })
                   }
                   value={newTask.notify}
 
@@ -263,7 +222,7 @@ const TaskModal = ({
                 <Text
                   style={[
                     styles.notifyHint,
-                    {color: isDark ? '#8e8e8e' : '#666'},
+                    isDark ? styles.hintTextDark : styles.hintTextLight,
                   ]}>
                   You will receive a notification at the scheduled time
                 </Text>
@@ -275,7 +234,7 @@ const TaskModal = ({
                 <Text
                   style={[
                     styles.inputLabel,
-                    {color: isDark ? 'white' : 'black'},
+                    isDark ? styles.textDark : styles.textLight,
                   ]}>
                   Status
                 </Text>
@@ -283,28 +242,22 @@ const TaskModal = ({
                   <TouchableOpacity
                     style={[
                       styles.statusOption,
-                      {
-                        backgroundColor: !newTask.completed
-                          ? '#1a9cd8'
-                          : isDark
-                            ? '#2a2a2a'
-                            : '#f5f5f5',
-                        borderColor: isDark ? '#404040' : '#e0e0e0',
-                      },
+                      isDark ? styles.borderColorDark : styles.borderColorLight,
+                      !newTask.completed
+                        ? styles.statusPendingBg
+                        : isDark
+                          ? styles.unselectedBgDark
+                          : styles.unselectedBgLight,
                     ]}
                     onPress={() =>
-                      onChangeTask({...newTask, completed: false})
+                      onChangeTask({ ...newTask, completed: false })
                     }>
                     <Text
                       style={[
                         styles.statusText,
-                        {
-                          color: !newTask.completed
-                            ? 'white'
-                            : isDark
-                              ? 'white'
-                              : 'black',
-                        },
+                        !newTask.completed || isDark
+                          ? styles.selectedTextWhite
+                          : styles.textLight,
                       ]}>
                       Pending
                     </Text>
@@ -312,26 +265,20 @@ const TaskModal = ({
                   <TouchableOpacity
                     style={[
                       styles.statusOption,
-                      {
-                        backgroundColor: newTask.completed
-                          ? '#34C759'
-                          : isDark
-                            ? '#2a2a2a'
-                            : '#f5f5f5',
-                        borderColor: isDark ? '#404040' : '#e0e0e0',
-                      },
+                      isDark ? styles.borderColorDark : styles.borderColorLight,
+                      newTask.completed
+                        ? styles.statusCompletedBg
+                        : isDark
+                          ? styles.unselectedBgDark
+                          : styles.unselectedBgLight,
                     ]}
-                    onPress={() => onChangeTask({...newTask, completed: true})}>
+                    onPress={() => onChangeTask({ ...newTask, completed: true })}>
                     <Text
                       style={[
                         styles.statusText,
-                        {
-                          color: newTask.completed
-                            ? 'white'
-                            : isDark
-                              ? 'white'
-                              : 'black',
-                        },
+                        newTask.completed || isDark
+                          ? styles.selectedTextWhite
+                          : styles.textLight,
                       ]}>
                       Completed
                     </Text>

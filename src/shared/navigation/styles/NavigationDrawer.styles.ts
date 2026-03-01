@@ -347,4 +347,21 @@ export const createStyles = (isDark: boolean) =>
       fontSize: 16,
       fontWeight: 600,
     },
+    activityIndicatorBgDark: {
+      backgroundColor: '#333',
+    },
+    activityIndicatorBgLight: {
+      backgroundColor: '#eee',
+    },
+    lexAiIcon: {
+      width: Math.min(SCREEN_WIDTH * 0.045, 18),
+      height: Math.min(SCREEN_WIDTH * 0.045, 18),
+      tintColor: '#2379C2',
+    },
+    dangerText: {
+      color: '#FF3B30',
+    },
+    modalContentPadding: {
+      padding: 10,
+    },
   });

@@ -1,7 +1,5 @@
 import {Platform, StyleSheet} from 'react-native';
-import { isSmallDevice } from '../constants/common';
-
-
+import {isSmallDevice} from '../constants/common';
 
 export const styles = StyleSheet.create({
   container: {
@@ -200,5 +198,157 @@ export const styles = StyleSheet.create({
     borderRadius: 8,
     marginLeft: 8,
     borderWidth: 1,
+  },
+  // Room screen styles
+  screenContainer: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  screenContainerDark: {
+    backgroundColor: '#121212',
+  },
+  scrollContentSmall: {
+    padding: 12,
+  },
+  // TaskListItem styles
+  taskItemBgDark: {
+    backgroundColor: '#2a2a2a',
+  },
+  taskItemBgLight: {
+    backgroundColor: '#f5f5f5',
+  },
+  taskItemTitle: {
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  textWhite: {
+    color: 'white',
+  },
+  textBlack: {
+    color: 'black',
+  },
+  taskItemDescription: {
+    marginTop: 5,
+  },
+  descriptionTextDark: {
+    color: '#bbb',
+  },
+  descriptionTextLight: {
+    color: '#666',
+  },
+  taskItemMetaRow: {
+    flexDirection: 'row',
+    marginTop: 8,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  flexRow: {
+    flexDirection: 'row',
+  },
+  taskItemDate: {
+    fontSize: 12,
+    marginRight: 10,
+  },
+  dateTextDark: {
+    color: '#aaa',
+  },
+  dateTextLight: {
+    color: '#888',
+  },
+  taskItemPriority: {
+    fontSize: 12,
+  },
+  taskItemMemberBadge: {
+    fontSize: 11,
+    backgroundColor: '#1a9cd8',
+    color: 'white',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  taskItemProgressTrack: {
+    height: 4,
+    borderRadius: 2,
+    marginTop: 8,
+    overflow: 'hidden',
+  },
+  progressTrackBgDark: {
+    backgroundColor: '#404040',
+  },
+  progressTrackBgLight: {
+    backgroundColor: '#e0e0e0',
+  },
+  taskItemProgressFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
+  // TaskSelectionModal styles
+  modalBgDark: {
+    backgroundColor: '#1a1a1a',
+  },
+  modalBgLight: {
+    backgroundColor: 'white',
+  },
+  modalRefreshMargin: {
+    marginRight: 15,
+  },
+  modalRefreshText: {
+    fontSize: 16,
+  },
+  refreshTextActiveDark: {
+    color: '#2379C2',
+  },
+  refreshTextActiveLight: {
+    color: '#2379C2',
+  },
+  refreshTextDisabledDark: {
+    color: '#555',
+  },
+  refreshTextDisabledLight: {
+    color: '#ccc',
+  },
+  cancelText: {
+    fontSize: 16,
+  },
+  subtitleText: {
+    marginTop: 5,
+  },
+  subtitleTextDark: {
+    color: '#aaa',
+  },
+  subtitleTextLight: {
+    color: '#666',
+  },
+  progressFillCompleted: {
+    backgroundColor: '#34C759',
+  },
+  progressFillActive: {
+    backgroundColor: '#1a9cd8',
+  },
+  flex1: {
+    flex: 1,
+  },
+  lightText: {
+    color: 'black',
+  },
+  placeholderTextDark: {
+    color: '#888888',
+  },
+  placeholderTextLight: {
+    color: '#666666',
+  },
+  clearButtonDark: {
+    backgroundColor: '#333',
+    borderColor: '#444',
+  },
+  clearButtonLight: {
+    backgroundColor: '#f0f0f0',
+    borderColor: '#ddd',
+  },
+  clearButtonText: {
+    color: '#ff3b30',
+    marginVertical: 'auto',
+    fontSize: 18,
+    paddingBottom: 3,
   },
 });

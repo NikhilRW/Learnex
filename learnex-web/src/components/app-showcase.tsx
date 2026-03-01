@@ -171,17 +171,17 @@ export function AppShowcase() {
                         9:41
                       </div>
                       {/* Dynamic island style notch */}
-                      <div className="absolute left-1/2 top-0 transform -translate-x-1/2 w-14 h-4 bg-black rounded-b-xl"></div>
+                      <div className="absolute left-1/2 top-0 transform -translate-x-1/2 w-14 h-4 bg-black rounded-b-xl" />
                       <div className="flex space-x-1.5">
                         <div className="flex space-x-0.5">
-                          <div className="h-1.5 w-1.5 rounded-sm bg-white/90"></div>
-                          <div className="h-1.5 w-1.5 rounded-sm bg-white/90"></div>
-                          <div className="h-1.5 w-1.5 rounded-sm bg-white/90"></div>
-                          <div className="h-1.5 w-1.5 rounded-sm bg-white/90"></div>
+                          <div className="h-1.5 w-1.5 rounded-sm bg-white/90" />
+                          <div className="h-1.5 w-1.5 rounded-sm bg-white/90" />
+                          <div className="h-1.5 w-1.5 rounded-sm bg-white/90" />
+                          <div className="h-1.5 w-1.5 rounded-sm bg-white/90" />
                         </div>
-                        <div className="w-2 h-1.5 bg-white/90 rounded-sm"></div>
+                        <div className="w-2 h-1.5 bg-white/90 rounded-sm" />
                         <div className="flex items-center">
-                          <div className="w-2.5 h-1.5 bg-white/90 rounded-[1px]"></div>
+                          <div className="w-2.5 h-1.5 bg-white/90 rounded-[1px]" />
                         </div>
                       </div>
                     </div>
@@ -203,11 +203,11 @@ export function AppShowcase() {
                         </div>
                       </div>
                       {/* Subtle reflective glass effect */}
-                      <div className="absolute inset-x-0 top-6 bottom-12 mx-1 bg-gradient-to-b from-white/10 to-transparent opacity-20 pointer-events-none rounded-2xl"></div>
+                      <div className="absolute inset-x-0 top-6 bottom-12 mx-1 bg-gradient-to-b from-white/10 to-transparent opacity-20 pointer-events-none rounded-2xl" />
 
                       {/* Gesture navigation bar */}
                       <div className="absolute bottom-0 left-0 right-0 h-12 bg-black flex items-center justify-center">
-                        <div className="w-[100px] h-[5px] bg-white/70 rounded-full"></div>
+                        <div className="w-[100px] h-[5px] bg-white/70 rounded-full" />
                       </div>
                     </div>
                   </div>
@@ -245,9 +245,9 @@ export function AppShowcase() {
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round">
-                  <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"></path>
-                  <path d="M9 18h6"></path>
-                  <path d="M10 22h4"></path>
+                  <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" />
+                  <path d="M9 18h6" />
+                  <path d="M10 22h4" />
                 </svg>
               ),
               gradient: 'from-blue-500/20 to-blue-500/5',
@@ -267,15 +267,15 @@ export function AppShowcase() {
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round">
-                  <path d="m8 2 4 4"></path>
-                  <path d="m12 2-4 4"></path>
-                  <path d="M18 6H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2Z"></path>
-                  <path d="M15 11v.01"></path>
-                  <path d="M15 14v.01"></path>
-                  <path d="M15 17v.01"></path>
-                  <path d="M9 11h3"></path>
-                  <path d="M9 14h3"></path>
-                  <path d="M9 17h3"></path>
+                  <path d="m8 2 4 4" />
+                  <path d="m12 2-4 4" />
+                  <path d="M18 6H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2Z" />
+                  <path d="M15 11v.01" />
+                  <path d="M15 14v.01" />
+                  <path d="M15 17v.01" />
+                  <path d="M9 11h3" />
+                  <path d="M9 14h3" />
+                  <path d="M9 17h3" />
                 </svg>
               ),
               gradient: 'from-purple-500/20 to-purple-500/5',
@@ -295,10 +295,10 @@ export function AppShowcase() {
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round">
-                  <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
-                  <path d="M14 2v6h6"></path>
-                  <circle cx="11.5" cy="14.5" r="2.5"></circle>
-                  <path d="M13.25 16.25 15 18"></path>
+                  <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+                  <path d="M14 2v6h6" />
+                  <circle cx="11.5" cy="14.5" r="2.5" />
+                  <path d="M13.25 16.25 15 18" />
                 </svg>
               ),
               gradient: 'from-green-500/20 to-green-500/5',
@@ -341,8 +341,8 @@ export function AppShowcase() {
               strokeLinecap="round"
               strokeLinejoin="round"
               className="ml-2">
-              <path d="M5 12h14"></path>
-              <path d="m12 5 7 7-7 7"></path>
+              <path d="M5 12h14" />
+              <path d="m12 5 7 7-7 7" />
             </svg>
           </motion.a>
         </div>

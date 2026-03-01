@@ -40,10 +40,10 @@ export const LoadingBubble: React.FC<LoadingBubbleProps> = ({
             <View
                 style={[
                     styles.loadingBubble,
+                    styles.loadingBubbleBorder,
                     {
                         backgroundColor: colors.aiBubble,
                         borderColor: colors.primary,
-                        borderWidth: 1,
                     },
                 ]}>
                 <LoadingDots
@@ -64,5 +64,5 @@ export const LoadingBubble: React.FC<LoadingBubbleProps> = ({
 };
 
 export const FooterSpacer: React.FC = () => {
-    return <View style={{ height: 40 }} />;
+    return <View style={styles.footerSpacer} />;
 };

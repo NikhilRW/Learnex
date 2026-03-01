@@ -495,7 +495,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
             title={getUsernameForLogo(comment.username)}
             size={40}
             containerStyle={[styles.commentAvatar, styles.commentAvatarWithBg]}
-            titleStyle={{ fontSize: 16 }}
+            titleStyle={styles.avatarTitleText}
           />
         )}
 

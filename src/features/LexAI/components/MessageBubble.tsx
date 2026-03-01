@@ -48,11 +48,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                         end={{ x: 1, y: 1 }}>
                         <Image
                             source={require('shared/res/pngs/lexai.png')}
-                            style={{
-                                width: Math.min(SCREEN_WIDTH * 0.045, 18),
-                                height: Math.min(SCREEN_WIDTH * 0.045, 18),
-                                tintColor: 'white',
-                            }}
+                            style={styles.headerIconImage}
                         />
                     </LinearGradient>
                 </View>
@@ -92,11 +88,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                                     <Text
                                         style={[
                                             styles.searchResultIndex,
-                                            {
-                                                color: isUser
-                                                    ? 'rgba(255,255,255,0.8)'
-                                                    : colors.primary,
-                                            },
+                                            isUser
+                                                ? styles.userSearchResultIndex
+                                                : { color: colors.primary },
                                         ]}>
                                         {index + 1}.
                                     </Text>
@@ -116,11 +110,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                                             <Text
                                                 style={[
                                                     styles.searchResultUrl,
-                                                    {
-                                                        color: isUser
-                                                            ? 'rgba(255,255,255,0.6)'
-                                                            : colors.subtext,
-                                                    },
+                                                    isUser
+                                                        ? styles.userSearchResultUrl
+                                                        : { color: colors.subtext },
                                                 ]}>
                                                 {link.url}
                                             </Text>
@@ -128,11 +120,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                                                 <Text
                                                     style={[
                                                         styles.searchResultSnippet,
-                                                        {
-                                                            color: isUser
-                                                                ? 'rgba(255,255,255,0.8)'
-                                                                : colors.text,
-                                                        },
+                                                        isUser
+                                                            ? styles.userSearchResultSnippet
+                                                            : { color: colors.text },
                                                     ]}>
                                                     {link.snippet}
                                                 </Text>
@@ -156,7 +146,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                 <Text
                     style={[
                         styles.timestamp,
-                        { color: isUser ? 'rgba(255,255,255,0.7)' : colors.subtext },
+                        isUser
+                            ? styles.userTimestamp
+                            : { color: colors.subtext },
                     ]}>
                     {new Date(item.timestamp).toLocaleTimeString([], {
                         hour: '2-digit',

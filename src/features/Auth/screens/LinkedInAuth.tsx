@@ -1,14 +1,15 @@
 import axios from 'axios';
-import React, { useRef } from 'react';
-import { View } from 'react-native';
+import React, {useRef} from 'react';
+import {View} from 'react-native';
 import Config from 'react-native-config';
 import WebView from 'react-native-webview';
-import { ShouldStartLoadRequest } from 'react-native-webview/lib/WebViewTypes';
-import { useTypedSelector } from 'hooks/redux/useTypedSelector';
+import {ShouldStartLoadRequest} from 'react-native-webview/lib/WebViewTypes';
+import {useTypedSelector} from 'hooks/redux/useTypedSelector';
 import Snackbar from 'react-native-snackbar';
-import { useTypedDispatch } from 'hooks/redux/useTypedDispatch';
-import { changeIsLoggedIn, changeProfileColor } from 'shared/reducers/User';
-import { getRandomColors } from 'shared/helpers/common/stringHelpers';
+import {useTypedDispatch} from 'hooks/redux/useTypedDispatch';
+import {changeIsLoggedIn, changeProfileColor} from 'shared/reducers/User';
+import {getRandomColors} from 'shared/helpers/common/stringHelpers';
+import {styles} from '../styles/LinkedInAuth.styles';
 
 const LinkedInAuth = () => {
   const ref = useRef<WebView>(null);
@@ -41,7 +42,7 @@ const LinkedInAuth = () => {
       },
     );
     if (response.data.access_token !== null) {
-      const { success, error } = await firebase.auth.linkedinSignIn(
+      const {success, error} = await firebase.auth.linkedinSignIn(
         response.data.access_token,
       );
       if (success) {
@@ -57,25 +58,16 @@ const LinkedInAuth = () => {
         console.log(error);
       }
     } else {
-      Snackbar.show({ text: 'LinkedIn Authentication Failed' });
+      Snackbar.show({text: 'LinkedIn Authentication Failed'});
     }
   };
-  let a;
   return (
     <View className="flex-1">
       <WebView
         source={{
           uri: 'https://www.linkedin.com/oauth/v2/authorization?redirect_uri=https%3A%2F%2Flearnex-web.vercel.app%2Fauth%2Flinkedin%2Fsign-in&client_id=782j1d8cgc8xaw&response_type=code&scope=email%20profile',
         }}
-        style={{
-          flex: 1,
-          height: '100%',
-          position: 'absolute',
-          zIndex: 1000,
-          width: '100%',
-          top: 0,
-          left: 0,
-        }}
+        style={styles.container}
         ref={ref}
         onShouldStartLoadWithRequest={handleURIChange}
       />

@@ -28,34 +28,41 @@ export const TaskSelectionModal: React.FC<TaskSelectionModalProps> = ({
                 <View
                     style={[
                         styles.modalContent,
-                        { backgroundColor: isDark ? '#1a1a1a' : 'white' },
+                        isDark ? styles.modalBgDark : styles.modalBgLight,
                     ]}>
                     <View style={styles.modalHeader}>
                         <Text
-                            style={[styles.modalTitle, { color: isDark ? 'white' : 'black' }]}>
+                            style={[
+                                styles.modalTitle,
+                                isDark ? styles.textWhite : styles.textBlack,
+                            ]}>
                             Select a Team Task
                         </Text>
-                        <View style={{ flexDirection: 'row' }}>
+                        <View style={styles.flexRow}>
                             <TouchableOpacity
                                 onPress={onRefresh}
-                                style={{ marginRight: 15 }}
+                                style={styles.modalRefreshMargin}
                                 disabled={isLoading}>
                                 <Text
-                                    style={{
-                                        color: isLoading
+                                    style={[
+                                        styles.modalRefreshText,
+                                        isLoading
                                             ? isDark
-                                                ? '#555'
-                                                : '#ccc'
+                                                ? styles.refreshTextDisabledDark
+                                                : styles.refreshTextDisabledLight
                                             : isDark
-                                                ? '#2379C2'
-                                                : '#2379C2',
-                                        fontSize: 16,
-                                    }}>
+                                                ? styles.refreshTextActiveDark
+                                                : styles.refreshTextActiveLight,
+                                    ]}>
                                     Refresh
                                 </Text>
                             </TouchableOpacity>
                             <TouchableOpacity onPress={onClose}>
-                                <Text style={{ color: isDark ? 'white' : 'black', fontSize: 16 }}>
+                                <Text
+                                    style={[
+                                        styles.cancelText,
+                                        isDark ? styles.textWhite : styles.textBlack,
+                                    ]}>
                                     Cancel
                                 </Text>
                             </TouchableOpacity>
@@ -64,16 +71,20 @@ export const TaskSelectionModal: React.FC<TaskSelectionModalProps> = ({
 
                     {isLoading ? (
                         <View style={styles.loadingContainer}>
-                            <Text style={{ color: isDark ? 'white' : 'black' }}>
+                            <Text style={isDark ? styles.textWhite : styles.textBlack}>
                                 Loading team tasks...
                             </Text>
                         </View>
                     ) : tasks.length === 0 ? (
                         <View style={styles.emptyContainer}>
-                            <Text style={{ color: isDark ? 'white' : 'black' }}>
+                            <Text style={isDark ? styles.textWhite : styles.textBlack}>
                                 No team tasks found
                             </Text>
-                            <Text style={{ color: isDark ? '#aaa' : '#666', marginTop: 5 }}>
+                            <Text
+                                style={[
+                                    styles.subtitleText,
+                                    isDark ? styles.subtitleTextDark : styles.subtitleTextLight,
+                                ]}>
                                 Create team tasks in the Team Tasks section first
                             </Text>
                         </View>

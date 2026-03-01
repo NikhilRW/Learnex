@@ -21,7 +21,7 @@ function JoinRedirectContent() {
 
     return (
         <div className="flex min-h-screen flex-col items-center justify-center p-4 text-center">
-            <div className="w-16 h-16 border-t-4 border-blue-500 border-solid rounded-full animate-spin"></div>
+            <div className="w-16 h-16 border-t-4 border-blue-500 border-solid rounded-full animate-spin" />
             <p className="mt-4 text-lg">Redirecting...</p>
         </div>
     );
@@ -31,7 +31,7 @@ function JoinRedirectContent() {
 function Loading() {
     return (
         <div className="flex min-h-screen flex-col items-center justify-center p-4 text-center">
-            <div className="w-16 h-16 border-t-4 border-blue-500 border-solid rounded-full animate-spin"></div>
+            <div className="w-16 h-16 border-t-4 border-blue-500 border-solid rounded-full animate-spin" />
             <p className="mt-4 text-lg">Loading...</p>
         </div>
     );

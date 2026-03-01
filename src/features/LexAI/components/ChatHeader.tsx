@@ -42,10 +42,12 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
             <View style={styles.headerContent}>
                 <View style={styles.headerTitleArea}>
                     <Animated.View
-                        style={{
-                            marginRight: 8,
-                            transform: [{ rotate: spin }, { scale: iconScale }],
-                        }}>
+                        style={[
+                            styles.headerAnimatedWrapper,
+                            {
+                                transform: [{ rotate: spin }, { scale: iconScale }],
+                            },
+                        ]}>
                         <LinearGradient
                             colors={
                                 isDarkMode ? ['#4E7CF6', '#6A5AE0'] : ['#3E7BFA', '#6A5AE0']
@@ -53,11 +55,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                             style={styles.headerIcon}>
                             <Image
                                 source={require('shared/res/pngs/lexai.png')}
-                                style={{
-                                    width: Math.min(SCREEN_WIDTH * 0.045, 18),
-                                    height: Math.min(SCREEN_WIDTH * 0.045, 18),
-                                    tintColor: 'white',
-                                }}
+                                style={styles.headerIconImage}
                             />
                         </LinearGradient>
                     </Animated.View>
@@ -67,13 +65,13 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                 </View>
                 <View style={styles.headerControls}>
                     <TouchableOpacity
-                        style={[styles.headerButton, { marginRight: 12 }]}
+                        style={[styles.headerButton, styles.headerButtonMargin]}
                         onPress={onHistoryPress}>
                         <Ionicons name="time-outline" size={22} color={colors.primary} />
                     </TouchableOpacity>
                     <View style={styles.modeToggleContainer}>
                         <Text
-                            style={{ color: colors.subtext, fontSize: 14, marginRight: 8 }}>
+                            style={[styles.modeToggleText, { color: colors.subtext }]}>
                             {currentMode === LexAIMode.AGENT ? 'Agent' : 'Chat'}
                         </Text>
                         <Switch

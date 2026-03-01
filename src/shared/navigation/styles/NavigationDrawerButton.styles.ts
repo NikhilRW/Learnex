@@ -2,8 +2,16 @@ import {StyleSheet, Dimensions} from 'react-native';
 
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
 
-export const getStyles = (isDark: boolean, profileColor: string) =>
+export const getStyles = (
+  isDark: boolean,
+  profileColor: string,
+  insetsTop: number = 0,
+) =>
   StyleSheet.create({
+    outerContainer: {
+      paddingTop: insetsTop,
+      paddingBottom: 10,
+    },
     image: {
       height: 20,
       width: 20,
@@ -33,7 +41,7 @@ export const getStyles = (isDark: boolean, profileColor: string) =>
       flex: 1,
       minHeight: 40,
       overflow: 'hidden',
-      backgroundColor: isDark ? '#2a2a2a' : '#F0F0F0'
+      backgroundColor: isDark ? '#2a2a2a' : '#F0F0F0',
     },
     searchIcon: {
       marginRight: '2%',

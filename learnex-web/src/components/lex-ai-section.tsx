@@ -30,8 +30,8 @@ export function LexAISection() {
     return (
         <section id="lex-ai" className="bg-background relative py-16 overflow-hidden">
             {/* Gradient background elements */}
-            <div className="absolute top-0 inset-x-0 h-[25rem] bg-gradient-to-b from-primary/5 to-transparent pointer-events-none"></div>
-            <div className="absolute bottom-0 inset-x-0 h-[20rem] bg-gradient-to-t from-primary/5 to-transparent pointer-events-none"></div>
+            <div className="absolute top-0 inset-x-0 h-[25rem] bg-gradient-to-b from-primary/5 to-transparent pointer-events-none" />
+            <div className="absolute bottom-0 inset-x-0 h-[20rem] bg-gradient-to-t from-primary/5 to-transparent pointer-events-none" />
 
             {/* Floating elements */}
             <motion.div
@@ -91,17 +91,17 @@ export function LexAISection() {
                             <div className="absolute top-0 z-10 w-full h-6 bg-black flex items-center justify-between px-3">
                                 <div className="text-white text-[8px] font-medium">9:41</div>
                                 {/* Dynamic island style notch */}
-                                <div className="absolute left-1/2 top-0 transform -translate-x-1/2 w-14 h-4 bg-black rounded-b-xl"></div>
+                                <div className="absolute left-1/2 top-0 transform -translate-x-1/2 w-14 h-4 bg-black rounded-b-xl" />
                                 <div className="flex space-x-1.5">
                                     <div className="flex space-x-0.5">
-                                        <div className="h-1.5 w-1.5 rounded-sm bg-white/90"></div>
-                                        <div className="h-1.5 w-1.5 rounded-sm bg-white/90"></div>
-                                        <div className="h-1.5 w-1.5 rounded-sm bg-white/90"></div>
-                                        <div className="h-1.5 w-1.5 rounded-sm bg-white/90"></div>
+                                        <div className="h-1.5 w-1.5 rounded-sm bg-white/90" />
+                                        <div className="h-1.5 w-1.5 rounded-sm bg-white/90" />
+                                        <div className="h-1.5 w-1.5 rounded-sm bg-white/90" />
+                                        <div className="h-1.5 w-1.5 rounded-sm bg-white/90" />
                                     </div>
-                                    <div className="w-2 h-1.5 bg-white/90 rounded-sm"></div>
+                                    <div className="w-2 h-1.5 bg-white/90 rounded-sm" />
                                     <div className="flex items-center">
-                                        <div className="w-2.5 h-1.5 bg-white/90 rounded-[1px]"></div>
+                                        <div className="w-2.5 h-1.5 bg-white/90 rounded-[1px]" />
                                     </div>
                                 </div>
                             </div>

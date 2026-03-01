@@ -36,14 +36,14 @@ const ParticipantItem: React.FC<ParticipantItemProps> = ({
         <TouchableOpacity
             onLongPress={() => onLongPress(participant.id)}
             activeOpacity={1}
-            style={{ flex: 1 }}>
+            style={styles.flex1}>
             <View
                 style={[
                     styles.participantContainer,
                     isParticipantSpeaking && styles.participantSpeakingContainer,
                     styles.participantPinnedContainer,
                     isCurrentUser && styles.currentUserContainer,
-                    !isPinned && !isVideoOn && { backgroundColor: 'rgba(0,0,0,0.2)' },
+                    !isPinned && !isVideoOn && styles.participantVideoOffBg,
                 ]}>
                 {/* RTCView or Placeholder */}
                 {participant.stream && isVideoOn ? (
@@ -57,7 +57,7 @@ const ParticipantItem: React.FC<ParticipantItemProps> = ({
                     <View
                         style={[
                             styles.videoPlaceholder,
-                            { backgroundColor: isPinned ? '#1f1f1f' : 'rgba(0,0,0,0.2)' },
+                            isPinned ? styles.videoPlaceholderPinned : styles.videoPlaceholderUnpinned,
                         ]}>
                         <View
                             style={[

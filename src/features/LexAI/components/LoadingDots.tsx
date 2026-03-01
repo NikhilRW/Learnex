@@ -27,13 +27,7 @@ export const LoadingDots: React.FC<LoadingDotsProps> = ({
     dot3Scale,
     dot3TranslateY,
 }) => (
-    <View
-        style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'flex-start',
-            height: 20,
-        }}>
+    <View style={styles.loadingDotsContainer}>
         <Animated.View
             style={[
                 styles.loadingDot,

@@ -541,7 +541,7 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
             style={[
               styles.avatar,
               styles.activityIndicatorContainer,
-              { backgroundColor: isDark ? '#333' : '#eee' },
+              isDark ? styles.activityIndicatorBgDark : styles.activityIndicatorBgLight,
             ]}>
             <ActivityIndicator color="#2379C2" size="small" />
           </View>
@@ -588,11 +588,7 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
         ) : option === 'LexAI' ? (
           <Image
             source={require('shared/res/pngs/lexai.png')}
-            style={{
-              width: Math.min(SCREEN_WIDTH * 0.045, 18),
-              height: Math.min(SCREEN_WIDTH * 0.045, 18),
-              tintColor: isDark ? '#2379C2' : '#2379C2',
-            }}
+            style={styles.lexAiIcon}
           />
         ) : (
           <FontAwesome
@@ -758,7 +754,7 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
                   : styles.modalPhotoPickerCancelButtonLight,
               ]}
               onPress={() => setPhotoPickerVisible(false)}>
-              <Text style={[styles.photoPickerCancelText, { color: '#FF3B30' }]}>
+              <Text style={[styles.photoPickerCancelText, styles.dangerText]}>
                 Cancel
               </Text>
             </TouchableOpacity>
@@ -782,7 +778,7 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
               isDark
                 ? styles.modalPhotoPickerContainerDark
                 : styles.modalPhotoPickerContainerLight,
-              { padding: 10 },
+              styles.modalContentPadding,
             ]}>
             <Text
               style={[
@@ -827,7 +823,7 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
                     : styles.usernameCancelButtonLight,
                 ]}
                 onPress={() => setUsernameEditVisible(false)}>
-                <Text style={[styles.usernameButtonText, { color: '#FF3B30' }]}>
+                <Text style={[styles.usernameButtonText, styles.dangerText]}>
                   Cancel
                 </Text>
               </TouchableOpacity>

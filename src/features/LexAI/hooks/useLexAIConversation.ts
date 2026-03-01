@@ -218,7 +218,7 @@ export const useLexAIConversation = ({
 
       scrollToEnd();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [conversation, currentMode, dispatch, scrollToEnd]);
 
   // Show history drawer with animation

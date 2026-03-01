@@ -58,7 +58,7 @@ const ParticipantsPanel: React.FC<ParticipantsPanelProps> = ({
                     <Text
                         style={[
                             styles.participantListItemName,
-                            { color: isDark ? 'white' : 'black' },
+                            isDark ? styles.textWhite : styles.textBlack,
                         ]}
                         numberOfLines={1}>
                         {item.name} {isCurrentUser && '(You)'}

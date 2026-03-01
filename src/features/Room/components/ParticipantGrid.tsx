@@ -56,10 +56,10 @@ const ParticipantGrid: React.FC<ParticipantGridProps> = ({
             <View
                 style={[
                     styles.participantWrapper,
+                    isPinned ? styles.pinnedZIndex : styles.unpinnedZIndex,
                     {
                         width: `${100 / currentLayout.numColumns}%`,
                         height: currentLayout.itemHeight,
-                        zIndex: isPinned ? 10 : 1,
                     },
                 ]}>
                 <ParticipantItem

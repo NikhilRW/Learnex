@@ -3,8 +3,8 @@ import {StyleSheet} from 'react-native';
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
-    width:"100%",
-    height:"100%",
+    width: '100%',
+    height: '100%',
     backgroundColor: 'black',
   },
   mainContainer: {
@@ -384,5 +384,381 @@ export const styles = StyleSheet.create({
     height: 10,
     borderRadius: 5,
     margin: 3,
+  },
+  loadingBubbleBorder: {
+    borderWidth: 1,
+  },
+  footerSpacer: {
+    height: 40,
+  },
+  headerAnimatedWrapper: {
+    marginRight: 8,
+  },
+  headerIconImage: {
+    width: 18,
+    height: 18,
+    tintColor: 'white',
+  },
+  headerButtonMargin: {
+    marginRight: 12,
+  },
+  modeToggleText: {
+    fontSize: 14,
+    marginRight: 8,
+  },
+  inputMarginTop: {
+    marginTop: 10,
+  },
+  inputBorderTop: {
+    borderTopWidth: 1,
+  },
+  positionRelative: {
+    position: 'relative',
+  },
+  sendGlowEffect: {
+    position: 'absolute',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    transform: [{translateX: -7.5}, {translateY: -7.5}],
+    zIndex: -1,
+  },
+  sendIconOffset: {
+    transform: [{translateX: -1}],
+  },
+  userTimestamp: {
+    color: 'rgba(255,255,255,0.7)',
+  },
+  flexRow: {
+    flexDirection: 'row',
+  },
+  flex1: {
+    flex: 1,
+  },
+  taskSelectedTextDark: {
+    color: 'white',
+  },
+  taskSelectedTextLight: {
+    color: 'black',
+  },
+  taskPlaceholderTextDark: {
+    color: '#888888',
+  },
+  taskPlaceholderTextLight: {
+    color: '#666666',
+  },
+  userSearchResultIndex: {
+    color: 'rgba(255,255,255,0.8)',
+  },
+  userSearchResultUrl: {
+    color: 'rgba(255,255,255,0.6)',
+  },
+  userSearchResultSnippet: {
+    color: 'rgba(255,255,255,0.8)',
+  },
+  inputContainerDark: {
+    backgroundColor: 'rgba(20, 30, 48, 0.85)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(26, 39, 64, 0.8)',
+  },
+  inputContainerLight: {
+    backgroundColor: 'rgba(230, 240, 255, 0.85)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(218, 234, 255, 0.8)',
+  },
+  inputWrapperDark: {
+    backgroundColor: 'rgba(15, 25, 40, 0.7)',
+    borderColor: 'rgba(36, 54, 86, 0.7)',
+  },
+  inputWrapperLight: {
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    borderColor: 'rgba(199, 221, 255, 0.7)',
+  },
+  glowAgent: {
+    backgroundColor: '#3E7BFA',
+  },
+  glowChat: {
+    backgroundColor: '#FF375F',
+  },
+  sendButtonShadowBase: {
+    shadowOffset: {width: 0, height: 3},
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  // HistoryDrawer styles
+  historyBackdropDark: {
+    backgroundColor: 'rgba(10, 20, 35, 0.7)',
+  },
+  historyBackdropLight: {
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  historyDrawerDark: {
+    backgroundColor: '#121C2E',
+    borderTopLeftRadius: 16,
+    borderBottomLeftRadius: 16,
+  },
+  historyDrawerLight: {
+    backgroundColor: '#F5F9FF',
+    borderTopLeftRadius: 16,
+    borderBottomLeftRadius: 16,
+  },
+  historyHeaderCustom: {
+    borderBottomWidth: 0,
+    paddingVertical: 18,
+    borderTopLeftRadius: 16,
+  },
+  historyHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  historyHeaderIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  historyTitleCustom: {
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  historyTitleDark: {
+    color: '#FFFFFF',
+  },
+  historyTitleLight: {
+    color: '#16213E',
+  },
+  historyCloseButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  historyCloseButtonDark: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  historyCloseButtonLight: {
+    backgroundColor: 'rgba(0,0,0,0.05)',
+  },
+  historyItemSpacing: {
+    marginHorizontal: 8,
+    marginVertical: 4,
+  },
+  historyItemBorderDark: {
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.07)',
+  },
+  historyItemActiveDark: {
+    backgroundColor: 'rgba(62, 123, 250, 0.2)',
+    borderRadius: 12,
+    padding: 14,
+  },
+  historyItemActiveLight: {
+    backgroundColor: 'rgba(62, 123, 250, 0.1)',
+    borderRadius: 12,
+    padding: 14,
+  },
+  historyItemInactiveDark: {
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 12,
+    padding: 14,
+  },
+  historyItemInactiveLight: {
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    borderRadius: 12,
+    padding: 14,
+  },
+  historyItemActiveBorder: {
+    borderLeftWidth: 3,
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    shadowColor: '#3E7BFA',
+  },
+  historyItemInactiveBorder: {
+    borderLeftWidth: 0,
+    shadowColor: 'transparent',
+  },
+  historyItemBorderAgent: {
+    borderLeftColor: '#3E7BFA',
+  },
+  historyItemBorderChat: {
+    borderLeftColor: '#FF375F',
+  },
+  historyItemDateDark: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 12,
+  },
+  historyItemDateLight: {
+    color: 'rgba(0,0,0,0.6)',
+    fontSize: 12,
+  },
+  historyItemDateActive: {
+    fontWeight: '500',
+  },
+  modeBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  modeBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  historyItemPreviewCustom: {
+    fontSize: 14,
+    marginTop: 6,
+  },
+  historyPreviewDark: {
+    color: '#E0E0E0',
+  },
+  historyPreviewLight: {
+    color: '#16213E',
+  },
+  historyPreviewActive: {
+    fontWeight: '500',
+    opacity: 1,
+  },
+  historyPreviewInactive: {
+    fontWeight: 'normal',
+    opacity: 0.85,
+  },
+  historyMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  historyIconMargin: {
+    marginRight: 4,
+  },
+  historyItemCountDark: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 12,
+  },
+  historyItemCountLight: {
+    color: 'rgba(0,0,0,0.5)',
+    fontSize: 12,
+  },
+  deleteButton: {
+    borderRadius: 22,
+    width: 38,
+    height: 38,
+    justifyContent: 'center',
+    alignItems: 'center',
+    margin: 8,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 1},
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+  },
+  deleteButtonDark: {
+    backgroundColor: 'rgba(28, 39, 57, 0.8)',
+  },
+  deleteButtonLight: {
+    backgroundColor: 'rgba(243, 244, 246, 0.8)',
+  },
+  historyListPadding: {
+    padding: 12,
+    paddingTop: 16,
+  },
+  emptyHistoryCustom: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 30,
+    marginTop: 30,
+  },
+  emptyHistoryIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  emptyHistoryTitleDark: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  emptyHistoryTitleLight: {
+    color: '#16213E',
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  emptyHistorySubtextDark: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+    maxWidth: '80%',
+  },
+  emptyHistorySubtextLight: {
+    color: 'rgba(0,0,0,0.5)',
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+    maxWidth: '80%',
+  },
+  newConversationGradient: {
+    margin: 16,
+    borderRadius: 14,
+    shadowColor: '#3E7BFA',
+    shadowOffset: {width: 0, height: 4},
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  newConversationShadowDark: {
+    shadowOpacity: 0.4,
+  },
+  newConversationShadowLight: {
+    shadowOpacity: 0.3,
+  },
+  newConversationButton: {
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  newConversationIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  newConversationText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  loadingDotsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    height: 20,
+  },
+  suggestionsContainerBorderDark: {
+    borderTopColor: 'rgba(255,255,255,0.1)',
+  },
+  suggestionsContainerBorderLight: {
+    borderTopColor: 'rgba(0,0,0,0.05)',
+  },
+  suggestionChipDark: {
+    backgroundColor: 'rgba(10, 132, 255, 0.15)',
+    borderColor: 'rgba(62, 123, 250, 0.3)',
+  },
+  suggestionChipLight: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#DBEAFE',
   },
 });

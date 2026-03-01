@@ -346,4 +346,7 @@ export const createStyles = (isDark: boolean) =>
     commentAvatarWithBg: {
       backgroundColor: '#3EB9F1',
     },
+    avatarTitleText: {
+      fontSize: 16,
+    },
   });

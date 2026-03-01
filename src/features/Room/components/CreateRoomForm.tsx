@@ -60,20 +60,20 @@ export const CreateRoomForm: React.FC<CreateRoomFormProps> = ({
                 <Text style={[styles.label, isDark && styles.darkText]}>
                     Associated Team Task (Optional)
                 </Text>
-                <View style={{ flexDirection: 'row' }}>
+                <View style={styles.flexRow}>
                     <TouchableOpacity
                         style={[
                             styles.input,
                             styles.taskSelector,
                             isDark && styles.darkInput,
-                            { flex: 1 },
+                            styles.flex1,
                         ]}
                         onPress={onShowTaskModal}>
                         <Text
                             style={[
                                 selectedTask
-                                    ? { color: isDark ? 'white' : 'black' }
-                                    : { color: isDark ? '#888888' : '#666666' },
+                                    ? (isDark ? styles.darkText : styles.lightText)
+                                    : (isDark ? styles.placeholderTextDark : styles.placeholderTextLight),
                             ]}>
                             {selectedTask
                                 ? selectedTask.title
@@ -85,19 +85,11 @@ export const CreateRoomForm: React.FC<CreateRoomFormProps> = ({
                         <TouchableOpacity
                             style={[
                                 styles.clearButton,
-                                {
-                                    backgroundColor: isDark ? '#333' : '#f0f0f0',
-                                    borderColor: isDark ? '#444' : '#ddd',
-                                },
+                                isDark ? styles.clearButtonDark : styles.clearButtonLight,
                             ]}
                             onPress={onClearTask}>
                             <Text
-                                style={{
-                                    color: isDark ? '#ff3b30' : '#ff3b30',
-                                    marginVertical: 'auto',
-                                    fontSize: 18,
-                                    paddingBottom: 3,
-                                }}>
+                                style={styles.clearButtonText}>
                                 ✕
                             </Text>
                         </TouchableOpacity>

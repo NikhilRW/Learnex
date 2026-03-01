@@ -6,8 +6,8 @@ export function FeaturesSection() {
     return (
         <section id="features" className="bg-background relative py-16 overflow-hidden">
             {/* Gradient background elements */}
-            <div className="absolute top-0 inset-x-0 h-[25rem] bg-gradient-to-b from-primary/5 to-transparent pointer-events-none"></div>
-            <div className="absolute bottom-0 inset-x-0 h-[20rem] bg-gradient-to-t from-primary/5 to-transparent pointer-events-none"></div>
+            <div className="absolute top-0 inset-x-0 h-[25rem] bg-gradient-to-b from-primary/5 to-transparent pointer-events-none" />
+            <div className="absolute bottom-0 inset-x-0 h-[20rem] bg-gradient-to-t from-primary/5 to-transparent pointer-events-none" />
 
             <div className="container max-w-7xl mx-auto px-4 relative z-10">
                 {/* Section header */}

@@ -81,19 +81,19 @@ export function DownloadSection() {
                                 <ul className="space-y-2 text-sm mb-5">
                                     <li className="flex items-start">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary mr-2 mt-1 shrink-0">
-                                            <polyline points="20 6 9 17 4 12"></polyline>
+                                            <polyline points="20 6 9 17 4 12" />
                                         </svg>
                                         <span>Version 1.3.0 (Latest Release)</span>
                                     </li>
                                     <li className="flex items-start">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary mr-2 mt-1 shrink-0">
-                                            <polyline points="20 6 9 17 4 12"></polyline>
+                                            <polyline points="20 6 9 17 4 12" />
                                         </svg>
                                         <span>File size: 15.8 MB</span>
                                     </li>
                                     <li className="flex items-start">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary mr-2 mt-1 shrink-0">
-                                            <polyline points="20 6 9 17 4 12"></polyline>
+                                            <polyline points="20 6 9 17 4 12" />
                                         </svg>
                                         <span>Android 7.0+ required</span>
                                     </li>
@@ -123,9 +123,9 @@ export function DownloadSection() {
                                 >
                                     Download APK
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2">
-                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                        <polyline points="7 10 12 15 17 10"></polyline>
-                                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                        <polyline points="7 10 12 15 17 10" />
+                                        <line x1="12" y1="15" x2="12" y2="3" />
                                     </svg>
                                 </a>
                             </div>
@@ -137,8 +137,8 @@ export function DownloadSection() {
                                 </p>
                                 <div className="flex items-center justify-center p-3 rounded-md border border-dashed border-border/50 bg-secondary/10">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary mr-2">
-                                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                                        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                                        <polyline points="9 22 9 12 15 12 15 22" />
                                     </svg>
                                     <span className="text-sm">Stay tuned for updates!</span>
                                 </div>

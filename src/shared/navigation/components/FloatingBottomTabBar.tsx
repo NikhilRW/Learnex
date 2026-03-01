@@ -1,10 +1,10 @@
-import {View, TouchableOpacity, StyleSheet} from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import React from 'react';
-import {FloatingBottomTabBarPropsType} from 'shared/types/bottomTabBarTypes';
+import { FloatingBottomTabBarPropsType } from 'shared/types/bottomTabBarTypes';
 import navigationIconHelper from 'shared/helpers/navigation/NavigationIconHelper';
-import {NavigationRoute, ParamListBase} from '@react-navigation/native';
-import {primaryColor} from 'shared/res/strings/eng';
-import {useTheme} from 'hooks/common/useTheme';
+import { NavigationRoute, ParamListBase } from '@react-navigation/native';
+import { primaryColor } from 'shared/res/strings/eng';
+import { useTheme } from 'hooks/common/useTheme';
 import Animated, {
   FadeIn,
   FadingTransition,
@@ -13,8 +13,8 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import {useTypedSelector} from 'hooks/redux/useTypedSelector';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import { useTypedSelector } from 'hooks/redux/useTypedSelector';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const BUTTON_SIZE = 48;
 
@@ -25,7 +25,7 @@ const FloatingBottomTabBar = ({
   navigation,
   state,
 }: FloatingBottomTabBarPropsType) => {
-  const {isDark} = useTheme();
+  const { isDark } = useTheme();
   const onPress = (route: NavigationRoute<ParamListBase, string>) => {
     navigation.navigate(route.name);
   };
@@ -48,6 +48,26 @@ const FloatingBottomTabBar = ({
 
   const insets = useSafeAreaInsets();
 
+  const dynamicStyles = React.useMemo(
+    () =>
+      StyleSheet.create({
+        tabBarBg: {
+          backgroundColor: isDark ? '#2A2A2A' : '#FFFFFF',
+          marginBottom: insets.bottom,
+        },
+        highlightIndicator: {
+          backgroundColor: isDark ? 'white' : '#0987C1',
+          width: BUTTON_SIZE,
+          height: 5,
+          borderRadius: 10,
+          position: 'absolute',
+          zIndex: -8,
+          bottom: -5,
+        },
+      }),
+    [isDark, insets.bottom],
+  );
+
   return (
     <View
       style={[styles.mainContainer]}
@@ -55,23 +75,12 @@ const FloatingBottomTabBar = ({
       <View
         style={[
           styles.floatingTabBarContainer,
-          {
-            backgroundColor: isDark ? '#2A2A2A' : '#FFFFFF',
-            marginBottom: insets.bottom,
-          },
+          dynamicStyles.tabBarBg,
         ]}>
         <View className="flex-row gap-[60]">
           <Animated.View
             style={[
-              {
-                backgroundColor: isDark ? 'white' : '#0987C1',
-                width: BUTTON_SIZE,
-                height: 5,
-                borderRadius: 10,
-                position: 'absolute',
-                zIndex: -8,
-                bottom: -5,
-              },
+              dynamicStyles.highlightIndicator,
               animatedStyleBackgroundHighlight,
             ]}
           />
@@ -97,13 +106,7 @@ const TabsButton = (
       <AnimtedTouchableOpacity
         onPress={() => onPress(route)}
         layout={FadingTransition}
-        style={{
-          width: BUTTON_SIZE,
-          height: BUTTON_SIZE,
-          padding: 12,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}>
+        style={styles.tabButton}>
         {navigationIconHelper(
           route,
           isFocused,
@@ -114,7 +117,10 @@ const TabsButton = (
           <Animated.Text
             entering={FadeIn}
             numberOfLines={1}
-            style={[{color: isDark ? 'white' : '#0987C1'}, styles.tabIconText]}>
+            style={[
+              isDark ? styles.tabIconTextDark : styles.tabIconTextLight,
+              styles.tabIconText,
+            ]}>
             {route.name === 'CreatePost' ? 'Post' : route.name}
           </Animated.Text>
         )}
@@ -124,8 +130,15 @@ const TabsButton = (
 };
 
 const styles = StyleSheet.create({
+  tabButton: {
+    width: BUTTON_SIZE,
+    height: BUTTON_SIZE,
+    padding: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   floatingTabBarContainer: {
-    transform: [{translateX: '-50%'}],
+    transform: [{ translateX: '-50%' }],
     flexDirection: 'row',
     marginHorizontal: 'auto',
     justifyContent: 'center',
@@ -142,6 +155,12 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: 300,
     textTransform: 'capitalize',
+  },
+  tabIconTextDark: {
+    color: 'white',
+  },
+  tabIconTextLight: {
+    color: '#0987C1',
   },
   mainContainer: {
     justifyContent: 'center',

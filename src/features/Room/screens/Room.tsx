@@ -76,7 +76,7 @@ const Room = () => {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={{ flex: 1, backgroundColor: isDark ? '#121212' : '#f5f5f5' }}>
+    <View style={[styles.screenContainer, isDark && styles.screenContainerDark]}>
       <KeyboardAvoidingView
         style={[
           styles.container,
@@ -87,7 +87,7 @@ const Room = () => {
         <ScrollView
           contentContainerStyle={[
             styles.scrollContent,
-            { padding: isSmallScreen ? 12 : 20 },
+            isSmallScreen && styles.scrollContentSmall,
           ]}>
           <View style={styles.header}>
             <Text

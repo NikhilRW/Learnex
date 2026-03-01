@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { Task, SubTask } from 'shared/types/taskTypes';
-import { styles } from 'tasks/styles/Tasks.styles';
+import { styles, duoTaskDetailsStyles } from 'tasks/styles/Tasks.styles';
 import { TaskService } from 'shared/services/TaskService';
 import { getAuth } from '@react-native-firebase/auth';
 import {
@@ -20,32 +20,7 @@ import {
   Timestamp,
 } from '@react-native-firebase/firestore';
 
-interface DuoTaskDetailsModalProps {
-  modalVisible: boolean;
-  isDark: boolean;
-  task: Task;
-  onClose: () => void;
-  onDeleteTask: (id: string) => void;
-  onEditTask: (task: Task) => void;
-  onTaskUpdated?: (updatedTask: Task) => void;
-}
-
-// Define additional styles for the modal details
-const modalDetailStyles = {
-  detailItem: {
-    marginBottom: 15,
-    paddingHorizontal: 16,
-  },
-  detailLabel: {
-    fontSize: 14,
-    fontWeight: 'bold' as const,
-    marginBottom: 5,
-  },
-  detailValue: {
-    fontSize: 16,
-    marginBottom: 5,
-  },
-};
+import { DuoTaskDetailsModalProps } from '../types';
 
 const DuoTaskDetailsModal: React.FC<DuoTaskDetailsModalProps> = ({
   modalVisible,
@@ -164,11 +139,11 @@ const DuoTaskDetailsModal: React.FC<DuoTaskDetailsModalProps> = ({
         <View
           style={[
             styles.modalContent,
-            { backgroundColor: isDark ? '#1a1a1a' : 'white' },
+            isDark ? duoTaskDetailsStyles.modalContentDark : duoTaskDetailsStyles.modalContentLight,
           ]}>
           <View style={styles.modalHeader}>
             <Text
-              style={[styles.modalTitle, { color: isDark ? 'white' : 'black' }]}>
+              style={[styles.modalTitle, isDark ? styles.textDark : styles.textLight]}>
               {task?.title}
             </Text>
             <TouchableOpacity onPress={onClose}>
@@ -177,81 +152,63 @@ const DuoTaskDetailsModal: React.FC<DuoTaskDetailsModalProps> = ({
           </View>
 
           {/* Progress bar */}
-          <View style={{ marginHorizontal: 16, marginBottom: 10 }}>
-            <View
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                marginBottom: 5,
-              }}>
-              <Text style={{ color: isDark ? '#8e8e8e' : '#666', fontSize: 12 }}>
+          <View style={duoTaskDetailsStyles.progressWrapper}>
+            <View style={duoTaskDetailsStyles.progressRow}>
+              <Text style={isDark ? duoTaskDetailsStyles.progressLabelDark : duoTaskDetailsStyles.progressLabelLight}>
                 Progress: {task?.progress || 0}%
               </Text>
 
               <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  paddingHorizontal: 8,
-                  paddingVertical: 2,
-                  borderRadius: 10,
-                  backgroundColor: task?.completed
-                    ? '#34C759'
+                style={[
+                  duoTaskDetailsStyles.statusBadge,
+                  task?.completed
+                    ? duoTaskDetailsStyles.statusBadgeCompleted
                     : task?.collaborationStatus === 'active'
-                      ? '#007AFF'
-                      : '#FF9500',
-                }}>
-                <Text style={{ color: 'white', fontSize: 10 }}>
+                      ? duoTaskDetailsStyles.statusBadgeActive
+                      : duoTaskDetailsStyles.statusBadgePending,
+                ]}>
+                <Text style={duoTaskDetailsStyles.statusBadgeText}>
                   {task?.completed ? 'Completed' : task?.collaborationStatus}
                 </Text>
               </View>
             </View>
 
             <View
-              style={{
-                height: 6,
-                backgroundColor: isDark ? '#404040' : '#e0e0e0',
-                borderRadius: 3,
-                overflow: 'hidden',
-              }}>
+              style={[
+                duoTaskDetailsStyles.progressTrack,
+                isDark ? duoTaskDetailsStyles.progressTrackDark : duoTaskDetailsStyles.progressTrackLight,
+              ]}>
               <View
-                style={{
-                  height: '100%',
-                  width: `${task?.progress || 0}%`,
-                  backgroundColor: task?.completed ? '#34C759' : '#1a9cd8',
-                  borderRadius: 3,
-                }}
+                style={[
+                  duoTaskDetailsStyles.progressFill,
+                  { width: `${task?.progress || 0}%` },
+                  task?.completed ? duoTaskDetailsStyles.progressFillCompleted : duoTaskDetailsStyles.progressFillActive,
+                ]}
               />
             </View>
           </View>
 
           {/* Tabs */}
           <View
-            style={{
-              flexDirection: 'row',
-              borderBottomWidth: 1,
-              borderColor: isDark ? '#404040' : '#e0e0e0',
-              marginBottom: 10,
-            }}>
+            style={[
+              duoTaskDetailsStyles.tabsContainer,
+              isDark ? duoTaskDetailsStyles.tabsContainerDark : duoTaskDetailsStyles.tabsContainerLight,
+            ]}>
             <TouchableOpacity
-              style={{
-                padding: 10,
-                borderBottomWidth: 2,
-                borderBottomColor:
-                  activeTab === 'details' ? '#1a9cd8' : 'transparent',
-              }}
+              style={[
+                duoTaskDetailsStyles.tab,
+                activeTab === 'details' ? duoTaskDetailsStyles.tabActive : duoTaskDetailsStyles.tabInactive,
+              ]}
               onPress={() => setActiveTab('details')}>
-              <Text style={{ color: isDark ? 'white' : 'black' }}>Details</Text>
+              <Text style={isDark ? duoTaskDetailsStyles.tabTextDark : duoTaskDetailsStyles.tabTextLight}>Details</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={{
-                padding: 10,
-                borderBottomWidth: 2,
-                borderBottomColor:
-                  activeTab === 'subtasks' ? '#1a9cd8' : 'transparent',
-              }}
+              style={[
+                duoTaskDetailsStyles.tab,
+                activeTab === 'subtasks' ? duoTaskDetailsStyles.tabActive : duoTaskDetailsStyles.tabInactive,
+              ]}
               onPress={() => setActiveTab('subtasks')}>
-              <Text style={{ color: isDark ? 'white' : 'black' }}>Subtasks</Text>
+              <Text style={isDark ? duoTaskDetailsStyles.tabTextDark : duoTaskDetailsStyles.tabTextLight}>Subtasks</Text>
             </TouchableOpacity>
           </View>
 
@@ -259,118 +216,76 @@ const DuoTaskDetailsModal: React.FC<DuoTaskDetailsModalProps> = ({
             {/* Details Tab */}
             {activeTab === 'details' && (
               <View className="pb-10">
-                <View style={modalDetailStyles.detailItem}>
+                <View style={duoTaskDetailsStyles.detailItem}>
                   <Text
-                    style={[
-                      modalDetailStyles.detailLabel,
-                      { color: isDark ? '#8e8e8e' : '#666' },
-                    ]}>
+                    style={isDark ? duoTaskDetailsStyles.detailLabelDark : duoTaskDetailsStyles.detailLabelLight}>
                     Description
                   </Text>
                   <Text
-                    style={[
-                      modalDetailStyles.detailValue,
-                      { color: isDark ? 'white' : 'black' },
-                    ]}>
+                    style={isDark ? duoTaskDetailsStyles.detailValueDark : duoTaskDetailsStyles.detailValueLight}>
                     {task?.description || 'No description'}
                   </Text>
                 </View>
 
-                <View style={modalDetailStyles.detailItem}>
+                <View style={duoTaskDetailsStyles.detailItem}>
                   <Text
-                    style={[
-                      modalDetailStyles.detailLabel,
-                      { color: isDark ? '#8e8e8e' : '#666' },
-                    ]}>
+                    style={isDark ? duoTaskDetailsStyles.detailLabelDark : duoTaskDetailsStyles.detailLabelLight}>
                     Due Date
                   </Text>
                   <Text
-                    style={[
-                      modalDetailStyles.detailValue,
-                      { color: isDark ? 'white' : 'black' },
-                    ]}>
+                    style={isDark ? duoTaskDetailsStyles.detailValueDark : duoTaskDetailsStyles.detailValueLight}>
                     {task?.dueDate} {task?.dueTime ? `at ${task.dueTime}` : ''}
                   </Text>
                 </View>
 
-                <View style={modalDetailStyles.detailItem}>
+                <View style={duoTaskDetailsStyles.detailItem}>
                   <Text
-                    style={[
-                      modalDetailStyles.detailLabel,
-                      { color: isDark ? '#8e8e8e' : '#666' },
-                    ]}>
+                    style={isDark ? duoTaskDetailsStyles.detailLabelDark : duoTaskDetailsStyles.detailLabelLight}>
                     Priority
                   </Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={duoTaskDetailsStyles.priorityRow}>
                     <View
-                      style={{
-                        width: 12,
-                        height: 12,
-                        borderRadius: 6,
-                        backgroundColor: getPriorityColor(
-                          task?.priority || 'medium',
-                        ),
-                        marginRight: 5,
-                      }}
+                      style={[
+                        duoTaskDetailsStyles.priorityDot,
+                        { backgroundColor: getPriorityColor(task?.priority || 'medium') },
+                      ]}
                     />
                     <Text
-                      style={[
-                        modalDetailStyles.detailValue,
-                        { color: isDark ? 'white' : 'black' },
-                      ]}>
+                      style={isDark ? duoTaskDetailsStyles.detailValueDark : duoTaskDetailsStyles.detailValueLight}>
                       {task?.priority.charAt(0).toUpperCase() +
                         task?.priority.slice(1)}
                     </Text>
                   </View>
                 </View>
 
-                <View style={modalDetailStyles.detailItem}>
+                <View style={duoTaskDetailsStyles.detailItem}>
                   <Text
-                    style={[
-                      modalDetailStyles.detailLabel,
-                      { color: isDark ? '#8e8e8e' : '#666' },
-                    ]}>
+                    style={isDark ? duoTaskDetailsStyles.detailLabelDark : duoTaskDetailsStyles.detailLabelLight}>
                     Category
                   </Text>
                   <Text
-                    style={[
-                      modalDetailStyles.detailValue,
-                      { color: isDark ? 'white' : 'black' },
-                    ]}>
+                    style={isDark ? duoTaskDetailsStyles.detailValueDark : duoTaskDetailsStyles.detailValueLight}>
                     {task?.category || 'None'}
                   </Text>
                 </View>
 
-                <View style={modalDetailStyles.detailItem}>
+                <View style={duoTaskDetailsStyles.detailItem}>
                   <Text
                     style={[
-                      modalDetailStyles.detailLabel,
-                      { color: isDark ? '#8e8e8e' : '#666', marginBottom: 5 },
+                      isDark ? duoTaskDetailsStyles.detailLabelDark : duoTaskDetailsStyles.detailLabelLight,
+                      duoTaskDetailsStyles.teamMemberLabel,
                     ]}>
                     Team Members
                   </Text>
                   {collaborators.map(collaborator => (
                     <View
                       key={collaborator.id}
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5',
-                        padding: 10,
-                        borderRadius: 5,
-                        marginBottom: 5,
-                      }}>
-                      <View
-                        style={{
-                          width: 32,
-                          height: 32,
-                          borderRadius: 16,
-                          backgroundColor: '#1a9cd8',
-                          justifyContent: 'center',
-                          alignItems: 'center',
-                          marginRight: 10,
-                        }}>
-                        <Text style={{ color: 'white' }}>
+                      style={[
+                        duoTaskDetailsStyles.collaboratorCard,
+                        isDark ? duoTaskDetailsStyles.collaboratorCardDark : duoTaskDetailsStyles.collaboratorCardLight,
+                      ]}>
+                      <View style={duoTaskDetailsStyles.avatar}>
+                        <Text style={duoTaskDetailsStyles.avatarText}>
                           {(
                             collaborator.displayName ||
                             collaborator.email ||
@@ -380,18 +295,15 @@ const DuoTaskDetailsModal: React.FC<DuoTaskDetailsModalProps> = ({
                             .toUpperCase()}
                         </Text>
                       </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ color: isDark ? 'white' : 'black' }}>
+                      <View style={duoTaskDetailsStyles.collaboratorInfo}>
+                        <Text style={isDark ? duoTaskDetailsStyles.collaboratorNameDark : duoTaskDetailsStyles.collaboratorNameLight}>
                           {collaborator.displayName ||
                             collaborator.email ||
                             'Unknown user'}
                           {collaborator.isCurrentUser ? ' (You)' : ''}
                         </Text>
                         <Text
-                          style={{
-                            color: isDark ? '#8e8e8e' : '#666',
-                            fontSize: 12,
-                          }}>
+                          style={isDark ? duoTaskDetailsStyles.collaboratorEmailDark : duoTaskDetailsStyles.collaboratorEmailLight}>
                           {collaborator.email}
                         </Text>
                       </View>
@@ -401,44 +313,23 @@ const DuoTaskDetailsModal: React.FC<DuoTaskDetailsModalProps> = ({
 
                 {/* Only show Edit/Delete buttons if the current user is the task creator */}
                 {task && task.userId === getAuth().currentUser?.uid && (
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      justifyContent: 'space-between',
-                      marginTop: 20,
-                    }}>
+                  <View style={duoTaskDetailsStyles.actionRow}>
                     <TouchableOpacity
-                      style={{
-                        backgroundColor: '#FF3B30',
-                        paddingVertical: 10,
-                        paddingHorizontal: 16,
-                        borderRadius: 5,
-                        alignItems: 'center',
-                        flex: 1,
-                        marginRight: 5,
-                      }}
+                      style={duoTaskDetailsStyles.deleteButton}
                       onPress={() => {
                         onClose();
                         onDeleteTask(task.id);
                       }}>
-                      <Text style={{ color: 'white' }}>Delete</Text>
+                      <Text style={duoTaskDetailsStyles.actionButtonText}>Delete</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      style={{
-                        backgroundColor: '#1a9cd8',
-                        paddingVertical: 10,
-                        paddingHorizontal: 16,
-                        borderRadius: 5,
-                        alignItems: 'center',
-                        flex: 1,
-                        marginLeft: 5,
-                      }}
+                      style={duoTaskDetailsStyles.editButton}
                       onPress={() => {
                         onClose();
                         onEditTask(task);
                       }}>
-                      <Text style={{ color: 'white' }}>Edit</Text>
+                      <Text style={duoTaskDetailsStyles.actionButtonText}>Edit</Text>
                     </TouchableOpacity>
                   </View>
                 )}
@@ -450,23 +341,15 @@ const DuoTaskDetailsModal: React.FC<DuoTaskDetailsModalProps> = ({
               <View>
                 <View style={styles.inputGroup}>
                   <Text
-                    style={[
-                      modalDetailStyles.detailLabel,
-                      { color: isDark ? '#8e8e8e' : '#666' },
-                    ]}>
+                    style={isDark ? duoTaskDetailsStyles.detailLabelDark : duoTaskDetailsStyles.detailLabelLight}>
                     Add New Subtask
                   </Text>
-                  <View style={{ flexDirection: 'row', marginBottom: 15 }}>
+                  <View style={duoTaskDetailsStyles.addSubtaskRow}>
                     <TextInput
                       style={[
                         styles.input,
-                        {
-                          backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5',
-                          color: isDark ? 'white' : 'black',
-                          borderColor: isDark ? '#404040' : '#e0e0e0',
-                          flex: 1,
-                          marginRight: 10,
-                        },
+                        isDark ? styles.inputDark : styles.inputLight,
+                        duoTaskDetailsStyles.addSubtaskInput,
                       ]}
                       placeholder="New subtask"
                       placeholderTextColor={isDark ? '#8e8e8e' : '#999'}
@@ -474,61 +357,43 @@ const DuoTaskDetailsModal: React.FC<DuoTaskDetailsModalProps> = ({
                       onChangeText={setNewSubtaskTitle}
                     />
                     <TouchableOpacity
-                      style={{
-                        backgroundColor: '#1a9cd8',
-                        padding: 10,
-                        borderRadius: 5,
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                      }}
+                      style={duoTaskDetailsStyles.addSubtaskButton}
                       onPress={handleAddSubtask}>
-                      <Text style={{ color: 'white' }}>Add</Text>
+                      <Text style={duoTaskDetailsStyles.addSubtaskButtonText}>Add</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
 
                 <Text
                   style={[
-                    modalDetailStyles.detailLabel,
-                    { color: isDark ? '#8e8e8e' : '#666', marginBottom: 10 },
+                    isDark ? duoTaskDetailsStyles.detailLabelDark : duoTaskDetailsStyles.detailLabelLight,
+                    duoTaskDetailsStyles.subtaskCountLabel,
                   ]}>
                   Subtasks ({task?.subtasks?.length || 0})
                 </Text>
 
                 {!task?.subtasks || task.subtasks.length === 0 ? (
                   <Text
-                    style={{
-                      color: isDark ? '#8e8e8e' : '#666',
-                      textAlign: 'center',
-                      padding: 20,
-                    }}>
+                    style={[
+                      isDark ? styles.metaTextDark : styles.metaTextLight,
+                      duoTaskDetailsStyles.emptySubtasksText,
+                    ]}>
                     No subtasks yet. Add some to track progress!
                   </Text>
                 ) : (
                   task.subtasks.map(subtask => (
                     <View
                       key={subtask.id}
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        padding: 12,
-                        borderBottomWidth: 1,
-                        borderColor: isDark ? '#404040' : '#e0e0e0',
-                      }}>
+                      style={[
+                        duoTaskDetailsStyles.subtaskRow,
+                        isDark ? duoTaskDetailsStyles.subtaskRowDark : duoTaskDetailsStyles.subtaskRowLight,
+                      ]}>
                       <TouchableOpacity
-                        style={{
-                          width: 24,
-                          height: 24,
-                          borderRadius: 12,
-                          borderWidth: 2,
-                          borderColor: isDark ? '#8e8e8e' : '#666',
-                          justifyContent: 'center',
-                          alignItems: 'center',
-                          backgroundColor: subtask.completed
-                            ? '#1a9cd8'
-                            : 'transparent',
-                          marginRight: 10,
-                        }}
+                        style={[
+                          duoTaskDetailsStyles.subtaskCheckbox,
+                          isDark ? duoTaskDetailsStyles.subtaskCheckboxDark : duoTaskDetailsStyles.subtaskCheckboxLight,
+                          subtask.completed ? duoTaskDetailsStyles.subtaskCheckboxActive : duoTaskDetailsStyles.subtaskCheckboxInactive,
+                        ]}
                         onPress={() =>
                           toggleSubtaskCompletion(subtask.id, subtask.completed)
                         }>
@@ -537,38 +402,27 @@ const DuoTaskDetailsModal: React.FC<DuoTaskDetailsModalProps> = ({
                         )}
                       </TouchableOpacity>
 
-                      <View style={{ flex: 1 }}>
+                      <View style={duoTaskDetailsStyles.subtaskContent}>
                         <Text
-                          style={{
-                            color: isDark ? 'white' : 'black',
-                            textDecorationLine: subtask.completed
-                              ? 'line-through'
-                              : 'none',
-                            opacity: subtask.completed ? 0.7 : 1,
-                          }}>
+                          style={[
+                            isDark ? duoTaskDetailsStyles.subtaskTitleDark : duoTaskDetailsStyles.subtaskTitleLight,
+                            subtask.completed && duoTaskDetailsStyles.subtaskTitleCompleted,
+                          ]}>
                           {subtask.title}
                         </Text>
                         {subtask.description && (
                           <Text
-                            style={{
-                              color: isDark ? '#8e8e8e' : '#666',
-                              fontSize: 12,
-                              textDecorationLine: subtask.completed
-                                ? 'line-through'
-                                : 'none',
-                              opacity: subtask.completed ? 0.7 : 1,
-                            }}>
+                            style={[
+                              isDark ? duoTaskDetailsStyles.subtaskDescDark : duoTaskDetailsStyles.subtaskDescLight,
+                              subtask.completed && duoTaskDetailsStyles.subtaskDescCompleted,
+                            ]}>
                             {subtask.description}
                           </Text>
                         )}
 
                         {subtask.assignedTo && (
                           <Text
-                            style={{
-                              color: isDark ? '#8e8e8e' : '#666',
-                              fontSize: 10,
-                              marginTop: 2,
-                            }}>
+                            style={isDark ? duoTaskDetailsStyles.assignedTextDark : duoTaskDetailsStyles.assignedTextLight}>
                             Assigned to:{' '}
                             {subtask.assignedTo === getAuth().currentUser?.uid
                               ? 'You'
@@ -577,12 +431,7 @@ const DuoTaskDetailsModal: React.FC<DuoTaskDetailsModalProps> = ({
                         )}
 
                         {subtask.completedBy && (
-                          <Text
-                            style={{
-                              color: '#34C759',
-                              fontSize: 10,
-                              marginTop: 2,
-                            }}>
+                          <Text style={duoTaskDetailsStyles.completedByText}>
                             Completed by:{' '}
                             {subtask.completedBy === getAuth().currentUser?.uid
                               ? 'You'

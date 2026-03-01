@@ -45,18 +45,7 @@ const generateUUID = (): string => {
     return `${timestamp}-${randomSegment1}-${randomSegment2}`;
 };
 
-interface DuoTaskModalProps {
-    modalVisible: boolean;
-    isEditMode: boolean;
-    isDark: boolean;
-    task: Omit<Task, 'id' | 'userId' | 'createdAt' | 'updatedAt'>;
-    onClose: () => void;
-    onSave: () => void;
-    onChangeTask: (
-        task: Omit<Task, 'id' | 'userId' | 'createdAt' | 'updatedAt'>,
-    ) => void;
-    getPriorityColor: (priority: string) => string;
-}
+import { DuoTaskModalProps } from '../types';
 
 const DuoTaskModal: React.FC<DuoTaskModalProps> = ({
     modalVisible,
@@ -727,11 +716,12 @@ const DuoTaskModal: React.FC<DuoTaskModalProps> = ({
 
                                     {subtasks.length === 0 ? (
                                         <Text
-                                            style={{
-                                                color: isDark ? '#8e8e8e' : '#666',
-                                                textAlign: 'center',
-                                                padding: 20,
-                                            }}>
+                                            style={[
+                                                duoTaskModalStyles.emptySubtasksText,
+                                                isDark
+                                                    ? duoTaskModalStyles.emptySubtasksTextDark
+                                                    : duoTaskModalStyles.emptySubtasksTextLight,
+                                            ]}>
                                             No subtasks yet. Add some to track progress!
                                         </Text>
                                     ) : (
@@ -742,13 +732,12 @@ const DuoTaskModal: React.FC<DuoTaskModalProps> = ({
                                             recycleItems={true}
                                             renderItem={({ item }) => (
                                                 <View
-                                                    style={{
-                                                        flexDirection: 'row',
-                                                        padding: 10,
-                                                        borderBottomWidth: 1,
-                                                        borderColor: isDark ? '#404040' : '#e0e0e0',
-                                                        alignItems: 'center',
-                                                    }}>
+                                                    style={[
+                                                        duoTaskModalStyles.subtaskListRow,
+                                                        isDark
+                                                            ? duoTaskModalStyles.subtaskListRowDark
+                                                            : duoTaskModalStyles.subtaskListRowLight,
+                                                    ]}>
                                                     <TouchableOpacity
                                                         testID='taskCompletionToggleButton'
                                                         style={[

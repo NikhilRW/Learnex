@@ -12,7 +12,7 @@ import { useNavigation } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { useTypedSelector } from 'hooks/redux/useTypedSelector';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { styles } from 'qr-code/styles/QRCode';
+import { createStyles } from 'qr-code/styles/QRCode';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 // QR code format - uses a specific URI scheme for app deep linking
@@ -25,6 +25,7 @@ const QRCode = () => {
   const [fullName, setFullName] = useState<string>('');
   const [qrValue, setQrValue] = useState<string>('');
   const [isSharing, setIsSharing] = useState<boolean>(false);
+  const styles = createStyles(isDark);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -82,19 +83,13 @@ const QRCode = () => {
 
   return (
     <SafeAreaView
-      style={[
-        styles.container,
-        { backgroundColor: isDark ? '#1a1a1a' : '#f5f5f5' },
-      ]}>
+      style={styles.container}>
       <StatusBar
         barStyle={isDark ? 'light-content' : 'dark-content'}
         backgroundColor={isDark ? '#1a1a1a' : '#f5f5f5'}
       />
       <View
-        style={[
-          styles.customHeader,
-          { backgroundColor: isDark ? '#1a1a1a' : '#f5f5f5' },
-        ]}>
+        style={styles.customHeader}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}>
@@ -104,7 +99,7 @@ const QRCode = () => {
             color={isDark ? 'white' : 'black'}
           />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: isDark ? 'white' : 'black' }]}>
+        <Text style={styles.headerTitle}>
           Your QR Code
         </Text>
         <TouchableOpacity
@@ -119,10 +114,7 @@ const QRCode = () => {
         </TouchableOpacity>
       </View>
       <View
-        style={[
-          styles.qrCodeContainer,
-          { backgroundColor: isDark ? '#1a1a1a' : '#f5f5f5' },
-        ]}>
+        style={styles.qrCodeContainer}>
         <QRCodeView
           ecl="M"
           quietZone={10}
@@ -142,17 +134,14 @@ const QRCode = () => {
         />
 
         <Text
-          style={[styles.infoText, { color: isDark ? '#cccccc' : '#555555' }]}>
+          style={styles.infoText}>
           Scan this QR code to start a conversation with me
         </Text>
 
         <TouchableOpacity
           style={[
             styles.shareButtonLarge,
-            {
-              backgroundColor: isDark ? '#2379C2' : '#2379C2',
-              opacity: !qrValue || isSharing ? 0.6 : 1,
-            },
+            (!qrValue || isSharing) && styles.disabledOpacity,
           ]}
           onPress={handleShare}
           disabled={isSharing || !qrValue}>

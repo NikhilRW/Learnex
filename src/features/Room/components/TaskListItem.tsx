@@ -16,77 +16,62 @@ export const TaskListItem: React.FC<TaskListItemProps> = ({
         <TouchableOpacity
             style={[
                 styles.taskItem,
-                { backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5' },
+                isDark ? styles.taskItemBgDark : styles.taskItemBgLight,
             ]}
             onPress={() => onPress(item)}>
             <View>
                 <Text
-                    style={{
-                        color: isDark ? 'white' : 'black',
-                        fontWeight: 'bold',
-                        fontSize: 16,
-                    }}>
+                    style={[
+                        styles.taskItemTitle,
+                        isDark ? styles.textWhite : styles.textBlack,
+                    ]}>
                     {item.title}
                 </Text>
                 {item.description ? (
                     <Text
-                        style={{ color: isDark ? '#bbb' : '#666', marginTop: 5 }}
+                        style={[
+                            styles.taskItemDescription,
+                            isDark ? styles.descriptionTextDark : styles.descriptionTextLight,
+                        ]}
                         numberOfLines={2}>
                         {item.description}
                     </Text>
                 ) : null}
-                <View
-                    style={{
-                        flexDirection: 'row',
-                        marginTop: 8,
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                    }}>
-                    <View style={{ flexDirection: 'row' }}>
+                <View style={styles.taskItemMetaRow}>
+                    <View style={styles.flexRow}>
                         <Text
-                            style={{
-                                color: isDark ? '#aaa' : '#888',
-                                fontSize: 12,
-                                marginRight: 10,
-                            }}>
+                            style={[
+                                styles.taskItemDate,
+                                isDark ? styles.dateTextDark : styles.dateTextLight,
+                            ]}>
                             {item.dueDate}
                         </Text>
                         <Text
-                            style={{
-                                color: getPriorityColor(item.priority),
-                                fontSize: 12,
-                            }}>
+                            style={[
+                                styles.taskItemPriority,
+                                { color: getPriorityColor(item.priority) },
+                            ]}>
                             {item.priority.toUpperCase()}
                         </Text>
                     </View>
-                    <Text
-                        style={{
-                            fontSize: 11,
-                            backgroundColor: '#1a9cd8',
-                            color: 'white',
-                            paddingHorizontal: 6,
-                            paddingVertical: 2,
-                            borderRadius: 10,
-                        }}>
+                    <Text style={styles.taskItemMemberBadge}>
                         {item.collaborators?.length || 0} Members
                     </Text>
                 </View>
                 {/* Progress bar */}
                 <View
-                    style={{
-                        height: 4,
-                        backgroundColor: isDark ? '#404040' : '#e0e0e0',
-                        borderRadius: 2,
-                        marginTop: 8,
-                        overflow: 'hidden',
-                    }}>
+                    style={[
+                        styles.taskItemProgressTrack,
+                        isDark ? styles.progressTrackBgDark : styles.progressTrackBgLight,
+                    ]}>
                     <View
-                        style={{
-                            height: '100%',
-                            width: `${item.progress || 0}%`,
-                            backgroundColor: item.completed ? '#34C759' : '#1a9cd8',
-                            borderRadius: 2,
-                        }}
+                        style={[
+                            styles.taskItemProgressFill,
+                            {
+                                width: `${item.progress || 0}%`,
+                            },
+                            item.completed ? styles.progressFillCompleted : styles.progressFillActive,
+                        ]}
                     />
                 </View>
             </View>

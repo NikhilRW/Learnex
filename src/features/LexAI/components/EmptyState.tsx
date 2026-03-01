@@ -24,25 +24,18 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
             <View
                 style={[
                     styles.suggestionsContainer,
-                    {
-                        borderTopColor: isDarkMode
-                            ? 'rgba(255,255,255,0.1)'
-                            : 'rgba(0,0,0,0.05)',
-                    },
+                    isDarkMode
+                        ? styles.suggestionsContainerBorderDark
+                        : styles.suggestionsContainerBorderLight,
                 ]}>
                 {suggestions.map((suggestion, index) => (
                     <TouchableOpacity
                         key={`suggestion-${index}`}
                         style={[
                             styles.suggestionChip,
-                            {
-                                backgroundColor: isDarkMode
-                                    ? 'rgba(10, 132, 255, 0.15)'
-                                    : '#EFF6FF',
-                                borderColor: isDarkMode
-                                    ? 'rgba(62, 123, 250, 0.3)'
-                                    : '#DBEAFE',
-                            },
+                            isDarkMode
+                                ? styles.suggestionChipDark
+                                : styles.suggestionChipLight,
                         ]}
                         onPress={() => onSuggestionPress(suggestion)}>
                         <Text style={[styles.suggestionText, { color: colors.primary }]}>

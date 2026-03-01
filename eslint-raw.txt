@@ -1,0 +1,810 @@
+
+D:\Capstone_Project\Learnex\src\App.tsx
+   25:9   error  'StatusBar' is defined but never used                @typescript-eslint/no-unused-vars
+   26:9   error  'useTypedSelector' is defined but never used         @typescript-eslint/no-unused-vars
+  212:19  error  'fcmInitialized' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\Capstone_Project\Learnex\src\features\Auth\screens\LinkedInAuth.tsx
+  63:7   error    'a' is defined but never used                                                                                                @typescript-eslint/no-unused-vars
+  70:16  warning  Inline style: {
+  flex: 1,
+  height: '100%',
+  position: 'absolute',
+  zIndex: 1000,
+  width: '100%',
+  top: 0,
+  left: 0
+}  react-native/no-inline-styles
+
+D:\Capstone_Project\Learnex\src\features\Conversations\screens\Conversations.tsx
+  59:6  error  React Hook useEffect has a missing dependency: 'messageService'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  92:9  error  'handleConversationPress' is assigned a value but never used                                                       @typescript-eslint/no-unused-vars
+
+D:\Capstone_Project\Learnex\src\features\Conversations\services\MessageService.ts
+   83:65  warning  'doc' is already declared in the upper scope on line 4 column 3  @typescript-eslint/no-shadow
+  425:49  warning  'doc' is already declared in the upper scope on line 4 column 3  @typescript-eslint/no-shadow
+  462:39  warning  'doc' is already declared in the upper scope on line 4 column 3  @typescript-eslint/no-shadow
+  526:35  warning  'doc' is already declared in the upper scope on line 4 column 3  @typescript-eslint/no-shadow
+  664:37  warning  'doc' is already declared in the upper scope on line 4 column 3  @typescript-eslint/no-shadow
+
+D:\Capstone_Project\Learnex\src\features\EventsAndHackathons\hooks\useEventsAndHackathons.ts
+  73:0  warning  Unexpected unlimited 'eslint-disable-next-line' comment. Specify some rule names to disable  eslint-comments/no-unlimited-disable
+
+D:\Capstone_Project\Learnex\src\features\EventsAndHackathons\services\hackathonService.ts
+  19:5  error  'forceRefresh' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\Capstone_Project\Learnex\src\features\GenerateQR\screens\QRCode.tsx
+   31:15  warning  'fullName' is already declared in the upper scope on line 25 column 10                                               @typescript-eslint/no-shadow
+   87:9   warning  Inline style: { backgroundColor: "isDark ? '#1a1a1a' : '#f5f5f5'" }                                                  react-native/no-inline-styles
+   96:11  warning  Inline style: { backgroundColor: "isDark ? '#1a1a1a' : '#f5f5f5'" }                                                  react-native/no-inline-styles
+  107:43  warning  Inline style: { color: "isDark ? 'white' : 'black'" }                                                                react-native/no-inline-styles
+  124:11  warning  Inline style: { backgroundColor: "isDark ? '#1a1a1a' : '#f5f5f5'" }                                                  react-native/no-inline-styles
+  145:36  warning  Inline style: { color: "isDark ? '#cccccc' : '#555555'" }                                                            react-native/no-inline-styles
+  152:13  warning  Inline style: {
+  backgroundColor: "isDark ? '#2379C2' : '#2379C2'",
+  opacity: '!qrValue || isSharing ? 0.6 : 1'
+}  react-native/no-inline-styles
+
+D:\Capstone_Project\Learnex\src\features\Home\components\CommentModal.tsx
+  144:31  warning  Do not define components during render. React will see a new component type on every render and destroy the entire subtreeΓÇÖs DOM nodes and state (https://reactjs.org/docs/reconciliation.html#elements-of-different-types). Instead, move this component definition out of the parent component ΓÇ£CommentModalΓÇ¥ and pass data as props  react/no-unstable-nested-components
+  256:19  warning  'newIsLiked' is already declared in the upper scope on line 237 column 13                                                                                                                                                                                                                                                               @typescript-eslint/no-shadow
+  257:19  warning  'newLikes' is already declared in the upper scope on line 238 column 13                                                                                                                                                                                                                                                                 @typescript-eslint/no-shadow
+  262:23  warning  'newIsLiked' is already declared in the upper scope on line 237 column 13                                                                                                                                                                                                                                                               @typescript-eslint/no-shadow
+  263:23  warning  'newLikes' is already declared in the upper scope on line 238 column 13                                                                                                                                                                                                                                                                 @typescript-eslint/no-shadow
+  350:5   error    React Hook useCallback has an unnecessary dependency: 'firebase.posts'. Either exclude it or remove the dependency array                                                                                                                                                                                                                react-hooks/exhaustive-deps
+  415:5   error    React Hook useCallback has an unnecessary dependency: 'firebase.posts'. Either exclude it or remove the dependency array                                                                                                                                                                                                                react-hooks/exhaustive-deps
+  419:52  warning  'replyText' is already declared in the upper scope on line 62 column 10                                                                                                                                                                                                                                                                 @typescript-eslint/no-shadow
+  498:25  warning  Inline style: { fontSize: 16 }                                                                                                                                                                                                                                                                                                          react-native/no-inline-styles
+
+D:\Capstone_Project\Learnex\src\features\LexAI\components\ChatHeader.tsx
+  45:32  warning  Inline style: { marginRight: 8 }                react-native/no-inline-styles
+  56:40  warning  Inline style: { tintColor: 'white' }            react-native/no-inline-styles
+  70:54  warning  Inline style: { marginRight: 12 }               react-native/no-inline-styles
+  76:36  warning  Inline style: { fontSize: 14, marginRight: 8 }  react-native/no-inline-styles
+
+D:\Capstone_Project\Learnex\src\features\LexAI\components\ChatInput.tsx
+   45:20  warning  Inline style: { marginTop: 10 }                                                                                                                                                                                                                                                                                                                                                                                                                                      react-native/no-inline-styles
+   49:21  warning  Inline style: {
+  backgroundColor: 'isDarkMode\r\n' +
+    "                            ? 'rgba(20, 30, 48, 0.85)'\r\n" +
+    "                            : 'rgba(230, 240, 255, 0.85)'",
+  borderTopWidth: 1,
+  borderTopColor: 'isDarkMode\r\n' +
+    "                            ? 'rgba(26, 39, 64, 0.8)'\r\n" +
+    "                            : 'rgba(218, 234, 255, 0.8)'"
+}                                                                               react-native/no-inline-styles
+   63:29  warning  Inline style: {
+  backgroundColor: 'isDarkMode\r\n' +
+    "                                    ? 'rgba(15, 25, 40, 0.7)'\r\n" +
+    "                                    : 'rgba(255, 255, 255, 0.7)'",
+  borderColor: 'isDarkMode\r\n' +
+    "                                    ? 'rgba(36, 54, 86, 0.7)'\r\n" +
+    "                                    : 'rgba(199, 221, 255, 0.7)'"
+}                                                                         react-native/no-inline-styles
+   83:34  warning  Inline style: { position: 'relative' }                                                                                                                                                                                                                                                                                                                                                                                                                               react-native/no-inline-styles
+   85:36  warning  Inline style: {
+  position: 'absolute',
+  width: 60,
+  height: 60,
+  borderRadius: 30,
+  backgroundColor: "currentMode === LexAIMode.AGENT ? '#3E7BFA' : '#FF375F'",
+  opacity: '!isButtonDisabled ? glowOpacity : 0',
+  zIndex: -1
+}                                                                                                                                                                                                                                react-native/no-inline-styles
+  121:41  warning  Inline style: {
+  shadowColor: 'isButtonDisabled\r\n' +
+    "                                                ? 'transparent'\r\n" +
+    '                                                : currentMode === LexAIMode.AGENT\r\n' +
+    "                                                    ? '#3E7BFA'\r\n" +
+    "                                                    : '#FF375F'",
+  shadowOpacity: 'isDarkMode ? 0.5 : 0.4',
+  shadowRadius: 8,
+  elevation: 5
+}  react-native/no-inline-styles
+
+D:\Capstone_Project\Learnex\src\features\LexAI\components\EmptyState.tsx
+  27:21  warning  Inline style: {
+  borderTopColor: 'isDarkMode\r\n' +
+    "                            ? 'rgba(255,255,255,0.1)'\r\n" +
+    "                            : 'rgba(0,0,0,0.05)'"
+}                                                                                                                                                                                  react-native/no-inline-styles
+  38:29  warning  Inline style: {
+  backgroundColor: 'isDarkMode\r\n' +
+    "                                    ? 'rgba(10, 132, 255, 0.15)'\r\n" +
+    "                                    : '#EFF6FF'",
+  borderColor: 'isDarkMode\r\n' +
+    "                                    ? 'rgba(62, 123, 250, 0.3)'\r\n" +
+    "                                    : '#DBEAFE'"
+}  react-native/no-inline-styles
+
+D:\Capstone_Project\Learnex\src\features\LexAI\components\HistoryDrawer.tsx
+   63:25  warning  Inline style: {
+  backgroundColor: 'isDarkMode\r\n' +
+    "                                ? 'rgba(10, 20, 35, 0.7)'\r\n" +
+    "                                : 'rgba(0, 0, 0, 0.5)'"
+}                                                                                                                                                                                                                                  react-native/no-inline-styles
+   75:25  warning  Inline style: {
+  backgroundColor: "isDarkMode ? '#121C2E' : '#F5F9FF'",
+  borderTopLeftRadius: 16,
+  borderBottomLeftRadius: 16
+}                                                                                                                                                                                                                                                                                          react-native/no-inline-styles
+   89:29  warning  Inline style: { borderBottomWidth: 0, paddingVertical: 18, borderTopLeftRadius: 16 }                                                                                                                                                                                                                                                                                                                                        react-native/no-inline-styles
+   97:38  warning  Inline style: { flexDirection: 'row', alignItems: 'center' }                                                                                                                                                                                                                                                                                                                                                                react-native/no-inline-styles
+  102:40  warning  Inline style: {
+  width: 32,
+  height: 32,
+  borderRadius: 16,
+  justifyContent: 'center',
+  alignItems: 'center',
+  marginRight: 12
+}                                                                                                                                                                                                                                                                                      react-native/no-inline-styles
+  115:37  warning  Inline style: {
+  color: "isDarkMode ? '#FFFFFF' : '#16213E'",
+  fontSize: 20,
+  fontWeight: '600'
+}                                                                                                                                                                                                                                                                                                                        react-native/no-inline-styles
+  125:36  warning  Inline style: {
+  width: 36,
+  height: 36,
+  borderRadius: 18,
+  backgroundColor: 'isDarkMode\r\n' +
+    "                                    ? 'rgba(255,255,255,0.1)'\r\n" +
+    "                                    : 'rgba(0,0,0,0.05)'",
+  justifyContent: 'center',
+  alignItems: 'center'
+}                                                                                                                         react-native/no-inline-styles
+  156:41  warning  Inline style: {
+  borderBottomWidth: 'isDarkMode ? 1 : 0',
+  borderBottomColor: 'isDarkMode\r\n' +
+    "                                                ? 'rgba(255,255,255,0.07)'\r\n" +
+    "                                                : 'transparent'",
+  marginHorizontal: 8,
+  marginVertical: 4
+}                                                                                                               react-native/no-inline-styles
+  172:45  warning  Inline style: {
+  borderRadius: 12,
+  padding: 14,
+  borderLeftWidth: 'isActive ? 3 : 0',
+  borderLeftColor: "item.mode === LexAIMode.AGENT ? '#3E7BFA' : '#FF375F'",
+  shadowColor: "isActive ? '#3E7BFA' : 'transparent'",
+  shadowOpacity: 'isActive ? 0.2 : 0',
+  shadowRadius: 4
+}                                                                                                                                     react-native/no-inline-styles
+  201:57  warning  Inline style: {
+  color: 'isDarkMode\r\n' +
+    "                                                                ? 'rgba(255,255,255,0.7)'\r\n" +
+    "                                                                : 'rgba(0,0,0,0.6)'",
+  fontSize: 12,
+  fontWeight: "isActive ? '500' : 'normal'"
+}                                                                                                                  react-native/no-inline-styles
+  217:60  warning  Inline style: {
+  paddingHorizontal: 8,
+  paddingVertical: 4,
+  borderRadius: 12,
+  flexDirection: 'row',
+  alignItems: 'center'
+}                                                                                                                                                                                                                                                                                          react-native/no-inline-styles
+  227:64  warning  Inline style: { color: '#FFFFFF', fontSize: 11, fontWeight: '600' }                                                                                                                                                                                                                                                                                                                                                         react-native/no-inline-styles
+  239:53  warning  Inline style: {
+  color: "isDarkMode ? colors.text : '#16213E'",
+  fontWeight: "isActive ? '500' : 'normal'",
+  fontSize: 14,
+  marginTop: 6,
+  opacity: 'isActive ? 1 : 0.85'
+}                                                                                                                                                                                                                                            react-native/no-inline-styles
+  251:56  warning  Inline style: { flexDirection: 'row', alignItems: 'center', marginTop: 6 }                                                                                                                                                                                                                                                                                                                                                  react-native/no-inline-styles
+  264:60  warning  Inline style: { marginRight: 4 }                                                                                                                                                                                                                                                                                                                                                                                            react-native/no-inline-styles
+  269:57  warning  Inline style: {
+  color: 'isDarkMode\r\n' +
+    "                                                                ? 'rgba(255,255,255,0.6)'\r\n" +
+    "                                                                : 'rgba(0,0,0,0.5)'",
+  fontSize: 12
+}                                                                                                                                                               react-native/no-inline-styles
+  287:48  warning  Inline style: {
+  backgroundColor: 'isDarkMode\r\n' +
+    "                                                ? 'rgba(28, 39, 57, 0.8)'\r\n" +
+    "                                                : 'rgba(243, 244, 246, 0.8)'",
+  borderRadius: 22,
+  width: 38,
+  height: 38,
+  justifyContent: 'center',
+  alignItems: 'center',
+  margin: 8,
+  shadowColor: '#000',
+  shadowOpacity: 0.2,
+  shadowRadius: 2
+}            react-native/no-inline-styles
+  315:29  warning  Inline style: { padding: 12, paddingTop: 16 }                                                                                                                                                                                                                                                                                                                                                                               react-native/no-inline-styles
+  321:45  warning  Do not define components during render. React will see a new component type on every render and destroy the entire subtreeΓÇÖs DOM nodes and state (https://reactjs.org/docs/reconciliation.html#elements-of-different-types). Instead, move this component definition out of the parent component ΓÇ£HistoryDrawerΓÇ¥ and pass data as props. If you want to allow component creation in props, set allowAsProps option to true  react/no-unstable-nested-components
+  325:37  warning  Inline style: {
+  justifyContent: 'center',
+  alignItems: 'center',
+  padding: 30,
+  marginTop: 30
+}                                                                                                                                                                                                                                                                                                                        react-native/no-inline-styles
+  338:44  warning  Inline style: {
+  width: 80,
+  height: 80,
+  borderRadius: 40,
+  justifyContent: 'center',
+  alignItems: 'center',
+  marginBottom: 20
+}                                                                                                                                                                                                                                                                                     react-native/no-inline-styles
+  359:41  warning  Inline style: {
+  color: "isDarkMode ? 'rgba(255,255,255,0.8)' : '#16213E'",
+  fontSize: 18,
+  fontWeight: '600',
+  marginBottom: 8
+}                                                                                                                                                                                                                                                                                       react-native/no-inline-styles
+  369:44  warning  Inline style: {
+  color: 'isDarkMode\r\n' +
+    "                                            ? 'rgba(255,255,255,0.5)'\r\n" +
+    "                                            : 'rgba(0,0,0,0.5)'",
+  fontSize: 14,
+  textAlign: 'center',
+  lineHeight: 20,
+  maxWidth: '80%'
+}                                                                                                                                           react-native/no-inline-styles
+  387:32  warning  Inline style: {
+  margin: 16,
+  borderRadius: 14,
+  shadowColor: '#3E7BFA',
+  shadowOpacity: 'isDarkMode ? 0.4 : 0.3',
+  shadowRadius: 8,
+  elevation: 5
+}                                                                                                                                                                                                                                                                  react-native/no-inline-styles
+  399:36  warning  Inline style: {
+  width: '100%',
+  flexDirection: 'row',
+  justifyContent: 'center',
+  alignItems: 'center',
+  padding: 16
+}                                                                                                                                                                                                                                                                                                react-native/no-inline-styles
+  409:40  warning  Inline style: {
+  width: 28,
+  height: 28,
+  borderRadius: 14,
+  backgroundColor: 'rgba(255,255,255,0.25)',
+  justifyContent: 'center',
+  alignItems: 'center',
+  marginRight: 12
+}                                                                                                                                                                                                                                         react-native/no-inline-styles
+  421:40  warning  Inline style: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' }                                                                                                                                                                                                                                                                                                                                                         react-native/no-inline-styles
+
+D:\Capstone_Project\Learnex\src\features\LexAI\components\LoadingBubble.tsx
+  43:21  warning  Inline style: { borderWidth: 1 }  react-native/no-inline-styles
+  67:25  warning  Inline style: { height: 40 }      react-native/no-inline-styles
+
+D:\Capstone_Project\Learnex\src\features\LexAI\components\LoadingDots.tsx
+  31:16  warning  Inline style: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'flex-start',
+  height: 20
+}  react-native/no-inline-styles
+
+D:\Capstone_Project\Learnex\src\features\LexAI\components\MessageBubble.tsx
+   51:36  warning  Inline style: { tintColor: 'white' }                                                                                                                                                                                                 react-native/no-inline-styles
+   95:45  warning  Inline style: {
+  color: 'isUser\r\n' +
+    "                                                    ? 'rgba(255,255,255,0.8)'\r\n" +
+    '                                                    : colors.primary'
+}                       react-native/no-inline-styles
+  119:53  warning  Inline style: {
+  color: 'isUser\r\n' +
+    "                                                            ? 'rgba(255,255,255,0.6)'\r\n" +
+    '                                                            : colors.subtext'
+}       react-native/no-inline-styles
+  131:57  warning  Inline style: {
+  color: 'isUser\r\n' +
+    "                                                                ? 'rgba(255,255,255,0.8)'\r\n" +
+    '                                                                : colors.text'
+}  react-native/no-inline-styles
+  159:25  warning  Inline style: { color: "isUser ? 'rgba(255,255,255,0.7)' : colors.subtext" }                                                                                                                                                         react-native/no-inline-styles
+
+D:\Capstone_Project\Learnex\src\features\LexAI\services\LexAIFirestoreService.ts
+  77:45  warning  'doc' is already declared in the upper scope on line 5 column 3  @typescript-eslint/no-shadow
+
+D:\Capstone_Project\Learnex\src\features\LexAI\utils\lexAI.utils.ts
+  60:5  error  'timeGreeting' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\Capstone_Project\Learnex\src\features\Room\components\CreateRoomForm.tsx
+  63:30  warning  Inline style: { flexDirection: 'row' }                                                                                     react-native/no-inline-styles
+  69:29  warning  Inline style: { flex: 1 }                                                                                                  react-native/no-inline-styles
+  75:39  warning  Inline style: { color: "isDark ? 'white' : 'black'" }                                                                      react-native/no-inline-styles
+  76:39  warning  Inline style: { color: "isDark ? '#888888' : '#666666'" }                                                                  react-native/no-inline-styles
+  88:33  warning  Inline style: {
+  backgroundColor: "isDark ? '#333' : '#f0f0f0'",
+  borderColor: "isDark ? '#444' : '#ddd'"
+}              react-native/no-inline-styles
+  95:40  warning  Inline style: {
+  color: "isDark ? '#ff3b30' : '#ff3b30'",
+  marginVertical: 'auto',
+  fontSize: 18,
+  paddingBottom: 3
+}  react-native/no-inline-styles
+
+D:\Capstone_Project\Learnex\src\features\Room\components\ParticipantGrid.tsx
+  59:21  warning  Inline style: { zIndex: 'isPinned ? 10 : 1' }  react-native/no-inline-styles
+
+D:\Capstone_Project\Learnex\src\features\Room\components\ParticipantItem.tsx
+  39:20  warning  Inline style: { flex: 1 }                                                      react-native/no-inline-styles
+  46:48  warning  Inline style: { backgroundColor: 'rgba(0,0,0,0.2)' }                           react-native/no-inline-styles
+  60:29  warning  Inline style: { backgroundColor: "isPinned ? '#1f1f1f' : 'rgba(0,0,0,0.2)'" }  react-native/no-inline-styles
+
+D:\Capstone_Project\Learnex\src\features\Room\components\ParticipantsPanel.tsx
+  61:29  warning  Inline style: { color: "isDark ? 'white' : 'black'" }  react-native/no-inline-styles
+
+D:\Capstone_Project\Learnex\src\features\Room\components\ReactionsMenu.tsx
+  2:10  error  'View' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\Capstone_Project\Learnex\src\features\Room\components\Room.tsx
+  55:6  error  React Hook useEffect has a missing dependency: 'uiState'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\Capstone_Project\Learnex\src\features\Room\components\TaskListItem.tsx
+   2:40  error    'StyleSheet' is defined but never used                                       @typescript-eslint/no-unused-vars
+  70:29  warning  Inline style: { backgroundColor: "item.completed ? '#34C759' : '#1a9cd8'" }  react-native/no-inline-styles
+
+D:\Capstone_Project\Learnex\src\features\Room\hooks\useRoomMedia.ts
+  3:9  error  'WebRTCService' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\Capstone_Project\Learnex\src\features\Room\services\MeetingService.ts
+  509:37  warning  'doc' is already declared in the upper scope on line 5 column 3  @typescript-eslint/no-shadow
+
+D:\Capstone_Project\Learnex\src\features\SavedPost\services\SavedPostService.ts
+   6:3  error    'getDoc' is defined but never used                               @typescript-eslint/no-unused-vars
+  34:8  warning  'doc' is already declared in the upper scope on line 5 column 3  @typescript-eslint/no-shadow
+
+D:\Capstone_Project\Learnex\src\features\Tasks\components\DuoTaskDetailsModal.tsx
+   12:10  error    'Task' is defined but never used                                                                                                                                                                                                                                                                                                                                                           @typescript-eslint/no-unused-vars
+   85:6   error    React Hook useEffect has missing dependencies: 'loadCollaboratorDetails', 'modalVisible', and 'task'. Either include them or remove the dependency array                                                                                                                                                                                                                                   react-hooks/exhaustive-deps
+  159:13  warning  Inline style: { backgroundColor: "isDark ? '#1a1a1a' : 'white'" }                                                                                                                                                                                                                                                                                                                          react-native/no-inline-styles
+  163:42  warning  Inline style: { color: "isDark ? 'white' : 'black'" }                                                                                                                                                                                                                                                                                                                                      react-native/no-inline-styles
+  172:24  warning  Inline style: { marginHorizontal: 16, marginBottom: 10 }                                                                                                                                                                                                                                                                                                                                   react-native/no-inline-styles
+  174:22  warning  Inline style: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  marginBottom: 5
+}                                                                                                                                                                                                                                                                                             react-native/no-inline-styles
+  179:28  warning  Inline style: { color: "isDark ? '#8e8e8e' : '#666'", fontSize: 12 }                                                                                                                                                                                                                                                                                                                       react-native/no-inline-styles
+  184:24  warning  Inline style: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  paddingHorizontal: 8,
+  paddingVertical: 2,
+  borderRadius: 10,
+  backgroundColor: 'task?.completed\r\n' +
+    "                    ? '#34C759'\r\n" +
+    "                    : task?.collaborationStatus === 'active'\r\n" +
+    "                      ? '#007AFF'\r\n" +
+    "                      : '#FF9500'"
+}  react-native/no-inline-styles
+  196:30  warning  Inline style: { color: 'white', fontSize: 10 }                                                                                                                                                                                                                                                                                                                                             react-native/no-inline-styles
+  203:22  warning  Inline style: {
+  height: 6,
+  backgroundColor: "isDark ? '#404040' : '#e0e0e0'",
+  borderRadius: 3,
+  overflow: 'hidden'
+}                                                                                                                                                                                                                                                                react-native/no-inline-styles
+  210:24  warning  Inline style: {
+  height: '100%',
+  backgroundColor: "task?.completed ? '#34C759' : '#1a9cd8'",
+  borderRadius: 3
+}                                                                                                                                                                                                                                                                        react-native/no-inline-styles
+  222:20  warning  Inline style: {
+  flexDirection: 'row',
+  borderBottomWidth: 1,
+  borderColor: "isDark ? '#404040' : '#e0e0e0'",
+  marginBottom: 10
+}                                                                                                                                                                                                                                                      react-native/no-inline-styles
+  229:22  warning  Inline style: {
+  padding: 10,
+  borderBottomWidth: 2,
+  borderBottomColor: "activeTab === 'details' ? '#1a9cd8' : 'transparent'"
+}                                                                                                                                                                                                                                                        react-native/no-inline-styles
+  236:28  warning  Inline style: { color: "isDark ? 'white' : 'black'" }                                                                                                                                                                                                                                                                                                                                      react-native/no-inline-styles
+  239:22  warning  Inline style: {
+  padding: 10,
+  borderBottomWidth: 2,
+  borderBottomColor: "activeTab === 'subtasks' ? '#1a9cd8' : 'transparent'"
+}                                                                                                                                                                                                                                                       react-native/no-inline-styles
+  246:28  warning  Inline style: { color: "isDark ? 'white' : 'black'" }                                                                                                                                                                                                                                                                                                                                      react-native/no-inline-styles
+  258:23  warning  Inline style: { color: "isDark ? '#8e8e8e' : '#666'" }                                                                                                                                                                                                                                                                                                                                     react-native/no-inline-styles
+  265:23  warning  Inline style: { color: "isDark ? 'white' : 'black'" }                                                                                                                                                                                                                                                                                                                                      react-native/no-inline-styles
+  275:23  warning  Inline style: { color: "isDark ? '#8e8e8e' : '#666'" }                                                                                                                                                                                                                                                                                                                                     react-native/no-inline-styles
+  282:23  warning  Inline style: { color: "isDark ? 'white' : 'black'" }                                                                                                                                                                                                                                                                                                                                      react-native/no-inline-styles
+  292:23  warning  Inline style: { color: "isDark ? '#8e8e8e' : '#666'" }                                                                                                                                                                                                                                                                                                                                     react-native/no-inline-styles
+  296:32  warning  Inline style: { flexDirection: 'row', alignItems: 'center' }                                                                                                                                                                                                                                                                                                                               react-native/no-inline-styles
+  298:30  warning  Inline style: { width: 12, height: 12, borderRadius: 6, marginRight: 5 }                                                                                                                                                                                                                                                                                                                   react-native/no-inline-styles
+  311:25  warning  Inline style: { color: "isDark ? 'white' : 'black'" }                                                                                                                                                                                                                                                                                                                                      react-native/no-inline-styles
+  323:23  warning  Inline style: { color: "isDark ? '#8e8e8e' : '#666'" }                                                                                                                                                                                                                                                                                                                                     react-native/no-inline-styles
+  330:23  warning  Inline style: { color: "isDark ? 'white' : 'black'" }                                                                                                                                                                                                                                                                                                                                      react-native/no-inline-styles
+  340:23  warning  Inline style: { color: "isDark ? '#8e8e8e' : '#666'", marginBottom: 5 }                                                                                                                                                                                                                                                                                                                    react-native/no-inline-styles
+  347:30  warning  Inline style: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  backgroundColor: "isDark ? '#2a2a2a' : '#f5f5f5'",
+  padding: 10,
+  borderRadius: 5,
+  marginBottom: 5
+}                                                                                                                                                                                                                 react-native/no-inline-styles
+  356:32  warning  Inline style: {
+  width: 32,
+  height: 32,
+  borderRadius: 16,
+  backgroundColor: '#1a9cd8',
+  justifyContent: 'center',
+  alignItems: 'center',
+  marginRight: 10
+}                                                                                                                                                                                                                       react-native/no-inline-styles
+  365:38  warning  Inline style: { color: 'white' }                                                                                                                                                                                                                                                                                                                                                           react-native/no-inline-styles
+  375:36  warning  Inline style: { flex: 1 }                                                                                                                                                                                                                                                                                                                                                                  react-native/no-inline-styles
+  376:38  warning  Inline style: { color: "isDark ? 'white' : 'black'" }                                                                                                                                                                                                                                                                                                                                      react-native/no-inline-styles
+  383:34  warning  Inline style: { color: "isDark ? '#8e8e8e' : '#666'", fontSize: 12 }                                                                                                                                                                                                                                                                                                                       react-native/no-inline-styles
+  397:28  warning  Inline style: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  marginTop: 20
+}                                                                                                                                                                                                                                                                                               react-native/no-inline-styles
+  403:30  warning  Inline style: {
+  backgroundColor: '#FF3B30',
+  paddingVertical: 10,
+  paddingHorizontal: 16,
+  borderRadius: 5,
+  alignItems: 'center',
+  flex: 1,
+  marginRight: 5
+}                                                                                                                                                                                                                     react-native/no-inline-styles
+  416:36  warning  Inline style: { color: 'white' }                                                                                                                                                                                                                                                                                                                                                           react-native/no-inline-styles
+  420:30  warning  Inline style: {
+  backgroundColor: '#1a9cd8',
+  paddingVertical: 10,
+  paddingHorizontal: 16,
+  borderRadius: 5,
+  alignItems: 'center',
+  flex: 1,
+  marginLeft: 5
+}                                                                                                                                                                                                                      react-native/no-inline-styles
+  433:36  warning  Inline style: { color: 'white' }                                                                                                                                                                                                                                                                                                                                                           react-native/no-inline-styles
+  447:23  warning  Inline style: { color: "isDark ? '#8e8e8e' : '#666'" }                                                                                                                                                                                                                                                                                                                                     react-native/no-inline-styles
+  451:32  warning  Inline style: { flexDirection: 'row', marginBottom: 15 }                                                                                                                                                                                                                                                                                                                                   react-native/no-inline-styles
+  455:25  warning  Inline style: {
+  backgroundColor: "isDark ? '#2a2a2a' : '#f5f5f5'",
+  color: "isDark ? 'white' : 'black'",
+  borderColor: "isDark ? '#404040' : '#e0e0e0'",
+  flex: 1,
+  marginRight: 10
+}                                                                                                                                                                                                react-native/no-inline-styles
+  469:30  warning  Inline style: {
+  backgroundColor: '#1a9cd8',
+  padding: 10,
+  borderRadius: 5,
+  justifyContent: 'center',
+  alignItems: 'center'
+}                                                                                                                                                                                                                                                       react-native/no-inline-styles
+  477:36  warning  Inline style: { color: 'white' }                                                                                                                                                                                                                                                                                                                                                           react-native/no-inline-styles
+  485:21  warning  Inline style: { color: "isDark ? '#8e8e8e' : '#666'", marginBottom: 10 }                                                                                                                                                                                                                                                                                                                   react-native/no-inline-styles
+  492:28  warning  Inline style: {
+  color: "isDark ? '#8e8e8e' : '#666'",
+  textAlign: 'center',
+  padding: 20
+}                                                                                                                                                                                                                                                                                             react-native/no-inline-styles
+  503:30  warning  Inline style: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  padding: 12,
+  borderBottomWidth: 1,
+  borderColor: "isDark ? '#404040' : '#e0e0e0'"
+}                                                                                                                                                                                                                                   react-native/no-inline-styles
+  511:32  warning  Inline style: {
+  width: 24,
+  height: 24,
+  borderRadius: 12,
+  borderWidth: 2,
+  borderColor: "isDark ? '#8e8e8e' : '#666'",
+  justifyContent: 'center',
+  alignItems: 'center',
+  backgroundColor: 'subtask.completed\r\n' +
+    "                            ? '#1a9cd8'\r\n" +
+    "                            : 'transparent'",
+  marginRight: 10
+}                                 react-native/no-inline-styles
+  532:36  warning  Inline style: { flex: 1 }                                                                                                                                                                                                                                                                                                                                                                  react-native/no-inline-styles
+  534:34  warning  Inline style: {
+  color: "isDark ? 'white' : 'black'",
+  textDecorationLine: 'subtask.completed\r\n' +
+    "                              ? 'line-through'\r\n" +
+    "                              : 'none'",
+  opacity: 'subtask.completed ? 0.7 : 1'
+}                                                                                                                                 react-native/no-inline-styles
+  545:36  warning  Inline style: {
+  color: "isDark ? '#8e8e8e' : '#666'",
+  fontSize: 12,
+  textDecorationLine: 'subtask.completed\r\n' +
+    "                                ? 'line-through'\r\n" +
+    "                                : 'none'",
+  opacity: 'subtask.completed ? 0.7 : 1'
+}                                                                                                            react-native/no-inline-styles
+  559:36  warning  Inline style: { color: "isDark ? '#8e8e8e' : '#666'", fontSize: 10, marginTop: 2 }                                                                                                                                                                                                                                                                                                         react-native/no-inline-styles
+  573:36  warning  Inline style: { color: '#34C759', fontSize: 10, marginTop: 2 }                                                                                                                                                                                                                                                                                                                             react-native/no-inline-styles
+
+D:\Capstone_Project\Learnex\src\features\Tasks\components\DuoTaskModal.tsx
+   15:10  error    'Task' is defined but never used                                                                                                                                                                                                                      @typescript-eslint/no-unused-vars
+  133:8   error    React Hook useEffect has missing dependencies: 'onChangeTask' and 'task'. Either include them or remove the dependency array. If 'onChangeTask' changes too often, find the parent component that defines it and wrap that definition in useCallback  react-hooks/exhaustive-deps
+  719:52  warning  Inline style: {
+  color: "isDark ? '#8e8e8e' : '#666'",
+  textAlign: 'center',
+  padding: 20
+}                                                                                                                                                        react-native/no-inline-styles
+  734:60  warning  Inline style: {
+  flexDirection: 'row',
+  padding: 10,
+  borderBottomWidth: 1,
+  borderColor: "isDark ? '#404040' : '#e0e0e0'",
+  alignItems: 'center'
+}                                                                                              react-native/no-inline-styles
+
+D:\Capstone_Project\Learnex\src\features\Tasks\components\TaskModal.tsx
+   12:10  error    'Task' is defined but never used                                                                                                                                                                                                                                                                                     @typescript-eslint/no-unused-vars
+   36:13  warning  Inline style: { backgroundColor: "isDark ? '#1a1a1a' : 'white'" }                                                                                                                                                                                                                                                    react-native/no-inline-styles
+   40:42  warning  Inline style: { color: "isDark ? 'white' : 'black'" }                                                                                                                                                                                                                                                                react-native/no-inline-styles
+   53:19  warning  Inline style: { color: "isDark ? 'white' : 'black'" }                                                                                                                                                                                                                                                                react-native/no-inline-styles
+   60:19  warning  Inline style: {
+  backgroundColor: "isDark ? '#2a2a2a' : '#f5f5f5'",
+  color: "isDark ? 'white' : 'black'",
+  borderColor: "isDark ? '#404040' : '#e0e0e0'"
+}                                                                                                                                                        react-native/no-inline-styles
+   77:19  warning  Inline style: { color: "isDark ? 'white' : 'black'" }                                                                                                                                                                                                                                                                react-native/no-inline-styles
+   85:19  warning  Inline style: {
+  backgroundColor: "isDark ? '#2a2a2a' : '#f5f5f5'",
+  color: "isDark ? 'white' : 'black'",
+  borderColor: "isDark ? '#404040' : '#e0e0e0'"
+}                                                                                                                                                        react-native/no-inline-styles
+  106:19  warning  Inline style: { color: "isDark ? 'white' : 'black'" }                                                                                                                                                                                                                                                                react-native/no-inline-styles
+  113:19  warning  Inline style: {
+  backgroundColor: "isDark ? '#2a2a2a' : '#f5f5f5'",
+  color: "isDark ? 'white' : 'black'",
+  borderColor: "isDark ? '#404040' : '#e0e0e0'"
+}                                                                                                                                                        react-native/no-inline-styles
+  130:19  warning  Inline style: { color: "isDark ? 'white' : 'black'" }                                                                                                                                                                                                                                                                react-native/no-inline-styles
+  137:19  warning  Inline style: {
+  backgroundColor: "isDark ? '#2a2a2a' : '#f5f5f5'",
+  color: "isDark ? 'white' : 'black'",
+  borderColor: "isDark ? '#404040' : '#e0e0e0'"
+}                                                                                                                                                        react-native/no-inline-styles
+  154:19  warning  Inline style: { color: "isDark ? 'white' : 'black'" }                                                                                                                                                                                                                                                                react-native/no-inline-styles
+  161:19  warning  Inline style: {
+  backgroundColor: "isDark ? '#2a2a2a' : '#f5f5f5'",
+  color: "isDark ? 'white' : 'black'",
+  borderColor: "isDark ? '#404040' : '#e0e0e0'"
+}                                                                                                                                                        react-native/no-inline-styles
+  180:19  warning  Inline style: { color: "isDark ? 'white' : 'black'" }                                                                                                                                                                                                                                                                react-native/no-inline-styles
+  190:23  warning  Inline style: { borderColor: "isDark ? '#404040' : '#e0e0e0'" }                                                                                                                                                                                                                                                      react-native/no-inline-styles
+  209:25  warning  Inline style: {
+  color: 'newTask.priority === priority\r\n' +
+    "                              ? 'white'\r\n" +
+    '                              : isDark\r\n' +
+    "                                ? 'white'\r\n" +
+    "                                : 'black'"
+}                                        react-native/no-inline-styles
+  229:21  warning  Inline style: { color: "isDark ? 'white' : 'black'" }                                                                                                                                                                                                                                                                react-native/no-inline-styles
+  254:21  warning  Inline style: { color: "isDark ? '#8e8e8e' : '#666'" }                                                                                                                                                                                                                                                               react-native/no-inline-styles
+  266:21  warning  Inline style: { color: "isDark ? 'white' : 'black'" }                                                                                                                                                                                                                                                                react-native/no-inline-styles
+  274:23  warning  Inline style: {
+  backgroundColor: '!newTask.completed\r\n' +
+    "                          ? '#1a9cd8'\r\n" +
+    '                          : isDark\r\n' +
+    "                            ? '#2a2a2a'\r\n" +
+    "                            : '#f5f5f5'",
+  borderColor: "isDark ? '#404040' : '#e0e0e0'"
+}  react-native/no-inline-styles
+  289:25  warning  Inline style: {
+  color: '!newTask.completed\r\n' +
+    "                            ? 'white'\r\n" +
+    '                            : isDark\r\n' +
+    "                              ? 'white'\r\n" +
+    "                              : 'black'"
+}                                                           react-native/no-inline-styles
+  303:23  warning  Inline style: {
+  backgroundColor: 'newTask.completed\r\n' +
+    "                          ? '#34C759'\r\n" +
+    '                          : isDark\r\n' +
+    "                            ? '#2a2a2a'\r\n" +
+    "                            : '#f5f5f5'",
+  borderColor: "isDark ? '#404040' : '#e0e0e0'"
+}   react-native/no-inline-styles
+  316:25  warning  Inline style: {
+  color: 'newTask.completed\r\n' +
+    "                            ? 'white'\r\n" +
+    '                            : isDark\r\n' +
+    "                              ? 'white'\r\n" +
+    "                              : 'black'"
+}                                                            react-native/no-inline-styles
+
+D:\Capstone_Project\Learnex\src\features\Tasks\components\TeamTaskModal.tsx
+   56:12  error    'collaboratorData' is assigned a value but never used. Allowed unused elements of array destructuring patterns must match /^_/u                                                                                                                                          @typescript-eslint/no-unused-vars
+   71:8   error    React Hook useEffect has a missing dependency: 'fetchCollaboratorDetails'. Either include it or remove the dependency array                                                                                                                                              react-hooks/exhaustive-deps
+  125:8   error    React Hook useEffect has missing dependencies: 'onChangeTask' and 'task'. Either include them or remove the dependency array. If 'onChangeTask' changes too often, find the parent component that defines it and wrap that definition in useCallback                     react-hooks/exhaustive-deps
+  286:21  warning  Inline style: { backgroundColor: "isDark ? '#1a1a1a' : 'white'" }                                                                                                                                                                                                        react-native/no-inline-styles
+  289:58  warning  Inline style: { color: "isDark ? 'white' : 'black'" }                                                                                                                                                                                                                    react-native/no-inline-styles
+  336:70  warning  Inline style: { color: "isDark ? 'white' : 'black'" }                                                                                                                                                                                                                    react-native/no-inline-styles
+  350:70  warning  Inline style: { color: "isDark ? 'white' : 'black'" }                                                                                                                                                                                                                    react-native/no-inline-styles
+  367:70  warning  Inline style: { color: "isDark ? 'white' : 'black'" }                                                                                                                                                                                                                    react-native/no-inline-styles
+  381:70  warning  Inline style: { color: "isDark ? 'white' : 'black'" }                                                                                                                                                                                                                    react-native/no-inline-styles
+  395:70  warning  Inline style: { color: "isDark ? 'white' : 'black'" }                                                                                                                                                                                                                    react-native/no-inline-styles
+  409:70  warning  Inline style: { color: "isDark ? 'white' : 'black'" }                                                                                                                                                                                                                    react-native/no-inline-styles
+  416:53  warning  Inline style: { borderColor: "isDark ? '#404040' : '#e0e0e0'" }                                                                                                                                                                                                          react-native/no-inline-styles
+  427:53  warning  Inline style: {
+  color: 'task.priority === priority\r\n' +
+    "                                                            ? 'white'\r\n" +
+    "                                                            : isDark ? 'white' : 'black'"
+}                           react-native/no-inline-styles
+  442:74  warning  Inline style: { color: "isDark ? 'white' : 'black'" }                                                                                                                                                                                                                    react-native/no-inline-styles
+  459:70  warning  Inline style: { color: "isDark ? 'white' : 'black'" }                                                                                                                                                                                                                    react-native/no-inline-styles
+  470:45  warning  Inline style: { marginBottom: 5 }                                                                                                                                                                                                                                        react-native/no-inline-styles
+  481:45  warning  Inline style: {
+  backgroundColor: "isDark ? '#2a2a2a' : '#f5f5f5'",
+  color: "isDark ? 'white' : 'black'",
+  borderColor: "isDark ? '#404040' : '#e0e0e0'",
+  marginBottom: 10
+}                                                                                        react-native/no-inline-styles
+  495:48  warning  Inline style: {
+  backgroundColor: '#1a9cd8',
+  padding: 10,
+  borderRadius: 5,
+  alignItems: 'center',
+  marginBottom: 20
+}                                                                                                                                             react-native/no-inline-styles
+  504:54  warning  Inline style: { color: 'white' }                                                                                                                                                                                                                                         react-native/no-inline-styles
+  509:70  warning  Inline style: { color: "isDark ? 'white' : 'black'", marginBottom: 10 }                                                                                                                                                                                                  react-native/no-inline-styles
+  514:54  warning  Inline style: {
+  color: "isDark ? '#8e8e8e' : '#666'",
+  textAlign: 'center',
+  padding: 20
+}                                                                                                                                                                           react-native/no-inline-styles
+  524:62  warning  Inline style: {
+  flexDirection: 'row',
+  padding: 10,
+  borderBottomWidth: 1,
+  borderColor: "isDark ? '#404040' : '#e0e0e0'",
+  alignItems: 'center'
+}                                                                                                                 react-native/no-inline-styles
+  532:64  warning  Inline style: {
+  width: 24,
+  height: 24,
+  borderRadius: 12,
+  borderWidth: 2,
+  borderColor: "isDark ? '#8e8e8e' : '#666'",
+  justifyContent: 'center',
+  alignItems: 'center',
+  backgroundColor: "item.completed ? '#1a9cd8' : 'transparent'",
+  marginRight: 10
+}  react-native/no-inline-styles
+  550:66  warning  Inline style: { flex: 1 }                                                                                                                                                                                                                                                react-native/no-inline-styles
+  551:70  warning  Inline style: {
+  color: "isDark ? 'white' : 'black'",
+  textDecorationLine: "item.completed ? 'line-through' : 'none'",
+  opacity: 'item.completed ? 0.7 : 1'
+}                                                                                                         react-native/no-inline-styles
+  559:74  warning  Inline style: {
+  color: "isDark ? '#8e8e8e' : '#666'",
+  fontSize: 12,
+  textDecorationLine: "item.completed ? 'line-through' : 'none'",
+  opacity: 'item.completed ? 0.7 : 1'
+}                                                                                        react-native/no-inline-styles
+  585:70  warning  Inline style: { color: "isDark ? 'white' : 'black'" }                                                                                                                                                                                                                    react-native/no-inline-styles
+  588:51  warning  Inline style: {
+  color: "isDark ? '#8e8e8e' : '#666'",
+  marginBottom: 10,
+  fontSize: 12
+}                                                                                                                                                                             react-native/no-inline-styles
+  592:50  warning  Inline style: { flexDirection: 'row', marginBottom: 10 }                                                                                                                                                                                                                 react-native/no-inline-styles
+  596:49  warning  Inline style: {
+  backgroundColor: "isDark ? '#2a2a2a' : '#f5f5f5'",
+  color: "isDark ? 'white' : 'black'",
+  borderColor: "isDark ? '#404040' : '#e0e0e0'",
+  flex: 1,
+  marginRight: 5
+}                                                                               react-native/no-inline-styles
+  612:52  warning  Inline style: {
+  backgroundColor: '#1a9cd8',
+  padding: 10,
+  borderRadius: 5,
+  justifyContent: 'center'
+}                                                                                                                                                             react-native/no-inline-styles
+  624:62  warning  Inline style: { color: 'white' }                                                                                                                                                                                                                                         react-native/no-inline-styles
+  630:54  warning  Inline style: { color: '#FF3B30', marginBottom: 10 }                                                                                                                                                                                                                     react-native/no-inline-styles
+  635:70  warning  Inline style: {
+  color: "isDark ? 'white' : 'black'",
+  marginTop: 20,
+  marginBottom: 10
+}                                                                                                                                                                             react-native/no-inline-styles
+  640:54  warning  Inline style: {
+  color: "isDark ? '#8e8e8e' : '#666'",
+  textAlign: 'center',
+  padding: 10
+}                                                                                                                                                                           react-native/no-inline-styles
+  650:62  warning  Inline style: {
+  flexDirection: 'row',
+  padding: 10,
+  backgroundColor: "isDark ? '#2a2a2a' : '#f5f5f5'",
+  borderRadius: 5,
+  alignItems: 'center',
+  marginBottom: 10
+}                                                                                              react-native/no-inline-styles
+  658:66  warning  Inline style: { flex: 1 }                                                                                                                                                                                                                                                react-native/no-inline-styles
+  659:70  warning  Inline style: { color: "isDark ? 'white' : 'black'" }                                                                                                                                                                                                                    react-native/no-inline-styles
+  662:70  warning  Inline style: { color: "isDark ? '#8e8e8e' : '#666'", fontSize: 12 }                                                                                                                                                                                                     react-native/no-inline-styles
+  677:52  warning  Inline style: {
+  marginTop: 10,
+  padding: 10,
+  borderRadius: 5,
+  backgroundColor: '#FF3B30',
+  alignItems: 'center'
+}                                                                                                                                                react-native/no-inline-styles
+  686:58  warning  Inline style: { color: 'white' }                                                                                                                                                                                                                                         react-native/no-inline-styles
+  690:51  warning  Inline style: { color: "isDark ? '#8e8e8e' : '#666'", marginTop: 20, fontSize: 12 }                                                                                                                                                                                      react-native/no-inline-styles
+
+D:\Capstone_Project\Learnex\src\shared\helpers\ThemeListener.tsx
+   1:8   error    'React' is defined but never used                                   @typescript-eslint/no-unused-vars
+  40:15  warning  'theme' is already declared in the upper scope on line 13 column 9  @typescript-eslint/no-shadow
+
+D:\Capstone_Project\Learnex\src\shared\navigation\routes\UserStack.tsx
+  26:3  error  'NavigationProp' is defined but never used      @typescript-eslint/no-unused-vars
+  42:9  error  'RootStackParamList' is defined but never used  @typescript-eslint/no-unused-vars
+  43:9  error  'SafeAreaView' is defined but never used        @typescript-eslint/no-unused-vars
+
+D:\Capstone_Project\Learnex\src\shared\services\FirebaseService.ts
+  214:13  warning  'doc' is already declared in the upper scope on line 20 column 3  @typescript-eslint/no-shadow
+  372:33  warning  'doc' is already declared in the upper scope on line 20 column 3  @typescript-eslint/no-shadow
+  642:37  warning  'doc' is already declared in the upper scope on line 20 column 3  @typescript-eslint/no-shadow
+
+D:\Capstone_Project\Learnex\src\shared\services\LexAIService.ts
+     3:9   error    'Appearance' is defined but never used                     @typescript-eslint/no-unused-vars
+    29:9   error    'useDispatch' is defined but never used                    @typescript-eslint/no-unused-vars
+    30:9   error    'useTypedDispatch' is defined but never used               @typescript-eslint/no-unused-vars
+   791:15  error    'normalizedScreenName' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  1834:33  warning  Script URL is a form of eval                               no-script-url
+
+D:\Capstone_Project\Learnex\src\shared\services\TaskService.ts
+    51:38  warning  'doc' is already declared in the upper scope on line 5 column 3  @typescript-eslint/no-shadow
+   541:13  warning  'doc' is already declared in the upper scope on line 5 column 3  @typescript-eslint/no-shadow
+   912:41  warning  'doc' is already declared in the upper scope on line 5 column 3  @typescript-eslint/no-shadow
+   948:9   warning  'doc' is already declared in the upper scope on line 5 column 3  @typescript-eslint/no-shadow
+   966:13  warning  'doc' is already declared in the upper scope on line 5 column 3  @typescript-eslint/no-shadow
+  1027:44  warning  'doc' is already declared in the upper scope on line 5 column 3  @typescript-eslint/no-shadow
+  1122:44  warning  'doc' is already declared in the upper scope on line 5 column 3  @typescript-eslint/no-shadow
+  1400:18  warning  'doc' is already declared in the upper scope on line 5 column 3  @typescript-eslint/no-shadow
+
+D:\Capstone_Project\Learnex\src\shared\services\UserService.ts
+   24:13  warning  'doc' is already declared in the upper scope on line 5 column 3  @typescript-eslint/no-shadow
+  239:33  warning  'doc' is already declared in the upper scope on line 5 column 3  @typescript-eslint/no-shadow
+  254:36  warning  'doc' is already declared in the upper scope on line 5 column 3  @typescript-eslint/no-shadow
+  269:32  warning  'doc' is already declared in the upper scope on line 5 column 3  @typescript-eslint/no-shadow
+
+D:\Capstone_Project\Learnex\src\shared\services\firebase\PostQueryService.ts
+   34:23  warning  'query' is already declared in the upper scope on line 7 column 3  @typescript-eslint/no-shadow
+   70:23  warning  'doc' is already declared in the upper scope on line 5 column 3    @typescript-eslint/no-shadow
+   71:26  warning  'doc' is already declared in the upper scope on line 5 column 3    @typescript-eslint/no-shadow
+  202:65  warning  'doc' is already declared in the upper scope on line 5 column 3    @typescript-eslint/no-shadow
+  223:21  warning  'doc' is already declared in the upper scope on line 5 column 3    @typescript-eslint/no-shadow
+  231:18  warning  'doc' is already declared in the upper scope on line 5 column 3    @typescript-eslint/no-shadow
+  273:11  error    'snapshot' is assigned a value but never used                      @typescript-eslint/no-unused-vars
+  297:19  warning  'doc' is already declared in the upper scope on line 5 column 3    @typescript-eslint/no-shadow
+  298:16  warning  'doc' is already declared in the upper scope on line 5 column 3    @typescript-eslint/no-shadow
+  380:19  warning  'doc' is already declared in the upper scope on line 5 column 3    @typescript-eslint/no-shadow
+  381:22  warning  'doc' is already declared in the upper scope on line 5 column 3    @typescript-eslint/no-shadow
+
+D:\Capstone_Project\Learnex\src\shared\services\firebase\TrendingService.ts
+  20:23  warning  'query' is already declared in the upper scope on line 5 column 3  @typescript-eslint/no-shadow
+
+D:\Capstone_Project\Learnex\src\shared\services\utils.ts
+  128:3  error  Unreachable code  no-unreachable
+
+D:\Capstone_Project\Learnex\src\shared\utils\FCMTokenManager.ts
+  178:29  warning  'doc' is already declared in the upper scope on line 5 column 3  @typescript-eslint/no-shadow
+
+Γ£û 258 problems (33 errors, 225 warnings)
+
+(node:17296) ESLintRCWarning: You are using an eslintrc configuration file, which is deprecated and support will be removed in v10.0.0. Please migrate to an eslint.config.js file. See https://eslint.org/docs/latest/use/configure/migration-guide for details. An eslintrc configuration file is used because you have the ESLINT_USE_FLAT_CONFIG environment variable set to false. If you want to use an eslint.config.js file, remove the environment variable. If you want to find the location of the eslintrc configuration file, use the --debug flag.
+(Use `node --trace-warnings ...` to show where the warning was created)

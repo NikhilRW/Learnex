@@ -128,7 +128,7 @@ export function HeroSection() {
                     <div className="relative w-full aspect-[3/4] bg-gradient-to-br from-background to-secondary/30 rounded-2xl overflow-hidden border border-border shadow-2xl hover:shadow-accent/10 transition-all">
                         {/* Phone frame */}
                         <div className="absolute top-0 w-full h-6 bg-background/80 backdrop-blur-md flex items-center justify-center">
-                            <div className="w-20 h-2 rounded-full bg-foreground/20"></div>
+                            <div className="w-20 h-2 rounded-full bg-foreground/20" />
                         </div>
 
                         <div className="h-full w-full pt-8 p-4 flex flex-col">
@@ -182,7 +182,7 @@ export function HeroSection() {
                                     animate={{ opacity: [0.7, 1, 0.7] }}
                                     transition={{ duration: 2, repeat: Infinity }}
                                 >
-                                    <div className="w-2 h-2 rounded-full bg-green-500 mr-1.5"></div>
+                                    <div className="w-2 h-2 rounded-full bg-green-500 mr-1.5" />
                                     Active
                                 </motion.div>
                                 <div className="text-xs text-foreground/70 font-mono">4 Online</div>
