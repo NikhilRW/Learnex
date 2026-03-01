@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import {
   View,
   Image,
@@ -8,17 +8,18 @@ import {
   Text,
   ScrollView,
   ActivityIndicator,
+  Dimensions,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import AntDesign from 'react-native-vector-icons/AntDesign';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { primaryColor } from 'shared/res/strings/eng';
-import { getUsernameForLogo } from 'shared/helpers/common/stringHelpers';
-import { Avatar } from 'react-native-elements';
-import { useTheme } from 'hooks/common/useTheme';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { createStyles } from '@/features/Home/styles/Post';
-import { FullPostModalProps } from '../types';
+import {primaryColor} from 'shared/res/strings/eng';
+import {getUsernameForLogo} from 'shared/helpers/common/stringHelpers';
+import {Avatar} from 'react-native-elements';
+import {useTheme} from 'hooks/common/useTheme';
+import {SafeAreaView} from 'react-native-safe-area-context';
+import {createStyles} from '@/features/Home/styles/Post';
+import {FullPostModalProps} from '../types';
 
 // Update the FullPostModal component to memoize media content and improve scrolling
 export const FullPostModal = ({
@@ -43,7 +44,9 @@ export const FullPostModal = ({
 }: FullPostModalProps) => {
   // Create local state for modal media navigation to prevent affecting the main feed
   const [modalMediaIndex, setModalMediaIndex] = useState(currentMediaIndex);
-  const { isDark } = useTheme();
+  const modalScreenWidth = Dimensions.get('window').width;
+  const [modalImageHeight, setModalImageHeight] = useState(imageHeight);
+  const {isDark} = useTheme();
   // Function to handle comment button in the modal
   const handleCommentButtonInModal = () => {
     // First close the full post modal
@@ -75,6 +78,52 @@ export const FullPostModal = ({
     }
   }, [showFullPostModal, currentMediaIndex]);
 
+  // Compute proper image height for full-width modal display
+  useEffect(() => {
+    if (!showFullPostModal || allMedia.length === 0) return;
+
+    const media = allMedia[modalMediaIndex];
+    if (!media || media.type === 'video') {
+      setModalImageHeight(imageHeight);
+      return;
+    }
+
+    const source = media.source;
+    let imageUri: string | undefined;
+
+    if (typeof source === 'string') {
+      imageUri = source;
+    } else if (source && typeof source === 'object' && 'uri' in source) {
+      imageUri = (source as any).uri;
+    }
+
+    if (imageUri) {
+      Image.getSize(
+        imageUri,
+        (w, h) => {
+          const scaledHeight = (h / w) * modalScreenWidth;
+          setModalImageHeight(scaledHeight);
+        },
+        () => setModalImageHeight(imageHeight),
+      );
+    } else if (typeof source === 'number') {
+      const resolved = Image.resolveAssetSource(source);
+      if (resolved) {
+        const scaledHeight =
+          (resolved.height / resolved.width) * modalScreenWidth;
+        setModalImageHeight(scaledHeight);
+      }
+    } else {
+      setModalImageHeight(imageHeight);
+    }
+  }, [
+    showFullPostModal,
+    modalMediaIndex,
+    allMedia,
+    imageHeight,
+    modalScreenWidth,
+  ]);
+
   // Memoize the media content to prevent re-renders
   const currentMediaContent = React.useMemo(() => {
     if (allMedia.length === 0) return null;
@@ -97,10 +146,8 @@ export const FullPostModal = ({
         {allMedia.map((_, index) => {
           const dotBgColor =
             index === modalMediaIndex ? '#fff' : 'rgba(255, 255, 255, 0.5)';
-          const dotBgStyle = { backgroundColor: dotBgColor };
-          return (
-            <Animated.View key={index} style={[styles.dot, dotBgStyle]} />
-          );
+          const dotBgStyle = {backgroundColor: dotBgColor};
+          return <Animated.View key={index} style={[styles.dot, dotBgStyle]} />;
         })}
       </View>
     );
@@ -109,11 +156,11 @@ export const FullPostModal = ({
 
   const styles = createStyles(isDark);
   const mediaContentStyle = {
-    width: screenWidth,
-    height: imageHeight,
+    width: modalScreenWidth,
+    height: modalImageHeight,
     ...styles.mediaContent,
   };
-  const viewAllStyle = { color: primaryColor };
+  const viewAllStyle = {color: primaryColor};
 
   return (
     <Modal
@@ -129,7 +176,7 @@ export const FullPostModal = ({
               <Image
                 source={
                   typeof userProfileImage === 'string'
-                    ? { uri: userProfileImage }
+                    ? {uri: userProfileImage}
                     : userProfileImage
                 }
                 style={[styles.avatar]}
@@ -170,9 +217,7 @@ export const FullPostModal = ({
           contentContainerStyle={styles.fullPostScrollContent}>
           <View style={styles.fullPostMediaContainer}>
             {/* Render the memoized media content to prevent re-renders */}
-            <View style={mediaContentStyle}>
-              {currentMediaContent}
-            </View>
+            <View style={mediaContentStyle}>{currentMediaContent}</View>
 
             {allMedia.length > 1 && (
               <>
@@ -180,7 +225,7 @@ export const FullPostModal = ({
                   <TouchableOpacity
                     style={[styles.navButton, styles.prevButton]}
                     onPress={goToPreviousMediaInModal}
-                    hitSlop={{ top: 20, bottom: 20, left: 20, right: 10 }}>
+                    hitSlop={{top: 20, bottom: 20, left: 20, right: 10}}>
                     <Icon name="chevron-left" size={30} color="white" />
                   </TouchableOpacity>
                 )}
@@ -189,7 +234,7 @@ export const FullPostModal = ({
                   <TouchableOpacity
                     style={[styles.navButton, styles.nextButton]}
                     onPress={goToNextMediaInModal}
-                    hitSlop={{ top: 20, bottom: 20, left: 10, right: 20 }}>
+                    hitSlop={{top: 20, bottom: 20, left: 10, right: 20}}>
                     <Icon name="chevron-right" size={30} color="white" />
                   </TouchableOpacity>
                 )}
@@ -278,14 +323,14 @@ export const FullPostModal = ({
                     <Image
                       source={
                         comment.userImage
-                          ? { uri: comment.userImage }
+                          ? {uri: comment.userImage}
                           : {
-                            uri:
-                              'https://ui-avatars.com/api/?name=' +
-                              encodeURIComponent(
-                                comment.username || 'Anonymous',
-                              ),
-                          }
+                              uri:
+                                'https://ui-avatars.com/api/?name=' +
+                                encodeURIComponent(
+                                  comment.username || 'Anonymous',
+                                ),
+                            }
                       }
                       style={styles.commentAvatar}
                     />

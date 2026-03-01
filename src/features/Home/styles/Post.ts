@@ -584,8 +584,7 @@ export const createStyles = (isDark: boolean) =>
     },
     fullPostScrollContent: {
       flexGrow: 1,
-      paddingBottom: 60, // Increase padding at the bottom for better scrolling
-      minHeight: '100%',
+      paddingBottom: 40,
     },
     fullPostHeader: {
       flexDirection: 'row',
@@ -613,9 +612,6 @@ export const createStyles = (isDark: boolean) =>
       position: 'relative',
       width: '100%',
       backgroundColor: '#000',
-      alignItems: 'center',
-      justifyContent: 'center',
-      minHeight: 200,
       overflow: 'hidden',
       padding: 0,
       margin: 0,

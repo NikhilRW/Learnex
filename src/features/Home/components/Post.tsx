@@ -317,11 +317,11 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
             styles.postImage,
             {
               height: isFullModal
-                ? imageHeight
+                ? '100%'
                 : imageHeight - 12 || (post.isVertical ? 480 : 300),
             },
           ]}
-          resizeMode={isFullModal ? 'contain' : 'cover'}
+          resizeMode="cover"
           onError={error =>
             console.error(
               'Image loading error for source',
