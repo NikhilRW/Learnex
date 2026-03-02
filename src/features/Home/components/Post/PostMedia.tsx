@@ -6,11 +6,11 @@ import {
   TouchableWithoutFeedback,
   Text,
   Animated,
-  StyleSheet,
 } from 'react-native';
+import { StyleSheet } from 'react-native-unistyles';
 import Icon from 'react-native-vector-icons/Feather';
 import Video from 'react-native-video';
-import {PostMediaProps} from '../../types';
+import { PostMediaProps } from '../../types';
 
 export const PostMedia: React.FC<PostMediaProps> = ({
   allMedia,
@@ -39,7 +39,7 @@ export const PostMedia: React.FC<PostMediaProps> = ({
     } else if (typeof videoSource === 'string') {
       source = videoSource;
     } else if (videoSource && typeof videoSource === 'object') {
-      const videoObject = videoSource as {uri?: string};
+      const videoObject = videoSource as { uri?: string };
       if (videoObject.uri) {
         source = videoObject.uri;
       } else {
@@ -62,11 +62,11 @@ export const PostMedia: React.FC<PostMediaProps> = ({
         <View
           style={[
             styles.videoContainer,
-            {width: screenWidth - 24, height: imageHeight},
+            { width: screenWidth - 24, height: imageHeight },
           ]}>
           <Video
             ref={videoRef}
-            source={{uri: source}}
+            source={{ uri: source }}
             style={styles.postImage}
             resizeMode={isVertical ? 'cover' : 'contain'}
             paused={isPaused}
@@ -85,13 +85,13 @@ export const PostMedia: React.FC<PostMediaProps> = ({
     if (typeof imageSource === 'number') {
       source = imageSource;
     } else if (typeof imageSource === 'string') {
-      source = {uri: imageSource};
+      source = { uri: imageSource };
     } else if (
       imageSource &&
       typeof imageSource === 'object' &&
       'uri' in imageSource
     ) {
-      source = {uri: imageSource.uri};
+      source = { uri: imageSource.uri };
     } else {
       return null;
     }
@@ -102,7 +102,7 @@ export const PostMedia: React.FC<PostMediaProps> = ({
           source={source}
           style={[
             styles.postImage,
-            {height: imageHeight || (isVertical ? 480 : 300)},
+            { height: imageHeight || (isVertical ? 480 : 300) },
           ]}
           resizeMode={isVertical ? 'cover' : 'contain'}
           onError={error =>
@@ -156,7 +156,7 @@ export const PostMedia: React.FC<PostMediaProps> = ({
                 index === currentMediaIndex
                   ? '#fff'
                   : 'rgba(255, 255, 255, 0.5)';
-              const dotBgStyle = {backgroundColor: bgColor};
+              const dotBgStyle = { backgroundColor: bgColor };
               return (
                 <Animated.View key={index} style={[styles.dot, dotBgStyle]} />
               );

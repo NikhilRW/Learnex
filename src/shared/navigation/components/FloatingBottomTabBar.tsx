@@ -1,4 +1,5 @@
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
+import { StyleSheet } from 'react-native-unistyles';
 import React from 'react';
 import { FloatingBottomTabBarPropsType } from 'shared/types/bottomTabBarTypes';
 import navigationIconHelper from 'shared/helpers/navigation/NavigationIconHelper';

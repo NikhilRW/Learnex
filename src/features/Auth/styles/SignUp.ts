@@ -1,4 +1,4 @@
-import {StyleSheet} from 'react-native';
+import {StyleSheet} from 'react-native-unistyles';
 
 export const styles = StyleSheet.create({
   cricle1: {
@@ -82,7 +82,7 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 12,
     flex: 1,
     marginBottom: 20,
-    marginTop:10,
+    marginTop: 10,
   },
   checkboxText: {
     marginLeft: 12,

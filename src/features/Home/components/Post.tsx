@@ -59,7 +59,7 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
   const isDark = useTypedSelector(state => state.user.theme) === 'dark';
   const firebase = useTypedSelector(state => state.firebase.firebase);
   const navigation = useNavigation<UserNavigation>();
-  const messageService = new MessageService();
+  const messageService = useRef(new MessageService()).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   // UI state
@@ -163,7 +163,8 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
     });
 
     return () => unsubscribe();
-  }, [post.user.id, userProfileImage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [post.user.id]);
 
   // Fade in animation
   useEffect(() => {
@@ -477,7 +478,7 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
     setShowFullPostModal(true);
   };
 
-  const styles = createStyles(isDark);
+  const styles = useMemo(() => createStyles(isDark), [isDark]);
 
   // Process description and hashtags using imported utility functions
   const formattedDescription = React.useMemo(() => {
@@ -582,4 +583,4 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
   );
 };
 
-export default Post;
+export default React.memo(Post);

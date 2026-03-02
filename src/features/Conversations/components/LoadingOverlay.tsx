@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator } from 'react-native';
+import { StyleSheet } from 'react-native-unistyles';
 import { styles } from '../styles/LoadingOverlay';
 import { LoadingOverlayProps } from '../types';
 

@@ -1,4 +1,4 @@
-import {StyleSheet} from 'react-native';
+import {StyleSheet} from 'react-native-unistyles';
 
 export const getStyles = (isDark: boolean, hasStoragePermission: boolean) =>
   StyleSheet.create({
@@ -253,7 +253,7 @@ export const getStyles = (isDark: boolean, hasStoragePermission: boolean) =>
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: 8,
-      marginTop:12,
+      marginTop: 12,
     },
     tagWrapper: {
       flexDirection: 'row',

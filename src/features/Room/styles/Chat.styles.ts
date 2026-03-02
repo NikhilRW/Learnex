@@ -1,5 +1,5 @@
-import { width } from "@/shared/constants/style";
-import { StyleSheet } from "react-native";
+import {width} from '@/shared/constants/style';
+import {StyleSheet} from 'react-native-unistyles';
 
 export const styles = StyleSheet.create({
   container: {

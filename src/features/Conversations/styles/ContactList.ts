@@ -1,4 +1,4 @@
-import {StyleSheet} from 'react-native';
+import {StyleSheet} from 'react-native-unistyles';
 import {SCREEN_WIDTH} from 'shared/constants/common';
 
 export const getStyles = (isDark: boolean) =>

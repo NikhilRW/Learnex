@@ -33,6 +33,12 @@ const plugins = [
       },
     },
   ],
+  [
+    'react-native-unistyles/plugin',
+    {
+      root: 'src',
+    },
+  ],
 ];
 
 module.exports = {

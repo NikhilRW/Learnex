@@ -72,12 +72,6 @@ const Home = () => {
     return () => unsubscribe?.();
   }, [firebase.posts, selectedTag]);
 
-  useEffect(() => {
-    setTimeout(() => {
-      setIsLoaded(true);
-    }, 2500);
-  }, []);
-
   const onViewableItemsChanged = useCallback(
     ({ viewableItems }: { viewableItems: Array<ViewToken> }) => {
       // Find the first video post that is visible
@@ -120,7 +114,6 @@ const Home = () => {
   const onRefresh = useCallback(async () => {
     try {
       setRefreshing(true);
-      console.log('Refreshing home feed...');
 
       // Refresh posts
       const postsResponse = await firebase.posts.getPosts();
@@ -197,36 +190,17 @@ const Home = () => {
     let mounted = true;
     const fetchTrendingTags = async () => {
       try {
-        console.log('Starting to fetch trending tags...');
         const response = await firebase.trending.getTrendingPosts('day', TRENDING_POSTS_LIMIT);
 
         if (!mounted) {
-          console.log('Component unmounted, skipping update');
           return;
         }
-        console.log('posts', response.posts);
-        console.log('Got trending posts response:', {
-          success: response.success,
-          postsCount: response.posts?.length,
-          posts: response.posts?.map((post: PostType) => ({
-            id: post.id,
-            hashtags: post.hashtags,
-            engagement: post.likes + post.comments,
-          })),
-        });
 
         if (response.success && response.posts && response.posts.length > 0) {
-          console.log('Processing posts for hashtags...');
           const hashtagStats = new Map<string, number>();
 
           response.posts.forEach(
             (post: PostType & { likes: number; comments: number }) => {
-              console.log('Processing post:', {
-                id: post.id,
-                hashtags: post.hashtags || [],
-                engagement: post.likes + post.comments,
-              });
-
               // Ensure hashtags exists and is an array
               if (
                 post.hashtags &&
@@ -240,13 +214,7 @@ const Home = () => {
 
                   const currentEngagement = hashtagStats.get(tag) || 0;
                   hashtagStats.set(tag, currentEngagement + engagement);
-                  console.log(
-                    `Updated engagement for tag #${tag}:`,
-                    currentEngagement + engagement,
-                  );
                 });
-              } else {
-                console.log('Post has no valid hashtags:', post.id);
               }
             },
           );
@@ -306,7 +274,6 @@ const Home = () => {
           };
 
           const extractedTags = extractTagsFromPosts();
-          console.log('Extracted tags from posts after error:', extractedTags);
 
           if (extractedTags.length > 0) {
             setTrendingTags(extractedTags);
@@ -332,7 +299,6 @@ const Home = () => {
           setFilteredPosts([]);
         });
       } else {
-        console.log(`Filtering by tag: ${tag}`);
         startTransition(() => {
           setSelectedTag(tag);
           const filtered = posts.filter(post => {

@@ -1,4 +1,5 @@
-import {StyleSheet, Dimensions, Platform} from 'react-native';
+import {Dimensions, Platform} from 'react-native';
+import {StyleSheet} from 'react-native-unistyles';
 
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
 const DRAWER_WIDTH = Math.min(SCREEN_WIDTH * 0.85, 400); // Max width of 400

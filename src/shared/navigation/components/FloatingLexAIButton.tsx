@@ -1,9 +1,9 @@
 import React from 'react';
 import {
-  StyleSheet,
   TouchableOpacity,
   Animated,
 } from 'react-native';
+import { StyleSheet } from 'react-native-unistyles';
 import { NavigationProp, useNavigation } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { UserStackParamList } from 'shared/navigation/routes/UserStack';

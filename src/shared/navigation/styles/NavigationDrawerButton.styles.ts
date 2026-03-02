@@ -1,4 +1,5 @@
-import {StyleSheet, Dimensions} from 'react-native';
+import {Dimensions} from 'react-native';
+import {StyleSheet} from 'react-native-unistyles';
 
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
 

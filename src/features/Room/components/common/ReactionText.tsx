@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native-unistyles';
 import Reanimated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 const ReactionText = ({ text }: { text: string }) => {

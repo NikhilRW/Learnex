@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
+import { StyleSheet } from 'react-native-unistyles';
 import { Modal, TouchableOpacity, TouchableWithoutFeedback } from 'react-native';
 import { Text } from 'react-native-elements';
 import { useTheme } from 'hooks/common/useTheme';

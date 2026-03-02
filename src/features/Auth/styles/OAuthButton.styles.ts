@@ -1,4 +1,4 @@
-import {StyleSheet} from 'react-native';
+import {StyleSheet} from 'react-native-unistyles';
 
 export const styles = StyleSheet.create({
   oauthImage: {width: 55, height: 55, borderRadius: 50},

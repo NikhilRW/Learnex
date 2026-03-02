@@ -1,5 +1,5 @@
 import {SCREEN_HEIGHT, SCREEN_WIDTH} from 'shared/constants/common';
-import {StyleSheet} from 'react-native';
+import {StyleSheet} from 'react-native-unistyles';
 
 export const createStyles = (isDark: boolean) =>
   StyleSheet.create({
