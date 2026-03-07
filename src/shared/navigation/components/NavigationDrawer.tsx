@@ -11,7 +11,7 @@ import {
   TextInput,
   ScrollView,
 } from 'react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTypedSelector } from 'hooks/redux/useTypedSelector';
 import { useTypedDispatch } from 'hooks/redux/useTypedDispatch';
 import {
@@ -55,8 +55,8 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
   const profileColor = useTypedSelector(state => state.user.userProfileColor);
   const reduxPhotoURL = useTypedSelector(state => state.user.userPhoto);
   const navigation = props.navigation;
-  const styles = createStyles(isDark);
-  const messageService = new MessageService();
+  const styles = useMemo(() => createStyles(isDark), [isDark]);
+  const messageService = useRef(new MessageService()).current;
 
   // Add state for photo picker modal
   const [photoPickerVisible, setPhotoPickerVisible] = useState(false);

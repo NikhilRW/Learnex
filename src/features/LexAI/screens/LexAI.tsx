@@ -1,15 +1,15 @@
-import {LegendList} from '@legendapp/list';
-import React, {useState, useEffect, useRef, useCallback} from 'react';
-import {TextInput, useColorScheme} from 'react-native';
+import { LegendList } from '@legendapp/list';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { TextInput, useColorScheme } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import {LexAIMessage, LexAIMode} from 'lex-ai/types/lexAITypes';
-import {useSelector} from 'react-redux';
-import {styles} from 'lex-ai/styles/LexAI.styles';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import {useTypedSelector} from 'hooks/redux/useTypedSelector';
+import { LexAIMessage, LexAIMode } from 'lex-ai/types/lexAITypes';
+import { useSelector } from 'react-redux';
+import { styles } from 'lex-ai/styles/LexAI.styles';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTypedSelector } from 'hooks/redux/useTypedSelector';
 
 // Import types
-import {RootState, LexAIMessageWithLinks} from '../types/lexAI.types';
+import { RootState, LexAIMessageWithLinks } from '../types/lexAI.types';
 import {
   lightColors,
   darkColors,
@@ -26,7 +26,7 @@ import {
 } from '../hooks';
 
 // Import utils
-import {getGreeting} from '../utils/lexAI.utils';
+import { getGreeting } from '../utils/lexAI.utils';
 
 // Import components
 import {
@@ -91,13 +91,13 @@ const LexAI = () => {
   const scrollToEnd = useCallback(() => {
     setTimeout(() => {
       if (flatListRef.current) {
-        flatListRef.current.scrollToEnd({animated: true});
+        flatListRef.current.scrollToEnd({ animated: true });
       }
     }, 100);
   }, []);
 
   // Use tool execution hook
-  const {handleToolExecution} = useLexAIToolExecution({
+  const { handleToolExecution } = useLexAIToolExecution({
     conversation,
     setConversation,
     currentMode,
@@ -121,12 +121,17 @@ const LexAI = () => {
     scrollToEnd,
   });
 
+  const visibleMessages = useMemo(
+    () => conversation?.messages.filter(message => message.role !== 'system') || [],
+    [conversation?.messages],
+  );
+
   // Fetch user's name when component loads
   useEffect(() => {
     const fetchUserName = async () => {
       try {
         if (currentUser) {
-          const {fullName} = await firebase.user.getNameUsernamestring();
+          const { fullName } = await firebase.user.getNameUsernamestring();
           setUserName(fullName || 'User');
         }
       } catch (error) {
@@ -139,17 +144,20 @@ const LexAI = () => {
   }, [currentUser, firebase]);
 
   // Render message item
-  const renderMessage = ({
-    item,
-  }: {
-    item: LexAIMessage | LexAIMessageWithLinks;
-  }) => (
-    <MessageBubble
-      item={item}
-      colors={colors}
-      isDarkMode={isDarkMode}
-      debugMode={debugMode}
-    />
+  const renderMessage = useCallback(
+    ({
+      item,
+    }: {
+      item: LexAIMessage | LexAIMessageWithLinks;
+    }) => (
+      <MessageBubble
+        item={item}
+        colors={colors}
+        isDarkMode={isDarkMode}
+        debugMode={debugMode}
+      />
+    ),
+    [colors, debugMode, isDarkMode],
   );
 
   const emptyComponent = useCallback(
@@ -181,8 +189,8 @@ const LexAI = () => {
             : ['#F5F9FF', '#EDF4FF', '#E5F0FF']
         }
         style={styles.mainContainer}
-        start={{x: 0.1, y: 0.1}}
-        end={{x: 0.9, y: 0.9}}>
+        start={{ x: 0.1, y: 0.1 }}
+        end={{ x: 0.9, y: 0.9 }}>
         {/* Enhanced header */}
         <ChatHeader
           colors={colors}
@@ -198,14 +206,14 @@ const LexAI = () => {
         />
         <LegendList
           style={styles.messageList}
-          data={conversation?.messages.filter(m => m.role !== 'system') || []}
-          keyExtractor={(item, index) => `message-${index}`}
+          data={visibleMessages}
+          keyExtractor={item => item.id}
           renderItem={renderMessage}
           ref={flatListRef}
           onContentSizeChange={() =>
-            flatListRef.current?.scrollToEnd({animated: true})
+            flatListRef.current?.scrollToEnd({ animated: true })
           }
-          onLayout={() => flatListRef.current?.scrollToEnd({animated: true})}
+          onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
           ListFooterComponent={
             <>
               <LoadingBubble

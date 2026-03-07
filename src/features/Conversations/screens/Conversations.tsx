@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -41,7 +41,8 @@ const ConversationsScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-  const messageService = new MessageService();
+  const [listenerVersion, setListenerVersion] = useState(0);
+  const messageService = useRef(new MessageService()).current;
 
   useEffect(() => {
     if (!currentUser) return;
@@ -51,12 +52,13 @@ const ConversationsScreen: React.FC = () => {
       newConversations => {
         setConversations(newConversations);
         setFilteredConversations(newConversations);
+        setRefreshing(false);
         setLoading(false);
       },
     );
 
     return () => unsubscribe();
-  }, [currentUser]);
+  }, [currentUser, listenerVersion, messageService]);
 
   useEffect(() => {
     if (search.trim() === '') {
@@ -77,13 +79,10 @@ const ConversationsScreen: React.FC = () => {
     }
   }, [search, conversations, currentUser]);
 
-  const onRefresh = async () => {
+  const onRefresh = useCallback(() => {
     setRefreshing(true);
-    // The listener will automatically update, but we'll wait briefly for visual feedback
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 1000);
-  };
+    setListenerVersion(version => version + 1);
+  }, []);
 
   const handleNewMessage = () => {
     navigation.navigate('ContactList');

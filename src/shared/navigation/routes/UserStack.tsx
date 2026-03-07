@@ -169,9 +169,9 @@ const extractUserIdFromChatUrl = (url: string): string | null => {
 
 // Custom tab bar component to prevent recreation on each render
 const CustomTabBar = (props: any) => <FloatingBottomTabBar {...props} />;
+const Tab = createBottomTabNavigator<UserStackParamList>();
 
 const TabNavigator = ({isDark}: {isDark: boolean}) => {
-  const Tab = createBottomTabNavigator<UserStackParamList>();
   const insets = useSafeAreaInsets();
 
   return (
@@ -210,7 +210,8 @@ const TabNavigator = ({isDark}: {isDark: boolean}) => {
  */
 const UserStack = () => {
   const Drawer = createDrawerNavigator();
-  const isDark = useTypedSelector(state => state.user.theme) === 'dark';
+  const theme = useTypedSelector(state => state.user.theme);
+  const isDark = theme === 'dark';
   const deepLinkUrl = useTypedSelector(state => state.deepLink.url);
   const deepLinkProcessed = useTypedSelector(state => state.deepLink.processed);
   const navigation = useNavigation();
@@ -463,7 +464,7 @@ const UserStack = () => {
       screenOptions={{
         headerShown: false, // Hide header for all screens by default
         drawerStyle: {
-          backgroundColor: isDark ? '#1a1a1a' : 'white',
+          backgroundColor: isDark ? '#1a1a1a' : '#DFDFDF',
           width: Math.min(SCREEN_WIDTH * 0.85, 400),
         },
       }}>
@@ -570,7 +571,7 @@ const UserStack = () => {
         component={LexAI}
         options={{
           headerShown: false, // Hide header for LexAI screen
-          drawerItemStyle: {display: 'none',backgroundColor: 'black'}, // Hide from drawer
+          drawerItemStyle: {display: 'none', backgroundColor: 'black'}, // Hide from drawer
         }}
       />
       <Drawer.Screen

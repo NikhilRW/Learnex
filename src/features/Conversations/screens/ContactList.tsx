@@ -1,5 +1,5 @@
 import { LegendList } from '@legendapp/list';
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -37,9 +37,9 @@ const ContactListScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-  const messageService = new MessageService();
+  const messageService = useRef(new MessageService()).current;
 
-  const styles = getStyles(isDark);
+  const styles = useMemo(() => getStyles(isDark), [isDark]);
 
   const fetchUsers = useCallback(async () => {
     try {

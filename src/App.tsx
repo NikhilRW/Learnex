@@ -22,9 +22,7 @@ import {PushNotificationHandler} from 'shared/utils/PushNotificationHandler';
 import {styles} from 'shared/styles/App';
 import {getMessaging} from '@react-native-firebase/messaging';
 import {changeIsLoggedIn} from './shared/reducers/User';
-import {StatusBar} from 'react-native';
-import {useTypedSelector} from './shared/hooks/redux/useTypedSelector';
-
+import Navigation from './shared/navigation/components/Navigation';
 // Interface definition for deep link event
 interface DeepLinkEvent {
   url: string;
@@ -41,8 +39,6 @@ const App = () => {
   const [permissionsGranted, setPermissionsGranted] = useState<boolean | null>(
     null,
   );
-
-  
 
   // Check and request all required permissions
   useEffect(() => {
@@ -274,7 +270,6 @@ const App = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigationRef, permissionsGranted, getMessaging]);
 
-
   return (
     <>
       <GestureHandlerRootView style={styles.flex1}>
@@ -282,13 +277,7 @@ const App = () => {
           <Provider store={store}>
             <PersistGate loading={<Loader />} persistor={persistor}>
               <ThemeListener />
-              <NavigationContainer
-                ref={navigationRef}
-                onReady={() => {
-                  DeepLinkHandler.checkPendingNavigation();
-                }}>
-                <Route />
-              </NavigationContainer>
+              <Navigation />
             </PersistGate>
           </Provider>
         </SafeAreaProvider>
