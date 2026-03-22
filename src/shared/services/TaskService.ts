@@ -20,7 +20,7 @@ import {
 import {Task, SubTask} from 'shared/types/taskTypes';
 import notificationService from './NotificationService';
 import axios from 'axios';
-import Config from 'react-native-config';
+import Config from 'react-native-superconfig';
 
 export class TaskService {
   private tasksCollection = collection(
@@ -66,8 +66,8 @@ export class TaskService {
       const payload = {
         messages: [
           {
-        role: 'user',
-        content: `You are an AI assistant that suggests new tasks for a user to help improve their life. Here are the user's previous tasks:\n${tasksTitles.map((ele, index) => `${index + 1}. ${ele}`).join('\n')}
+            role: 'user',
+            content: `You are an AI assistant that suggests new tasks for a user to help improve their life. Here are the user's previous tasks:\n${tasksTitles.map((ele, index) => `${index + 1}. ${ele}`).join('\n')}
     Suggest a new, relevant task that is not a duplicate of the above. If you can't infer a new task, suggest a random but valuable task for a normal human being's growth.
     Respond ONLY with the task title and a brief description, separated by "|". The title should be concise (3 to 7 words). Do not include any extra text or explanation.`,
           },

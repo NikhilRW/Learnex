@@ -1,78 +1,98 @@
-import React, { useMemo } from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import { styles } from 'home/styles/Home';
-import { HomeHeaderProps } from '../types';
+import React, {memo, useCallback, useMemo} from 'react';
+import {ScrollView, Text, TouchableOpacity, View} from 'react-native';
+import {styles} from 'home/styles/Home';
+import {HomeHeaderProps} from '../types';
 
-export const HomeHeader = ({
-  handleTagPress,
-  isDark,
-  selectedTag,
-  trendingTags,
-}: HomeHeaderProps) => {
-  const tagButtonStyle = useMemo(() => {
-    return {
+type TagChipProps = {
+  tag: string;
+  isDark: boolean;
+  isSelected: boolean;
+  onPress: (tag: string) => void;
+};
+
+const TagChip = memo(({tag, isDark, isSelected, onPress}: TagChipProps) => {
+  const tagButtonStyle = useMemo(
+    () => ({
       backgroundColor: isDark ? '#2a2a2a' : '#F0F0F0',
       borderColor: '#0095f6',
-    };
-  }, [isDark]);
+      borderWidth: isSelected ? 2 : 0,
+    }),
+    [isDark, isSelected],
+  );
+
+  const tagTextStyle = useMemo(
+    () => ({
+      color: isSelected ? '#0095f6' : isDark ? 'white' : 'black',
+    }),
+    [isDark, isSelected],
+  );
+
+  const handlePress = useCallback(() => onPress(tag), [onPress, tag]);
 
   return (
-    <>
-      {/* Stories */}
-      {/* <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={styles.storiesContainer}
-                >
-                  {stories.map(story => (
-                    <View key={story.id} style={styles.storyItem}>
-                      <Image source={story.image} style={styles.storyImage} />
-                    </View>
-                  ))}
-                </ScrollView> */}
-      {/* Tags */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.tagsContainer}>
-        {trendingTags.map(tag => {
-          const isSelected = selectedTag === tag;
-          const tagBorderStyle = { borderWidth: isSelected ? 2 : 0 };
-          const tagTextColorStyle = {
-            color: isSelected ? '#0095f6' : isDark ? 'white' : 'black',
-          };
-          return (
-            <TouchableOpacity
-              key={tag}
-              style={[styles.tagButton, tagButtonStyle, tagBorderStyle]}
-              onPress={() => handleTagPress(tag)}>
-              <Text style={[styles.tagText, tagTextColorStyle]}>
-                {tag.includes('#') ? tag : `#${tag}`}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-      {selectedTag && (
-        <View style={styles.filterInfo}>
-          {(() => {
-            const filterTextColorStyle = { color: isDark ? 'white' : 'black' };
-            return (
-              <>
-                <Text style={[styles.filterText, filterTextColorStyle]}>
-                  Showing posts tagged with{' '}
-                  {selectedTag.includes('#') ? selectedTag : `#${selectedTag}`}
-                </Text>
-                <TouchableOpacity
-                  onPress={() => handleTagPress(selectedTag)}
-                  style={styles.clearFilterButton}>
-                  <Text style={styles.clearFilterText}>Clear filter</Text>
-                </TouchableOpacity>
-              </>
-            );
-          })()}
-        </View>
-      )}
-    </>
+    <TouchableOpacity
+      style={[styles.tagButton, tagButtonStyle]}
+      onPress={handlePress}>
+      <Text style={[styles.tagText, tagTextStyle]}>
+        {tag.includes('#') ? tag : `#${tag}`}
+      </Text>
+    </TouchableOpacity>
   );
-};
+});
+
+TagChip.displayName = 'TagChip';
+
+export const HomeHeader = memo(
+  ({handleTagPress, isDark, selectedTag, trendingTags}: HomeHeaderProps) => {
+    const handleClearFilter = useCallback(() => {
+      if (selectedTag) {
+        handleTagPress(selectedTag);
+      }
+    }, [handleTagPress, selectedTag]);
+
+    const filterTextStyle = useMemo(
+      () => ({color: isDark ? 'white' : 'black'}),
+      [isDark],
+    );
+
+    const selectedTagLabel = useMemo(() => {
+      if (!selectedTag) return '';
+      return selectedTag.includes('#') ? selectedTag : `#${selectedTag}`;
+    }, [selectedTag]);
+
+    return (
+      <View style={styles.container}>
+        {/* TODO: fix the last chip problem not visible fully */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.contentContainerStyle}
+          style={styles.tagsContainer}>
+          {trendingTags.map(tag => (
+            <TagChip
+              key={tag}
+              tag={tag}
+              isDark={isDark}
+              isSelected={selectedTag === tag}
+              onPress={handleTagPress}
+            />
+          ))}
+        </ScrollView>
+        {selectedTag && (
+          <View style={styles.filterInfo}>
+            <Text style={[styles.filterText, filterTextStyle]}>
+              Showing posts tagged with {selectedTagLabel}
+            </Text>
+            <TouchableOpacity
+              onPress={handleClearFilter}
+              style={styles.clearFilterButton}>
+              <Text style={styles.clearFilterText}>Clear filter</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    );
+  },
+);
+
+HomeHeader.displayName = 'HomeHeader';

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import Config from 'react-native-config';
+import Config from 'react-native-superconfig';
 import {Appearance, Linking} from 'react-native';
 import {DeepLinkHandler} from 'shared/services/DeepLinkHandler';
 import {

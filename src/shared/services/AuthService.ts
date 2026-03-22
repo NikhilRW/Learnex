@@ -19,7 +19,7 @@ import {
   serverTimestamp,
   FirebaseFirestoreTypes,
 } from '@react-native-firebase/firestore';
-import Config from 'react-native-config';
+import Config from 'react-native-superconfig';
 import {signUpData} from 'shared/types/authTypes';
 import {AuthResponse, FirebaseUser} from 'shared/types/firebase';
 

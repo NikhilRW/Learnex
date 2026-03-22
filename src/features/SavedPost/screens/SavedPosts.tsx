@@ -1,5 +1,5 @@
 import { LegendList } from '@legendapp/list';
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { View, ActivityIndicator, RefreshControl } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
@@ -23,6 +23,26 @@ const SavedPosts: React.FC = () => {
   const isDark = useTypedSelector(state => state.user.theme) === 'dark';
   const navigation = useNavigation<DrawerNavigationProp<UserStackParamList>>();
   const { savedPosts, loading, refreshing, onRefresh } = useSavedPosts();
+  const handleBackPress = useCallback(() => {
+    navigation.goBack();
+  }, [navigation]);
+
+  const handleExplorePress = useCallback(() => {
+    navigation.navigate('Home');
+  }, [navigation]);
+
+  const renderSavedPost = useCallback(
+    ({ item }: { item: (typeof savedPosts)[number] }) => (
+      <Post post={item} isVisible={true} />
+    ),
+    [],
+  );
+
+  const contentContainerStyle = useMemo(
+    () =>
+      savedPosts.length === 0 ? styles.contentContainerEmpty : styles.contentContainer,
+    [savedPosts.length],
+  );
 
   return (
     <SafeAreaView
@@ -30,7 +50,7 @@ const SavedPosts: React.FC = () => {
         styles.container,
         isDark ? styles.darkContainer : styles.lightContainer,
       ]}>
-      <SavedPostsHeader isDark={isDark} onBack={() => navigation.goBack()} />
+      <SavedPostsHeader isDark={isDark} onBack={handleBackPress} />
 
       {loading ? (
         <View style={styles.loadingContainer}>
@@ -41,16 +61,12 @@ const SavedPosts: React.FC = () => {
           data={savedPosts}
           keyExtractor={item => item.id}
           ItemSeparatorComponent={ItemSeparator}
-          renderItem={({ item }) => <Post post={item} isVisible={true} />}
-          contentContainerStyle={
-            savedPosts.length === 0
-              ? styles.contentContainerEmpty
-              : styles.contentContainer
-          }
+          renderItem={renderSavedPost}
+          contentContainerStyle={contentContainerStyle}
           ListEmptyComponent={
             <SavedPostsEmptyState
               isDark={isDark}
-              onExplore={() => navigation.navigate('Home')}
+              onExplore={handleExplorePress}
             />
           }
           refreshControl={

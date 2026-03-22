@@ -1,5 +1,5 @@
 import axios from 'axios';
-import Config from 'react-native-config';
+import Config from 'react-native-superconfig';
 import {LexAIConversation} from 'lex-ai/types/lexAITypes';
 import {SearchResult} from '../types/lexAI.types';
 import {logDebug} from 'lex-ai/utils/common';

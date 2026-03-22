@@ -1,4 +1,4 @@
-import Config from 'react-native-config';
+import Config from 'react-native-superconfig';
 
 export const CLOUDINARY_CONFIG = {
   cloudName: Config.CLOUDINARY_CLOUD_NAME,

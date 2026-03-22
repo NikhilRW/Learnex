@@ -1,4 +1,4 @@
-import { View, ViewToken, RefreshControl } from 'react-native';
+import {View, ViewToken, RefreshControl} from 'react-native';
 import React, {
   useEffect,
   useState,
@@ -7,17 +7,16 @@ import React, {
   JSX,
   startTransition,
 } from 'react';
-import { useTypedSelector } from 'hooks/redux/useTypedSelector';
+import {useTypedSelector} from 'hooks/redux/useTypedSelector';
 import SkeletonPlaceholder from 'react-native-skeleton-placeholder';
 import Post from 'home/components/Post';
-import { PostType } from 'shared/types/post';
-import { styles } from 'home/styles/Home';
-import { primaryColor } from 'shared/res/strings/eng';
-import { HomeHeader } from '../components/HomeHeader';
-import { LegendList } from '@legendapp/list';
+import {PostType} from 'shared/types/post';
+import {styles} from 'home/styles/Home';
+import {primaryColor} from 'shared/res/strings/eng';
+import {HomeHeader} from '../components/HomeHeader';
+import {LegendList} from '@legendapp/list';
 import {
   VIEWABLE_ITEM_THRESHOLD,
-  ESTIMATED_POST_ITEM_SIZE,
   TRENDING_TAGS_LIMIT,
   TRENDING_POSTS_LIMIT,
 } from '../constants';
@@ -38,10 +37,10 @@ const Home = () => {
 
   const [isLoaded, setIsLoaded] = useState(false);
   const [posts, setPosts] = useState<
-    (PostType & { isLiked: boolean; likes: number; isSaved: boolean })[]
+    (PostType & {isLiked: boolean; likes: number; isSaved: boolean})[]
   >([]);
   const [filteredPosts, setFilteredPosts] = useState<
-    (PostType & { isLiked: boolean; likes: number; isSaved: boolean })[]
+    (PostType & {isLiked: boolean; likes: number; isSaved: boolean})[]
   >([]);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [visibleVideoId, setVisibleVideoId] = useState<string | null>(null);
@@ -73,10 +72,10 @@ const Home = () => {
   }, [firebase.posts, selectedTag]);
 
   const onViewableItemsChanged = useCallback(
-    ({ viewableItems }: { viewableItems: Array<ViewToken> }) => {
+    ({viewableItems}: {viewableItems: Array<ViewToken>}) => {
       // Find the first video post that is visible
       const visibleVideo = viewableItems.find(
-        ({ item }) => item.isVideo && item.postVideo,
+        ({item}) => item.isVideo && item.postVideo,
       );
       // Set the visible video ID or null if no video is visible
       setVisibleVideoId(visibleVideo ? visibleVideo.item.id : null);
@@ -97,7 +96,7 @@ const Home = () => {
     ({
       item,
     }: {
-      item: PostType & { isLiked: boolean; likes: number; isSaved: boolean };
+      item: PostType & {isLiked: boolean; likes: number; isSaved: boolean};
     }) => (
       <View style={styles.postContainer}>
         <Post
@@ -152,7 +151,7 @@ const Home = () => {
         const hashtagStats = new Map<string, number>();
 
         trendingResponse.posts.forEach(
-          (post: PostType & { likes: number; comments: number }) => {
+          (post: PostType & {likes: number; comments: number}) => {
             if (post.hashtags && Array.isArray(post.hashtags)) {
               const engagement = post.likes + post.comments;
               post.hashtags.forEach(tag => {
@@ -190,7 +189,10 @@ const Home = () => {
     let mounted = true;
     const fetchTrendingTags = async () => {
       try {
-        const response = await firebase.trending.getTrendingPosts('day', TRENDING_POSTS_LIMIT);
+        const response = await firebase.trending.getTrendingPosts(
+          'day',
+          TRENDING_POSTS_LIMIT,
+        );
 
         if (!mounted) {
           return;
@@ -200,7 +202,7 @@ const Home = () => {
           const hashtagStats = new Map<string, number>();
 
           response.posts.forEach(
-            (post: PostType & { likes: number; comments: number }) => {
+            (post: PostType & {likes: number; comments: number}) => {
               // Ensure hashtags exists and is an array
               if (
                 post.hashtags &&
@@ -331,7 +333,6 @@ const Home = () => {
             viewabilityConfigCallbackPairs={
               viewabilityConfigCallbackPairs.current
             }
-            estimatedItemSize={ESTIMATED_POST_ITEM_SIZE}
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}

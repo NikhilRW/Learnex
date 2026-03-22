@@ -36,7 +36,7 @@ import {
   launchImageLibrary,
   CameraOptions,
 } from 'react-native-image-picker';
-import Config from 'react-native-config';
+import Config from 'react-native-superconfig';
 import { MessageService } from 'conversations/services/MessageService';
 import { deleteOldProfilePhoto } from 'shared/utils/cloudinary';
 import { DEFAULT_UPLOAD_PRESET } from 'shared/constants/cloudinary';

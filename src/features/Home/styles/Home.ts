@@ -5,7 +5,7 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
   mainContainer: {
-    width: '100%',
+    minWidth: '100%',
     height: '100%',
   },
   storiesContainer: {
@@ -19,20 +19,23 @@ export const styles = StyleSheet.create({
     padding: 2,
     justifyContent: 'center',
   },
+  contentContainerStyle: {
+    gap: 8,
+  },
   storyImage: {
     width: 60,
     height: 60,
     borderRadius: 30,
   },
   tagsContainer: {
-    padding: 10,
     marginBottom: 10,
+    flex:1,
+    padding:10,
   },
   tagButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    marginRight: 8,
   },
   tagText: {
     fontSize: 14,

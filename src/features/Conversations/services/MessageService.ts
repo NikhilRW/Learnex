@@ -20,11 +20,11 @@ import {
 import {Conversation, Message} from 'conversations/models/Message';
 import {FirebaseErrorHandler} from 'shared/helpers/firebase/FirebaseErrorHandler';
 import notificationService from 'shared/services/NotificationService';
-import Config from 'react-native-config';
+import Config from 'react-native-superconfig';
 import {getAuth} from '@react-native-firebase/auth';
 
 // Configure backend URL for sending push notifications
-const BACKEND_URL = Config.BACKEND_URL || 'https://learnex-backend.vercel.app';
+const BACKEND_URL = 'https://learnex-backend.vercel.app';
 
 /**
  * Helper function to clean objects before storing in Firestore

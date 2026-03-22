@@ -195,7 +195,7 @@ The app uses [react-native-config](https://github.com/luggit/react-native-config
 ### Implementation
 
 ```typescript
-import Config from 'react-native-config';
+import Config from 'react-native-superconfig';
 
 // Search Result interface
 interface SearchResult {

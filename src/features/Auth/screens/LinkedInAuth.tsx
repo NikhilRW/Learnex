@@ -1,15 +1,15 @@
 import axios from 'axios';
-import React, {useRef} from 'react';
-import {View} from 'react-native';
-import Config from 'react-native-config';
+import React, { useRef } from 'react';
+import { View } from 'react-native';
+import Config from 'react-native-superconfig';
 import WebView from 'react-native-webview';
-import {ShouldStartLoadRequest} from 'react-native-webview/lib/WebViewTypes';
-import {useTypedSelector} from 'hooks/redux/useTypedSelector';
+import { ShouldStartLoadRequest } from 'react-native-webview/lib/WebViewTypes';
+import { useTypedSelector } from 'hooks/redux/useTypedSelector';
 import Snackbar from 'react-native-snackbar';
-import {useTypedDispatch} from 'hooks/redux/useTypedDispatch';
-import {changeIsLoggedIn, changeProfileColor} from 'shared/reducers/User';
-import {getRandomColors} from 'shared/helpers/common/stringHelpers';
-import {styles} from '../styles/LinkedInAuth.styles';
+import { useTypedDispatch } from 'hooks/redux/useTypedDispatch';
+import { changeIsLoggedIn, changeProfileColor } from 'shared/reducers/User';
+import { getRandomColors } from 'shared/helpers/common/stringHelpers';
+import { styles } from '../styles/LinkedInAuth.styles';
 
 const LinkedInAuth = () => {
   const ref = useRef<WebView>(null);
@@ -42,7 +42,7 @@ const LinkedInAuth = () => {
       },
     );
     if (response.data.access_token !== null) {
-      const {success, error} = await firebase.auth.linkedinSignIn(
+      const { success, error } = await firebase.auth.linkedinSignIn(
         response.data.access_token,
       );
       if (success) {
@@ -58,7 +58,7 @@ const LinkedInAuth = () => {
         console.log(error);
       }
     } else {
-      Snackbar.show({text: 'LinkedIn Authentication Failed'});
+      Snackbar.show({ text: 'LinkedIn Authentication Failed' });
     }
   };
   return (

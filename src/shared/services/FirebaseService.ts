@@ -2,7 +2,7 @@ import {
   statusCodes,
   GoogleSignin,
 } from '@react-native-google-signin/google-signin';
-import Config from 'react-native-config';
+import Config from 'react-native-superconfig';
 import {authorize, AuthConfiguration} from 'react-native-app-auth';
 import {signUpData} from 'shared/types/authTypes';
 import {PostType} from 'shared/types/post';
