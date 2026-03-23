@@ -118,7 +118,7 @@ export function FAQSection() {
                 <div className="space-y-3">
                     {faqs.map((faq, index) => (
                         <FAQItem
-                            key={index}
+                            key={faq.question}
                             question={faq.question}
                             answer={faq.answer}
                             isOpen={openIndex === index}

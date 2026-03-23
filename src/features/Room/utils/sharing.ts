@@ -1,4 +1,5 @@
-import {Platform, Share, Alert, Clipboard, ToastAndroid} from 'react-native';
+import {Platform, Share, Alert, ToastAndroid} from 'react-native';
+import Clipboard from '@react-native-clipboard/clipboard';
 
 /**
  * Share meeting invite with room code and links

@@ -67,7 +67,6 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
   const [showFullPostModal, setShowFullPostModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isHiding, setIsHiding] = useState(false);
-  const [isCurrentUserPost, setIsCurrentUserPost] = useState(false);
   const [userProfileImage, setUserProfileImage] = useState<string | null>(
     post.user.image,
   );
@@ -135,16 +134,9 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
     [post.postVideo, post.postImages],
   );
 
-  // Check if current user is post owner
-  useEffect(() => {
-    const checkCurrentUser = async () => {
-      const auth = getAuth();
-      const currentUser = auth.currentUser;
-      if (currentUser && post.user.id === currentUser.uid) {
-        setIsCurrentUserPost(true);
-      }
-    };
-    checkCurrentUser();
+  const isCurrentUserPost = useMemo(() => {
+    const currentUser = getAuth().currentUser;
+    return Boolean(currentUser && post.user.id === currentUser.uid);
   }, [post.user.id]);
 
   // Listen for profile image updates
@@ -223,15 +215,19 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
 
             {/* Pagination dots */}
             <View style={styles.paginationDots}>
-              {allMedia.map((_, index) => {
+              {allMedia.map((mediaItem, index) => {
                 const bgColor =
                   index === currentMediaIndex
                     ? '#fff'
                     : 'rgba(255, 255, 255, 0.5)';
                 const dotBgStyle = { backgroundColor: bgColor };
+                const mediaKey =
+                  typeof mediaItem.source === 'string'
+                    ? mediaItem.source
+                    : mediaItem.source?.uri || mediaItem.type;
                 return (
                   <Animated.View
-                    key={index}
+                    key={`${mediaItem.type}-${mediaKey}`}
                     style={[styles.dot, dotBgStyle]}
                   />
                 );
@@ -310,18 +306,16 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
       return null; // Skip invalid images
     }
 
+    const imageHeightValue = isFullModal
+      ? '100%'
+      : imageHeight - 12 || (post.isVertical ? 480 : 300);
+    const imageHeightStyle = { height: imageHeightValue };
+
     return (
       <TouchableWithoutFeedback onPress={handleMediaTouch}>
         <Image
           source={source}
-          style={[
-            styles.postImage,
-            {
-              height: isFullModal
-                ? '100%'
-                : imageHeight - 12 || (post.isVertical ? 480 : 300),
-            },
-          ]}
+          style={[styles.postImage, imageHeightStyle]}
           resizeMode="cover"
           onError={error =>
             console.error(
@@ -478,7 +472,7 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
     setShowFullPostModal(true);
   };
 
-  const styles = useMemo(() => createStyles(isDark), [isDark]);
+  const styles = useMemo(() => createStyles(isDark) as any, [isDark]);
 
   // Process description and hashtags using imported utility functions
   const formattedDescription = React.useMemo(() => {
@@ -538,6 +532,7 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
         styles={styles}
       />
       <CommentModal
+        key={`${post.id}-${showComments ? 'open' : 'closed'}`}
         visible={showComments}
         onClose={() => setShowComments(false)}
         comments={post.commentsList || []}
@@ -560,6 +555,7 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
         post={post}
       />
       <FullPostModal
+        key={`${post.id}-${showFullPostModal ? 'open' : 'closed'}`}
         allMedia={allMedia}
         currentMediaIndex={currentMediaIndex}
         handleLikePost={onLikePress}

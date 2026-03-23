@@ -127,12 +127,12 @@ export function LexAISection() {
                                                         console.log('Video failed to load:', e);
                                                         e.currentTarget.style.display = 'none';
                                                     }}
-                                                    style={{borderRadius:10}}
+                                                    style={{ borderRadius: 10 }}
                                                 >
                                                     Your browser does not support the video tag.
                                                 </video>
 
-                                          
+
                                             </div>
                                         </div>
                                     </div>
@@ -159,7 +159,7 @@ export function LexAISection() {
 
                         {features.map((feature, index) => (
                             <motion.div
-                                key={index}
+                                key={feature.title}
                                 className="flex items-start space-x-4"
                                 initial={{ opacity: 0, y: 20 }}
                                 whileInView={{ opacity: 1, y: 0 }}

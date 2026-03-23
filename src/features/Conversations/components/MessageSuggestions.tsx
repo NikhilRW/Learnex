@@ -9,39 +9,41 @@ const MessageSuggestions: React.FC<MessageSuggestionsProps> = ({
     isFetchingSuggestions,
     onSuggestionClick,
 }) => {
+    const suggestionStyles = styles as any;
+
     return (
         <View
             style={[
-                styles.suggestionsContainer,
-                isDark && styles.darkSuggestionsContainer,
+                suggestionStyles.suggestionsContainer,
+                isDark && suggestionStyles.darkSuggestionsContainer,
             ]}>
             {isFetchingSuggestions ? (
-                <View style={styles.suggestionsLoading}>
+                <View style={suggestionStyles.suggestionsLoading}>
                     <ActivityIndicator
                         size="small"
                         color={isDark ? '#8ab4f8' : '#2379C2'}
                     />
                     <Text
                         style={[
-                            styles.suggestionsLoadingText,
-                            isDark && styles.darkSuggestionsLoadingText,
+                            suggestionStyles.suggestionsLoadingText,
+                            isDark && suggestionStyles.darkSuggestionsLoadingText,
                         ]}>
                         Thinking...
                     </Text>
                 </View>
             ) : suggestions.length > 0 ? (
-                suggestions.map((suggestion, index) => (
+                suggestions.map(suggestion => (
                     <TouchableOpacity
-                        key={index}
+                        key={suggestion}
                         style={[
-                            styles.suggestionButton,
-                            isDark && styles.darkSuggestionButton,
+                            suggestionStyles.suggestionButton,
+                            isDark && suggestionStyles.darkSuggestionButton,
                         ]}
                         onPress={() => onSuggestionClick(suggestion)}>
                         <Text
                             style={[
-                                styles.suggestionText,
-                                isDark && styles.darkSuggestionText,
+                                suggestionStyles.suggestionText,
+                                isDark && suggestionStyles.darkSuggestionText,
                             ]}
                             numberOfLines={1}>
                             {suggestion}

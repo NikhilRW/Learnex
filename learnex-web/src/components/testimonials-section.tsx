@@ -157,7 +157,7 @@ export function TestimonialsSection() {
                         viewport={{ once: true }}
                         transition={{ duration: 0.5 }}
                     >
-                        TESTIMONIALS
+                        <span>TESTIMONIALS</span>
                     </motion.div>
                     <motion.h2
                         className="text-2xl sm:text-4xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/70"
@@ -182,7 +182,7 @@ export function TestimonialsSection() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {testimonials.map((testimonial, index) => (
                         <TestimonialCard
-                            key={index}
+                            key={testimonial.name}
                             quote={testimonial.quote}
                             name={testimonial.name}
                             role={testimonial.role}
@@ -206,8 +206,8 @@ export function TestimonialsSection() {
                         { count: "10,000+", label: "Active Users", icon: "👥" },
                         { count: "4.8", label: "Average Rating", icon: "⭐" },
                         { count: "92%", label: "Improved Focus", icon: "🎯" }
-                    ].map((stat, index) => (
-                        <div key={index} className="bg-background/50 border border-border rounded-lg p-4 text-center backdrop-blur-sm">
+                    ].map(stat => (
+                        <div key={stat.label} className="bg-background/50 border border-border rounded-lg p-4 text-center backdrop-blur-sm">
                             <div className="text-2xl mb-2">{stat.icon}</div>
                             <div className="text-xl sm:text-2xl font-bold text-primary mb-1">{stat.count}</div>
                             <div className="text-foreground/70 text-sm">{stat.label}</div>

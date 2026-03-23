@@ -11,8 +11,8 @@ import {
   Alert,
   RefreshControl,
   TouchableWithoutFeedback,
-  Clipboard,
 } from 'react-native';
+import Clipboard from '@react-native-clipboard/clipboard';
 import Icon from 'react-native-vector-icons/Feather';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import AntDesign from 'react-native-vector-icons/AntDesign';
@@ -35,6 +35,103 @@ import {
 } from '@react-native-firebase/firestore';
 import { createStyles } from '../styles/CommentModal.styles';
 import { CommentModalProps } from '../types';
+
+interface CommentOptionsModalProps {
+  selectedComment: Comment | null;
+  showOptions: boolean;
+  setShowOptions: (visible: boolean) => void;
+  currentUserId?: string;
+  isDark: boolean;
+  styles: ReturnType<typeof createStyles>;
+  onCopyText: (text: string) => void;
+  onDeleteComment: (commentId: string) => void;
+  setEditingCommentId: (commentId: string | null) => void;
+  setEditedText: (text: string) => void;
+}
+
+const CommentOptionsModal = ({
+  selectedComment,
+  showOptions,
+  setShowOptions,
+  currentUserId,
+  isDark,
+  styles,
+  onCopyText,
+  onDeleteComment,
+  setEditingCommentId,
+  setEditedText,
+}: CommentOptionsModalProps) => {
+  if (!selectedComment) return null;
+
+  const canEdit = selectedComment.userId === currentUserId;
+  const canDelete = selectedComment.userId === currentUserId;
+
+  return (
+    <Modal
+      transparent={true}
+      animationType="slide"
+      visible={showOptions}
+      onRequestClose={() => setShowOptions(false)}>
+      <TouchableWithoutFeedback onPress={() => setShowOptions(false)}>
+        <View style={styles.optionsModalOverlay}>
+          <TouchableWithoutFeedback>
+            <View style={styles.optionsModalContent}>
+              <TouchableOpacity
+                style={styles.optionItem}
+                onPress={() => {
+                  onCopyText(selectedComment.text);
+                }}>
+                <FontAwesome
+                  name="copy"
+                  size={24}
+                  color={isDark ? 'white' : 'black'}
+                />
+                <Text style={styles.optionText}>Copy Text</Text>
+              </TouchableOpacity>
+
+              {canEdit && (
+                <TouchableOpacity
+                  style={styles.optionItem}
+                  onPress={() => {
+                    setEditingCommentId(selectedComment.id);
+                    setEditedText(selectedComment.text);
+                    setShowOptions(false);
+                  }}>
+                  <MaterialIcons
+                    name="edit"
+                    size={24}
+                    color={isDark ? 'white' : 'black'}
+                  />
+                  <Text style={styles.optionText}>Edit Comment</Text>
+                </TouchableOpacity>
+              )}
+
+              {canDelete && (
+                <TouchableOpacity
+                  style={[styles.optionItem, styles.lastOptionItem]}
+                  onPress={() => {
+                    setShowOptions(false);
+                    setTimeout(() => {
+                      onDeleteComment(selectedComment.id);
+                    }, 300);
+                  }}>
+                  <MaterialIcons
+                    name="delete-outline"
+                    size={24}
+                    color="#FF3B30"
+                  />
+                  <Text style={[styles.optionText, styles.dangerOption]}>
+                    Delete Comment
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </TouchableWithoutFeedback>
+        </View>
+      </TouchableWithoutFeedback>
+    </Modal>
+  );
+};
 
 /**
  * CommentModal displays a list of comments and allows users to add new comments
@@ -65,7 +162,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
   const [showOptions, setShowOptions] = useState(false);
   const [selectedComment, setSelectedComment] = useState<Comment | null>(null);
   const firebase = useTypedSelector(state => state.firebase.firebase);
-  const currentUser = firebase.currentUser;
+  const currentUser = firebase.currentUser();
   const [localComments, setLocalComments] = useState(comments);
   const [userProfileImages, setUserProfileImages] = useState<
     Record<string, string>
@@ -115,11 +212,6 @@ const CommentModal: React.FC<CommentModalProps> = ({
 
   const styles = createStyles(isDark);
 
-  // Update local comments when props change
-  useEffect(() => {
-    setLocalComments(comments);
-  }, [comments]);
-
   // Handle refresh - pull to refresh comments
   const onRefresh = useCallback(async () => {
     try {
@@ -140,80 +232,6 @@ const CommentModal: React.FC<CommentModalProps> = ({
     Alert.alert('Success', 'Comment text copied');
   };
 
-  // Options modal for comment actions (copy, edit, delete)
-  const CommentOptionsModal = () => {
-    if (!selectedComment) return null;
-
-    const canEdit = selectedComment.userId === currentUser?.uid;
-    const canDelete = selectedComment.userId === currentUser?.uid;
-
-    return (
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={showOptions}
-        onRequestClose={() => setShowOptions(false)}>
-        <TouchableWithoutFeedback onPress={() => setShowOptions(false)}>
-          <View style={styles.optionsModalOverlay}>
-            <TouchableWithoutFeedback>
-              <View style={styles.optionsModalContent}>
-                <TouchableOpacity
-                  style={styles.optionItem}
-                  onPress={() => {
-                    handleCopyText(selectedComment.text);
-                  }}>
-                  <FontAwesome
-                    name="copy"
-                    size={24}
-                    color={isDark ? 'white' : 'black'}
-                  />
-                  <Text style={styles.optionText}>Copy Text</Text>
-                </TouchableOpacity>
-
-                {canEdit && (
-                  <TouchableOpacity
-                    style={styles.optionItem}
-                    onPress={() => {
-                      setEditingCommentId(selectedComment.id);
-                      setEditedText(selectedComment.text);
-                      setShowOptions(false);
-                    }}>
-                    <MaterialIcons
-                      name="edit"
-                      size={24}
-                      color={isDark ? 'white' : 'black'}
-                    />
-                    <Text style={styles.optionText}>Edit Comment</Text>
-                  </TouchableOpacity>
-                )}
-
-                {canDelete && (
-                  <TouchableOpacity
-                    style={[styles.optionItem, styles.lastOptionItem]}
-                    onPress={() => {
-                      setShowOptions(false);
-                      setTimeout(() => {
-                        handleDeleteComment(selectedComment.id);
-                      }, 300);
-                    }}>
-                    <MaterialIcons
-                      name="delete-outline"
-                      size={24}
-                      color="#FF3B30"
-                    />
-                    <Text style={[styles.optionText, styles.dangerOption]}>
-                      Delete Comment
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
-    );
-  };
-
   // Handle like comment function
   const handleLikeComment = async (commentId: string) => {
     try {
@@ -230,7 +248,9 @@ const CommentModal: React.FC<CommentModalProps> = ({
         return;
       }
 
-      const commentData = commentSnapshot.data();
+      const commentData = commentSnapshot.data() as
+        | { likes?: number; isLiked?: boolean }
+        | undefined;
       const currentLikes = commentData?.likes || 0;
       const isLiked = commentData?.isLiked || false;
 
@@ -247,21 +267,33 @@ const CommentModal: React.FC<CommentModalProps> = ({
       // If replies are nested, you'll need to adjust the path accordingly.
 
       // Simulate success response for UI update
-      const response = { success: true };
+      const response: { success: boolean; error?: string } = { success: true };
 
       // Only update UI if the API call succeeds
       if (response.success) {
         const updatedComments = localComments.map(comment => {
           if (comment.id === commentId) {
-            const newIsLiked = !comment.isLiked;
-            const newLikes = newIsLiked ? comment.likes + 1 : comment.likes - 1;
-            return { ...comment, isLiked: newIsLiked, likes: newLikes };
+            const nextCommentIsLiked = !comment.isLiked;
+            const nextCommentLikes = nextCommentIsLiked
+              ? comment.likes + 1
+              : comment.likes - 1;
+            return {
+              ...comment,
+              isLiked: nextCommentIsLiked,
+              likes: nextCommentLikes,
+            };
           } else if (comment.replies && comment.replies.length > 0) {
             const updatedReplies = comment.replies.map(reply => {
               if (reply.id === commentId) {
-                const newIsLiked = !reply.isLiked;
-                const newLikes = newIsLiked ? reply.likes + 1 : reply.likes - 1;
-                return { ...reply, isLiked: newIsLiked, likes: newLikes };
+                const nextReplyIsLiked = !reply.isLiked;
+                const nextReplyLikes = nextReplyIsLiked
+                  ? reply.likes + 1
+                  : reply.likes - 1;
+                return {
+                  ...reply,
+                  isLiked: nextReplyIsLiked,
+                  likes: nextReplyLikes,
+                };
               }
               return reply;
             });
@@ -324,10 +356,13 @@ const CommentModal: React.FC<CommentModalProps> = ({
           commentId,
         );
 
-        const result = await updateDoc(commentRef, {
-          text: editedText.trim(),
-          editedAt: new Date().toISOString(),
-        })
+        const result: { success: boolean; error?: string } = await updateDoc(
+          commentRef,
+          {
+            text: editedText.trim(),
+            editedAt: new Date().toISOString(),
+          },
+        )
           .then(() => ({ success: true }))
           .catch(error => ({ success: false, error: error.message }));
 
@@ -347,7 +382,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
         setEditedText(editedText);
       }
     },
-    [editedText, firebase.posts, postId, localComments, comments],
+    [editedText, postId, localComments, comments],
   );
 
   // Handle delete comment function
@@ -388,7 +423,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
                   commentId,
                 );
 
-                const result = await deleteDoc(commentRef)
+                const result: { success: boolean; error?: string } = await deleteDoc(commentRef)
                   .then(() => ({ success: true }))
                   .catch(error => ({ success: false, error: error.message }));
 
@@ -412,12 +447,12 @@ const CommentModal: React.FC<CommentModalProps> = ({
         { cancelable: true },
       );
     },
-    [firebase.posts, postId, localComments, comments],
+    [postId, localComments, comments],
   );
 
   // Handle add reply function
-  const handleAddReply = async (commentId: string, replyText: string) => {
-    if (!replyText.trim()) return;
+  const handleAddReply = async (commentId: string, replyContent: string) => {
+    if (!replyContent.trim()) return;
 
     try {
       setIsAddingReply(true);
@@ -431,10 +466,10 @@ const CommentModal: React.FC<CommentModalProps> = ({
 
       const newReply = {
         id: doc(repliesCollectionRef).id, // Generate a new ID for the reply
-        userId: currentUser?.uid,
+        userId: currentUser?.uid || '',
         username: currentUser?.displayName || 'Anonymous',
         userImage: currentUser?.photoURL || '',
-        text: replyText.trim(),
+        text: replyContent.trim(),
         timestamp: new Date().toISOString(),
         likes: 0,
         isLiked: false,
@@ -442,25 +477,18 @@ const CommentModal: React.FC<CommentModalProps> = ({
 
       await addDoc(repliesCollectionRef, newReply);
 
-      const result = { success: true, reply: newReply };
+      const updatedComments = localComments.map(comment => {
+        if (comment.id === commentId) {
+          const newReplies = comment.replies || [];
+          newReplies.push(newReply);
+          return { ...comment, replies: newReplies };
+        }
+        return comment;
+      });
 
-      if (result.success) {
-        // Update local state with new reply
-        const updatedComments = localComments.map(comment => {
-          if (comment.id === commentId) {
-            const newReplies = comment.replies || [];
-            newReplies.push(result.reply);
-            return { ...comment, replies: newReplies };
-          }
-          return comment;
-        });
-
-        setLocalComments(updatedComments);
-        setReplyingTo(null);
-        setReplyText('');
-      } else {
-        Alert.alert('Error', result.error || 'Failed to add reply');
-      }
+      setLocalComments(updatedComments);
+      setReplyingTo(null);
+      setReplyText('');
     } catch (error) {
       console.error('Error adding reply:', error);
       Alert.alert('Error', 'Failed to add reply');
@@ -694,7 +722,18 @@ const CommentModal: React.FC<CommentModalProps> = ({
             </View>
           </View>
         </View>
-        <CommentOptionsModal />
+        <CommentOptionsModal
+          selectedComment={selectedComment}
+          showOptions={showOptions}
+          setShowOptions={setShowOptions}
+          currentUserId={currentUser?.uid}
+          isDark={isDark}
+          styles={styles}
+          onCopyText={handleCopyText}
+          onDeleteComment={handleDeleteComment}
+          setEditingCommentId={setEditingCommentId}
+          setEditedText={setEditedText}
+        />
       </View>
     </Modal>
   );

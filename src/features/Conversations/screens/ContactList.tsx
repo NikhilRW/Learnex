@@ -1,5 +1,5 @@
 import { LegendList } from '@legendapp/list';
-import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -37,7 +37,7 @@ const ContactListScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-  const messageService = useRef(new MessageService()).current;
+  const messageService = useMemo(() => new MessageService(), []);
 
   const styles = useMemo(() => getStyles(isDark), [isDark]);
 
@@ -104,41 +104,44 @@ const ContactListScreen: React.FC = () => {
     }
   }, [search, users]);
 
-  const handleUserPress = async (user: ContactUser) => {
-    if (!currentUser) return;
+  const handleUserPress = useCallback(
+    async (user: ContactUser) => {
+      if (!currentUser) return;
 
-    try {
-      Snackbar.show({
-        text: 'Setting up conversation...',
-        duration: Snackbar.LENGTH_INDEFINITE,
-        textColor: 'white',
-        backgroundColor: '#2379C2',
-      });
+      try {
+        Snackbar.show({
+          text: 'Setting up conversation...',
+          duration: Snackbar.LENGTH_INDEFINITE,
+          textColor: 'white',
+          backgroundColor: '#2379C2',
+        });
 
-      const conversation = await messageService.getOrCreateConversation(
-        currentUser.uid,
-        user.id,
-      );
+        const conversation = await messageService.getOrCreateConversation(
+          currentUser.uid,
+          user.id,
+        );
 
-      Snackbar.dismiss();
+        Snackbar.dismiss();
 
-      navigation.navigate('Chat', {
-        conversationId: conversation.id,
-        recipientId: user.id,
-        recipientName: user.fullName || user.username,
-        recipientPhoto: user.image,
-        isQrInitiated: false,
-      });
-    } catch (error) {
-      console.error('Error starting conversation:', error);
-      Snackbar.show({
-        text: 'Failed to start conversation',
-        duration: Snackbar.LENGTH_LONG,
-        textColor: 'white',
-        backgroundColor: '#ff3b30',
-      });
-    }
-  };
+        navigation.navigate('Chat', {
+          conversationId: conversation.id,
+          recipientId: user.id,
+          recipientName: user.fullName || user.username,
+          recipientPhoto: user.image,
+          isQrInitiated: false,
+        });
+      } catch (error) {
+        console.error('Error starting conversation:', error);
+        Snackbar.show({
+          text: 'Failed to start conversation',
+          duration: Snackbar.LENGTH_LONG,
+          textColor: 'white',
+          backgroundColor: '#ff3b30',
+        });
+      }
+    },
+    [currentUser, messageService, navigation],
+  );
 
   const renderEmptyList = () => (
     <View style={styles.emptyContainer}>
@@ -160,39 +163,37 @@ const ContactListScreen: React.FC = () => {
     </View>
   );
 
-  const renderUserItem = ({ item }: { item: ContactUser }) => {
-    return (
-      <TouchableOpacity
-        style={styles.userItem}
-        onPress={() => handleUserPress(item)}>
-        {item.image ? (
-          <Avatar
-            rounded
-            size={Math.min(SCREEN_WIDTH * 0.12, 50)}
-            containerStyle={styles.avatar}
-            source={{ uri: item.image }}
-          />
-        ) : (
-          <Avatar
-            rounded
-            title={getUsernameForLogo(item.fullName || item.username)}
-            size={Math.min(SCREEN_WIDTH * 0.12, 50)}
-            containerStyle={styles.avatar}
-          />
-        )}
+  const renderUserItem = ({ item }: { item: ContactUser }) => (
+    <TouchableOpacity
+      style={styles.userItem}
+      onPress={() => handleUserPress(item)}>
+      {item.image ? (
+        <Avatar
+          rounded
+          size={Math.min(SCREEN_WIDTH * 0.12, 50)}
+          containerStyle={styles.avatar}
+          source={{ uri: item.image }}
+        />
+      ) : (
+        <Avatar
+          rounded
+          title={getUsernameForLogo(item.fullName || item.username)}
+          size={Math.min(SCREEN_WIDTH * 0.12, 50)}
+          containerStyle={styles.avatar}
+        />
+      )}
 
-        <View style={styles.userDetails}>
-          <Text style={styles.userName} numberOfLines={1}>
-            {item.fullName || item.username}
-          </Text>
+      <View style={styles.userDetails}>
+        <Text style={styles.userName} numberOfLines={1}>
+          {item.fullName || item.username}
+        </Text>
 
-          <Text style={styles.username}>@{item.username}</Text>
-        </View>
+        <Text style={styles.username}>@{item.username}</Text>
+      </View>
 
-        <Ionicons name="chatbubble-outline" size={24} color="#2379C2" />
-      </TouchableOpacity>
-    );
-  };
+      <Ionicons name="chatbubble-outline" size={24} color="#2379C2" />
+    </TouchableOpacity>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -216,6 +217,12 @@ const ContactListScreen: React.FC = () => {
         onChangeText={(text: string = '') => {
           setSearch(text);
         }}
+        loadingProps={{}}
+        cancelButtonProps={{}}
+        onClear={() => setSearch('')}
+        onFocus={() => undefined}
+        onBlur={() => undefined}
+        onCancel={() => setSearch('')}
         platform="default"
         containerStyle={styles.searchContainer}
         inputContainerStyle={styles.searchInputContainer}

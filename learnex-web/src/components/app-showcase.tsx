@@ -163,7 +163,7 @@ export function AppShowcase() {
               ref={swiperRef}
               onLoad={autoPlayIntialize}>
               {screenshots.map((screenshot, index) => (
-                <SwiperSlide key={index}>
+                <SwiperSlide key={screenshot.title}>
                   <div className="relative rounded-[38px] overflow-hidden border-[6px] border-secondary/90 shadow-2xl bg-black max-w-[220px] mx-auto">
                     {/* Modern status bar with dynamic island */}
                     <div className="absolute top-0 z-10 w-full h-6 bg-black flex items-center justify-between px-3">
@@ -305,7 +305,7 @@ export function AppShowcase() {
             },
           ].map((feature, index) => (
             <motion.div
-              key={index}
+              key={feature.title}
               className={`bg-gradient-to-br ${feature.gradient} backdrop-blur-sm border border-border rounded-lg p-5 shadow hover:shadow-lg transition-all duration-300 hover:scale-[1.02]`}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}

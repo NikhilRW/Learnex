@@ -8,6 +8,12 @@ const plugins = [
     },
   ],
   [
+    'react-native-boost/plugin',
+    {
+      silent: true,
+    },
+  ],
+  [
     'module-resolver',
     {
       root: ['./'],

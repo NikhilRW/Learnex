@@ -73,6 +73,9 @@ const ChatScreen: React.FC = () => {
   const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
   const [isFetchingSuggestions, setIsFetchingSuggestions] =
     useState<boolean>(false);
+  const typingStatusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   // Function to fetch initial messages
   const fetchMessages = useCallback(async () => {
@@ -560,12 +563,41 @@ const ChatScreen: React.FC = () => {
     }
   };
 
-  // Keep the effect that hides suggestions when typing
+  const handleNewMessageChange = useCallback(
+    (text: string) => {
+      setNewMessage(text);
+      if (text.trim().length > 0) {
+        setShowSuggestions(false);
+      }
+
+      if (typingStatusTimeoutRef.current) {
+        clearTimeout(typingStatusTimeoutRef.current);
+      }
+
+      if (currentUser && conversationId) {
+        typingStatusTimeoutRef.current = setTimeout(() => {
+          messageService.setTypingStatus(
+            conversationId,
+            currentUser.uid,
+            text.length > 0,
+          );
+        }, 500);
+      }
+    },
+    [conversationId, currentUser, messageService],
+  );
+
   useEffect(() => {
-    if (newMessage.trim().length > 0) {
-      setShowSuggestions(false);
-    }
-  }, [newMessage]);
+    return () => {
+      if (typingStatusTimeoutRef.current) {
+        clearTimeout(typingStatusTimeoutRef.current);
+      }
+
+      if (currentUser && conversationId) {
+        messageService.setTypingStatus(conversationId, currentUser.uid, false);
+      }
+    };
+  }, [conversationId, currentUser, messageService]);
 
   // Handle suggestion click
   const handleSuggestionClick = (suggestion: string) => {
@@ -629,7 +661,7 @@ const ChatScreen: React.FC = () => {
           <ChatInputBar
             isDark={isDark}
             newMessage={newMessage}
-            onChangeText={setNewMessage}
+            onChangeText={handleNewMessageChange}
             onSend={sendMessage}
             sending={sending}
             showSuggestions={showSuggestions}

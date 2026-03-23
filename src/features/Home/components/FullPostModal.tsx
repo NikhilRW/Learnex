@@ -71,13 +71,6 @@ export const FullPostModal = ({
     }
   }, [modalMediaIndex, allMedia.length]);
 
-  // Reset modal media index when the modal opens
-  useEffect(() => {
-    if (showFullPostModal) {
-      setModalMediaIndex(currentMediaIndex);
-    }
-  }, [showFullPostModal, currentMediaIndex]);
-
   // Compute proper image height for full-width modal display
   useEffect(() => {
     if (!showFullPostModal || allMedia.length === 0) return;
@@ -137,18 +130,32 @@ export const FullPostModal = ({
 
     return (
       <View style={styles.paginationDots}>
-        {allMedia.map((_, index) => {
+        {allMedia.map((mediaItem, index) => {
           const dotBgColor =
             index === modalMediaIndex ? '#fff' : 'rgba(255, 255, 255, 0.5)';
           const dotBgStyle = { backgroundColor: dotBgColor };
-          return <Animated.View key={index} style={[styles.dot, dotBgStyle]} />;
+          let mediaKey = mediaItem.type;
+          if (typeof mediaItem.source === 'string') {
+            mediaKey = mediaItem.source;
+          } else if (typeof mediaItem.source === 'number') {
+            mediaKey = `asset-${mediaItem.source}`;
+          } else if (mediaItem.source && typeof mediaItem.source === 'object') {
+            const mediaSource = mediaItem.source as { uri?: string };
+            mediaKey = mediaSource.uri || mediaItem.type;
+          }
+          return (
+            <Animated.View
+              key={`${mediaItem.type}-${mediaKey}`}
+              style={[styles.dot, dotBgStyle]}
+            />
+          );
         })}
       </View>
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allMedia, modalMediaIndex]);
 
-  const styles = useMemo(() => createStyles(isDark), [isDark]);
+  const styles = useMemo(() => createStyles(isDark) as any, [isDark]);
   const mediaContentStyle = useMemo(
     () => ({
       width: SCREEN_WIDTH,
@@ -315,8 +322,10 @@ export const FullPostModal = ({
                 </View>
 
                 {/* Show just a few comments in the modal */}
-                {post.commentsList.slice(0, 3).map((comment, index) => (
-                  <View key={index} style={styles.commentItem}>
+                {post.commentsList.slice(0, 3).map(comment => (
+                  <View
+                    key={comment.id || `${comment.username}-${comment.timestamp}`}
+                    style={styles.commentItem}>
                     <Image
                       source={
                         comment.userImage

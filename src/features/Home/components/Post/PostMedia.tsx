@@ -151,14 +151,21 @@ export const PostMedia: React.FC<PostMediaProps> = ({
           )}
 
           <View style={styles.paginationDots}>
-            {allMedia.map((_, index) => {
+            {allMedia.map((mediaItem, index) => {
               const bgColor =
                 index === currentMediaIndex
                   ? '#fff'
                   : 'rgba(255, 255, 255, 0.5)';
               const dotBgStyle = { backgroundColor: bgColor };
+              const mediaKey =
+                typeof mediaItem.source === 'string'
+                  ? mediaItem.source
+                  : mediaItem.source?.uri || mediaItem.type;
               return (
-                <Animated.View key={index} style={[styles.dot, dotBgStyle]} />
+                <Animated.View
+                  key={`${mediaItem.type}-${mediaKey}`}
+                  style={[styles.dot, dotBgStyle]}
+                />
               );
             })}
           </View>
