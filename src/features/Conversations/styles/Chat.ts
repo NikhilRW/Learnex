@@ -157,7 +157,7 @@ export const styles = StyleSheet.create({
   suggestionsContainer: {
     flexDirection: 'row',
     padding: 8,
-    overflow: 'scroll',
+    overflow: 'hidden',
     flexWrap: 'wrap',
     justifyContent: 'center',
     borderTopWidth: 1,
