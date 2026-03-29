@@ -1,6 +1,10 @@
 import React, {useEffect} from 'react';
-import AuthStack, {AuthStackParamList} from 'shared/navigation/routes/AuthStack';
-import UserStack, {UserStackParamList} from 'shared/navigation/routes/UserStack';
+import AuthStack, {
+  AuthStackParamList,
+} from 'shared/navigation/routes/AuthStack';
+import UserStack, {
+  UserStackParamList,
+} from 'shared/navigation/routes/UserStack';
 import {useTypedSelector} from 'hooks/redux/useTypedSelector';
 import {useTypedDispatch} from 'hooks/redux/useTypedDispatch';
 import {changeIsLoggedIn} from 'shared/reducers/User';

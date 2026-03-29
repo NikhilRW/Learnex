@@ -11,25 +11,25 @@ import {
   TextInput,
   ScrollView,
 } from 'react-native';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useTypedSelector } from 'hooks/redux/useTypedSelector';
-import { useTypedDispatch } from 'hooks/redux/useTypedDispatch';
+import React, {useEffect, useMemo, useRef, useState} from 'react';
+import {useTypedSelector} from 'hooks/redux/useTypedSelector';
+import {useTypedDispatch} from 'hooks/redux/useTypedDispatch';
 import {
   changeIsLoggedIn,
   changeThemeColor,
   updateUserPhoto,
 } from 'shared/reducers/User';
-import { Avatar, Image } from 'react-native-elements';
-import { getUsernameForLogo } from 'shared/helpers/common/stringHelpers';
+import {Avatar, Image} from 'react-native-elements';
+import {getUsernameForLogo} from 'shared/helpers/common/stringHelpers';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import AntDesign from 'react-native-vector-icons/AntDesign';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { createStyles } from '../styles/NavigationDrawer.styles';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {createStyles} from '../styles/NavigationDrawer.styles';
 import Snackbar from 'react-native-snackbar';
-import { DrawerContentComponentProps } from '@react-navigation/drawer';
+import {DrawerContentComponentProps} from '@react-navigation/drawer';
 import FontAwesome5Icon from 'react-native-vector-icons/FontAwesome5';
 import {
   launchCamera,
@@ -37,11 +37,11 @@ import {
   CameraOptions,
 } from 'react-native-image-picker';
 import Config from 'react-native-superconfig';
-import { MessageService } from 'conversations/services/MessageService';
-import { deleteOldProfilePhoto } from 'shared/utils/cloudinary';
-import { DEFAULT_UPLOAD_PRESET } from 'shared/constants/cloudinary';
+import {MessageService} from 'conversations/services/MessageService';
+import {deleteOldProfilePhoto} from 'shared/utils/cloudinary';
+import {DEFAULT_UPLOAD_PRESET} from 'shared/constants/cloudinary';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const {width: SCREEN_WIDTH} = Dimensions.get('window');
 
 const NavigationDrawer = (props: DrawerContentComponentProps) => {
   const firebase = useTypedSelector(state => state.firebase.firebase);
@@ -113,7 +113,7 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
 
   const handleLogOutPress = async () => {
     try {
-      const { success, error } = await firebase.auth.signOut();
+      const {success, error} = await firebase.auth.signOut();
       if (success) {
         dispatch(changeIsLoggedIn(false));
         navigation.getParent()?.navigate('AuthStack');
@@ -196,10 +196,11 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
         }
         // If not, check Firebase user photo URL
         else if (currentUser?.photoURL) {
-          console.log(
-            'NavigationDrawer: User photo URL:',
-            currentUser.photoURL,
-          );
+          __DEV__ &&
+            console.log(
+              'NavigationDrawer: User photo URL:',
+              currentUser.photoURL,
+            );
           // Validate URL format
           if (
             typeof currentUser.photoURL === 'string' &&
@@ -211,15 +212,17 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
             // Also update Redux store
             dispatch(updateUserPhoto(currentUser.photoURL));
           } else {
-            console.log('NavigationDrawer: Invalid photo URL format');
+            __DEV__ &&
+              console.log('NavigationDrawer: Invalid photo URL format');
             setPhotoURL(null);
           }
         } else {
-          console.log('NavigationDrawer: No photo URL available');
+          __DEV__ && console.log('NavigationDrawer: No photo URL available');
           setPhotoURL(null);
         }
 
-        const { username: my_username } = await firebase.user.getNameUsernamestring();
+        const {username: my_username} =
+          await firebase.user.getNameUsernamestring();
         setUsername(my_username);
         setNewUsername(my_username); // Initialize new username
 
@@ -272,7 +275,7 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
   const checkUsernameAvailability = async (user_name: string) => {
     try {
       // Check if username is available using Firebase
-      const { success } = await firebase.user.checkUsernameIsAvailable(user_name);
+      const {success} = await firebase.user.checkUsernameIsAvailable(user_name);
       return success;
     } catch (err) {
       console.error('Error checking username availability:', err);
@@ -441,10 +444,7 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
       });
 
       // Add upload preset
-      formData.append(
-        'upload_preset',
-        DEFAULT_UPLOAD_PRESET,
-      );
+      formData.append('upload_preset', DEFAULT_UPLOAD_PRESET);
 
       // Check if we have the required configuration
       if (!Config.CLOUDINARY_CLOUD_NAME) {
@@ -541,16 +541,19 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
             style={[
               styles.avatar,
               styles.activityIndicatorContainer,
-              isDark ? styles.activityIndicatorBgDark : styles.activityIndicatorBgLight,
+              isDark
+                ? styles.activityIndicatorBgDark
+                : styles.activityIndicatorBgLight,
             ]}>
             <ActivityIndicator color="#2379C2" size="small" />
           </View>
         ) : photoURL && photoURL.length > 0 ? (
           <Image
-            source={{ uri: photoURL }}
+            source={{uri: photoURL}}
             containerStyle={styles.avatar}
             onError={() => {
-              console.log('NavigationDrawer: Profile image loading error');
+              __DEV__ &&
+                console.log('NavigationDrawer: Profile image loading error');
               setPhotoURL(null); // Fallback to initials avatar
             }}
           />
@@ -562,7 +565,7 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
             containerStyle={[
               styles.avatar,
               styles.avatarContainerStyle,
-              { backgroundColor: profileColor || '#2379C2' },
+              {backgroundColor: profileColor || '#2379C2'},
             ]}
             activeOpacity={0.7}
           />
@@ -627,7 +630,7 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
     <View
       style={[
         styles.container,
-        { paddingTop: insets.top, paddingBottom: insets.bottom },
+        {paddingTop: insets.top, paddingBottom: insets.bottom},
       ]}>
       <ScrollView
         style={styles.scrollView}

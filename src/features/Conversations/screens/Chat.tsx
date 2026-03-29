@@ -1,5 +1,5 @@
-import { LegendList } from '@legendapp/list';
-import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import {LegendList} from '@legendapp/list';
+import React, {useEffect, useState, useRef, useCallback, useMemo} from 'react';
 import {
   View,
   KeyboardAvoidingView,
@@ -8,10 +8,10 @@ import {
   StatusBar,
   Alert,
 } from 'react-native';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { useTypedSelector } from 'hooks/redux/useTypedSelector';
-import { MessageService } from 'conversations/services/MessageService';
-import { Message } from 'conversations/models/Message';
+import {useNavigation, useRoute, RouteProp} from '@react-navigation/native';
+import {useTypedSelector} from 'hooks/redux/useTypedSelector';
+import {MessageService} from 'conversations/services/MessageService';
+import {Message} from 'conversations/models/Message';
 import Snackbar from 'react-native-snackbar';
 import notificationService from 'shared/services/NotificationService';
 import {
@@ -23,11 +23,14 @@ import {
   getDocs,
 } from '@react-native-firebase/firestore';
 import LexAIService from 'shared/services/LexAIService';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import ChatHeaderLeft from 'conversations/components/ChatHeaderLeft';
-import { ChatNavigationObjectType, ChatScreenRouteParams } from 'conversations/types/main';
+import {
+  ChatNavigationObjectType,
+  ChatScreenRouteParams,
+} from 'conversations/types/main';
 import ChatHeaderRight from 'conversations/components/ChatHeaderRight';
-import { styles } from 'conversations/styles/Chat';
+import {styles} from 'conversations/styles/Chat';
 import MessageItem from 'conversations/components/MessageItem';
 import MessageContextMenu from 'conversations/components/MessageContextMenu';
 import ChatInputBar from 'conversations/components/ChatInputBar';
@@ -61,6 +64,7 @@ const ChatScreen: React.FC = () => {
   const [currentRecipientPhoto, setCurrentRecipientPhoto] = useState<
     string | null
   >(recipientPhoto || null);
+  const currentRecipientPhotoRef = useRef(currentRecipientPhoto);
   const messageService = useMemo(() => new MessageService(), []);
   const flatListRef = useRef<any>(null);
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
@@ -82,7 +86,9 @@ const ChatScreen: React.FC = () => {
     try {
       if (!currentUser || !conversationId) return;
 
-      const snapshot = await getDocs(messageService.getMessages(conversationId));
+      const snapshot = await getDocs(
+        messageService.getMessages(conversationId),
+      );
       const messagesData: Message[] = [];
 
       snapshot.docs.forEach((docSnapshot: any) => {
@@ -104,7 +110,7 @@ const ChatScreen: React.FC = () => {
       // Scroll to bottom after fetching messages
       setTimeout(() => {
         if (flatListRef.current) {
-          flatListRef.current.scrollToEnd({ animated: false });
+          flatListRef.current.scrollToEnd({animated: false});
         }
       }, 200);
     } catch (error) {
@@ -118,6 +124,11 @@ const ChatScreen: React.FC = () => {
       });
     }
   }, [conversationId, currentUser, messageService]);
+
+  // Keep the ref in sync so the listener can compare without being a dependency
+  useEffect(() => {
+    currentRecipientPhotoRef.current = currentRecipientPhoto;
+  }, [currentRecipientPhoto]);
 
   // Listen for conversation updates to get the latest participant details
   useEffect(() => {
@@ -133,32 +144,38 @@ const ChatScreen: React.FC = () => {
             data.participantDetails[recipientId]
           ) {
             const updatedPhoto = data.participantDetails[recipientId].image;
-            if (updatedPhoto !== currentRecipientPhoto) {
+            if (updatedPhoto !== currentRecipientPhotoRef.current) {
               setCurrentRecipientPhoto(updatedPhoto);
             }
           }
         }
-      });
+      },
+    );
 
     return () => unsubscribe();
-  }, [conversationId, recipientId, currentRecipientPhoto]);
+  }, [conversationId, recipientId]);
 
   // Function to mark messages as read
   const markMessagesAsRead = useCallback(async () => {
     try {
       const batch = writeBatch(getFirestore());
-      const snapshot = await getDocs(messageService.getMessages(conversationId));
+      const snapshot = await getDocs(
+        messageService.getMessages(conversationId),
+      );
 
       if (!snapshot.empty) {
         snapshot.docs.forEach((docSnapshot: any) => {
-          batch.update(docSnapshot.ref, { read: true });
+          batch.update(docSnapshot.ref, {read: true});
         });
 
         // Update the lastReadTimestamp to the current time
         lastReadTimestamp.current = Date.now();
 
         // Also reset unread count in the conversation
-        const conversationRef = doc(collection(getFirestore(), 'conversations'), conversationId);
+        const conversationRef = doc(
+          collection(getFirestore(), 'conversations'),
+          conversationId,
+        );
 
         batch.update(conversationRef, {
           [`unreadCount.${currentUser?.uid}`]: 0,
@@ -220,7 +237,7 @@ const ChatScreen: React.FC = () => {
         // Scroll to bottom when messages update
         setTimeout(() => {
           if (flatListRef.current) {
-            flatListRef.current.scrollToEnd({ animated: true });
+            flatListRef.current.scrollToEnd({animated: true});
           }
         }, 100);
       },
@@ -310,7 +327,7 @@ const ChatScreen: React.FC = () => {
       // Scroll to the bottom
       setTimeout(() => {
         if (flatListRef.current) {
-          flatListRef.current.scrollToEnd({ animated: true });
+          flatListRef.current.scrollToEnd({animated: true});
         }
       }, 100);
     } catch (error) {
@@ -428,7 +445,7 @@ const ChatScreen: React.FC = () => {
 
   // Render message item using sub-component
   const renderMessageItemCallback = useCallback(
-    ({ item }: { item: Message }) => (
+    ({item}: {item: Message}) => (
       <MessageItem
         item={item}
         isDark={isDark}
@@ -487,7 +504,14 @@ const ChatScreen: React.FC = () => {
         toggleNotifications={toggleNotifications}
       />
     ),
-    [conversationId, isDark, isMuted, messageService, navigation, toggleNotifications],
+    [
+      conversationId,
+      isDark,
+      isMuted,
+      messageService,
+      navigation,
+      toggleNotifications,
+    ],
   );
 
   // Check if recipient is muted
@@ -503,7 +527,6 @@ const ChatScreen: React.FC = () => {
   }, [recipientId]);
 
   // Toggle notification mute for this recipient
-
 
   // Update header settings with recipient information and notification toggle
   useEffect(() => {

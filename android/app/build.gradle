@@ -20,7 +20,7 @@ react {
 /**
  * Set this to true to Run Proguard on Release builds to minify the Java bytecode.
  */
-def enableProguardInReleaseBuilds = false
+def enableProguardInReleaseBuilds = true
 
 /**
  * The preferred build flavor of JavaScriptCore (JSC)
@@ -62,6 +62,7 @@ android {
         release {
             signingConfig signingConfigs.debug
             minifyEnabled enableProguardInReleaseBuilds
+            shrinkResources enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
     }
@@ -79,19 +80,19 @@ dependencies {
     implementation 'com.google.firebase:firebase-analytics'
     implementation project(':react-native-splash-screen')
     implementation project(':react-native-inappbrowser-reborn')
-    
+
     // Add explicit AndroidX dependencies
     implementation 'androidx.core:core:1.12.0'
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'androidx.multidex:multidex:2.0.1'
-    
+
     // Add Android 14 specific support
     implementation 'androidx.core:core-ktx:1.12.0'
     implementation 'androidx.fragment:fragment-ktx:1.6.2'
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.6.2'
 //    implementation("com.google.android.gms:play-services:17.0.0")
 
-    
+
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
     } else {

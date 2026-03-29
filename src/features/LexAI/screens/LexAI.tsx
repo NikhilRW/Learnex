@@ -1,15 +1,15 @@
-import { LegendList } from '@legendapp/list';
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { TextInput, useColorScheme } from 'react-native';
+import {LegendList} from '@legendapp/list';
+import React, {useState, useEffect, useRef, useCallback, useMemo} from 'react';
+import {TextInput, useColorScheme} from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { LexAIMessage, LexAIMode } from 'lex-ai/types/lexAITypes';
-import { useSelector } from 'react-redux';
-import { styles } from 'lex-ai/styles/LexAI.styles';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useTypedSelector } from 'hooks/redux/useTypedSelector';
+import {LexAIMessage, LexAIMode} from 'lex-ai/types/lexAITypes';
+import {useSelector} from 'react-redux';
+import {styles} from 'lex-ai/styles/LexAI.styles';
+import {SafeAreaView} from 'react-native-safe-area-context';
+import {useTypedSelector} from 'hooks/redux/useTypedSelector';
 
 // Import types
-import { RootState, LexAIMessageWithLinks } from '../types/lexAI.types';
+import {RootState, LexAIMessageWithLinks} from '../types/lexAI.types';
 import {
   lightColors,
   darkColors,
@@ -26,7 +26,7 @@ import {
 } from '../hooks';
 
 // Import utils
-import { getGreeting } from '../utils/lexAI.utils';
+import {getGreeting} from '../utils/lexAI.utils';
 
 // Import components
 import {
@@ -56,6 +56,9 @@ const LexAI = () => {
 
   const [debugMode] = useState(false);
   const flatListRef = useRef<any>(null);
+  const isAtBottomRef = useRef(true);
+  const listHeightRef = useRef(0);
+  const contentHeightRef = useRef(0);
   const inputRef = useRef<TextInput>(null);
 
   const firebase = useTypedSelector(state => state.firebase.firebase);
@@ -91,13 +94,32 @@ const LexAI = () => {
   const scrollToEnd = useCallback(() => {
     setTimeout(() => {
       if (flatListRef.current) {
-        flatListRef.current.scrollToEnd({ animated: true });
+        flatListRef.current.scrollToEnd({animated: true});
       }
     }, 100);
   }, []);
 
+  // Gated autoscroll handlers — only scroll when user is already near the bottom
+  const handleScroll = useCallback((event: any) => {
+    const {contentOffset, contentSize, layoutMeasurement} = event.nativeEvent;
+    const distanceFromBottom =
+      contentSize.height - layoutMeasurement.height - contentOffset.y;
+    isAtBottomRef.current = distanceFromBottom < 80; // within 80px of bottom
+  }, []);
+
+  const handleContentSizeChange = useCallback((_w: number, h: number) => {
+    contentHeightRef.current = h;
+    if (isAtBottomRef.current) {
+      flatListRef.current?.scrollToEnd({animated: true});
+    }
+  }, []);
+
+  const handleLayout = useCallback((event: any) => {
+    listHeightRef.current = event.nativeEvent.layout.height;
+  }, []);
+
   // Use tool execution hook
-  const { handleToolExecution } = useLexAIToolExecution({
+  const {handleToolExecution} = useLexAIToolExecution({
     conversation,
     setConversation,
     currentMode,
@@ -122,7 +144,8 @@ const LexAI = () => {
   });
 
   const visibleMessages = useMemo(
-    () => conversation?.messages.filter(message => message.role !== 'system') || [],
+    () =>
+      conversation?.messages.filter(message => message.role !== 'system') || [],
     [conversation?.messages],
   );
 
@@ -131,7 +154,7 @@ const LexAI = () => {
     const fetchUserName = async () => {
       try {
         if (currentUser) {
-          const { fullName } = await firebase.user.getNameUsernamestring();
+          const {fullName} = await firebase.user.getNameUsernamestring();
           setUserName(fullName || 'User');
         }
       } catch (error) {
@@ -145,11 +168,7 @@ const LexAI = () => {
 
   // Render message item
   const renderMessage = useCallback(
-    ({
-      item,
-    }: {
-      item: LexAIMessage | LexAIMessageWithLinks;
-    }) => (
+    ({item}: {item: LexAIMessage | LexAIMessageWithLinks}) => (
       <MessageBubble
         item={item}
         colors={colors}
@@ -189,8 +208,8 @@ const LexAI = () => {
             : ['#F5F9FF', '#EDF4FF', '#E5F0FF']
         }
         style={styles.mainContainer}
-        start={{ x: 0.1, y: 0.1 }}
-        end={{ x: 0.9, y: 0.9 }}>
+        start={{x: 0.1, y: 0.1}}
+        end={{x: 0.9, y: 0.9}}>
         {/* Enhanced header */}
         <ChatHeader
           colors={colors}
@@ -210,10 +229,10 @@ const LexAI = () => {
           keyExtractor={item => item.id}
           renderItem={renderMessage}
           ref={flatListRef}
-          onContentSizeChange={() =>
-            flatListRef.current?.scrollToEnd({ animated: true })
-          }
-          onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
+          onContentSizeChange={handleContentSizeChange}
+          onLayout={handleLayout}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
           ListFooterComponent={
             <>
               <LoadingBubble

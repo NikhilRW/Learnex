@@ -1,5 +1,5 @@
-import { LegendList } from '@legendapp/list';
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import {LegendList} from '@legendapp/list';
+import React, {useEffect, useState, useCallback, useMemo} from 'react';
 import {
   View,
   Text,
@@ -7,24 +7,24 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
-import { Avatar, SearchBar } from 'react-native-elements';
-import { useTypedSelector } from 'hooks/redux/useTypedSelector';
-import { useNavigation } from '@react-navigation/native';
+import {Avatar, SearchBar} from 'react-native-elements';
+import {useTypedSelector} from 'hooks/redux/useTypedSelector';
+import {useNavigation} from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { MessageService } from '../services/MessageService';
-import { getUsernameForLogo } from 'shared/helpers/common/stringHelpers';
+import {SafeAreaView} from 'react-native-safe-area-context';
+import {MessageService} from '../services/MessageService';
+import {getUsernameForLogo} from 'shared/helpers/common/stringHelpers';
 import Snackbar from 'react-native-snackbar';
 import {
   getFirestore,
   collection,
   getDocs,
 } from '@react-native-firebase/firestore';
-import { UserStackParamList } from 'shared/navigation/routes/UserStack';
-import { NavigationProp } from '@react-navigation/native';
-import { SCREEN_WIDTH } from 'shared/constants/common';
-import { ContactUser } from '../types';
-import { getStyles } from '../styles/ContactList';
+import {UserStackParamList} from 'shared/navigation/routes/UserStack';
+import {NavigationProp} from '@react-navigation/native';
+import {SCREEN_WIDTH} from 'shared/constants/common';
+import {ContactUser} from '../types';
+import {getStyles} from '../styles/ContactList';
 
 const ContactListScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp<UserStackParamList>>();
@@ -143,56 +143,64 @@ const ContactListScreen: React.FC = () => {
     [currentUser, messageService, navigation],
   );
 
-  const renderEmptyList = () => (
-    <View style={styles.emptyContainer}>
-      {loading ? (
-        <ActivityIndicator size="large" color="#2379C2" />
-      ) : (
-        <>
-          <Ionicons
-            name="people-outline"
-            size={80}
-            color={styles.emptyIcon.color}
-          />
-          <Text style={styles.emptyText}>No contacts found</Text>
-          {search.length > 0 && (
-            <Text style={styles.emptySubText}>Try a different search term</Text>
-          )}
-        </>
-      )}
-    </View>
+  const renderEmptyList = useCallback(
+    () => (
+      <View style={styles.emptyContainer}>
+        {loading ? (
+          <ActivityIndicator size="large" color="#2379C2" />
+        ) : (
+          <>
+            <Ionicons
+              name="people-outline"
+              size={80}
+              color={styles.emptyIcon.color}
+            />
+            <Text style={styles.emptyText}>No contacts found</Text>
+            {search.length > 0 && (
+              <Text style={styles.emptySubText}>
+                Try a different search term
+              </Text>
+            )}
+          </>
+        )}
+      </View>
+    ),
+    [loading, search.length, styles],
   );
 
-  const renderUserItem = ({ item }: { item: ContactUser }) => (
-    <TouchableOpacity
-      style={styles.userItem}
-      onPress={() => handleUserPress(item)}>
-      {item.image ? (
-        <Avatar
-          rounded
-          size={Math.min(SCREEN_WIDTH * 0.12, 50)}
-          containerStyle={styles.avatar}
-          source={{ uri: item.image }}
-        />
-      ) : (
-        <Avatar
-          rounded
-          title={getUsernameForLogo(item.fullName || item.username)}
-          size={Math.min(SCREEN_WIDTH * 0.12, 50)}
-          containerStyle={styles.avatar}
-        />
-      )}
+  const renderUserItem = useCallback(
+    ({item}: {item: ContactUser}) => (
+      <TouchableOpacity
+        style={styles.userItem}
+        onPress={() => handleUserPress(item)}>
+        {item.image ? (
+          <Avatar
+            rounded
+            size={Math.min(SCREEN_WIDTH * 0.12, 50)}
+            containerStyle={styles.avatar}
+            source={{uri: item.image}}
+          />
+        ) : (
+          <Avatar
+            rounded
+            title={getUsernameForLogo(item.fullName || item.username)}
+            size={Math.min(SCREEN_WIDTH * 0.12, 50)}
+            containerStyle={styles.avatar}
+          />
+        )}
 
-      <View style={styles.userDetails}>
-        <Text style={styles.userName} numberOfLines={1}>
-          {item.fullName || item.username}
-        </Text>
+        <View style={styles.userDetails}>
+          <Text style={styles.userName} numberOfLines={1}>
+            {item.fullName || item.username}
+          </Text>
 
-        <Text style={styles.username}>@{item.username}</Text>
-      </View>
+          <Text style={styles.username}>@{item.username}</Text>
+        </View>
 
-      <Ionicons name="chatbubble-outline" size={24} color="#2379C2" />
-    </TouchableOpacity>
+        <Ionicons name="chatbubble-outline" size={24} color="#2379C2" />
+      </TouchableOpacity>
+    ),
+    [styles, handleUserPress],
   );
 
   return (
@@ -231,8 +239,8 @@ const ContactListScreen: React.FC = () => {
         placeholderTextColor={styles.placeholder.color}
         round
         lightTheme={!isDark}
-        searchIcon={{ name: 'search', size: 25 }}
-        clearIcon={{ name: 'clear', size: 25 }}
+        searchIcon={{name: 'search', size: 25}}
+        clearIcon={{name: 'clear', size: 25}}
         showLoading={false}
         cancelButtonTitle={''}
         showCancel={false}

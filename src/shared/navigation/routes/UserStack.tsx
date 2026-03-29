@@ -20,11 +20,7 @@ import {useTypedSelector} from 'hooks/redux/useTypedSelector';
 import NavigationIconHelper from 'shared/helpers/navigation/NavigationIconHelper';
 import {Dimensions, Alert, ImageSourcePropType, StatusBar} from 'react-native';
 import {useEffect, useRef, useCallback} from 'react';
-import {
-  useNavigation,
-  CommonActions,
-  NavigationProp,
-} from '@react-navigation/native';
+import {useNavigation, CommonActions} from '@react-navigation/native';
 import {useTypedDispatch} from 'hooks/redux/useTypedDispatch';
 import {clearDeepLink, markDeepLinkProcessed} from 'shared/reducers/DeepLink';
 import {MeetingService} from 'room/services/MeetingService';
@@ -39,8 +35,7 @@ import {
 } from '@react-native-firebase/firestore';
 import FloatingBottomTabBar from 'shared/navigation/components/FloatingBottomTabBar';
 import {getMessaging} from '@react-native-firebase/messaging';
-import {RootStackParamList} from './Route';
-import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
 
@@ -441,7 +436,7 @@ const UserStack = () => {
         }
 
         if (deepLinkUrl === 'learnex://callback') {
-          navigation.navigate('UserStack');
+          navigation.dispatch(CommonActions.navigate({name: 'Home'}));
         }
       }
     };

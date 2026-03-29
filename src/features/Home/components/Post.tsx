@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, {useState, useRef, useEffect, useMemo, useCallback} from 'react';
 import {
   View,
   Image,
@@ -9,24 +9,24 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import Video from 'react-native-video';
-import { useTypedSelector } from 'hooks/redux/useTypedSelector';
+import {useTypedSelector} from 'hooks/redux/useTypedSelector';
 import CommentModal from 'home/components/CommentModal';
-import { useNavigation } from '@react-navigation/native';
-import { MessageService } from 'conversations/services/MessageService';
+import {useNavigation} from '@react-navigation/native';
+import {MessageService} from 'conversations/services/MessageService';
 import Snackbar from 'react-native-snackbar';
-import { UserStackParamList } from 'shared/navigation/routes/UserStack';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import {UserStackParamList} from 'shared/navigation/routes/UserStack';
+import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {FullPostModal} from 'home/components/FullPostModal';
 import {
   getFirestore,
   collection,
   doc,
   updateDoc,
 } from '@react-native-firebase/firestore';
-import { getAuth } from '@react-native-firebase/auth';
+import {getAuth} from '@react-native-firebase/auth';
 import PostOptionsModal from './PostOptionsModal';
-import { FullPostModal } from './FullPostModal';
-import { createStyles } from '../styles/Post';
-import { onSnapshot } from '@react-native-firebase/firestore';
+import {createStyles} from '../styles/Post';
+import {onSnapshot} from '@react-native-firebase/firestore';
 
 // Custom hooks for business logic
 import {
@@ -37,16 +37,15 @@ import {
 } from './Post/hooks';
 
 // Post sub-components
-import { PostHeader, PostActions, PostFooter } from './Post/index';
+import {PostHeader, PostActions, PostFooter} from './Post/index';
 
 // Utility functions
 import {
-  extractHashtags,
   formatDescriptionWithHashtags,
   combineMediaArray,
 } from './Post/utils/postHelpers';
 
-import { PostProps } from '../types';
+import {PostProps} from '../types';
 
 /**
  * Post component that displays a social media post with images
@@ -54,7 +53,7 @@ import { PostProps } from '../types';
  */
 type UserNavigation = NativeStackNavigationProp<UserStackParamList>;
 
-const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
+const Post: React.FC<PostProps> = ({post, isVisible = false}) => {
   // Theme and navigation
   const isDark = useTypedSelector(state => state.user.theme) === 'dark';
   const firebase = useTypedSelector(state => state.firebase.firebase);
@@ -72,12 +71,12 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
   );
 
   // Custom hooks for business logic
-  const { isLiked, handleLikePost } = usePostLike(
+  const {isLiked, handleLikePost} = usePostLike(
     post.id,
     post.isLiked || false,
     firebase,
   );
-  const { isSaved, isSaving, handleSavePost } = usePostSave(
+  const {isSaved, isSaving, handleSavePost} = usePostSave(
     post.id,
     post.isSaved,
     firebase,
@@ -167,7 +166,106 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
     }).start();
   }, [fadeAnim]);
 
-  const renderMedia = () => {
+  const styles = useMemo(() => createStyles(isDark) as any, [isDark]);
+
+  // Helper function to render video content
+  const renderVideoContent = useCallback(
+    (videoSource: any) => {
+      let source;
+      if (typeof videoSource === 'number') {
+        source = videoSource as unknown as NodeRequire;
+      } else if (typeof videoSource === 'string') {
+        source = videoSource;
+      } else if (videoSource && typeof videoSource === 'object') {
+        const videoObject = videoSource as {uri?: string};
+        if (videoObject.uri) {
+          source = videoObject.uri;
+        } else {
+          console.error('Video object has no URI property:', videoSource);
+          return (
+            <View style={styles.errorContainer}>
+              <Text>Invalid video format</Text>
+            </View>
+          );
+        }
+      } else {
+        console.error('Video has invalid format:', videoSource);
+        return (
+          <View style={styles.errorContainer}>
+            <Text>Invalid video format</Text>
+          </View>
+        );
+      }
+
+      return (
+        <TouchableWithoutFeedback onPress={handleVideoPress}>
+          <View style={videoContainerStyle}>
+            <Video
+              ref={videoRef}
+              source={{uri: source}}
+              style={styles.postImage}
+              resizeMode={post.isVertical ? 'cover' : 'contain'}
+              paused={isPaused}
+              repeat
+              onProgress={handleVideoProgress}
+              onError={error => console.error('Video loading error:', error)}
+            />
+            {isPaused && <View style={styles.pausedOverlay} />}
+          </View>
+        </TouchableWithoutFeedback>
+      );
+    },
+    [
+      videoContainerStyle,
+      videoRef,
+      post.isVertical,
+      isPaused,
+      handleVideoProgress,
+      handleVideoPress,
+      styles,
+    ],
+  );
+
+  // Helper function to render image content
+  const renderImageContent = useCallback(
+    (imageSource: any, isFullModal: boolean = false) => {
+      let source;
+      if (typeof imageSource === 'number') {
+        source = imageSource;
+      } else if (typeof imageSource === 'string') {
+        source = {uri: imageSource};
+      } else if (
+        imageSource &&
+        typeof imageSource === 'object' &&
+        'uri' in imageSource
+      ) {
+        source = {uri: imageSource.uri};
+      } else {
+        return null; // Skip invalid images
+      }
+
+      const imageHeightValue = isFullModal
+        ? '100%'
+        : imageHeight - 12 || (post.isVertical ? 480 : 300);
+      const imageHeightStyle = {height: imageHeightValue};
+
+      return (
+        <TouchableWithoutFeedback onPress={handleMediaTouch}>
+          <Image
+            source={source}
+            style={[styles.postImage, imageHeightStyle]}
+            resizeMode="cover"
+            onError={error =>
+              console.error('Image loading error', error.nativeEvent.error)
+            }
+          />
+        </TouchableWithoutFeedback>
+      );
+    },
+    [imageHeight, handleMediaTouch, post.isVertical, styles],
+  );
+
+  const renderMedia = useCallback(() => {
     // If there's no media, return null
     if (!post.postVideo && (!post.postImages || post.postImages.length === 0)) {
       return null;
@@ -220,7 +318,7 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
                   index === currentMediaIndex
                     ? '#fff'
                     : 'rgba(255, 255, 255, 0.5)';
-                const dotBgStyle = { backgroundColor: bgColor };
+                const dotBgStyle = {backgroundColor: bgColor};
                 const mediaKey =
                   typeof mediaItem.source === 'string'
                     ? mediaItem.source
@@ -237,98 +335,19 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
         )}
       </View>
     );
-  };
-
-  // Helper function to render video content
-  const renderVideoContent = (videoSource: any) => {
-    let source;
-    if (typeof videoSource === 'number') {
-      source = videoSource as unknown as NodeRequire;
-    } else if (typeof videoSource === 'string') {
-      source = videoSource;
-    } else if (videoSource && typeof videoSource === 'object') {
-      const videoObject = videoSource as { uri?: string };
-      if (videoObject.uri) {
-        source = videoObject.uri;
-      } else {
-        console.error('Video object has no URI property:', videoSource);
-        return (
-          <View style={styles.errorContainer}>
-            <Text>Invalid video format</Text>
-          </View>
-        );
-      }
-    } else {
-      console.error('Video has invalid format:', videoSource);
-      return (
-        <View style={styles.errorContainer}>
-          <Text>Invalid video format</Text>
-        </View>
-      );
-    }
-
-    return (
-      <TouchableWithoutFeedback onPress={handleVideoPress}>
-        <View style={videoContainerStyle}>
-          <Video
-            ref={videoRef}
-            source={{ uri: source }}
-            style={styles.postImage}
-            resizeMode={post.isVertical ? 'cover' : 'contain'}
-            paused={isPaused}
-            repeat
-            onProgress={handleVideoProgress}
-            onError={error => console.error('Video loading error:', error)}
-          />
-          {isPaused && <View style={styles.pausedOverlay} />}
-        </View>
-      </TouchableWithoutFeedback>
-    );
-  };
-
-  // Helper function to render image content
-  const renderImageContent = (
-    imageSource: any,
-    isFullModal: boolean = false,
-  ) => {
-    let source;
-    if (typeof imageSource === 'number') {
-      source = imageSource;
-    } else if (typeof imageSource === 'string') {
-      source = { uri: imageSource };
-    } else if (
-      imageSource &&
-      typeof imageSource === 'object' &&
-      'uri' in imageSource
-    ) {
-      source = { uri: imageSource.uri };
-    } else {
-      return null; // Skip invalid images
-    }
-
-    const imageHeightValue = isFullModal
-      ? '100%'
-      : imageHeight - 12 || (post.isVertical ? 480 : 300);
-    const imageHeightStyle = { height: imageHeightValue };
-
-    return (
-      <TouchableWithoutFeedback onPress={handleMediaTouch}>
-        <Image
-          source={source}
-          style={[styles.postImage, imageHeightStyle]}
-          resizeMode="cover"
-          onError={error =>
-            console.error(
-              'Image loading error for source',
-              source,
-              ':',
-              error.nativeEvent.error,
-            )
-          }
-        />
-      </TouchableWithoutFeedback>
-    );
-  };
+  }, [
+    post.postVideo,
+    post.postImages,
+    post.isVideo,
+    allMedia,
+    currentMediaIndex,
+    showDots,
+    goToPreviousMedia,
+    goToNextMedia,
+    styles,
+    renderVideoContent,
+    renderImageContent,
+  ]);
 
   const handleMessageUser = async () => {
     try {
@@ -382,8 +401,8 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
 
       const db = getFirestore();
       const postRef = doc(db, 'posts', post.id);
-      await updateDoc(postRef, { hidden: true });
-      const result = { success: true };
+      await updateDoc(postRef, {hidden: true});
+      const result = {success: true};
 
       if (result.success) {
         Snackbar.show({
@@ -468,24 +487,15 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
     }
   };
 
-  const handleOpenFullPost = () => {
+  const handleOpenFullPost = useCallback(() => {
     setShowFullPostModal(true);
-  };
-
-  const styles = useMemo(() => createStyles(isDark) as any, [isDark]);
+  }, []);
 
   // Process description and hashtags using imported utility functions
-  const formattedDescription = React.useMemo(() => {
-    const extractedTags = extractHashtags(post.description || '');
-    const existingTags = post.hashtags || [];
-    const allTags = [...new Set([...existingTags, ...extractedTags])];
-    post.hashtags = allTags;
-    const formatted = formatDescriptionWithHashtags(
-      post.description || '',
-      styles,
-    );
-    return formatted;
-  }, [post, styles]);
+  const formattedDescription = React.useMemo(
+    () => formatDescriptionWithHashtags(post.description || '', styles),
+    [post, styles],
+  );
 
   // Wrapper for handleLikePost
   const onLikePress = async () => {
@@ -494,7 +504,7 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
     });
   };
 
-  const fadeStyle = { opacity: fadeAnim };
+  const fadeStyle = {opacity: fadeAnim};
 
   return (
     <Animated.View key={post.id} style={[styles.postContainer, fadeStyle]}>
@@ -505,7 +515,7 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
         onOptionsPress={() => setShowOptions(true)}
         styles={styles}
       />
-      {/* Make the post content clickable to open the full post modal */}
+      {/* Make the post content clickable to open the full post screen */}
       <TouchableWithoutFeedback onPress={handleOpenFullPost}>
         <View>{renderMedia()}</View>
       </TouchableWithoutFeedback>
@@ -532,7 +542,7 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
         styles={styles}
       />
       <CommentModal
-        key={`${post.id}-${showComments ? 'open' : 'closed'}`}
+        key={`${post.id}-comment-${showComments ? 'open' : 'closed'}`}
         visible={showComments}
         onClose={() => setShowComments(false)}
         comments={post.commentsList || []}
@@ -555,7 +565,7 @@ const Post: React.FC<PostProps> = ({ post, isVisible = false }) => {
         post={post}
       />
       <FullPostModal
-        key={`${post.id}-${showFullPostModal ? 'open' : 'closed'}`}
+        key={`${post.id}-fullpost-${showFullPostModal ? 'open' : 'closed'}`}
         allMedia={allMedia}
         currentMediaIndex={currentMediaIndex}
         handleLikePost={onLikePress}

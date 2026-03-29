@@ -47,6 +47,14 @@ const Home = () => {
   const [trendingTags, setTrendingTags] = useState<string[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Ref to track selectedTag without causing listener re-subscription
+  const selectedTagRef = useRef<string | null>(null);
+
+  // Keep selectedTagRef in sync with selectedTag state
+  useEffect(() => {
+    selectedTagRef.current = selectedTag;
+  }, [selectedTag]);
+
   // Optimize post updates subscription
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
@@ -54,9 +62,9 @@ const Home = () => {
       try {
         unsubscribe = firebase.posts.subscribeToPostUpdates(updatedPosts => {
           setPosts(updatedPosts);
-          if (selectedTag) {
+          if (selectedTagRef.current) {
             const filtered = updatedPosts.filter(post =>
-              post.hashtags?.includes(selectedTag),
+              post.hashtags?.includes(selectedTagRef.current!),
             );
             setFilteredPosts(filtered);
           }
@@ -69,7 +77,7 @@ const Home = () => {
 
     setupRealTimeUpdates();
     return () => unsubscribe?.();
-  }, [firebase.posts, selectedTag]);
+  }, [firebase.posts]);
 
   const onViewableItemsChanged = useCallback(
     ({viewableItems}: {viewableItems: Array<ViewToken>}) => {
