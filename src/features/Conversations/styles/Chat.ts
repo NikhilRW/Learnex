@@ -273,6 +273,7 @@ export const styles = StyleSheet.create({
     backgroundColor: '#333',
   },
   darkEditHeaderText: {
+    
     color: 'white',
   },
   darkEditInput: {
