@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,9 @@ import {
   Platform,
 } from 'react-native';
 import {Avatar, SearchBar} from 'react-native-elements';
+import CachedImage from 'shared/components/CachedImage';
 import {useTypedSelector} from 'hooks/redux/useTypedSelector';
+import {selectFirebase, selectIsDark} from 'shared/store/selectors';
 import {useNavigation} from '@react-navigation/native';
 import {NavigationProp} from '@react-navigation/native';
 import {UserStackParamList} from 'shared/navigation/routes/UserStack';
@@ -22,16 +24,148 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import {formatDistanceToNow} from 'date-fns';
 import {getUsernameForLogo} from 'shared/helpers/common/stringHelpers';
 import Snackbar from 'react-native-snackbar';
+import {logger} from 'shared/utils/logger';
 import {styles} from 'conversations/styles/Conversations';
 import {SCREEN_WIDTH} from 'shared/constants/common';
 
 // TODO: refactor the component logic into hook.
 
+type ConversationRowProps = {
+  item: Conversation;
+  currentUserId?: string;
+  isDark: boolean;
+  onPress: (conversation: Conversation) => void;
+};
+
+const ConversationRow = React.memo(
+  ({item, currentUserId, isDark, onPress}: ConversationRowProps) => {
+    const otherParticipantId = useMemo(
+      () => item.participants.find(id => id !== currentUserId),
+      [item.participants, currentUserId],
+    );
+
+    const lastMessageTime = useMemo(
+      () =>
+        item.lastMessage?.timestamp
+          ? formatDistanceToNow(new Date(item.lastMessage.timestamp), {
+              addSuffix: true,
+            })
+          : '',
+      [item.lastMessage?.timestamp],
+    );
+
+    const avatarSize = Math.min(SCREEN_WIDTH * 0.12, 50);
+    const avatarStyle = useMemo(
+      () => [
+        styles.avatar,
+        {width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2},
+      ],
+      [avatarSize],
+    );
+
+    if (!otherParticipantId) return null;
+
+    const otherParticipant = item.participantDetails[otherParticipantId];
+    const isUnread = Boolean(
+      item.unreadCount && item.unreadCount[currentUserId || ''] > 0,
+    );
+
+    return (
+      <TouchableOpacity
+        style={[
+          styles.conversationItem,
+          isDark
+            ? isUnread
+              ? styles.darkUnreadConversationItem
+              : styles.darkConversationItem
+            : isUnread
+              ? styles.lightUnreadConversationItem
+              : styles.lightConversationItem,
+        ]}
+        onPress={() => onPress(item)}>
+        {otherParticipant.image ? (
+          <CachedImage
+            source={{uri: otherParticipant.image}}
+            style={avatarStyle}
+            contentFit="cover"
+          />
+        ) : (
+          <Avatar
+            rounded
+            title={getUsernameForLogo(otherParticipant.name)}
+            size={avatarSize}
+            containerStyle={[styles.avatar, styles.avatarPlaceholderBg]}
+          />
+        )}
+
+        <View style={styles.conversationDetails}>
+          <View style={styles.conversationHeader}>
+            <Text
+              style={[
+                styles.participantName,
+                isDark
+                  ? styles.darkParticipantName
+                  : styles.lightParticipantName,
+                isUnread && styles.unreadParticipantName,
+              ]}
+              numberOfLines={1}>
+              {otherParticipant.name}
+            </Text>
+            <Text
+              style={[
+                styles.timeText,
+                isDark ? styles.darkTimeText : styles.lightTimeText,
+              ]}>
+              {lastMessageTime}
+            </Text>
+          </View>
+
+          <View style={styles.lastMessageContainer}>
+            {otherParticipant.typing ? (
+              <Text style={[styles.typingText, styles.typingHighlight]}>
+                typing...
+              </Text>
+            ) : (
+              <Text
+                style={[
+                  styles.lastMessageText,
+                  isDark
+                    ? isUnread
+                      ? styles.darkUnreadMessageText
+                      : styles.darkReadMessageText
+                    : isUnread
+                      ? styles.lightUnreadMessageText
+                      : styles.lightReadMessageText,
+                ]}
+                numberOfLines={1}
+                ellipsizeMode="tail">
+                {item.lastMessage?.text || 'No messages yet'}
+              </Text>
+            )}
+
+            {isUnread && (
+              <View style={styles.unreadBadge}>
+                <Text style={styles.unreadCount}>
+                  {currentUserId && item.unreadCount
+                    ? item.unreadCount[currentUserId] || 0
+                    : 0}
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  },
+);
+
+ConversationRow.displayName = 'ConversationRow';
+
 const ConversationsScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp<UserStackParamList>>();
   // const insets = useSafeAreaInsets();
-  const isDark = useTypedSelector(state => state.user.theme) === 'dark';
-  const firebase = useTypedSelector(state => state.firebase.firebase);
+  const isDark = useTypedSelector(selectIsDark);
+  const firebase = useTypedSelector(selectFirebase);
   const currentUser = firebase.currentUser();
   //const reduxUserPhoto = useTypedSelector(state => state.user.userPhoto);
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -42,7 +176,7 @@ const ConversationsScreen: React.FC = () => {
   const [search, setSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [listenerVersion, setListenerVersion] = useState(0);
-  const messageService = useMemo(() => new MessageService(), []);
+  const messageService = useRef(new MessageService()).current;
 
   useEffect(() => {
     if (!currentUser) return;
@@ -137,7 +271,11 @@ const ConversationsScreen: React.FC = () => {
                       backgroundColor: '#4CAF50',
                     });
                   } catch (error) {
-                    console.error('Error deleting conversation:', error);
+                    logger.error(
+                      'Error deleting conversation:',
+                      error,
+                      'Conversations',
+                    );
                     Snackbar.show({
                       text: 'Failed to delete conversation',
                       duration: Snackbar.LENGTH_LONG,
@@ -150,7 +288,7 @@ const ConversationsScreen: React.FC = () => {
           );
         }
       } catch (error) {
-        console.error('Error deleting conversation:', error);
+        logger.error('Error deleting conversation:', error, 'Conversations');
         Snackbar.show({
           text: 'Failed to delete conversation',
           duration: Snackbar.LENGTH_LONG,
@@ -200,110 +338,15 @@ const ConversationsScreen: React.FC = () => {
   );
 
   const renderConversationItem = useCallback(
-    ({item}: {item: Conversation}) => {
-      const otherParticipantId = item.participants.find(
-        id => id !== currentUser?.uid,
-      );
-      if (!otherParticipantId) return null;
-
-      const otherParticipant = item.participantDetails[otherParticipantId];
-      const isUnread =
-        item.unreadCount && item.unreadCount[currentUser?.uid || ''] > 0;
-      const lastMessageTime = item.lastMessage?.timestamp
-        ? formatDistanceToNow(new Date(item.lastMessage.timestamp), {
-            addSuffix: true,
-          })
-        : '';
-
-      return (
-        <TouchableOpacity
-          style={[
-            styles.conversationItem,
-            isDark
-              ? isUnread
-                ? styles.darkUnreadConversationItem
-                : styles.darkConversationItem
-              : isUnread
-                ? styles.lightUnreadConversationItem
-                : styles.lightConversationItem,
-          ]}
-          onPress={() => handleConversationPress(item)}>
-          {otherParticipant.image ? (
-            <Avatar
-              rounded
-              source={{uri: otherParticipant.image}}
-              size={Math.min(SCREEN_WIDTH * 0.12, 50)}
-              containerStyle={styles.avatar}
-            />
-          ) : (
-            <Avatar
-              rounded
-              title={getUsernameForLogo(otherParticipant.name)}
-              size={Math.min(SCREEN_WIDTH * 0.12, 50)}
-              containerStyle={[styles.avatar, styles.avatarPlaceholderBg]}
-            />
-          )}
-
-          <View style={styles.conversationDetails}>
-            <View style={styles.conversationHeader}>
-              <Text
-                style={[
-                  styles.participantName,
-                  isDark
-                    ? styles.darkParticipantName
-                    : styles.lightParticipantName,
-                  isUnread && styles.unreadParticipantName,
-                ]}
-                numberOfLines={1}>
-                {otherParticipant.name}
-              </Text>
-              <Text
-                style={[
-                  styles.timeText,
-                  isDark ? styles.darkTimeText : styles.lightTimeText,
-                ]}>
-                {lastMessageTime}
-              </Text>
-            </View>
-
-            <View style={styles.lastMessageContainer}>
-              {otherParticipant.typing ? (
-                <Text style={[styles.typingText, styles.typingHighlight]}>
-                  typing...
-                </Text>
-              ) : (
-                <Text
-                  style={[
-                    styles.lastMessageText,
-                    isDark
-                      ? isUnread
-                        ? styles.darkUnreadMessageText
-                        : styles.darkReadMessageText
-                      : isUnread
-                        ? styles.lightUnreadMessageText
-                        : styles.lightReadMessageText,
-                  ]}
-                  numberOfLines={1}
-                  ellipsizeMode="tail">
-                  {item.lastMessage?.text || 'No messages yet'}
-                </Text>
-              )}
-
-              {isUnread && (
-                <View style={styles.unreadBadge}>
-                  <Text style={styles.unreadCount}>
-                    {currentUser && item.unreadCount
-                      ? item.unreadCount[currentUser.uid] || 0
-                      : 0}
-                  </Text>
-                </View>
-              )}
-            </View>
-          </View>
-        </TouchableOpacity>
-      );
-    },
-    [currentUser, handleConversationPress, isDark],
+    ({item}: {item: Conversation}) => (
+      <ConversationRow
+        item={item}
+        currentUserId={currentUser?.uid}
+        isDark={isDark}
+        onPress={handleConversationPress}
+      />
+    ),
+    [currentUser?.uid, handleConversationPress, isDark],
   );
 
   // Render hidden item with delete action

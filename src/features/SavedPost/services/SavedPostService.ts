@@ -11,6 +11,7 @@ import {
   FirebaseFirestoreTypes,
 } from '@react-native-firebase/firestore';
 import {SavePostResponse} from 'shared/types/firebase';
+import {logger} from 'shared/utils/logger';
 
 export class SavedPostService {
   // Simple list to store saved post IDs
@@ -34,8 +35,10 @@ export class SavedPostService {
       (doc: FirebaseFirestoreTypes.DocumentSnapshot) => {
         try {
           if (!doc) {
-            console.warn(
+            logger.warn(
               'SavedPostService: Received null snapshot in saved posts listener',
+              undefined,
+              'SavedPostService',
             );
             return;
           }
@@ -47,16 +50,18 @@ export class SavedPostService {
             this.notifyListeners();
           }
         } catch (error) {
-          console.error(
+          logger.error(
             'SavedPostService: Error processing saved posts snapshot:',
             error,
+            'SavedPostService',
           );
         }
       },
       error => {
-        console.error(
+        logger.error(
           'SavedPostService: Error in saved posts listener:',
           error,
+          'SavedPostService',
         );
       },
     );
@@ -101,7 +106,7 @@ export class SavedPostService {
 
       return {success: true, saved: !isSaved};
     } catch (error) {
-      console.error('Error saving post:', error);
+      logger.error('Error saving post:', error, 'SavedPostService');
       return {success: false, error: 'Failed to save post'};
     }
   }

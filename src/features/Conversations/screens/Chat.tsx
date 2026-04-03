@@ -10,10 +10,17 @@ import {
 } from 'react-native';
 import {useNavigation, useRoute, RouteProp} from '@react-navigation/native';
 import {useTypedSelector} from 'hooks/redux/useTypedSelector';
+import {
+  selectFirebase,
+  selectIsDark,
+  selectUserPhoto,
+} from 'shared/store/selectors';
 import {MessageService} from 'conversations/services/MessageService';
 import {Message} from 'conversations/models/Message';
 import Snackbar from 'react-native-snackbar';
+import debounce from 'lodash.debounce';
 import notificationService from 'shared/services/NotificationService';
+import {logger} from 'shared/utils/logger';
 import {
   getFirestore,
   collection,
@@ -52,10 +59,10 @@ const ChatScreen: React.FC = () => {
   } = route.params;
   const navigation = useNavigation<ChatNavigationObjectType>();
 
-  const isDark = useTypedSelector(state => state.user.theme) === 'dark';
-  const firebase = useTypedSelector(state => state.firebase.firebase);
+  const isDark = useTypedSelector(selectIsDark);
+  const firebase = useTypedSelector(selectFirebase);
   const currentUser = firebase.currentUser();
-  const reduxUserPhoto = useTypedSelector(state => state.user.userPhoto);
+  const reduxUserPhoto = useTypedSelector(selectUserPhoto);
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -65,8 +72,14 @@ const ChatScreen: React.FC = () => {
     string | null
   >(recipientPhoto || null);
   const currentRecipientPhotoRef = useRef(currentRecipientPhoto);
-  const messageService = useMemo(() => new MessageService(), []);
+  const messageServiceRef = useRef(new MessageService());
+  const messageService = messageServiceRef.current;
   const flatListRef = useRef<any>(null);
+  const isAtBottomRef = useRef(true);
+  const pendingScrollRef = useRef(false);
+  const lastMessageIdRef = useRef<string | null>(null);
+  const hasLoadedRef = useRef(false);
+  const initialScrollRef = useRef(true);
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [isContextMenuVisible, setIsContextMenuVisible] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -81,49 +94,31 @@ const ChatScreen: React.FC = () => {
     null,
   );
 
-  // Function to fetch initial messages
-  const fetchMessages = useCallback(async () => {
-    try {
-      if (!currentUser || !conversationId) return;
-
-      const snapshot = await getDocs(
-        messageService.getMessages(conversationId),
-      );
-      const messagesData: Message[] = [];
-
-      snapshot.docs.forEach((docSnapshot: any) => {
-        const messageData = docSnapshot.data() as Message;
-        messagesData.push({
-          ...messageData,
-          id: docSnapshot.id,
-        });
-      });
-
-      // Sort messages chronologically (oldest to newest)
-      const sortedMessages = messagesData.sort(
-        (a, b) => a.timestamp - b.timestamp,
-      );
-
-      setMessages(sortedMessages);
-      setLoading(false);
-
-      // Scroll to bottom after fetching messages
-      setTimeout(() => {
-        if (flatListRef.current) {
-          flatListRef.current.scrollToEnd({animated: false});
-        }
-      }, 200);
-    } catch (error) {
-      console.error('Error fetching messages:', error);
-      setLoading(false);
-      Snackbar.show({
-        text: 'Error loading messages',
-        duration: Snackbar.LENGTH_LONG,
-        textColor: 'white',
-        backgroundColor: '#ff3b30',
-      });
+  const scrollToEnd = useCallback((animated: boolean) => {
+    if (flatListRef.current) {
+      flatListRef.current.scrollToEnd({animated});
     }
-  }, [conversationId, currentUser, messageService]);
+  }, []);
+
+  const handleScroll = useCallback((event: any) => {
+    const {contentOffset, contentSize, layoutMeasurement} = event.nativeEvent;
+    const distanceFromBottom =
+      contentSize.height - layoutMeasurement.height - contentOffset.y;
+    isAtBottomRef.current = distanceFromBottom < 80;
+  }, []);
+
+  const handleContentSizeChange = useCallback(() => {
+    if (pendingScrollRef.current) {
+      pendingScrollRef.current = false;
+      scrollToEnd(true);
+      return;
+    }
+
+    if (initialScrollRef.current) {
+      initialScrollRef.current = false;
+      scrollToEnd(false);
+    }
+  }, [scrollToEnd]);
 
   // Keep the ref in sync so the listener can compare without being a dependency
   useEffect(() => {
@@ -184,18 +179,35 @@ const ChatScreen: React.FC = () => {
         await batch.commit();
       }
     } catch (error) {
-      console.error('Error marking messages as read:', error);
+      logger.error('Error marking messages as read:', error, 'Chat');
     }
   }, [conversationId, currentUser?.uid, messageService]);
+
+  const markMessagesAsReadDebounced = useMemo(
+    () =>
+      debounce(() => {
+        markMessagesAsRead();
+      }, 300),
+    [markMessagesAsRead],
+  );
+
+  useEffect(() => {
+    return () => {
+      markMessagesAsReadDebounced.cancel();
+    };
+  }, [markMessagesAsReadDebounced]);
   // Set up real-time messages listener
   useEffect(() => {
-    if (!currentUser || !conversationId) return;
+    const currentUserId = currentUser?.uid;
+    if (!currentUserId || !conversationId) return;
 
-    // Fetch initial messages when conversation is loaded
-    fetchMessages();
+    hasLoadedRef.current = false;
+    lastMessageIdRef.current = null;
+    pendingScrollRef.current = false;
+    initialScrollRef.current = true;
 
     // Mark messages as read when chat is opened
-    markMessagesAsRead();
+    markMessagesAsReadDebounced();
 
     // Set up listener for new messages
     const unsubscribe = onSnapshot(
@@ -223,7 +235,7 @@ const ChatScreen: React.FC = () => {
 
         if (hasNewMessages) {
           // Mark new messages as read since the chat is open
-          markMessagesAsRead();
+          markMessagesAsReadDebounced();
         }
 
         // Sort messages chronologically (oldest to newest)
@@ -231,18 +243,32 @@ const ChatScreen: React.FC = () => {
           (a, b) => a.timestamp - b.timestamp,
         );
 
-        setMessages(sortedMessages);
-        setLoading(false);
+        const lastMessage = sortedMessages[sortedMessages.length - 1];
+        const lastMessageId = lastMessage?.id ?? null;
+        const isNewLastMessage =
+          lastMessageId && lastMessageId !== lastMessageIdRef.current;
 
-        // Scroll to bottom when messages update
-        setTimeout(() => {
-          if (flatListRef.current) {
-            flatListRef.current.scrollToEnd({animated: true});
+        if (!hasLoadedRef.current) {
+          hasLoadedRef.current = true;
+          setLoading(false);
+          if (sortedMessages.length > 0) {
+            pendingScrollRef.current = true;
           }
-        }, 100);
+        }
+
+        if (isNewLastMessage) {
+          const shouldAutoScroll =
+            isAtBottomRef.current || lastMessage?.senderId === currentUserId;
+          if (shouldAutoScroll) {
+            pendingScrollRef.current = true;
+          }
+          lastMessageIdRef.current = lastMessageId;
+        }
+
+        setMessages(sortedMessages);
       },
       error => {
-        console.error('Error loading messages:', error);
+        logger.error('Error loading messages:', error, 'Chat');
         setLoading(false);
         Snackbar.show({
           text: 'Error loading messages',
@@ -254,32 +280,17 @@ const ChatScreen: React.FC = () => {
     );
 
     // Update typing status when entering chat
-    messageService.setTypingStatus(conversationId, currentUser.uid, false);
-
-    // Add a small delay before removing loading overlay when coming from a post
-    if (fromPost) {
-      const timer = setTimeout(() => {
-        setLoading(false);
-      }, 1000); // 1 second delay for better user experience
-      return () => {
-        clearTimeout(timer);
-        unsubscribe();
-        // Clean up typing status when leaving chat
-        messageService.setTypingStatus(conversationId, currentUser.uid, false);
-      };
-    }
+    messageService.setTypingStatus(conversationId, currentUserId, false);
 
     return () => {
       unsubscribe();
       // Clean up typing status when leaving chat
-      messageService.setTypingStatus(conversationId, currentUser.uid, false);
+      messageService.setTypingStatus(conversationId, currentUserId, false);
     };
   }, [
     conversationId,
-    currentUser,
-    fetchMessages,
-    fromPost,
-    markMessagesAsRead,
+    currentUser?.uid,
+    markMessagesAsReadDebounced,
     messageService,
     recipientId,
   ]);
@@ -323,15 +334,9 @@ const ChatScreen: React.FC = () => {
 
       // Clear the message input
       setNewMessage('');
-
-      // Scroll to the bottom
-      setTimeout(() => {
-        if (flatListRef.current) {
-          flatListRef.current.scrollToEnd({animated: true});
-        }
-      }, 100);
+      pendingScrollRef.current = true;
     } catch (error) {
-      console.error('Error sending message:', error);
+      logger.error('Error sending message:', error, 'Chat');
       Snackbar.show({
         text: 'Failed to send message',
         duration: Snackbar.LENGTH_LONG,
@@ -359,13 +364,16 @@ const ChatScreen: React.FC = () => {
   }, [newMessage, currentUser, conversationId, messageService]);
 
   // Long press on message to show context menu
-  const handleMessageLongPress = (message: Message) => {
-    // Only allow actions on user's own messages
-    if (message.senderId === currentUser?.uid) {
-      setSelectedMessage(message);
-      setIsContextMenuVisible(true);
-    }
-  };
+  const handleMessageLongPress = useCallback(
+    (message: Message) => {
+      // Only allow actions on user's own messages
+      if (message.senderId === currentUser?.uid) {
+        setSelectedMessage(message);
+        setIsContextMenuVisible(true);
+      }
+    },
+    [currentUser?.uid],
+  );
 
   // Handle message edit
   const handleEditMessage = () => {
@@ -391,7 +399,7 @@ const ChatScreen: React.FC = () => {
         backgroundColor: '#2379C2',
       });
     } catch (error) {
-      console.error('Error editing message:', error);
+      logger.error('Error editing message:', error, 'Chat');
       Snackbar.show({
         text: 'Failed to edit message',
         duration: Snackbar.LENGTH_LONG,
@@ -429,7 +437,7 @@ const ChatScreen: React.FC = () => {
                 backgroundColor: '#2379C2',
               });
             } catch (error) {
-              console.error('Error deleting message:', error);
+              logger.error('Error deleting message:', error, 'Chat');
               Snackbar.show({
                 text: 'Failed to delete message',
                 duration: Snackbar.LENGTH_LONG,
@@ -453,9 +461,10 @@ const ChatScreen: React.FC = () => {
         onLongPress={handleMessageLongPress}
       />
     ),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [isDark, currentUser?.uid],
+    [currentUser?.uid, handleMessageLongPress, isDark],
   );
+
+  const keyExtractor = useCallback((item: Message) => item.id, []);
 
   const headerLeft = useCallback(
     () => (
@@ -483,7 +492,7 @@ const ChatScreen: React.FC = () => {
         backgroundColor: '#2379C2',
       });
     } catch (error) {
-      console.error('Error toggling notification status:', error);
+      logger.error('Error toggling notification status:', error, 'Chat');
       Snackbar.show({
         text: 'Failed to update notification settings',
         duration: Snackbar.LENGTH_LONG,
@@ -570,7 +579,7 @@ const ChatScreen: React.FC = () => {
       setShowSuggestions(true);
       setIsFetchingSuggestions(false);
     } catch (error) {
-      console.error('Error fetching suggestions:', error);
+      logger.error('Error fetching suggestions:', error, 'Chat');
       setIsFetchingSuggestions(false);
     }
   }, [currentUser, messages, recipientName, isFetchingSuggestions]);
@@ -654,11 +663,14 @@ const ChatScreen: React.FC = () => {
           <LegendList
             ref={flatListRef}
             data={messages}
-            keyExtractor={item => item.id}
+            keyExtractor={keyExtractor}
             renderItem={renderMessageItemCallback}
             contentContainerStyle={styles.messagesList}
             estimatedItemSize={100}
             recycleItems={true}
+            onContentSizeChange={handleContentSizeChange}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
           />
         )}
 

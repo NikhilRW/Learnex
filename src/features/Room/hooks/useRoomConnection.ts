@@ -1,6 +1,7 @@
 import {useState, useEffect, useCallback} from 'react';
 import {Alert} from 'react-native';
 import {getAuth} from '@react-native-firebase/auth';
+import {logger} from 'shared/utils/logger';
 import {
   ExtendedMediaStream,
   ParticipantState,
@@ -86,7 +87,11 @@ export const useRoomConnection = ({
           clearInterval(checkInterval);
         };
       } catch (error) {
-        console.error('Error setting up audio level detection:', error);
+        logger.error(
+          'Error setting up audio level detection:',
+          error,
+          'RoomConnection',
+        );
       }
     },
     [meeting.id, participantStates, webRTCService],
@@ -99,8 +104,12 @@ export const useRoomConnection = ({
         setConnectionError(null);
         setConnectionAttempts(prev => prev + 1);
 
-        console.log('Setting up meeting:', meeting.id);
-        console.log('Participants in meeting:', meeting.participants);
+        logger.debug('Setting up meeting:', meeting.id, 'RoomConnection');
+        logger.debug(
+          'Participants in meeting:',
+          meeting.participants,
+          'RoomConnection',
+        );
 
         // Join the meeting
         await meetingService.joinMeeting(meeting.id);
@@ -108,14 +117,22 @@ export const useRoomConnection = ({
         // Initialize WebRTC
         try {
           const stream = await webRTCService.initLocalStream();
-          console.log('Local stream initialized:', stream.id);
+          logger.debug(
+            'Local stream initialized:',
+            stream.id,
+            'RoomConnection',
+          );
           stream.participantId = currentUser?.uid; // Ensure local stream has participantId
           setLocalStream(stream);
 
           // Set up audio level detection for local stream
           setupAudioLevelDetection(stream, currentUser?.uid || '');
         } catch (streamError) {
-          console.error('Failed to initialize local stream:', streamError);
+          logger.error(
+            'Failed to initialize local stream:',
+            streamError,
+            'RoomConnection',
+          );
           Alert.alert(
             'Camera/Microphone Access',
             'Could not access camera or microphone. Please check permissions.',
@@ -126,8 +143,17 @@ export const useRoomConnection = ({
         meetingService.subscribeMeeting(
           meeting.id,
           (updatedMeeting: any) => {
-            console.log('Meeting updated:', updatedMeeting.status);
-            console.log('Updated participants:', updatedMeeting.participants);
+            const {logger} = require('shared/utils/logger');
+            logger.debug(
+              'Meeting updated:',
+              updatedMeeting.status,
+              'RoomConnection',
+            );
+            logger.debug(
+              'Updated participants:',
+              updatedMeeting.participants,
+              'RoomConnection',
+            );
 
             // Check for new participants to connect to
             if (
@@ -138,7 +164,11 @@ export const useRoomConnection = ({
               webRTCService
                 .connectToParticipants(meeting.id, updatedMeeting.participants)
                 .catch(error => {
-                  console.error('Error connecting to participants:', error);
+                  logger.error(
+                    'Error connecting to participants:',
+                    error,
+                    'RoomConnection',
+                  );
                 });
             }
 
@@ -147,7 +177,11 @@ export const useRoomConnection = ({
             }
           },
           error => {
-            console.error('Meeting subscription error:', error);
+            logger.error(
+              'Meeting subscription error:',
+              error,
+              'RoomConnection',
+            );
             setConnectionState('failed');
             Alert.alert('Error', 'Failed to connect to meeting');
           },
@@ -155,20 +189,29 @@ export const useRoomConnection = ({
 
         // Subscribe to remote streams with improved error handling and stream management
         webRTCService.onRemoteStream(stream => {
-          console.log('Remote stream received with ID:', stream.id);
+          logger.debug(
+            'Remote stream received with ID:',
+            stream.id,
+            'RoomConnection',
+          );
           try {
             const participantId = stream.participantId;
             if (!participantId) {
-              console.error('Received stream without participant ID');
+              logger.error(
+                'Received stream without participant ID',
+                undefined,
+                'RoomConnection',
+              );
               return;
             }
 
             // Log before updating participant tracking
-            console.log(
+            logger.debug(
               'Before update - StreamsByParticipant map:',
               Array.from(streamsByParticipant.entries()).map(
                 ([id, s]) => `${id}: ${s.id || 'unknown'}`,
               ),
+              'RoomConnection',
             );
 
             // Update streams by participant
@@ -215,13 +258,21 @@ export const useRoomConnection = ({
               return prev;
             });
           } catch (error) {
-            console.error('Error handling remote stream:', error);
+            logger.error(
+              'Error handling remote stream:',
+              error,
+              'RoomConnection',
+            );
           }
         });
 
         // Improved stream removal that properly removes by participantId
         webRTCService.onRemoteStreamRemoved(participantId => {
-          console.log('Remote stream removed for participant:', participantId);
+          logger.debug(
+            'Remote stream removed for participant:',
+            participantId,
+            'RoomConnection',
+          );
           try {
             // Update our participant tracking map
             setStreamsByParticipant(prev => {
@@ -240,7 +291,11 @@ export const useRoomConnection = ({
             // Don't remove from participantStates yet,
             // as the participant might rejoin with a new stream
           } catch (error) {
-            console.error('Error removing remote stream:', error);
+            logger.error(
+              'Error removing remote stream:',
+              error,
+              'RoomConnection',
+            );
           }
         });
 
@@ -256,7 +311,11 @@ export const useRoomConnection = ({
 
         // Listen for participant state changes
         webRTCService.onParticipantStateChanged((participantId, state) => {
-          console.log(`Participant state changed: ${participantId}`, state);
+          logger.debug(
+            `Participant state changed: ${participantId}`,
+            state,
+            'RoomConnection',
+          );
           setParticipantStates(prev => {
             const newMap = new Map(prev);
             newMap.set(participantId, state);
@@ -269,9 +328,17 @@ export const useRoomConnection = ({
           try {
             await webRTCService.processSignalingMessage(message, meeting.id);
           } catch (error) {
-            console.error('Error processing signaling message:', error);
+            logger.error(
+              'Error processing signaling message:',
+              error,
+              'RoomConnection',
+            );
             if (connectionAttempts < MAX_CONNECTION_ATTEMPTS) {
-              console.log('Retrying connection...');
+              logger.warn(
+                'Retrying connection...',
+                undefined,
+                'RoomConnection',
+              );
               setConnectionAttempts(prev => prev + 1);
               await setupMeeting();
             } else {
@@ -286,9 +353,10 @@ export const useRoomConnection = ({
 
         // Connect to existing participants
         if (meeting.participants && meeting.participants.length > 0) {
-          console.log(
+          logger.debug(
             'Connecting to existing participants:',
             meeting.participants,
+            'RoomConnection',
           );
           await webRTCService.connectToParticipants(
             meeting.id,
@@ -299,12 +367,16 @@ export const useRoomConnection = ({
         setIsConnecting(false);
         setConnectionState('connected');
       } catch (error) {
-        console.error('Failed to setup meeting:', error);
+        logger.error('Failed to setup meeting:', error, 'RoomConnection');
         setConnectionError((error as Error).message || 'Connection failed');
         setConnectionState('failed');
 
         if (connectionAttempts < MAX_CONNECTION_ATTEMPTS) {
-          console.log(`Retrying setup (attempt ${connectionAttempts + 1})`);
+          logger.warn(
+            `Retrying setup (attempt ${connectionAttempts + 1})`,
+            undefined,
+            'RoomConnection',
+          );
           setTimeout(() => {
             setupMeeting();
           }, 2000);
@@ -323,21 +395,37 @@ export const useRoomConnection = ({
 
   // Enhanced debug logging for remote streams
   useEffect(() => {
-    console.log(`Remote streams updated: ${remoteStreams.length} streams`);
-    console.log(`Participant states: ${participantStates.size} participants`);
+    logger.debug(
+      `Remote streams updated: ${remoteStreams.length} streams`,
+      undefined,
+      'RoomConnection',
+    );
+    logger.debug(
+      `Participant states: ${participantStates.size} participants`,
+      undefined,
+      'RoomConnection',
+    );
 
     remoteStreams.forEach((stream, index) => {
-      console.log(
+      logger.debug(
         `Stream ${index}: ID=${stream.id}, ParticipantID=${stream.participantId || 'none'}`,
+        undefined,
+        'RoomConnection',
       );
     });
 
     // Log the streamsByParticipant map
-    console.log(
+    logger.debug(
       `StreamsByParticipant map has ${streamsByParticipant.size} entries`,
+      undefined,
+      'RoomConnection',
     );
     streamsByParticipant.forEach((stream, participantId) => {
-      console.log(`Participant ${participantId} has stream ID ${stream.id}`);
+      logger.debug(
+        `Participant ${participantId} has stream ID ${stream.id}`,
+        undefined,
+        'RoomConnection',
+      );
     });
 
     // Log participants with state but no stream
@@ -346,11 +434,17 @@ export const useRoomConnection = ({
     ).filter(id => !streamsByParticipant.has(id) && id !== currentUser?.uid);
 
     if (participantsWithoutStreams.length > 0) {
-      console.log(
+      logger.debug(
         `${participantsWithoutStreams.length} participants without streams:`,
+        undefined,
+        'RoomConnection',
       );
       participantsWithoutStreams.forEach(id => {
-        console.log(`- Participant ${id} (no stream)`);
+        logger.debug(
+          `- Participant ${id} (no stream)`,
+          undefined,
+          'RoomConnection',
+        );
       });
     }
   }, [

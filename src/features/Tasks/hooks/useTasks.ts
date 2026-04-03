@@ -9,6 +9,7 @@ import {Alert} from 'react-native';
 import {Task} from 'shared/types/taskTypes';
 import {TaskService} from 'shared/services/TaskService';
 import {getAuth} from '@react-native-firebase/auth';
+import {logger} from 'shared/utils/logger';
 
 const DEFAULT_TASK: Omit<Task, 'id' | 'userId' | 'createdAt' | 'updatedAt'> = {
   title: '',
@@ -79,7 +80,7 @@ export const useTasks = () => {
 
         setTasks(fetchedTasks);
       } catch (error) {
-        console.error('Error fetching tasks:', error);
+        logger.error('Error fetching tasks', error, 'useTasks');
         Alert.alert('Error', 'Failed to load tasks. Please try again.');
       } finally {
         setIsLoading(false);
@@ -120,7 +121,7 @@ export const useTasks = () => {
         await taskService.toggleTaskCompletion(id);
         await fetchTasks(selectedFilter);
       } catch (error) {
-        console.error('Error toggling task completion:', error);
+        logger.error('Error toggling task completion', error, 'useTasks');
         Alert.alert('Error', 'Failed to update task status. Please try again.');
       }
     },
@@ -157,7 +158,7 @@ export const useTasks = () => {
       await fetchTasks(selectedFilter);
     } catch (error) {
       const err = error as Error;
-      console.error('Error updating task:', err);
+      logger.error('Error updating task', err, 'useTasks');
       Alert.alert(
         'Error',
         err.message || 'Failed to save task. Please try again.',
@@ -192,7 +193,7 @@ export const useTasks = () => {
               await taskService.deleteTask(id);
               await fetchTasks(selectedFilter);
             } catch (error) {
-              console.error('Error deleting task:', error);
+              logger.error('Error deleting task', error, 'useTasks');
               Alert.alert('Error', 'Failed to delete task. Please try again.');
             }
           },
@@ -218,7 +219,7 @@ export const useTasks = () => {
       setSearchQuery('');
       await fetchTasks(selectedFilter);
     } catch (error) {
-      console.error('Error refreshing tasks:', error);
+      logger.error('Error refreshing tasks', error, 'useTasks');
       Alert.alert(
         'Refresh Error',
         'Failed to refresh tasks. Please try again.',

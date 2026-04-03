@@ -28,6 +28,7 @@ import {
 } from '@react-native-firebase/firestore';
 import {useDispatch} from 'react-redux';
 import {useTypedDispatch} from '../hooks/redux/useTypedDispatch';
+import {logger} from 'shared/utils/logger';
 const generateUUID = (): string => {
   // Use a timestamp-based prefix to ensure uniqueness
   const timestamp = Date.now().toString(36);
@@ -252,8 +253,8 @@ You have access to several capabilities to help the user via function calls:
    - "updateTask" - Use this when users mention changing any task details
    - "deleteTask" - Use this when users want to remove a task
    - "toggleTaskCompletion" - Use this when users want to mark a task as done
-   - "toggleTheme" - use this wehen user asks to toggle app theme from current one 
-   
+   - "toggleTheme" - use this wehen user asks to toggle app theme from current one
+
    CRITICAL FUNCTION CALL RULES:
    - You MUST RESPOND WITH FUNCTION CALLS for ANY task operations (add, delete, update, complete, list) - NO EXCEPTIONS.
    - IF the user says anything about deleting a task, you MUST CALL deleteTask function immediately.
@@ -295,7 +296,7 @@ You have access to several capabilities to help the user via function calls:
 6. You can open URLs using the "openUrl" tool when needed
 7. You can help users understand how to use the app
 
-YOU ARE REQUIRED TO USE FUNCTION CALLS FOR ACTIONS, but be intelligent about when to use them. 
+YOU ARE REQUIRED TO USE FUNCTION CALLS FOR ACTIONS, but be intelligent about when to use them.
 - Answer general questions directly without searching
 - Use webSearch only when truly needed or explicitly requested
 - Use webSearch for current events or very specific facts and when you cannot answer from your knowledge and training data
@@ -342,7 +343,7 @@ In this mode:
 
 When asked about topics:
 - Draw on your built-in knowledge to provide accurate, helpful information
-- If you're unsure about something, admit the limitations of your knowledge 
+- If you're unsure about something, admit the limitations of your knowledge
 - Never claim to search the web or access external information
 - When asked about topics outside your knowledge, explain that you can only provide information based on your training
 - Do not suggest that you could perform a search or that the user switch to Agent mode
@@ -421,8 +422,10 @@ Always be helpful, respectful, and focused on the user's needs.`;
     conversation: LexAIConversation,
   ): Promise<LexAIResponse> {
     try {
-      console.log(
+      logger.debug(
         `LexAI :: processMessage() :: Processing user message: "${userMessage}"`,
+        undefined,
+        'LexAIService',
       );
 
       // Set the mode to match the conversation's mode
@@ -465,19 +468,33 @@ Always be helpful, respectful, and focused on the user's needs.`;
       this.addToolsToPayload(payload);
 
       // Make API request without streaming
-      console.log('LexAI :: processMessage() :: Sending request to Groq API');
+      logger.debug(
+        'LexAI :: processMessage() :: Sending request to Groq API',
+        undefined,
+        'LexAIService',
+      );
 
       // Log debug information about the request
-      console.log('LexAI :: processMessage() :: Request details:');
-      console.log(`  - Model: ${payload.model}`);
-      console.log(`  - Temperature: ${payload.temperature}`);
+      logger.debug(
+        'LexAI :: processMessage() :: Request details:',
+        undefined,
+        'LexAIService',
+      );
+      logger.debug(`  - Model: ${payload.model}`, undefined, 'LexAIService');
+      logger.debug(
+        `  - Temperature: ${payload.temperature}`,
+        undefined,
+        'LexAIService',
+      );
 
       if (payload.tools && payload.tools.length > 0) {
         const functionNames = payload.tools
           .map((t: any) => t.function.name)
           .join(', ');
-        console.log(
+        logger.debug(
           `  - Available tools (${payload.tools.length}): ${functionNames}`,
+          undefined,
+          'LexAIService',
         );
       }
 
@@ -489,31 +506,43 @@ Always be helpful, respectful, and focused on the user's needs.`;
       });
 
       // Process the response
-      console.log(
+      logger.debug(
         'LexAI :: processMessage() :: Received response from Groq API',
+        undefined,
+        'LexAIService',
       );
 
       // Debug logging for function calls
       if (response.data.choices && response.data.choices.length > 0) {
         const firstChoice = response.data.choices[0];
-        console.log('Response choice:', JSON.stringify(firstChoice, null, 2));
+        logger.debug(
+          'Response choice',
+          JSON.stringify(firstChoice, null, 2),
+          'LexAIService',
+        );
 
         // Check for function call in the response
         if (firstChoice.message?.tool_calls) {
-          console.log(
-            `FUNCTION CALLS DETECTED:`,
+          logger.debug(
+            'FUNCTION CALLS DETECTED',
             firstChoice.message.tool_calls,
+            'LexAIService',
           );
         } else {
-          console.log('NO FUNCTION CALL IN RESPONSE');
+          logger.debug(
+            'NO FUNCTION CALL IN RESPONSE',
+            undefined,
+            'LexAIService',
+          );
         }
       } else {
-        console.log('No choices in response');
+        logger.warn('No choices in response', undefined, 'LexAIService');
       }
 
-      console.log(
-        'Response structure:',
+      logger.debug(
+        'Response structure',
         JSON.stringify(response.data, null, 2),
+        'LexAIService',
       );
 
       const responseData = response.data;
@@ -523,8 +552,10 @@ Always be helpful, respectful, and focused on the user's needs.`;
       if (message?.tool_calls && message.tool_calls.length > 0) {
         const toolCallData = message.tool_calls[0]; // Handle first tool call for now
 
-        console.log(
+        logger.debug(
           `LexAI :: processMessage() :: Processing tool call: ${toolCallData.function.name}`,
+          undefined,
+          'LexAIService',
         );
 
         // Parse arguments which are returned as a JSON string
@@ -532,12 +563,13 @@ Always be helpful, respectful, and focused on the user's needs.`;
         try {
           args = JSON.parse(toolCallData.function.arguments);
         } catch (e) {
-          console.error('Error parsing tool arguments:', e);
+          logger.error('Error parsing tool arguments', e, 'LexAIService');
         }
 
-        console.log(
-          `LexAI :: processMessage() :: Function parameters:`,
+        logger.debug(
+          'LexAI :: processMessage() :: Function parameters',
           JSON.stringify(args),
+          'LexAIService',
         );
 
         const toolCall: LexAIToolCall = {
@@ -547,40 +579,56 @@ Always be helpful, respectful, and focused on the user's needs.`;
         };
 
         // Execute the function call
-        console.log(
+        logger.debug(
           `LexAI :: processMessage() :: Executing tool call: ${toolCall.toolName}`,
+          undefined,
+          'LexAIService',
         );
         const toolResult = await this.executeToolCall(toolCall);
-        console.log('LexAI :: processMessage() :: Tool execution result:', {
-          toolName: toolCall.toolName,
-          parameters: toolCall.parameters,
-          response: toolResult.response ? 'Success' : undefined,
-          error: toolResult.error || undefined,
-        });
+        logger.debug(
+          'LexAI :: processMessage() :: Tool execution result',
+          {
+            toolName: toolCall.toolName,
+            parameters: toolCall.parameters,
+            response: toolResult.response ? 'Success' : undefined,
+            error: toolResult.error || undefined,
+          },
+          'LexAIService',
+        );
 
         // Process the result with another API call
-        console.log(
-          `LexAI :: processMessage() :: Processing tool result for follow-up response`,
+        logger.debug(
+          'LexAI :: processMessage() :: Processing tool result for follow-up response',
+          undefined,
+          'LexAIService',
         );
         const followUpResponse = await this.processToolResult(
           toolResult,
           conversation,
         );
-        console.log(
-          `LexAI :: processMessage() :: Returning follow-up response from tool execution`,
+        logger.debug(
+          'LexAI :: processMessage() :: Returning follow-up response from tool execution',
+          undefined,
+          'LexAIService',
         );
 
         return followUpResponse;
       } else {
-        console.log(
+        logger.debug(
           'LexAI :: processMessage() :: No tool calls found, processing as text response',
+          undefined,
+          'LexAIService',
         );
 
         const textContent = message?.content || '';
 
         // Provide a fallback message if no text is found
         if (!textContent.trim()) {
-          console.log('No text content found, using fallback message');
+          logger.warn(
+            'No text content found, using fallback message',
+            undefined,
+            'LexAIService',
+          );
           // If strictly empty content and no tool calls, it might be an error or empty completion
           // But usually Groq returns content.
         }
@@ -597,12 +645,13 @@ Always be helpful, respectful, and focused on the user's needs.`;
         return {message: aiMsg};
       }
     } catch (error: any) {
-      console.error('Error in LexAI processMessage:', error);
-      console.error('Error details:', error.message);
+      logger.error('Error in LexAI processMessage', error, 'LexAIService');
+      logger.error('Error details', error?.message, 'LexAIService');
       if (error.response) {
-        console.error(
-          'API response error:',
+        logger.error(
+          'API response error',
           JSON.stringify(error.response.data),
+          'LexAIService',
         );
       }
       throw error;
@@ -709,7 +758,11 @@ EXAMPLES OF CORRECT RESPONSES:
           firstMessage.content =
             firstMessage.content + functionCallInstructions;
 
-          console.log('Enhanced system prompt with function call instructions');
+          logger.debug(
+            'Enhanced system prompt with function call instructions',
+            undefined,
+            'LexAIService',
+          );
         }
       }
     } else {
@@ -734,17 +787,27 @@ IMPORTANT INSTRUCTIONS:
           // Append to existing system prompt
           firstMessage.content = firstMessage.content + simpleModeInstructions;
 
-          console.log(
+          logger.debug(
             'Enhanced system prompt with instructions for simple chat mode',
+            undefined,
+            'LexAIService',
           );
         }
       }
     }
 
     // Log information about the tools being included
-    console.log(`Adding tools to payload for ${this.mode} mode`);
+    logger.debug(
+      `Adding tools to payload for ${this.mode} mode`,
+      undefined,
+      'LexAIService',
+    );
     if (payload.tools) {
-      console.log(`Number of tools: ${payload.tools.length}`);
+      logger.debug(
+        `Number of tools: ${payload.tools.length}`,
+        undefined,
+        'LexAIService',
+      );
     }
   }
 
@@ -911,7 +974,7 @@ IMPORTANT INSTRUCTIONS:
               },
             };
           } catch (error: any) {
-            console.error('Navigation error:', error);
+            logger.error('Navigation error', error, 'LexAIService');
             return {
               ...toolCall,
               error: `Failed to navigate: ${error.message || 'Unknown error'}`,
@@ -934,7 +997,7 @@ IMPORTANT INSTRUCTIONS:
               },
             };
           } catch (error: any) {
-            console.error('Post search error:', error);
+            logger.error('Post search error', error, 'LexAIService');
             return {
               ...toolCall,
               error: `Failed to search posts: ${
@@ -944,19 +1007,27 @@ IMPORTANT INSTRUCTIONS:
           }
 
         case 'getTasks':
-          console.log('LexAI :: executeToolCall() :: Getting user tasks');
+          logger.debug(
+            'LexAI :: executeToolCall() :: Getting user tasks',
+            undefined,
+            'LexAIService',
+          );
           try {
             const tasks = await this.taskService.getTasks();
-            console.log(
+            logger.debug(
               `LexAI :: executeToolCall() :: Retrieved ${tasks.length} tasks`,
+              undefined,
+              'LexAIService',
             );
             return {
               ...toolCall,
               response: {tasks},
             };
           } catch (error: any) {
-            console.log(
+            logger.error(
               `LexAI :: executeToolCall() :: Error getting tasks: ${error.message}`,
+              error,
+              'LexAIService',
             );
             return {
               ...toolCall,
@@ -965,18 +1036,26 @@ IMPORTANT INSTRUCTIONS:
           }
 
         case 'getTeamTasks':
-          console.log('LexAI :: executeToolCall() :: Getting user team tasks');
+          logger.debug(
+            'LexAI :: executeToolCall() :: Getting user team tasks',
+            undefined,
+            'LexAIService',
+          );
           try {
             const duoTasks = await this.taskService.getDuoTasks();
-            console.log(
+            logger.debug(
               `LexAI :: executeToolCall() :: Retrieved ${duoTasks.length} team tasks`,
+              undefined,
+              'LexAIService',
             );
 
             // Get pending invitations as well
             const pendingInvitations =
               await this.taskService.getPendingDuoTaskInvitations();
-            console.log(
+            logger.debug(
               `LexAI :: executeToolCall() :: Retrieved ${pendingInvitations.length} pending team task invitations`,
+              undefined,
+              'LexAIService',
             );
 
             return {
@@ -987,8 +1066,10 @@ IMPORTANT INSTRUCTIONS:
               },
             };
           } catch (error: any) {
-            console.log(
+            logger.error(
               `LexAI :: executeToolCall() :: Error getting team tasks: ${error.message}`,
+              error,
+              'LexAIService',
             );
             return {
               ...toolCall,
@@ -1003,8 +1084,10 @@ IMPORTANT INSTRUCTIONS:
         case 'addTask':
           // Validate required parameter
           if (!parameters.title) {
-            console.log(
+            logger.warn(
               'LexAI :: executeToolCall() :: Missing required parameter: title',
+              undefined,
+              'LexAIService',
             );
             return {
               ...toolCall,
@@ -1012,8 +1095,10 @@ IMPORTANT INSTRUCTIONS:
             };
           }
 
-          console.log(
+          logger.debug(
             `LexAI :: executeToolCall() :: Creating task with title: "${parameters.title}"`,
+            undefined,
+            'LexAIService',
           );
 
           // Smart defaults for task creation
@@ -1032,8 +1117,10 @@ IMPORTANT INSTRUCTIONS:
 
           // Create task with defaults but prioritize explicit parameters
           try {
-            console.log(
+            logger.debug(
               'LexAI :: executeToolCall() :: Preparing task data with defaults',
+              undefined,
+              'LexAIService',
             );
             const taskData = {
               title: parameters.title,
@@ -1048,14 +1135,17 @@ IMPORTANT INSTRUCTIONS:
               userId: '', // This will be set by the TaskService
               isDuoTask: false, // Explicitly mark as a regular task, not a team task
             };
-            console.log(
+            logger.debug(
               'LexAI :: executeToolCall() :: Task data:',
               JSON.stringify(taskData),
+              'LexAIService',
             );
 
             const taskId = await this.taskService.addTask(taskData);
-            console.log(
+            logger.debug(
               `LexAI :: executeToolCall() :: Task created successfully with ID: ${taskId}`,
+              undefined,
+              'LexAIService',
             );
 
             return {
@@ -1071,8 +1161,10 @@ IMPORTANT INSTRUCTIONS:
               },
             };
           } catch (error: any) {
-            console.log(
+            logger.error(
               `LexAI :: executeToolCall() :: Error creating task: ${error.message}`,
+              error,
+              'LexAIService',
             );
 
             // Check if error is due to duplicate task name
@@ -1098,8 +1190,10 @@ IMPORTANT INSTRUCTIONS:
         case 'addTeamTask':
           // Validate required parameters
           if (!parameters.title) {
-            console.log(
+            logger.warn(
               'LexAI :: executeToolCall() :: Missing required parameter: title',
+              undefined,
+              'LexAIService',
             );
             return {
               ...toolCall,
@@ -1108,8 +1202,10 @@ IMPORTANT INSTRUCTIONS:
           }
 
           if (!parameters.collaboratorEmail) {
-            console.log(
+            logger.warn(
               'LexAI :: executeToolCall() :: Missing required parameter: collaboratorEmail',
+              undefined,
+              'LexAIService',
             );
             return {
               ...toolCall,
@@ -1117,8 +1213,10 @@ IMPORTANT INSTRUCTIONS:
             };
           }
 
-          console.log(
+          logger.debug(
             `LexAI :: executeToolCall() :: Creating team task with title: "${parameters.title}" for collaborator: ${parameters.collaboratorEmail}`,
+            undefined,
+            'LexAIService',
           );
 
           // Smart defaults for task creation
@@ -1140,8 +1238,10 @@ IMPORTANT INSTRUCTIONS:
             .padStart(2, '0')}`; // HH:MM
 
           try {
-            console.log(
+            logger.debug(
               'LexAI :: executeToolCall() :: Preparing team task data with defaults',
+              undefined,
+              'LexAIService',
             );
 
             // First, get the current user ID
@@ -1198,16 +1298,19 @@ IMPORTANT INSTRUCTIONS:
               progress: 0,
             };
 
-            console.log(
-              'LexAI :: executeToolCall() :: Team task data:',
-              JSON.stringify(teamTaskData),
+            logger.debug(
+              'LexAI :: executeToolCall() :: Team task data',
+              teamTaskData,
+              'LexAIService',
             );
 
             // Use the createDuoTask method to add the team task
             const teamTaskId =
               await this.taskService.createDuoTask(teamTaskData);
-            console.log(
+            logger.debug(
               `LexAI :: executeToolCall() :: Team task created successfully with ID: ${teamTaskId}`,
+              undefined,
+              'LexAIService',
             );
 
             return {
@@ -1227,8 +1330,10 @@ IMPORTANT INSTRUCTIONS:
               },
             };
           } catch (error: any) {
-            console.log(
+            logger.error(
               `LexAI :: executeToolCall() :: Error creating team task: ${error.message}`,
+              error,
+              'LexAIService',
             );
             return {
               ...toolCall,
@@ -1239,8 +1344,10 @@ IMPORTANT INSTRUCTIONS:
         case 'updateTask':
           // Validate required parameter for update
           if (!parameters.taskName) {
-            console.log(
+            logger.warn(
               'LexAI :: executeToolCall() :: Missing required parameter: taskName',
+              undefined,
+              'LexAIService',
             );
             return {
               ...toolCall,
@@ -1248,8 +1355,10 @@ IMPORTANT INSTRUCTIONS:
             };
           }
 
-          console.log(
+          logger.debug(
             `LexAI :: executeToolCall() :: Updating task: "${parameters.taskName}"`,
+            undefined,
+            'LexAIService',
           );
 
           // Create a partial task object with the provided parameters
@@ -1265,9 +1374,10 @@ IMPORTANT INSTRUCTIONS:
           if (parameters.notify !== undefined)
             taskUpdate.notify = parameters.notify;
 
-          console.log(
-            'LexAI :: executeToolCall() :: Update data:',
-            JSON.stringify(taskUpdate),
+          logger.debug(
+            'LexAI :: executeToolCall() :: Update data',
+            taskUpdate,
+            'LexAIService',
           );
 
           try {
@@ -1275,8 +1385,10 @@ IMPORTANT INSTRUCTIONS:
               parameters.taskName,
               taskUpdate,
             );
-            console.log(
+            logger.debug(
               `LexAI :: executeToolCall() :: Task "${parameters.taskName}" updated successfully`,
+              undefined,
+              'LexAIService',
             );
 
             return {
@@ -1288,8 +1400,10 @@ IMPORTANT INSTRUCTIONS:
               },
             };
           } catch (error: any) {
-            console.log(
+            logger.error(
               `LexAI :: executeToolCall() :: Error updating task: ${error.message}`,
+              error,
+              'LexAIService',
             );
             return {
               ...toolCall,
@@ -1300,8 +1414,10 @@ IMPORTANT INSTRUCTIONS:
         case 'deleteTask':
           // Validate required parameter
           if (!parameters.taskName) {
-            console.log(
+            logger.warn(
               'LexAI :: executeToolCall() :: Missing required parameter: taskName',
+              undefined,
+              'LexAIService',
             );
             return {
               ...toolCall,
@@ -1309,14 +1425,18 @@ IMPORTANT INSTRUCTIONS:
             };
           }
 
-          console.log(
+          logger.debug(
             `LexAI :: executeToolCall() :: Deleting task: "${parameters.taskName}"`,
+            undefined,
+            'LexAIService',
           );
 
           try {
             await this.taskService.deleteTaskByName(parameters.taskName);
-            console.log(
+            logger.debug(
               `LexAI :: executeToolCall() :: Task "${parameters.taskName}" deleted successfully`,
+              undefined,
+              'LexAIService',
             );
 
             return {
@@ -1328,8 +1448,10 @@ IMPORTANT INSTRUCTIONS:
               },
             };
           } catch (error: any) {
-            console.log(
+            logger.error(
               `LexAI :: executeToolCall() :: Error deleting task: ${error.message}`,
+              error,
+              'LexAIService',
             );
             return {
               ...toolCall,
@@ -1340,8 +1462,10 @@ IMPORTANT INSTRUCTIONS:
         case 'toggleTaskCompletion':
           // Validate required parameter
           if (!parameters.taskName) {
-            console.log(
+            logger.warn(
               'LexAI :: executeToolCall() :: Missing required parameter: taskName',
+              undefined,
+              'LexAIService',
             );
             return {
               ...toolCall,
@@ -1349,16 +1473,20 @@ IMPORTANT INSTRUCTIONS:
             };
           }
 
-          console.log(
+          logger.debug(
             `LexAI :: executeToolCall() :: Toggling completion for task: "${parameters.taskName}"`,
+            undefined,
+            'LexAIService',
           );
 
           try {
             await this.taskService.toggleTaskCompletionByName(
               parameters.taskName,
             );
-            console.log(
+            logger.debug(
               `LexAI :: executeToolCall() :: Completion toggled for task "${parameters.taskName}"`,
+              undefined,
+              'LexAIService',
             );
 
             return {
@@ -1370,8 +1498,10 @@ IMPORTANT INSTRUCTIONS:
               },
             };
           } catch (error: any) {
-            console.log(
+            logger.error(
               `LexAI :: executeToolCall() :: Error toggling task completion: ${error.message}`,
+              error,
+              'LexAIService',
             );
             return {
               ...toolCall,
@@ -1382,8 +1512,10 @@ IMPORTANT INSTRUCTIONS:
         case 'acceptTeamTaskInvitation':
           // Validate required parameter
           if (!parameters.taskId) {
-            console.log(
+            logger.warn(
               'LexAI :: executeToolCall() :: Missing required parameter: taskId',
+              undefined,
+              'LexAIService',
             );
             return {
               ...toolCall,
@@ -1391,14 +1523,18 @@ IMPORTANT INSTRUCTIONS:
             };
           }
 
-          console.log(
+          logger.debug(
             `LexAI :: executeToolCall() :: Accepting team task invitation: "${parameters.taskId}"`,
+            undefined,
+            'LexAIService',
           );
 
           try {
             await this.taskService.acceptDuoTaskInvitation(parameters.taskId);
-            console.log(
+            logger.debug(
               `LexAI :: executeToolCall() :: Team task invitation accepted successfully`,
+              undefined,
+              'LexAIService',
             );
 
             return {
@@ -1410,8 +1546,10 @@ IMPORTANT INSTRUCTIONS:
               },
             };
           } catch (error: any) {
-            console.log(
+            logger.error(
               `LexAI :: executeToolCall() :: Error accepting team task invitation: ${error.message}`,
+              error,
+              'LexAIService',
             );
             return {
               ...toolCall,
@@ -1422,8 +1560,10 @@ IMPORTANT INSTRUCTIONS:
         case 'rejectTeamTaskInvitation':
           // Validate required parameter
           if (!parameters.taskId) {
-            console.log(
+            logger.warn(
               'LexAI :: executeToolCall() :: Missing required parameter: taskId',
+              undefined,
+              'LexAIService',
             );
             return {
               ...toolCall,
@@ -1431,14 +1571,18 @@ IMPORTANT INSTRUCTIONS:
             };
           }
 
-          console.log(
+          logger.debug(
             `LexAI :: executeToolCall() :: Rejecting team task invitation: "${parameters.taskId}"`,
+            undefined,
+            'LexAIService',
           );
 
           try {
             await this.taskService.rejectDuoTaskInvitation(parameters.taskId);
-            console.log(
+            logger.debug(
               `LexAI :: executeToolCall() :: Team task invitation rejected successfully`,
+              undefined,
+              'LexAIService',
             );
 
             return {
@@ -1450,8 +1594,10 @@ IMPORTANT INSTRUCTIONS:
               },
             };
           } catch (error: any) {
-            console.log(
+            logger.error(
               `LexAI :: executeToolCall() :: Error rejecting team task invitation: ${error.message}`,
+              error,
+              'LexAIService',
             );
             return {
               ...toolCall,
@@ -1514,7 +1660,11 @@ IMPORTANT INSTRUCTIONS:
         case 'webSearch':
           try {
             const webSearchQuery = parameters.query || 'learnex app';
-            console.log('Executing web search for:', webSearchQuery);
+            logger.debug(
+              'Executing web search for',
+              webSearchQuery,
+              'LexAIService',
+            );
 
             // Create a search result that points to a real search engine
             const searchResults: WebSearchResult[] = [
@@ -1537,7 +1687,7 @@ IMPORTANT INSTRUCTIONS:
               },
             };
           } catch (error: any) {
-            console.error('Web search error:', error);
+            logger.error('Web search error', error, 'LexAIService');
             return {
               ...toolCall,
               error: `Failed to search the web: ${
@@ -1597,7 +1747,7 @@ IMPORTANT INSTRUCTIONS:
               };
             }
           } catch (error: any) {
-            console.error('URL opening error:', error);
+            logger.error('URL opening error', error, 'LexAIService');
             return {
               ...toolCall,
               error: `Failed to process URL: ${
@@ -1613,7 +1763,11 @@ IMPORTANT INSTRUCTIONS:
           };
       }
     } catch (error: any) {
-      console.error(`Error executing tool ${toolCall.toolName}:`, error);
+      logger.error(
+        `Error executing tool ${toolCall.toolName}:`,
+        error,
+        'LexAIService',
+      );
       return {
         ...toolCall,
         error: `Error executing tool ${toolCall.toolName}: ${error.message}`,
@@ -1668,7 +1822,11 @@ IMPORTANT INSTRUCTIONS:
       };
 
       // Make API request without streaming
-      console.log('Sending tool result follow-up request to Groq API');
+      logger.debug(
+        'Sending tool result follow-up request to Groq API',
+        undefined,
+        'LexAIService',
+      );
       const response = await axios.post(`${this.API_URL}`, payload, {
         headers: {
           'Content-Type': 'application/json',
@@ -1676,25 +1834,33 @@ IMPORTANT INSTRUCTIONS:
         },
       });
 
-      console.log('Received tool result follow-up response');
-      console.log(
-        'Response structure:',
+      logger.debug(
+        'Received tool result follow-up response',
+        undefined,
+        'LexAIService',
+      );
+      logger.debug(
+        'Response structure',
         JSON.stringify(response.data, null, 2).substring(0, 500) + '...',
+        'LexAIService',
       );
 
       // Extract text content
       const textContent = response.data.choices?.[0]?.message?.content || '';
 
-      console.log(
-        'Extracted tool result text content length:',
+      logger.debug(
+        'Extracted tool result text content length',
         textContent.length,
+        'LexAIService',
       );
 
       // Provide a fallback message if no text is found
       let finalContent = textContent;
       if (!finalContent.trim()) {
-        console.log(
+        logger.warn(
           'No text content found in tool result, using fallback message',
+          undefined,
+          'LexAIService',
         );
         finalContent =
           "I processed your request but couldn't generate a proper response. Here's what happened: " +
@@ -1716,12 +1882,13 @@ IMPORTANT INSTRUCTIONS:
         toolCalls: [toolResult],
       };
     } catch (error: any) {
-      console.error('Error in LexAI processToolResult:', error);
-      console.error('Error details:', error.message);
+      logger.error('Error in LexAI processToolResult', error, 'LexAIService');
+      logger.error('Error details', error?.message, 'LexAIService');
       if (error.response) {
-        console.error(
-          'API response error:',
+        logger.error(
+          'API response error',
           JSON.stringify(error.response.data),
+          'LexAIService',
         );
       }
 
@@ -1749,7 +1916,7 @@ IMPORTANT INSTRUCTIONS:
     try {
       await LexAIFirestoreService.saveConversation(conversation);
     } catch (error) {
-      console.error('Error saving LexAI conversation:', error);
+      logger.error('Error saving LexAI conversation', error, 'LexAIService');
       throw error;
     }
   }
@@ -1763,7 +1930,7 @@ IMPORTANT INSTRUCTIONS:
     try {
       return await LexAIFirestoreService.getConversation(conversationId);
     } catch (error) {
-      console.error('Error getting LexAI conversation:', error);
+      logger.error('Error getting LexAI conversation', error, 'LexAIService');
       return null;
     }
   }
@@ -1775,7 +1942,7 @@ IMPORTANT INSTRUCTIONS:
     try {
       return await LexAIFirestoreService.loadConversations();
     } catch (error) {
-      console.error('Error loading LexAI conversations:', error);
+      logger.error('Error loading LexAI conversations', error, 'LexAIService');
       return [];
     }
   }
@@ -1787,7 +1954,7 @@ IMPORTANT INSTRUCTIONS:
     try {
       await LexAIFirestoreService.deleteConversation(conversationId);
     } catch (error) {
-      console.error('Error deleting LexAI conversation:', error);
+      logger.error('Error deleting LexAI conversation', error, 'LexAIService');
       throw error;
     }
   }
@@ -1816,7 +1983,11 @@ IMPORTANT INSTRUCTIONS:
           domain.includes(unsafeDomain) ||
           domain.endsWith(`.${unsafeDomain}`)
         ) {
-          console.warn(`Blocked access to unsafe domain: ${domain}`);
+          logger.warn(
+            'Blocked access to unsafe domain',
+            domain,
+            'LexAIService',
+          );
           return false;
         }
       }
@@ -1825,7 +1996,11 @@ IMPORTANT INSTRUCTIONS:
       const suspiciousTLDs = ['.xyz', '.tk', '.ml', '.ga', '.cf', '.gq'];
       for (const tld of suspiciousTLDs) {
         if (domain.endsWith(tld)) {
-          console.warn(`Blocked access to suspicious TLD: ${domain}`);
+          logger.warn(
+            'Blocked access to suspicious TLD',
+            domain,
+            'LexAIService',
+          );
           return false;
         }
       }
@@ -1834,21 +2009,27 @@ IMPORTANT INSTRUCTIONS:
       const blockedProtocols = ['javascript:', 'data:', 'vbscript:', 'file:'];
       for (const protocol of blockedProtocols) {
         if (url.toLowerCase().startsWith(protocol)) {
-          console.warn(`Blocked dangerous protocol: ${protocol}`);
+          logger.warn('Blocked dangerous protocol', protocol, 'LexAIService');
           return false;
         }
       }
 
       // Restrict to common protocols (http and https)
       if (!urlObj.protocol.match(/^https?:$/)) {
-        console.warn(`Blocked uncommon protocol: ${urlObj.protocol}`);
+        logger.warn(
+          'Blocked uncommon protocol',
+          urlObj.protocol,
+          'LexAIService',
+        );
         return false;
       }
 
       // Only allow http and https URLs
       if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
-        console.warn(
-          `Only http: and https: protocols are allowed, blocked: ${urlObj.protocol}`,
+        logger.warn(
+          'Only http: and https: protocols are allowed, blocked',
+          urlObj.protocol,
+          'LexAIService',
         );
         return false;
       }
@@ -1857,7 +2038,7 @@ IMPORTANT INSTRUCTIONS:
       return true;
     } catch (_) {
       // If URL parsing fails, consider it unsafe
-      console.warn(`URL parsing failed for: ${url}`);
+      logger.warn('URL parsing failed for', url, 'LexAIService');
       return false;
     }
   }
@@ -1883,24 +2064,30 @@ IMPORTANT INSTRUCTIONS:
             if (urlResponse.url) {
               if (this.mode === LexAIMode.AGENT && urlResponse.opened) {
                 // In AGENT mode with opened flag, we've already opened the URL
-                console.log(
-                  'URL was opened directly in agent mode:',
+                logger.debug(
+                  'URL was opened directly in agent mode',
                   urlResponse.url,
+                  'LexAIService',
                 );
               } else if (
                 this.mode === LexAIMode.SIMPLE_CHAT &&
                 urlResponse.displayInChat
               ) {
                 // In SIMPLE_CHAT mode, URLs are displayed in chat for user to tap
-                console.log(
-                  'URL will be displayed in chat for user to tap:',
+                logger.debug(
+                  'URL will be displayed in chat for user to tap',
                   urlResponse.url,
+                  'LexAIService',
                 );
                 // No need to do anything here, the UI will handle displaying the URL
               } else if (urlResponse.willOpen) {
                 // Backward compatibility for older implementations
                 await Linking.openURL(urlResponse.url);
-                console.log('Opened URL (legacy mode):', urlResponse.url);
+                logger.debug(
+                  'Opened URL (legacy mode)',
+                  urlResponse.url,
+                  'LexAIService',
+                );
               }
             }
           }
@@ -1921,7 +2108,11 @@ IMPORTANT INSTRUCTIONS:
               const searchUrl = searchResponse.results[0].url;
               if (searchUrl && this.isUrlSafe(searchUrl)) {
                 await Linking.openURL(searchUrl);
-                console.log('Opened search results:', searchUrl);
+                logger.debug(
+                  'Opened search results',
+                  searchUrl,
+                  'LexAIService',
+                );
               }
             }
             // In SIMPLE_CHAT mode, search results are just shown in the conversation
@@ -1929,7 +2120,7 @@ IMPORTANT INSTRUCTIONS:
         }
       }
     } catch (error) {
-      console.error('Error handling response actions:', error);
+      logger.error('Error handling response actions', error, 'LexAIService');
     }
   }
 
@@ -1943,12 +2134,18 @@ IMPORTANT INSTRUCTIONS:
 
     // Skip forced tool call detection in SIMPLE_CHAT mode
     if (this.mode === LexAIMode.SIMPLE_CHAT) {
-      console.log('In SIMPLE_CHAT mode: tool call detection disabled');
+      logger.debug(
+        'In SIMPLE_CHAT mode: tool call detection disabled',
+        undefined,
+        'LexAIService',
+      );
       return null;
     }
 
-    console.log(
+    logger.debug(
       `LexAI :: checkForForcedToolCalls() :: Checking for forced tool calls in: "${lowerMessage}"`,
+      undefined,
+      'LexAIService',
     );
 
     // Web search patterns
@@ -1980,8 +2177,10 @@ IMPORTANT INSTRUCTIONS:
         return null;
       }
 
-      console.log(
+      logger.debug(
         `LexAI :: checkForForcedToolCalls() :: Detected web search request for: "${query}"`,
+        undefined,
+        'LexAIService',
       );
       return {
         id: generateUUID(),
@@ -2025,8 +2224,10 @@ IMPORTANT INSTRUCTIONS:
       tomorrow.setDate(tomorrow.getDate() + 1);
       const dueDate = tomorrow.toISOString().split('T')[0]; // YYYY-MM-DD
 
-      console.log(
+      logger.debug(
         `LexAI :: checkForForcedToolCalls() :: Detected add task request for: "${title}"`,
+        undefined,
+        'LexAIService',
       );
       return {
         id: generateUUID(),
@@ -2088,8 +2289,10 @@ IMPORTANT INSTRUCTIONS:
       tomorrow.setDate(tomorrow.getDate() + 1);
       const dueDate = tomorrow.toISOString().split('T')[0]; // YYYY-MM-DD
 
-      console.log(
+      logger.debug(
         `LexAI :: checkForForcedToolCalls() :: Detected add team task request for: "${title}" with collaborator: ${collaboratorEmail}`,
+        undefined,
+        'LexAIService',
       );
       return {
         id: generateUUID(),
@@ -2126,8 +2329,10 @@ IMPORTANT INSTRUCTIONS:
       if (taskIdMatches && taskIdMatches[1]) {
         taskId = taskIdMatches[1].trim();
 
-        console.log(
+        logger.debug(
           `LexAI :: checkForForcedToolCalls() :: Detected accept team task invitation for ID: "${taskId}"`,
+          undefined,
+          'LexAIService',
         );
 
         return {
@@ -2160,8 +2365,10 @@ IMPORTANT INSTRUCTIONS:
       if (taskIdMatches && taskIdMatches[1]) {
         taskId = taskIdMatches[1].trim();
 
-        console.log(
+        logger.debug(
           `LexAI :: checkForForcedToolCalls() :: Detected reject team task invitation for ID: "${taskId}"`,
+          undefined,
+          'LexAIService',
         );
 
         return {
@@ -2192,8 +2399,10 @@ IMPORTANT INSTRUCTIONS:
         screenName = screenMatches[2].trim();
       }
 
-      console.log(
+      logger.debug(
         `LexAI :: checkForForcedToolCalls() :: Detected navigation request to: "${screenName}"`,
+        undefined,
+        'LexAIService',
       );
       return {
         id: generateUUID(),
@@ -2231,8 +2440,10 @@ IMPORTANT INSTRUCTIONS:
       }
 
       if (url) {
-        console.log(
+        logger.debug(
           `LexAI :: checkForForcedToolCalls() :: Detected URL open request for: "${url}"`,
+          undefined,
+          'LexAIService',
         );
         return {
           id: generateUUID(),
@@ -2242,8 +2453,10 @@ IMPORTANT INSTRUCTIONS:
       }
     }
 
-    console.log(
+    logger.debug(
       `LexAI :: checkForForcedToolCalls() :: No forced tool calls detected`,
+      undefined,
+      'LexAIService',
     );
     return null;
   }
@@ -2304,7 +2517,11 @@ IMPORTANT INSTRUCTIONS:
       };
 
       // Make the API request
-      console.log('Requesting message suggestions from API');
+      logger.debug(
+        'Requesting message suggestions from API',
+        undefined,
+        'LexAIService',
+      );
       const response = await axios.post(`${this.API_URL}`, payload, {
         headers: {
           'Content-Type': 'application/json',
@@ -2333,13 +2550,21 @@ IMPORTANT INSTRUCTIONS:
           }
         }
       } catch (parseError) {
-        console.error('Error parsing suggestions response:', parseError);
+        logger.error(
+          'Error parsing suggestions response',
+          parseError,
+          'LexAIService',
+        );
         // Use defaults if parsing fails
       }
 
       return suggestions;
     } catch (error) {
-      console.error('Error generating message suggestions:', error);
+      logger.error(
+        'Error generating message suggestions',
+        error,
+        'LexAIService',
+      );
       return [
         `How are you doing, ${recipientName}?`,
         'Would you like to meet up later?',
@@ -2359,8 +2584,10 @@ IMPORTANT INSTRUCTIONS:
     conversation: LexAIConversation,
   ): {taskName: string} | null {
     const lowerMessage = userMessage.toLowerCase().trim();
-    console.log(
+    logger.debug(
       `LexAI :: isConfirmationMessage() :: Checking if message is confirmation: "${lowerMessage}"`,
+      undefined,
+      'LexAIService',
     );
 
     // Common confirmation patterns
@@ -2387,8 +2614,10 @@ IMPORTANT INSTRUCTIONS:
       lowerMessage.includes('yes please');
 
     if (!isConfirmation) {
-      console.log(
+      logger.debug(
         `LexAI :: isConfirmationMessage() :: Not a confirmation message`,
+        undefined,
+        'LexAIService',
       );
       return null;
     }
@@ -2406,8 +2635,10 @@ IMPORTANT INSTRUCTIONS:
             conversation.messages.length - 2 - lastAssistantMessageIndex
           ];
         const content = lastAssistantMessage.content.toLowerCase();
-        console.log(
+        logger.debug(
           `LexAI :: isConfirmationMessage() :: Last assistant message: "${content}"`,
+          undefined,
+          'LexAIService',
         );
 
         // Enhanced task name extraction patterns
@@ -2454,30 +2685,38 @@ IMPORTANT INSTRUCTIONS:
           let extractedTaskName = taskNameMatch[1].trim();
 
           // Clean up the task name by removing any "the task" phrases
-          console.log(
+          logger.debug(
             `LexAI :: isConfirmationMessage() :: Cleaning task name "${extractedTaskName}"`,
+            undefined,
+            'LexAIService',
           );
 
           // IMPROVED CLEANING: More thorough step-by-step cleaning
           // Check for "the task" prefix first (most specific check first)
           if (extractedTaskName.startsWith('the task ')) {
-            console.log(
+            logger.debug(
               `LexAI :: isConfirmationMessage() :: Removing 'the task' prefix`,
+              undefined,
+              'LexAIService',
             );
             extractedTaskName = extractedTaskName.substring(9).trim();
           }
           // Then check for "the" prefix
           else if (extractedTaskName.startsWith('the ')) {
-            console.log(
+            logger.debug(
               `LexAI :: isConfirmationMessage() :: Removing 'the' prefix`,
+              undefined,
+              'LexAIService',
             );
             extractedTaskName = extractedTaskName.substring(4).trim();
           }
 
           // Also handle cases where "the task" might appear mid-string
           if (extractedTaskName.includes(' the task ')) {
-            console.log(
+            logger.debug(
               `LexAI :: isConfirmationMessage() :: Removing ' the task ' from within task name`,
+              undefined,
+              'LexAIService',
             );
             extractedTaskName = extractedTaskName
               .replace(/\s+the\s+task\s+/gi, ' ')
@@ -2486,8 +2725,10 @@ IMPORTANT INSTRUCTIONS:
 
           // If the task name contains "task" anywhere as a standalone word, remove it
           if (extractedTaskName.match(/\btask\b/i)) {
-            console.log(
+            logger.debug(
               `LexAI :: isConfirmationMessage() :: Removing standalone 'task' word`,
+              undefined,
+              'LexAIService',
             );
             extractedTaskName = extractedTaskName
               .replace(/\btask\b/gi, '')
@@ -2496,8 +2737,10 @@ IMPORTANT INSTRUCTIONS:
 
           // Remove "task" suffix if present
           if (extractedTaskName.endsWith('task')) {
-            console.log(
+            logger.debug(
               `LexAI :: isConfirmationMessage() :: Removing 'task' suffix`,
+              undefined,
+              'LexAIService',
             );
             extractedTaskName = extractedTaskName
               .substring(0, extractedTaskName.length - 5)
@@ -2507,20 +2750,26 @@ IMPORTANT INSTRUCTIONS:
           // After all cleaning, ensure we don't have multiple spaces
           extractedTaskName = extractedTaskName.replace(/\s+/g, ' ').trim();
 
-          console.log(
+          logger.debug(
             `LexAI :: isConfirmationMessage() :: Final extracted task name: "${extractedTaskName}"`,
+            undefined,
+            'LexAIService',
           );
           return {taskName: extractedTaskName};
         } else {
-          console.log(
+          logger.debug(
             `LexAI :: isConfirmationMessage() :: No task name found in assistant message`,
+            undefined,
+            'LexAIService',
           );
         }
       }
     }
 
-    console.log(
+    logger.debug(
       `LexAI :: isConfirmationMessage() :: No relevant previous message found`,
+      undefined,
+      'LexAIService',
     );
     return null;
   }
@@ -2536,9 +2785,10 @@ IMPORTANT INSTRUCTIONS:
     conversation: LexAIConversation,
   ): Promise<LexAIResponse> {
     try {
-      console.log(
+      logger.debug(
         `LexAI :: handleConfirmedAction() :: Executing confirmed action: ${toolCall.toolName}`,
-        JSON.stringify(toolCall.parameters),
+        toolCall.parameters,
+        'LexAIService',
       );
 
       // Execute the tool call
@@ -2552,7 +2802,7 @@ IMPORTANT INSTRUCTIONS:
 
       return followUpResponse;
     } catch (error: any) {
-      console.error('Error handling confirmed action:', error);
+      logger.error('Error handling confirmed action', error, 'LexAIService');
 
       // Return a fallback message
       const aiMsg: LexAIMessage = {

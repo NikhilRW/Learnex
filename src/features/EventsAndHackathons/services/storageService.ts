@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {HackathonSummary} from '../types';
 import {STORAGE_KEYS, CACHE_EXPIRATION_MINUTES} from '../constants';
+import {logger} from 'shared/utils/logger';
 
 /**
  * Service for storing and retrieving data from device storage
@@ -31,11 +32,13 @@ export class StorageService {
       // Store the location filter
       await AsyncStorage.setItem(STORAGE_KEYS.HACKATHONS_LOCATION, location);
 
-      console.log(
+      logger.debug(
         `Cached ${hackathons.length} hackathons for location: ${location}`,
+        undefined,
+        'StorageService',
       );
     } catch (error) {
-      console.error('Error caching hackathons:', error);
+      logger.error('Error caching hackathons:', error, 'StorageService');
     }
   }
 
@@ -60,7 +63,7 @@ export class StorageService {
       );
 
       if (!hackathonsJson || !timestampStr || !cachedLocation) {
-        console.log('No cached hackathons found');
+        logger.debug('No cached hackathons found', undefined, 'StorageService');
         return null;
       }
 
@@ -70,7 +73,7 @@ export class StorageService {
       const expirationTime = CACHE_EXPIRATION_MINUTES * 60 * 1000; // Convert minutes to ms
 
       if (now - timestamp > expirationTime) {
-        console.log('Cached hackathons expired');
+        logger.debug('Cached hackathons expired', undefined, 'StorageService');
         return null;
       }
 
@@ -78,17 +81,19 @@ export class StorageService {
       const hackathons = JSON.parse(hackathonsJson) as HackathonSummary[];
       const isSameLocation = cachedLocation === location;
 
-      console.log(
+      logger.debug(
         `Retrieved ${
           hackathons.length
         } cached hackathons. Cache age: ${Math.round(
           (now - timestamp) / 60000,
         )} minutes`,
+        undefined,
+        'StorageService',
       );
 
       return {hackathons, isSameLocation};
     } catch (error) {
-      console.error('Error getting cached hackathons:', error);
+      logger.error('Error getting cached hackathons:', error, 'StorageService');
       return null;
     }
   }
@@ -103,9 +108,9 @@ export class StorageService {
         STORAGE_KEYS.HACKATHONS_TIMESTAMP,
         STORAGE_KEYS.HACKATHONS_LOCATION,
       ]);
-      console.log('Cache cleared successfully');
+      logger.debug('Cache cleared successfully', undefined, 'StorageService');
     } catch (error) {
-      console.error('Error clearing cache:', error);
+      logger.error('Error clearing cache:', error, 'StorageService');
     }
   }
 }

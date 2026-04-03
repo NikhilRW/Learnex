@@ -1,5 +1,5 @@
 import {useEffect} from 'react';
-import {Linking, Platform} from 'react-native';
+import {InteractionManager, Linking, Platform} from 'react-native';
 import SplashScreen from 'react-native-splash-screen';
 import {setDeepLink} from 'shared/reducers/DeepLink';
 import {fetchHackathons} from 'shared/reducers/Hackathon';
@@ -7,6 +7,7 @@ import {store} from 'shared/store/store';
 import {DeepLinkHandler} from 'shared/services/DeepLinkHandler';
 import {PushNotificationHandler} from 'shared/utils/PushNotificationHandler';
 import {changeIsLoggedIn} from 'shared/reducers/User';
+import {logger} from 'shared/utils/logger';
 
 interface DeepLinkEvent {
   url: string;
@@ -30,37 +31,46 @@ export const useAppStartup = (
     }
 
     DeepLinkHandler.configureDeepLinks(navigationRef);
-    store.dispatch(fetchHackathons({location: 'India'}));
     PushNotificationHandler.configureChannels();
 
-    if (permissionsGranted) {
-      const initNotifications = async () => {
-        try {
-          const notificationService =
-            require('shared/services/NotificationService').default;
+    InteractionManager.runAfterInteractions(() => {
+      store.dispatch(fetchHackathons({location: 'India'}));
 
-          await notificationService.setupNotificationChannels();
-          notificationService.setupBackgroundHandler();
-          PushNotificationHandler.setupMessageHandlers();
+      if (permissionsGranted) {
+        const initNotifications = async () => {
+          try {
+            const notificationService =
+              require('shared/services/NotificationService').default;
 
-          const {getAuth} = require('@react-native-firebase/auth');
-          if (getAuth().currentUser) {
-            console.log(
-              'User already logged in, setting up notification listeners',
+            await notificationService.setupNotificationChannels();
+            notificationService.setupBackgroundHandler();
+            PushNotificationHandler.setupMessageHandlers();
+
+            const {getAuth} = require('@react-native-firebase/auth');
+            if (getAuth().currentUser) {
+              logger.debug(
+                'User already logged in, setting up notification listeners',
+                undefined,
+                'AppStartup',
+              );
+              notificationService.setupMessageListener();
+              notificationService.setupTaskNotificationListener();
+              await notificationService.initializeFCM();
+            } else {
+              store.dispatch(changeIsLoggedIn(false));
+            }
+          } catch (error) {
+            logger.error(
+              'Failed to initialize notification service:',
+              error,
+              'AppStartup',
             );
-            notificationService.setupMessageListener();
-            notificationService.setupTaskNotificationListener();
-            await notificationService.initializeFCM();
-          } else {
-            changeIsLoggedIn(false);
           }
-        } catch (error) {
-          console.error('Failed to initialize notification service:', error);
-        }
-      };
+        };
 
-      void initNotifications();
-    }
+        void initNotifications();
+      }
+    });
 
     const handleDeepLink = (event: DeepLinkEvent) => {
       const {url} = event;
@@ -79,7 +89,7 @@ export const useAppStartup = (
 
     Linking.getInitialURL().then(url => {
       if (url) {
-        console.log('App opened with URL:', url);
+        logger.debug('App opened with URL:', url, 'AppStartup');
         store.dispatch(setDeepLink(url));
       }
     });
@@ -99,7 +109,11 @@ export const useAppStartup = (
           notificationService.removeMessageListener();
           notificationService.removeTaskListener();
         } catch (error) {
-          console.error('Failed to clean up notification listeners:', error);
+          logger.error(
+            'Failed to clean up notification listeners:',
+            error,
+            'AppStartup',
+          );
         }
       }
     };

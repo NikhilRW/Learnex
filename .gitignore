@@ -175,3 +175,5 @@ web-build/
 .agents
 .github/skills
 skills-lock.json
+
+notes.txt

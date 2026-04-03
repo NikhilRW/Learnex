@@ -8,6 +8,8 @@ import React, {
   startTransition,
 } from 'react';
 import {useTypedSelector} from 'hooks/redux/useTypedSelector';
+import {selectFirebase, selectTheme} from 'shared/store/selectors';
+import {logger} from 'shared/utils/logger';
 import SkeletonPlaceholder from 'react-native-skeleton-placeholder';
 import Post from 'home/components/Post';
 import {PostType} from 'shared/types/post';
@@ -19,6 +21,7 @@ import {
   VIEWABLE_ITEM_THRESHOLD,
   TRENDING_TAGS_LIMIT,
   TRENDING_POSTS_LIMIT,
+  ESTIMATED_POST_ITEM_SIZE,
 } from '../constants';
 
 const HomeSkeleton = (): JSX.Element => {
@@ -31,8 +34,8 @@ const HomeSkeleton = (): JSX.Element => {
 };
 
 const Home = () => {
-  const firebase = useTypedSelector(state => state.firebase.firebase);
-  const theme = useTypedSelector(state => state.user.theme);
+  const firebase = useTypedSelector(selectFirebase);
+  const theme = useTypedSelector(selectTheme);
   const isDark = theme === 'dark';
 
   const [isLoaded, setIsLoaded] = useState(false);
@@ -71,7 +74,7 @@ const Home = () => {
           setIsLoaded(true);
         });
       } catch (err) {
-        console.error('Error setting up real-time updates:', err);
+        logger.error('Error setting up real-time updates:', err, 'Home');
       }
     };
 
@@ -85,8 +88,9 @@ const Home = () => {
       const visibleVideo = viewableItems.find(
         ({item}) => item.isVideo && item.postVideo,
       );
-      // Set the visible video ID or null if no video is visible
-      setVisibleVideoId(visibleVideo ? visibleVideo.item.id : null);
+      const nextVisibleVideoId = visibleVideo ? visibleVideo.item.id : null;
+
+      setVisibleVideoId(nextVisibleVideoId);
     },
     [],
   );
@@ -107,11 +111,7 @@ const Home = () => {
       item: PostType & {isLiked: boolean; likes: number; isSaved: boolean};
     }) => (
       <View style={styles.postContainer}>
-        <Post
-          key={item.id}
-          post={item}
-          isVisible={item.id === visibleVideoId}
-        />
+        <Post post={item} isVisible={item.id === visibleVideoId} />
       </View>
     ),
     [visibleVideoId],
@@ -185,7 +185,7 @@ const Home = () => {
       // Refresh user data
       // await fetchUserData();
     } catch (err) {
-      console.error('Error refreshing home feed:', err);
+      logger.error('Error refreshing home feed:', err, 'Home');
       // Use fallback tags if there's an error
     } finally {
       setRefreshing(false);
@@ -264,7 +264,7 @@ const Home = () => {
           }
         }
       } catch (err) {
-        console.error('Error in fetchTrendingTags:', err);
+        logger.error('Error in fetchTrendingTags:', err, 'Home');
         // Extract tags from available posts instead of using empty array
         if (mounted) {
           const extractTagsFromPosts = () => {
@@ -338,6 +338,8 @@ const Home = () => {
             showsVerticalScrollIndicator={false}
             style={styles.mainContainer}
             contentContainerStyle={styles.postsContainer}
+            estimatedItemSize={ESTIMATED_POST_ITEM_SIZE}
+            recycleItems={true}
             viewabilityConfigCallbackPairs={
               viewabilityConfigCallbackPairs.current
             }

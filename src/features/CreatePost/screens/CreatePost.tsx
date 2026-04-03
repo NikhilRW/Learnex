@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, {useState} from 'react';
 import {
   Text,
   View,
@@ -8,12 +8,18 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { useTypedSelector } from 'hooks/redux/useTypedSelector';
-import { PostFormData } from 'create-post/types';
-import { getStyles } from 'create-post/styles/CreatePost';
-import { usePermissions, useDraft, useMediaPicker, useCreatePost } from '../hooks';
-import { extractHashtags } from '../utils';
+import {useNavigation} from '@react-navigation/native';
+import {useTypedSelector} from 'hooks/redux/useTypedSelector';
+import {selectFirebase, selectIsDark} from 'shared/store/selectors';
+import {PostFormData} from 'create-post/types';
+import {getStyles} from 'create-post/styles/CreatePost';
+import {
+  usePermissions,
+  useDraft,
+  useMediaPicker,
+  useCreatePost,
+} from '../hooks';
+import {extractHashtags} from '../utils';
 import DraftBanner from '../components/DraftBanner';
 import PermissionStatus from '../components/PermissionStatus';
 import MediaGrid from '../components/MediaGrid';
@@ -23,9 +29,8 @@ import VisibilityToggle from '../components/VisibilityToggle';
 
 const CreatePost = () => {
   const navigation = useNavigation();
-  const firebase = useTypedSelector(state => state.firebase.firebase);
-  const theme = useTypedSelector(state => state.user.theme);
-  const isDark = theme === 'dark';
+  const firebase = useTypedSelector(selectFirebase);
+  const isDark = useTypedSelector(selectIsDark);
 
   const [formData, setFormData] = useState<PostFormData>({
     description: '',
@@ -37,15 +42,15 @@ const CreatePost = () => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [tagInput, setTagInput] = useState('');
 
-  const { permissionsChecked, hasStoragePermission, requestStoragePermissions } =
+  const {permissionsChecked, hasStoragePermission, requestStoragePermissions} =
     usePermissions();
 
-  const { showDraftBanner, clearDraft, restoreDraft } = useDraft(
+  const {showDraftBanner, clearDraft, restoreDraft} = useDraft(
     formData,
     setFormData,
   );
 
-  const { pickerError, canAddMoreMedia, removeMediaItem, pickMedia } =
+  const {pickerError, canAddMoreMedia, removeMediaItem, pickMedia} =
     useMediaPicker(
       formData,
       setFormData,
@@ -54,7 +59,7 @@ const CreatePost = () => {
       requestStoragePermissions,
     );
 
-  const { loading, uploadProgress, currentUploadIndex, handleSubmit } =
+  const {loading, uploadProgress, currentUploadIndex, handleSubmit} =
     useCreatePost(formData, firebase, clearDraft, navigation);
 
   const styles = getStyles(isDark, hasStoragePermission);
@@ -65,7 +70,7 @@ const CreatePost = () => {
       return;
     }
 
-    setFormData(prev => ({ ...prev, description: text }));
+    setFormData(prev => ({...prev, description: text}));
 
     const lastWord = text.split(/\s+/).pop() || '';
     if (lastWord.startsWith('#') && lastWord.length > 1) {
@@ -97,7 +102,7 @@ const CreatePost = () => {
     words.pop();
     const prefix = formData.description.includes('@') ? '@' : '#';
     const newDescription = [...words, `${prefix}${suggestion} `].join(' ');
-    setFormData(prev => ({ ...prev, description: newDescription }));
+    setFormData(prev => ({...prev, description: newDescription}));
     setShowSuggestions(false);
   };
 
@@ -107,7 +112,7 @@ const CreatePost = () => {
       if (!tag.startsWith('#')) {
         tag = `#${tag}`;
       }
-      setFormData(prev => ({ ...prev, hashtags: [...prev.hashtags, tag] }));
+      setFormData(prev => ({...prev, hashtags: [...prev.hashtags, tag]}));
       setTagInput('');
     }
   };
@@ -172,7 +177,7 @@ const CreatePost = () => {
           />
           <VisibilityToggle
             isPublic={formData.isPublic}
-            onChange={isPublic => setFormData(prev => ({ ...prev, isPublic }))}
+            onChange={isPublic => setFormData(prev => ({...prev, isPublic}))}
             styles={styles}
           />
           <TouchableOpacity

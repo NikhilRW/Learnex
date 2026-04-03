@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, {useState, useEffect, useCallback, useMemo, memo} from 'react';
 import {
   View,
-  Image,
+  Image as RNImage,
   TouchableOpacity,
   Modal,
   Animated,
@@ -13,15 +13,115 @@ import {
 import Icon from 'react-native-vector-icons/Feather';
 import AntDesign from 'react-native-vector-icons/AntDesign';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { primaryColor } from 'shared/res/strings/eng';
-import { getUsernameForLogo } from 'shared/helpers/common/stringHelpers';
-import { Avatar } from 'react-native-elements';
-import { useTheme } from 'hooks/common/useTheme';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { createStyles } from '@/features/Home/styles/Post';
-import { FullPostModalProps } from '../types';
+import {primaryColor} from 'shared/res/strings/eng';
+import {getUsernameForLogo} from 'shared/helpers/common/stringHelpers';
+import {Avatar} from 'react-native-elements';
+import CachedImage from 'shared/components/CachedImage';
+import {logger} from 'shared/utils/logger';
+import {useTheme} from 'hooks/common/useTheme';
+import {SafeAreaView} from 'react-native-safe-area-context';
+import {createStyles} from '@/features/Home/styles/Post';
+import {FullPostModalProps} from '../types';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
+
+type FullPostMediaProps = Pick<
+  FullPostModalProps,
+  'allMedia' | 'renderImageContent' | 'renderVideoContent'
+> & {
+  modalMediaIndex: number;
+  mediaContentStyle: any;
+  styles: any;
+  goToPreviousMediaInModal: () => void;
+  goToNextMediaInModal: () => void;
+};
+
+const FullPostMedia = memo(
+  ({
+    allMedia,
+    modalMediaIndex,
+    renderImageContent,
+    renderVideoContent,
+    mediaContentStyle,
+    styles,
+    goToPreviousMediaInModal,
+    goToNextMediaInModal,
+  }: FullPostMediaProps) => {
+    const currentMediaContent = useMemo(() => {
+      if (allMedia.length === 0) return null;
+
+      const media = allMedia[modalMediaIndex];
+      if (media.type === 'video') {
+        return renderVideoContent(media.source);
+      }
+      return renderImageContent(media.source, true);
+    }, [allMedia, modalMediaIndex, renderImageContent, renderVideoContent]);
+
+    const paginationDots = useMemo(() => {
+      if (allMedia.length <= 1) return null;
+
+      return (
+        <View style={styles.paginationDots}>
+          {allMedia.map((mediaItem, index) => {
+            const dotBgColor =
+              index === modalMediaIndex ? '#fff' : 'rgba(255, 255, 255, 0.5)';
+            const dotBgStyle = {backgroundColor: dotBgColor};
+            let mediaKey = mediaItem.type;
+            if (typeof mediaItem.source === 'string') {
+              mediaKey = mediaItem.source;
+            } else if (typeof mediaItem.source === 'number') {
+              mediaKey = `asset-${mediaItem.source}`;
+            } else if (
+              mediaItem.source &&
+              typeof mediaItem.source === 'object'
+            ) {
+              const mediaSource = mediaItem.source as {uri?: string};
+              mediaKey = mediaSource.uri || mediaItem.type;
+            }
+            return (
+              <Animated.View
+                key={`${mediaItem.type}-${mediaKey}`}
+                style={[styles.dot, dotBgStyle]}
+              />
+            );
+          })}
+        </View>
+      );
+    }, [allMedia, modalMediaIndex, styles.paginationDots, styles.dot]);
+
+    return (
+      <View style={styles.fullPostMediaContainer}>
+        <View style={mediaContentStyle}>{currentMediaContent}</View>
+
+        {allMedia.length > 1 && (
+          <>
+            {modalMediaIndex > 0 && (
+              <TouchableOpacity
+                style={[styles.navButton, styles.prevButton]}
+                onPress={goToPreviousMediaInModal}
+                hitSlop={{top: 20, bottom: 20, left: 20, right: 10}}>
+                <Icon name="chevron-left" size={30} color="white" />
+              </TouchableOpacity>
+            )}
+
+            {modalMediaIndex < allMedia.length - 1 && (
+              <TouchableOpacity
+                style={[styles.navButton, styles.nextButton]}
+                onPress={goToNextMediaInModal}
+                hitSlop={{top: 20, bottom: 20, left: 10, right: 20}}>
+                <Icon name="chevron-right" size={30} color="white" />
+              </TouchableOpacity>
+            )}
+
+            {paginationDots}
+          </>
+        )}
+      </View>
+    );
+  },
+);
+
+FullPostMedia.displayName = 'FullPostMedia';
 
 // Update the FullPostModal component to memoize media content and improve scrolling
 export const FullPostModal = ({
@@ -46,7 +146,7 @@ export const FullPostModal = ({
   // Create local state for modal media navigation to prevent affecting the main feed
   const [modalMediaIndex, setModalMediaIndex] = useState(currentMediaIndex);
   const [modalImageHeight, setModalImageHeight] = useState(imageHeight);
-  const { isDark } = useTheme();
+  const {isDark} = useTheme();
   // Function to handle comment button in the modal
   const handleCommentButtonInModal = () => {
     // First close the full post modal
@@ -91,69 +191,27 @@ export const FullPostModal = ({
     }
 
     if (imageUri) {
-      Image.getSize(
+      RNImage.getSize(
         imageUri,
         (w, h) => {
           const scaledHeight = (h / w) * SCREEN_WIDTH;
           setModalImageHeight(scaledHeight);
         },
-        () => setModalImageHeight(imageHeight),
+        error => {
+          logger.error('Failed to resolve image size', error, 'FullPostModal');
+          setModalImageHeight(imageHeight);
+        },
       );
     } else if (typeof source === 'number') {
-      const resolved = Image.resolveAssetSource(source);
+      const resolved = RNImage.resolveAssetSource(source);
       if (resolved) {
-        const scaledHeight =
-          (resolved.height / resolved.width) * SCREEN_WIDTH;
+        const scaledHeight = (resolved.height / resolved.width) * SCREEN_WIDTH;
         setModalImageHeight(scaledHeight);
       }
     } else {
       setModalImageHeight(imageHeight);
     }
   }, [showFullPostModal, modalMediaIndex, allMedia, imageHeight]);
-
-  // Memoize the media content to prevent re-renders
-  const currentMediaContent = React.useMemo(() => {
-    if (allMedia.length === 0) return null;
-
-    const media = allMedia[modalMediaIndex];
-    if (media.type === 'video') {
-      return renderVideoContent(media.source);
-    } else {
-      return renderImageContent(media.source, true);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modalMediaIndex, allMedia]);
-
-  // Memoize pagination dots
-  const paginationDots = React.useMemo(() => {
-    if (allMedia.length <= 1) return null;
-
-    return (
-      <View style={styles.paginationDots}>
-        {allMedia.map((mediaItem, index) => {
-          const dotBgColor =
-            index === modalMediaIndex ? '#fff' : 'rgba(255, 255, 255, 0.5)';
-          const dotBgStyle = { backgroundColor: dotBgColor };
-          let mediaKey = mediaItem.type;
-          if (typeof mediaItem.source === 'string') {
-            mediaKey = mediaItem.source;
-          } else if (typeof mediaItem.source === 'number') {
-            mediaKey = `asset-${mediaItem.source}`;
-          } else if (mediaItem.source && typeof mediaItem.source === 'object') {
-            const mediaSource = mediaItem.source as { uri?: string };
-            mediaKey = mediaSource.uri || mediaItem.type;
-          }
-          return (
-            <Animated.View
-              key={`${mediaItem.type}-${mediaKey}`}
-              style={[styles.dot, dotBgStyle]}
-            />
-          );
-        })}
-      </View>
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allMedia, modalMediaIndex]);
 
   const styles = useMemo(() => createStyles(isDark) as any, [isDark]);
   const mediaContentStyle = useMemo(
@@ -164,7 +222,7 @@ export const FullPostModal = ({
     }),
     [modalImageHeight, styles.mediaContent],
   );
-  const viewAllStyle = useMemo(() => ({ color: primaryColor }), []);
+  const viewAllStyle = useMemo(() => ({color: primaryColor}), []);
 
   return (
     <Modal
@@ -177,16 +235,14 @@ export const FullPostModal = ({
         <View style={[styles.fullPostHeader]}>
           <View style={styles.userInfo}>
             {userProfileImage ? (
-              <Image
+              <CachedImage
                 source={
                   typeof userProfileImage === 'string'
-                    ? { uri: userProfileImage }
+                    ? {uri: userProfileImage}
                     : userProfileImage
                 }
                 style={[styles.avatar]}
-                onError={e =>
-                  console.log('Avatar loading error:', e.nativeEvent.error)
-                }
+                contentFit="cover"
               />
             ) : (
               <Avatar
@@ -219,34 +275,16 @@ export const FullPostModal = ({
           scrollEventThrottle={16}
           decelerationRate="normal"
           contentContainerStyle={styles.fullPostScrollContent}>
-          <View style={styles.fullPostMediaContainer}>
-            {/* Render the memoized media content to prevent re-renders */}
-            <View style={mediaContentStyle}>{currentMediaContent}</View>
-
-            {allMedia.length > 1 && (
-              <>
-                {modalMediaIndex > 0 && (
-                  <TouchableOpacity
-                    style={[styles.navButton, styles.prevButton]}
-                    onPress={goToPreviousMediaInModal}
-                    hitSlop={{ top: 20, bottom: 20, left: 20, right: 10 }}>
-                    <Icon name="chevron-left" size={30} color="white" />
-                  </TouchableOpacity>
-                )}
-
-                {modalMediaIndex < allMedia.length - 1 && (
-                  <TouchableOpacity
-                    style={[styles.navButton, styles.nextButton]}
-                    onPress={goToNextMediaInModal}
-                    hitSlop={{ top: 20, bottom: 20, left: 10, right: 20 }}>
-                    <Icon name="chevron-right" size={30} color="white" />
-                  </TouchableOpacity>
-                )}
-
-                {paginationDots}
-              </>
-            )}
-          </View>
+          <FullPostMedia
+            allMedia={allMedia}
+            modalMediaIndex={modalMediaIndex}
+            renderImageContent={renderImageContent}
+            renderVideoContent={renderVideoContent}
+            mediaContentStyle={mediaContentStyle}
+            styles={styles}
+            goToPreviousMediaInModal={goToPreviousMediaInModal}
+            goToNextMediaInModal={goToNextMediaInModal}
+          />
 
           <View style={styles.fullPostActions}>
             <View style={styles.leftActions}>
@@ -324,21 +362,24 @@ export const FullPostModal = ({
                 {/* Show just a few comments in the modal */}
                 {post.commentsList.slice(0, 3).map(comment => (
                   <View
-                    key={comment.id || `${comment.username}-${comment.timestamp}`}
+                    key={
+                      comment.id || `${comment.username}-${comment.timestamp}`
+                    }
                     style={styles.commentItem}>
-                    <Image
+                    <CachedImage
                       source={
                         comment.userImage
-                          ? { uri: comment.userImage }
+                          ? {uri: comment.userImage}
                           : {
-                            uri:
-                              'https://ui-avatars.com/api/?name=' +
-                              encodeURIComponent(
-                                comment.username || 'Anonymous',
-                              ),
-                          }
+                              uri:
+                                'https://ui-avatars.com/api/?name=' +
+                                encodeURIComponent(
+                                  comment.username || 'Anonymous',
+                                ),
+                            }
                       }
                       style={styles.commentAvatar}
+                      contentFit="cover"
                     />
                     <View style={styles.commentContent}>
                       <Text style={styles.commentText}>

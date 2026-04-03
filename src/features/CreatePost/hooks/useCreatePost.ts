@@ -1,5 +1,6 @@
 import {useState} from 'react';
 import {Alert} from 'react-native';
+import {logger} from 'shared/utils/logger';
 import {PostFormData} from '../types';
 import {extractHashtags, generateSearchKeywords} from '../utils';
 import {uploadMediaToCloudinary, savePostToFirestore} from '../services';
@@ -34,7 +35,7 @@ export const useCreatePost = (
       const allHashtags = [
         ...new Set([...formData.hashtags, ...extractedTags]),
       ];
-      console.log('Extracted hashtags:', allHashtags);
+      logger.debug('Extracted hashtags:', allHashtags, 'CreatePost');
 
       const searchKeywords = generateSearchKeywords(formData.description);
 
@@ -74,7 +75,7 @@ export const useCreatePost = (
       navigation.goBack();
     } catch (error) {
       Alert.alert('Error', 'Failed to create post');
-      console.error('Error creating post:', error);
+      logger.error('Error creating post:', error, 'CreatePost');
     } finally {
       setLoading(false);
       setUploadProgress(0);

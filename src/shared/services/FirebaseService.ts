@@ -6,6 +6,7 @@ import Config from 'react-native-superconfig';
 import {authorize, AuthConfiguration} from 'react-native-app-auth';
 import {signUpData} from 'shared/types/authTypes';
 import {PostType} from 'shared/types/post';
+import {logger} from 'shared/utils/logger';
 import {
   arrayRemove,
   arrayUnion,
@@ -70,7 +71,11 @@ class AuthModule {
       await addDoc(collection(getFirestore(), 'users'), data);
       return {success: true};
     } catch (error: any) {
-      console.log('AuthModule :: signUpWithEmailAndPassword() ::', error);
+      logger.error(
+        'AuthModule :: signUpWithEmailAndPassword() ::',
+        error,
+        'FirebaseService',
+      );
       return {success: false, error};
     }
   }
@@ -80,7 +85,11 @@ class AuthModule {
       await signInWithEmailAndPassword(getAuth(), email, password);
       return {success: true};
     } catch (error: any) {
-      console.log('AuthModule :: loginWithEmailAndPassword() ::', error);
+      logger.error(
+        'AuthModule :: loginWithEmailAndPassword() ::',
+        error,
+        'FirebaseService',
+      );
       return {success: false, error};
     }
   }
@@ -90,7 +99,11 @@ class AuthModule {
       await sendPasswordResetEmail(getAuth(), email);
       return {success: true};
     } catch (error) {
-      console.log('AuthModule :: sendPasswordResetEmail() ::', error);
+      logger.error(
+        'AuthModule :: sendPasswordResetEmail() ::',
+        error,
+        'FirebaseService',
+      );
       return {success: false, error};
     }
   }
@@ -100,7 +113,7 @@ class AuthModule {
       await signOut(getAuth());
       return {success: true};
     } catch (error: any) {
-      console.log('AuthModule :: signOut() ::', error);
+      logger.error('AuthModule :: signOut() ::', error, 'FirebaseService');
       return {success: false, error};
     }
   }
@@ -149,7 +162,7 @@ class AuthModule {
       } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
         return {success: false, error: 'Play services not available'};
       }
-      console.log('AuthModule :: googleSignIn() ::', error);
+      logger.error('AuthModule :: googleSignIn() ::', error, 'FirebaseService');
       return {success: false, error};
     }
   }
@@ -197,7 +210,7 @@ class AuthModule {
 
       return {success: true};
     } catch (error) {
-      console.log('AuthModule :: githubSignIn() ::', error);
+      logger.error('AuthModule :: githubSignIn() ::', error, 'FirebaseService');
       return {success: false, error};
     }
   }
@@ -221,7 +234,11 @@ class UserModule {
       ).docs[0].data();
       return {fullName: doc.fullName, username: doc.username};
     } catch (error) {
-      console.log('UserModule :: getNameUsernamestring() ::', error);
+      logger.error(
+        'UserModule :: getNameUsernamestring() ::',
+        error,
+        'FirebaseService',
+      );
       throw error;
     }
   }
@@ -236,7 +253,11 @@ class UserModule {
       );
       return {success: user.empty};
     } catch (error) {
-      console.log('UserModule :: checkUsernameIsAvailable() ::', error);
+      logger.error(
+        'UserModule :: checkUsernameIsAvailable() ::',
+        error,
+        'FirebaseService',
+      );
       return {success: false, error};
     }
   }
@@ -248,7 +269,11 @@ class UserModule {
       );
       return {success: user.empty};
     } catch (error) {
-      console.log('UserModule :: checkEmailIsAvailable() ::', error);
+      logger.error(
+        'UserModule :: checkEmailIsAvailable() ::',
+        error,
+        'FirebaseService',
+      );
       return {success: false, error};
     }
   }
@@ -277,7 +302,11 @@ class UserModule {
 
       return {success: false};
     } catch (error: any) {
-      console.log('UserModule :: checkUsernameOrEmailRegistered() ::', error);
+      logger.error(
+        'UserModule :: checkUsernameOrEmailRegistered() ::',
+        error,
+        'FirebaseService',
+      );
       return {success: false, error};
     }
   }
@@ -342,7 +371,7 @@ class PostsModule {
       const docRef = await addDoc(postRef, newPost);
       return {success: true, postId: docRef.id};
     } catch (error) {
-      console.log('PostsModule :: createPost() ::', error);
+      logger.error('PostsModule :: createPost() ::', error, 'FirebaseService');
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to create post',
@@ -361,9 +390,10 @@ class PostsModule {
           query(postsRef, orderBy('createdAt', 'desc'), limit(limitNum)),
         );
       } catch (orderByError) {
-        console.log(
-          'Error with orderBy, fetching without sorting:',
+        logger.warn(
+          'Error with orderBy, fetching without sorting',
           orderByError,
+          'FirebaseService',
         );
         snapshot = await getDocs(query(postsRef, limit(limitNum)));
       }
@@ -425,7 +455,7 @@ class PostsModule {
 
       return {success: true, posts: postsWithLikes};
     } catch (error) {
-      console.error('PostsModule :: getPosts() ::', error);
+      logger.error('PostsModule :: getPosts() ::', error, 'FirebaseService');
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to fetch posts',
@@ -444,7 +474,7 @@ class PostsModule {
 
       return likeDoc.exists();
     } catch (error) {
-      console.error('Error checking if post is liked:', error);
+      logger.error('Error checking if post is liked', error, 'FirebaseService');
       return false;
     }
   }
@@ -484,7 +514,7 @@ class PostsModule {
       const updatedLikeDoc = await likeDocRef.get();
       return {success: true, liked: updatedLikeDoc.exists};
     } catch (error) {
-      console.log('PostsModule :: likePost() ::', error);
+      logger.error('PostsModule :: likePost() ::', error, 'FirebaseService');
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to toggle like',
@@ -557,7 +587,7 @@ class PostsModule {
         },
       };
     } catch (error) {
-      console.log('PostsModule :: addComment() ::', error);
+      logger.error('PostsModule :: addComment() ::', error, 'FirebaseService');
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to add comment',
@@ -605,7 +635,7 @@ class PostsModule {
 
       return {success: true, saved: !isSaved};
     } catch (error) {
-      console.log('PostsModule :: savePost() ::', error);
+      logger.error('PostsModule :: savePost() ::', error, 'FirebaseService');
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to save post',
@@ -651,7 +681,7 @@ class PostsModule {
 
       return {success: true};
     } catch (error) {
-      console.log('PostsModule :: deletePost() ::', error);
+      logger.error('PostsModule :: deletePost() ::', error, 'FirebaseService');
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to delete post',
@@ -668,7 +698,7 @@ class PostsModule {
       // Return false if we're not sure, the UI will update once the actual status is fetched
       return false;
     } catch (error) {
-      console.error('Error checking saved status:', error);
+      logger.error('Error checking saved status', error, 'FirebaseService');
       return false;
     }
   }

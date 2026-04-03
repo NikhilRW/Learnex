@@ -11,6 +11,7 @@ import LexAIFirestoreService from 'lex-ai/services/LexAIFirestoreService';
 import {setLexAIMode, setActiveConversation} from 'lex-ai/reducers/LexAI';
 import {DispatchType} from 'shared/store/store';
 import {generateUUID, logDebug} from 'lex-ai/utils/common';
+import {logger} from 'shared/utils/logger';
 import {UseLexAIAnimationsReturn} from './useLexAIAnimations';
 
 export interface UseLexAIConversationParams {
@@ -118,7 +119,11 @@ export const useLexAIConversation = ({
         await LexAIService.saveConversation(newConversation);
         dispatch(setActiveConversation(newConversation.id));
       } catch (error) {
-        console.error('Error initializing conversation:', error);
+        logger.error(
+          'Error initializing conversation:',
+          error,
+          'LexAIConversation',
+        );
         const newConversation = LexAIService.initConversation(
           'New Conversation',
           currentMode,
@@ -162,7 +167,11 @@ export const useLexAIConversation = ({
         logDebug('Error loading conversations history', {
           error: error?.message || String(error),
         });
-        console.error('Error loading conversations history:', error);
+        logger.error(
+          'Error loading conversations history:',
+          error,
+          'LexAIConversation',
+        );
         setAllConversations([]);
       }
     };
@@ -218,7 +227,6 @@ export const useLexAIConversation = ({
 
       scrollToEnd();
     }
-     
   }, [conversation, currentMode, dispatch, scrollToEnd]);
 
   // Show history drawer with animation
@@ -310,7 +318,11 @@ export const useLexAIConversation = ({
                 logDebug('Conversation deleted successfully');
               } catch (error) {
                 logDebug('Error deleting conversation', {error});
-                console.error('Error deleting conversation:', error);
+                logger.error(
+                  'Error deleting conversation:',
+                  error,
+                  'LexAIConversation',
+                );
               }
             },
           },

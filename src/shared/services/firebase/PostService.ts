@@ -25,6 +25,7 @@ import {CommentService} from 'home/services/CommentService';
 import {SavedPostService} from 'saved-post/services/SavedPostService';
 import {PostQueryService} from './PostQueryService';
 import axios from 'axios';
+import {logger} from 'shared/utils/logger';
 
 export class PostService {
   constructor(
@@ -72,7 +73,7 @@ export class PostService {
         return {success: true, liked: true};
       }
     } catch (error) {
-      console.error('Error in likePost:', error);
+      logger.error('Error in likePost', error, 'PostService');
       return {success: false, error: 'Failed to update like status'};
     }
   }
@@ -106,7 +107,7 @@ export class PostService {
 
       return {publicId: publicIdWithoutExtension, resourceType};
     } catch (error) {
-      console.error('Error extracting public_id from URL:', error);
+      logger.error('Error extracting public_id from URL', error, 'PostService');
       return null;
     }
   }
@@ -164,9 +165,10 @@ export class PostService {
             const cloudinaryInfo = this.extractCloudinaryPublicId(url);
             if (cloudinaryInfo) {
               const {publicId, resourceType} = cloudinaryInfo;
-              console.log(
-                `Deleting ${resourceType} from Cloudinary:`,
+              logger.debug(
+                `Deleting ${resourceType} from Cloudinary`,
                 publicId.split('/')[1],
+                'PostService',
               );
               const response = await axios.post(
                 `https://learnex-backend.vercel.app/api/cloudinary/delete`,
@@ -180,25 +182,34 @@ export class PostService {
                 },
               );
               if (response.status === 200) {
-                console.log(`Successfully deleted media: ${publicId}`);
+                logger.debug(
+                  `Successfully deleted media: ${publicId}`,
+                  undefined,
+                  'PostService',
+                );
               } else {
-                console.error(
+                logger.error(
                   `Failed to delete media: ${publicId}`,
                   response.data,
+                  'PostService',
                 );
               }
             }
           });
           await Promise.all(deletePromises);
         } catch (error) {
-          console.error('Error deleting media files from Cloudinary:', error);
+          logger.error(
+            'Error deleting media files from Cloudinary',
+            error,
+            'PostService',
+          );
           // Continue with success response as the post was deleted successfully from Firestore
         }
       }
 
       return {success: true};
     } catch (error) {
-      console.log('PostsModule :: deletePost() ::', error);
+      logger.error('PostsModule :: deletePost() ::', error, 'PostService');
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to delete post',
@@ -231,7 +242,7 @@ export class PostService {
 
       return await this.savedPostService.savePost(postId);
     } catch (error) {
-      console.error('Error in savePost:', error);
+      logger.error('Error in savePost', error, 'PostService');
       return {success: false, error: 'Failed to save post'};
     }
   }
@@ -358,7 +369,7 @@ export class PostService {
 
       return {success: true};
     } catch (error) {
-      console.error('Error in hidePost:', error);
+      logger.error('Error in hidePost', error, 'PostService');
       return {success: false, error: 'Failed to hide post'};
     }
   }
@@ -383,7 +394,7 @@ export class PostService {
 
       return blockedPostIds.includes(postId);
     } catch (error) {
-      console.error('Error checking if post is hidden:', error);
+      logger.error('Error checking if post is hidden', error, 'PostService');
       return false;
     }
   }
@@ -421,7 +432,7 @@ export class PostService {
 
       return {success: true};
     } catch (error) {
-      console.error('Error in unhidePost:', error);
+      logger.error('Error in unhidePost', error, 'PostService');
       return {success: false, error: 'Failed to unhide post'};
     }
   }

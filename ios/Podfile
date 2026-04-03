@@ -17,6 +17,7 @@ end
 
 target 'Learnex' do
   use_expo_modules!
+  pod 'SDWebImage', :modular_headers => true
 
   if ENV['EXPO_USE_COMMUNITY_AUTOLINKING'] == '1'
     config_command = ['node', '-e', "process.argv=['', '', 'config'];require('@react-native-community/cli').run()"];

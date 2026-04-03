@@ -1,5 +1,6 @@
 import {Platform, Share, Alert, ToastAndroid} from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
+import {logger} from 'shared/utils/logger';
 
 /**
  * Share meeting invite with room code and links
@@ -26,9 +27,9 @@ export const shareMeetingInvite = async (
       url: Platform.OS === 'ios' ? deepLink : undefined,
     });
 
-    console.log('Successfully shared invite link');
+    logger.debug('Successfully shared invite link', undefined, 'RoomSharing');
   } catch (error) {
-    console.error('Error sharing invite:', error);
+    logger.error('Error sharing invite:', error, 'RoomSharing');
   }
 };
 
@@ -45,6 +46,6 @@ export const copyRoomCode = (roomCode: string): void => {
       Alert.alert('Copied', 'Room code copied to clipboard!');
     }
   } catch (error) {
-    console.error('Failed to copy to clipboard:', error);
+    logger.error('Failed to copy to clipboard:', error, 'RoomSharing');
   }
 };

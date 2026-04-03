@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, {useState} from 'react';
 import {
   Text,
   View,
@@ -7,26 +7,25 @@ import {
   KeyboardAvoidingView,
   useWindowDimensions,
 } from 'react-native';
-import { useTypedSelector } from 'hooks/redux/useTypedSelector';
-import { userState } from 'shared/types/userType';
-import { styles } from 'room/styles/Room';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { SCREEN_SIZE_BREAKPOINT } from '../constants/common';
-import { useRoomForm, useTaskSelection, useRoomNavigation } from '../hooks';
-import { TabSelector } from '../components/TabSelector';
-import { CreateRoomForm } from '../components/CreateRoomForm';
-import { JoinRoomForm } from '../components/JoinRoomForm';
-import { TaskSelectionModal } from '../components/TaskSelectionModal';
+import {useTypedSelector} from 'hooks/redux/useTypedSelector';
+import {selectIsDark} from 'shared/store/selectors';
+import {styles} from 'room/styles/Room';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {SCREEN_SIZE_BREAKPOINT} from '../constants/common';
+import {useRoomForm, useTaskSelection, useRoomNavigation} from '../hooks';
+import {TabSelector} from '../components/TabSelector';
+import {CreateRoomForm} from '../components/CreateRoomForm';
+import {JoinRoomForm} from '../components/JoinRoomForm';
+import {TaskSelectionModal} from '../components/TaskSelectionModal';
 
 /**
  * Main Room screen component
  * Orchestrates room creation and joining functionality
  */
 const Room = () => {
-  const userTheme = useTypedSelector(state => state.user) as userState;
-  const isDark = userTheme.theme === 'dark';
+  const isDark = useTypedSelector(selectIsDark);
   const [activeTab, setActiveTab] = useState<'create' | 'join'>('create');
-  const { width } = useWindowDimensions();
+  const {width} = useWindowDimensions();
   const isSmallScreen = width < SCREEN_SIZE_BREAKPOINT;
 
   // Room form management
@@ -56,32 +55,33 @@ const Room = () => {
   } = useTaskSelection();
 
   // Handle navigation from external sources (LexAI, deep links)
-  useRoomNavigation(setActiveTab, setRoomCode, setLoading, (task) => {
+  useRoomNavigation(setActiveTab, setRoomCode, setLoading, task => {
     handleTaskSelect(task);
-    setMeetingRoom(prev => ({ ...prev, taskId: task.id }));
+    setMeetingRoom(prev => ({...prev, taskId: task.id}));
   });
 
   // Handle navigation from external sources (LexAI, deep links)
-  useRoomNavigation(setActiveTab, setRoomCode, setLoading, (task) => {
+  useRoomNavigation(setActiveTab, setRoomCode, setLoading, task => {
     handleTaskSelect(task);
-    setMeetingRoom(prev => ({ ...prev, taskId: task.id }));
+    setMeetingRoom(prev => ({...prev, taskId: task.id}));
   });
 
   // Handle task clear with taskId update
   const handleClearTaskWithId = () => {
     handleClearTask();
-    setMeetingRoom(prev => ({ ...prev, taskId: '' }));
+    setMeetingRoom(prev => ({...prev, taskId: ''}));
   };
 
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.screenContainer, isDark && styles.screenContainerDark]}>
+    <View
+      style={[styles.screenContainer, isDark && styles.screenContainerDark]}>
       <KeyboardAvoidingView
         style={[
           styles.container,
           isDark && styles.darkContainer,
-          { marginBottom: insets.bottom, marginTop: insets.top },
+          {marginBottom: insets.bottom, marginTop: insets.top},
         ]}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
@@ -133,9 +133,9 @@ const Room = () => {
             tasks={tasks}
             isLoading={isTasksLoading}
             selectedTask={selectedTask}
-            onTaskSelect={(task) => {
+            onTaskSelect={task => {
               handleTaskSelect(task);
-              setMeetingRoom(prev => ({ ...prev, taskId: task.id }));
+              setMeetingRoom(prev => ({...prev, taskId: task.id}));
             }}
             onRefresh={fetchTasks}
             onClose={handleCloseTaskModal}

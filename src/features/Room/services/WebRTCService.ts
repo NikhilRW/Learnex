@@ -21,6 +21,7 @@ import {
   MediaStream as RNMediaStream,
 } from 'react-native-webrtc';
 import {Platform, Alert, Linking} from 'react-native';
+import {logger} from 'shared/utils/logger';
 import {ParticipantState} from '../types';
 
 // Extend MediaStream type to include participantId
@@ -129,18 +130,20 @@ export class WebRTCService {
           : false,
       };
 
-      console.log(
+      logger.debug(
         'Getting user media with constraints:',
         JSON.stringify(constraints),
+        'WebRTCService',
       );
       const stream = await mediaDevices.getUserMedia(constraints);
 
-      console.log(
+      logger.debug(
         'Local stream initialized with tracks:',
         stream
           .getTracks()
           .map(t => `${t.kind}:${t.id} (enabled:${t.enabled})`)
           .join(', '),
+        'WebRTCService',
       );
 
       this.localStream = stream;
@@ -149,7 +152,7 @@ export class WebRTCService {
       stream.getTracks().forEach(track => {
         if (track.kind === 'video' && track.getSettings) {
           const settings = track.getSettings();
-          console.log('Video track settings:', settings);
+          logger.debug('Video track settings:', settings, 'WebRTCService');
         }
 
         // Make sure audio tracks are enabled
@@ -160,7 +163,11 @@ export class WebRTCService {
 
       return stream;
     } catch (error) {
-      console.error('WebRTCService :: initLocalStream() ::', error);
+      logger.error(
+        'WebRTCService :: initLocalStream() ::',
+        error,
+        'WebRTCService',
+      );
       throw error;
     }
   }
@@ -217,15 +224,19 @@ export class WebRTCService {
         const audioTracks = this.localStream.getAudioTracks();
         const videoTracks = this.localStream.getVideoTracks();
 
-        console.log(
+        logger.debug(
           `Adding ${audioTracks.length} audio and ${videoTracks.length} video tracks to peer connection`,
+          undefined,
+          'WebRTCService',
         );
 
         // First add audio tracks (higher priority than video)
         audioTracks.forEach(track => {
           if (this.localStream) {
-            console.log(
+            logger.debug(
               `Adding audio track: ${track.id} (enabled: ${track.enabled})`,
+              undefined,
+              'WebRTCService',
             );
             peerConnection.addTrack(track, this.localStream);
           }
@@ -234,14 +245,20 @@ export class WebRTCService {
         // Then add video tracks
         videoTracks.forEach(track => {
           if (this.localStream) {
-            console.log(
+            logger.debug(
               `Adding video track: ${track.id} (enabled: ${track.enabled})`,
+              undefined,
+              'WebRTCService',
             );
             peerConnection.addTrack(track, this.localStream);
           }
         });
       } else {
-        console.warn('No local stream available when creating peer connection');
+        logger.warn(
+          'No local stream available when creating peer connection',
+          undefined,
+          'WebRTCService',
+        );
       }
 
       // Handle ICE candidates with improved error handling
@@ -253,19 +270,29 @@ export class WebRTCService {
             this.currentMeetingId || '',
             participantId,
           ).catch(error => {
-            console.error('Error sending ICE candidate:', error);
+            logger.error(
+              'Error sending ICE candidate:',
+              error,
+              'WebRTCService',
+            );
           });
         } else {
           // Null candidate means ICE gathering is complete
-          console.log('ICE gathering complete for peer:', participantId);
+          logger.debug(
+            'ICE gathering complete for peer:',
+            participantId,
+            'WebRTCService',
+          );
         }
       };
 
       // Add handler for ICE gathering state changes
       // @ts-ignore
       peerConnection.onicegatheringstatechange = () => {
-        console.log(
+        logger.debug(
           `ICE gathering state changed to ${peerConnection.iceGatheringState} for ${participantId}`,
+          undefined,
+          'WebRTCService',
         );
       };
 
@@ -279,8 +306,10 @@ export class WebRTCService {
           remoteStream.participantId = participantId;
 
           // Log track information
-          console.log(
+          logger.debug(
             `Received remote track: ${event.track.kind} (enabled: ${event.track.enabled})`,
+            undefined,
+            'WebRTCService',
           );
 
           // Fix for Safari: explicitly enable audio tracks
@@ -297,7 +326,7 @@ export class WebRTCService {
               }
             })
             .catch(error => {
-              console.error('Error getting user info:', error);
+              logger.error('Error getting user info:', error, 'WebRTCService');
             });
 
           // Track this stream as active
@@ -305,10 +334,12 @@ export class WebRTCService {
 
           // Notify about new remote stream
           if (this.onRemoteStreamCallback) {
-            console.log(
+            logger.debug(
               `Sending remote stream to UI, track count: ${
                 remoteStream.getTracks().length
               }`,
+              undefined,
+              'WebRTCService',
             );
             this.onRemoteStreamCallback(remoteStream);
           }
@@ -318,12 +349,18 @@ export class WebRTCService {
       // Handle connection state changes with improved logging
       // @ts-ignore - TypeScript doesn't recognize these event handlers
       peerConnection.onconnectionstatechange = () => {
-        console.log(
+        logger.debug(
           `Connection state changed to ${peerConnection.connectionState} for participant ${participantId}`,
+          undefined,
+          'WebRTCService',
         );
 
         if (peerConnection.connectionState === 'connected') {
-          console.log(`Successfully connected to ${participantId}`);
+          logger.debug(
+            `Successfully connected to ${participantId}`,
+            undefined,
+            'WebRTCService',
+          );
           // Re-check that all tracks are added after connection is established
           this.ensureTracksAreAdded(peerConnection);
 
@@ -335,8 +372,10 @@ export class WebRTCService {
       // Monitor ICE connection state more closely
       // @ts-ignore
       peerConnection.oniceconnectionstatechange = () => {
-        console.log(
+        logger.debug(
           `ICE connection state changed to ${peerConnection.iceConnectionState} for ${participantId}`,
+          undefined,
+          'WebRTCService',
         );
 
         if (peerConnection.iceConnectionState === 'checking') {
@@ -349,12 +388,18 @@ export class WebRTCService {
           // Clear timer when connection is established
           this.clearIceConnectionTimer(participantId);
         } else if (peerConnection.iceConnectionState === 'disconnected') {
-          console.log('ICE disconnected, attempting recovery...');
+          logger.warn(
+            'ICE disconnected, attempting recovery...',
+            undefined,
+            'WebRTCService',
+          );
           // Check if ICE restart is needed
           this.restartIceIfNeeded(peerConnection, participantId);
         } else if (peerConnection.iceConnectionState === 'failed') {
-          console.error(
+          logger.error(
             `ICE connection failed for ${participantId}, attempting full reconnection`,
+            undefined,
+            'WebRTCService',
           );
           this.handleIceConnectionFailure(peerConnection, participantId);
         }
@@ -363,7 +408,11 @@ export class WebRTCService {
       this.peerConnections.set(participantId, peerConnection);
       return peerConnection;
     } catch (error) {
-      console.error('WebRTCService :: createPeerConnection() ::', error);
+      logger.error(
+        'WebRTCService :: createPeerConnection() ::',
+        error,
+        'WebRTCService',
+      );
       throw error;
     }
   }
@@ -378,14 +427,20 @@ export class WebRTCService {
     // Clear any existing timer first
     this.clearIceConnectionTimer(participantId);
 
-    console.log(`Starting ICE connection timer for ${participantId}`);
+    logger.debug(
+      `Starting ICE connection timer for ${participantId}`,
+      undefined,
+      'WebRTCService',
+    );
 
     // Set a new timer
     const timer = setTimeout(() => {
       // Check if the connection is still in 'checking' state after timeout
       if (peerConnection.iceConnectionState === 'checking') {
-        console.warn(
+        logger.warn(
           `ICE connection timeout for ${participantId}, trying to improve connection`,
+          undefined,
+          'WebRTCService',
         );
 
         // Try to improve the connection
@@ -428,14 +483,20 @@ export class WebRTCService {
           peerConnection.iceConnectionState !== 'completed'
         ) {
           // ICE restart didn't help, try full connection reset
-          console.warn(
+          logger.warn(
             `ICE restart didn't resolve connection issues with ${participantId}, performing full reset`,
+            undefined,
+            'WebRTCService',
           );
           this.handleIceConnectionFailure(peerConnection, participantId);
         }
       }, 5000); // Give 5 seconds for the ICE restart to take effect
     } catch (error) {
-      console.error('Error handling ICE connection timeout:', error);
+      logger.error(
+        'Error handling ICE connection timeout:',
+        error,
+        'WebRTCService',
+      );
     }
   }
 
@@ -452,8 +513,10 @@ export class WebRTCService {
       const userId = getAuth().currentUser?.uid;
       if (!userId) return;
 
-      console.log(
+      logger.debug(
         `Recreating connection with ${participantId} due to ICE failure`,
+        undefined,
+        'WebRTCService',
       );
 
       // Clean up the existing connection
@@ -475,7 +538,11 @@ export class WebRTCService {
         await this.sendReconnectMessage(this.currentMeetingId, participantId);
       }
     } catch (error) {
-      console.error('Error handling ICE connection failure:', error);
+      logger.error(
+        'Error handling ICE connection failure:',
+        error,
+        'WebRTCService',
+      );
     }
   }
 
@@ -485,11 +552,19 @@ export class WebRTCService {
   private cleanupExistingPeerConnection(participantId: string): void {
     const existingConnection = this.peerConnections.get(participantId);
     if (existingConnection) {
-      console.log(`Cleaning up existing connection for ${participantId}`);
+      logger.debug(
+        `Cleaning up existing connection for ${participantId}`,
+        undefined,
+        'WebRTCService',
+      );
       try {
         existingConnection.close();
       } catch (e) {
-        console.error('Error closing existing peer connection:', e);
+        logger.error(
+          'Error closing existing peer connection:',
+          e,
+          'WebRTCService',
+        );
       }
       this.peerConnections.delete(participantId);
       // Clear any pending ICE candidates for this participant
@@ -502,7 +577,11 @@ export class WebRTCService {
    */
   private async handlePeerDisconnection(participantId: string): Promise<void> {
     try {
-      console.log(`Peer disconnected: ${participantId}`);
+      logger.debug(
+        `Peer disconnected: ${participantId}`,
+        undefined,
+        'WebRTCService',
+      );
 
       // Close and remove peer connection
       const peerConnection = this.peerConnections.get(participantId);
@@ -535,11 +614,19 @@ export class WebRTCService {
             ),
           );
         } catch (error) {
-          console.error('Error removing participant state:', error);
+          logger.error(
+            'Error removing participant state:',
+            error,
+            'WebRTCService',
+          );
         }
       }
     } catch (error) {
-      console.error('WebRTCService :: handlePeerDisconnection() ::', error);
+      logger.error(
+        'WebRTCService :: handlePeerDisconnection() ::',
+        error,
+        'WebRTCService',
+      );
     }
   }
 
@@ -560,23 +647,31 @@ export class WebRTCService {
       }
 
       // Log connection attempt for debugging
-      console.log(
+      logger.debug(
         `Connecting to ${participantIds.length} participants in meeting ${meetingId}`,
+        undefined,
+        'WebRTCService',
       );
-      console.log('Participant IDs:', participantIds);
+      logger.debug('Participant IDs:', participantIds, 'WebRTCService');
 
       // Filter out current user and already connected peers
       const filteredParticipantIds = participantIds.filter(
         id => id !== currentUserId && !this.peerConnections.has(id),
       );
 
-      console.log(
+      logger.debug(
         `After filtering, connecting to ${filteredParticipantIds.length} participants`,
+        undefined,
+        'WebRTCService',
       );
 
       // Check if we have participants to connect to
       if (filteredParticipantIds.length === 0) {
-        console.log('No new participants to connect to');
+        logger.debug(
+          'No new participants to connect to',
+          undefined,
+          'WebRTCService',
+        );
         return;
       }
 
@@ -622,14 +717,17 @@ export class WebRTCService {
               }
             }
 
-            console.log(
+            logger.debug(
               `Successfully initiated connection to ${participantId}`,
+              undefined,
+              'WebRTCService',
             );
             return true;
           } catch (error) {
-            console.error(
+            logger.error(
               `Failed to connect to participant ${participantId}:`,
               error,
+              'WebRTCService',
             );
             // Don't throw here, allow other connections to proceed
             return false;
@@ -644,11 +742,19 @@ export class WebRTCService {
       if (this.peerConnections.size > 0) {
         this.updateConnectionState('connected');
       } else if (filteredParticipantIds.length > 0) {
-        console.warn('Failed to connect to any participants');
+        logger.warn(
+          'Failed to connect to any participants',
+          undefined,
+          'WebRTCService',
+        );
         this.updateConnectionState('failed');
       }
     } catch (error) {
-      console.error('WebRTCService :: connectToParticipants() ::', error);
+      logger.error(
+        'WebRTCService :: connectToParticipants() ::',
+        error,
+        'WebRTCService',
+      );
       this.updateConnectionState('failed');
       throw error;
     }
@@ -672,8 +778,10 @@ export class WebRTCService {
           connectionState === 'disconnected' ||
           connectionState === 'failed'
         ) {
-          console.log(
+          logger.warn(
             `Detected problematic connection with ${participantId}, state: ${connectionState}`,
+            undefined,
+            'WebRTCService',
           );
           this.handlePeerDisconnection(participantId);
 
@@ -686,7 +794,13 @@ export class WebRTCService {
                 peerConnection,
                 this.currentMeetingId,
                 participantId,
-              ).catch(e => console.error('Error recreating connection:', e));
+              ).catch(e =>
+                logger.error(
+                  'Error recreating connection:',
+                  e,
+                  'WebRTCService',
+                ),
+              );
             }
           }
         }
@@ -708,8 +822,10 @@ export class WebRTCService {
 
       // Check the signaling state before proceeding
       if (peerConnection.signalingState !== 'stable') {
-        console.log(
+        logger.warn(
           `Cannot create offer in signaling state: ${peerConnection.signalingState}`,
+          undefined,
+          'WebRTCService',
         );
         return;
       }
@@ -721,8 +837,10 @@ export class WebRTCService {
 
       // Check again before setting local description
       if (peerConnection.signalingState !== 'stable') {
-        console.log(
+        logger.warn(
           `Signaling state changed during offer creation: ${peerConnection.signalingState}`,
+          undefined,
+          'WebRTCService',
         );
         return;
       }
@@ -737,7 +855,7 @@ export class WebRTCService {
         timestamp: Date.now(),
       });
     } catch (error) {
-      console.error('WebRTCService :: createOffer() ::', error);
+      logger.error('WebRTCService :: createOffer() ::', error, 'WebRTCService');
       throw error;
     }
   }
@@ -765,7 +883,11 @@ export class WebRTCService {
         timestamp: Date.now(),
       });
     } catch (error) {
-      console.error('WebRTCService :: createAnswer() ::', error);
+      logger.error(
+        'WebRTCService :: createAnswer() ::',
+        error,
+        'WebRTCService',
+      );
       throw error;
     }
   }
@@ -780,7 +902,11 @@ export class WebRTCService {
     try {
       await peerConnection.addIceCandidate(candidate);
     } catch (error) {
-      console.error('WebRTCService :: addIceCandidate() ::', error);
+      logger.error(
+        'WebRTCService :: addIceCandidate() ::',
+        error,
+        'WebRTCService',
+      );
       throw error;
     }
   }
@@ -795,13 +921,17 @@ export class WebRTCService {
     try {
       const userId = getAuth().currentUser?.uid;
       if (!userId) {
-        console.error('Cannot listen for messages: User not authenticated');
+        logger.error(
+          'Cannot listen for messages: User not authenticated',
+          undefined,
+          'WebRTCService',
+        );
         return;
       }
 
       // Store meeting ID
       this.currentMeetingId = meetingId;
-      console.log(
+      logger.debug(
         `Setting up signaling listener for meeting ${meetingId}, user ${userId}`,
       );
 
@@ -829,15 +959,21 @@ export class WebRTCService {
           try {
             // Get new messages
             const changes = snapshot.docChanges();
-            console.log(`Received ${changes.length} signaling messages`);
+            logger.debug(
+              `Received ${changes.length} signaling messages`,
+              undefined,
+              'WebRTCService',
+            );
 
             // Process new messages
             const processedMessages: SignalingMessage[] = [];
             for (const change of changes) {
               if (change.type === 'added') {
                 const message = change.doc.data() as SignalingMessage;
-                console.log(
+                logger.debug(
                   `Processing signaling message: ${message.type} from ${message.sender}`,
+                  undefined,
+                  'WebRTCService',
                 );
 
                 // Add message to list of processed messages
@@ -872,12 +1008,20 @@ export class WebRTCService {
                     );
                   }
 
-                  console.log(`Added new participant: ${senderId}`);
+                  logger.debug(
+                    `Added new participant: ${senderId}`,
+                    undefined,
+                    'WebRTCService',
+                  );
                 }
 
                 // Delete the message after processing to avoid processing it again
                 await deleteDoc(change.doc.ref).catch(error => {
-                  console.error(`Error deleting signaling message: ${error}`);
+                  logger.error(
+                    `Error deleting signaling message: ${error}`,
+                    undefined,
+                    'WebRTCService',
+                  );
                 });
               }
             }
@@ -903,11 +1047,15 @@ export class WebRTCService {
               });
             }
           } catch (error) {
-            console.error('Error processing signaling messages:', error);
+            logger.error(
+              'Error processing signaling messages:',
+              error,
+              'WebRTCService',
+            );
           }
         },
         error => {
-          console.error('Error in signaling listener:', error);
+          logger.error('Error in signaling listener:', error, 'WebRTCService');
           const err = error as unknown as {code: string};
           // Check if this is a Firestore index error
           if (
@@ -918,20 +1066,32 @@ export class WebRTCService {
             // Handle the Firestore index error using our new helper
             this.handleFirebaseIndexError(error);
           } else {
-            console.log('ERROR DETAILS:', JSON.stringify(error));
+            logger.debug(
+              'ERROR DETAILS:',
+              JSON.stringify(error),
+              'WebRTCService',
+            );
           }
 
           // Attempt to reestablish the listener with a simplified query after a delay
           setTimeout(() => {
             if (this.currentMeetingId === meetingId) {
-              console.log('Attempting to reestablish signaling listener...');
+              logger.warn(
+                'Attempting to reestablish signaling listener...',
+                undefined,
+                'WebRTCService',
+              );
               this.listenForSignalingMessages(meetingId, onSignalingMessage);
             }
           }, 5000);
         },
       );
     } catch (error) {
-      console.error('WebRTCService :: listenForSignalingMessages() ::', error);
+      logger.error(
+        'WebRTCService :: listenForSignalingMessages() ::',
+        error,
+        'WebRTCService',
+      );
     }
   }
 
@@ -961,16 +1121,20 @@ export class WebRTCService {
               // The peer with the lower ID will win and the other will rollback
               const myUserId = getAuth().currentUser?.uid;
               if (myUserId && myUserId < sender) {
-                console.log(
+                logger.warn(
                   'Signaling collision detected. Rolling back local description.',
+                  undefined,
+                  'WebRTCService',
                 );
                 await peerConnection.setLocalDescription({
                   type: 'rollback',
                   sdp: '', // Required by RTCSessionDescriptionInit
                 });
               } else {
-                console.log(
+                logger.warn(
                   'Signaling collision detected. Expecting remote peer to rollback.',
+                  undefined,
+                  'WebRTCService',
                 );
                 return; // Wait for the remote peer to rollback and try again
               }
@@ -1006,7 +1170,7 @@ export class WebRTCService {
 
             await this.createAnswer(peerConnection, meetingId, sender);
           } catch (error) {
-            console.error('Error handling offer:', error);
+            logger.error('Error handling offer:', error, 'WebRTCService');
 
             // Attempt recovery by recreating the peer connection
             this.cleanupExistingPeerConnection(sender);
@@ -1053,12 +1217,14 @@ export class WebRTCService {
               // Process any pending ICE candidates after setting remote description
               await this.processPendingIceCandidates(sender, peerConnection);
             } else {
-              console.log(
+              logger.warn(
                 `Cannot set remote answer in state: ${peerConnection.signalingState}`,
+                undefined,
+                'WebRTCService',
               );
             }
           } catch (error) {
-            console.error('Error handling answer:', error);
+            logger.error('Error handling answer:', error, 'WebRTCService');
           }
           break;
 
@@ -1070,19 +1236,29 @@ export class WebRTCService {
                 new RTCIceCandidate(payload),
               );
             } else {
-              console.log(
+              logger.warn(
                 'Received ICE candidate but no remote description set, buffering candidate',
+                undefined,
+                'WebRTCService',
               );
               // Buffer this candidate for later
               this.bufferIceCandidate(sender, new RTCIceCandidate(payload));
             }
           } catch (error) {
-            console.error('Error handling ICE candidate:', error);
+            logger.error(
+              'Error handling ICE candidate:',
+              error,
+              'WebRTCService',
+            );
           }
           break;
       }
     } catch (error) {
-      console.error('WebRTCService :: processSignalingMessage() ::', error);
+      logger.error(
+        'WebRTCService :: processSignalingMessage() ::',
+        error,
+        'WebRTCService',
+      );
     }
   }
 
@@ -1097,7 +1273,11 @@ export class WebRTCService {
       this.pendingIceCandidates.set(participantId, []);
     }
 
-    console.log(`Buffering ICE candidate for ${participantId}`);
+    logger.debug(
+      `Buffering ICE candidate for ${participantId}`,
+      undefined,
+      'WebRTCService',
+    );
     this.pendingIceCandidates.get(participantId)?.push(candidate);
   }
 
@@ -1110,13 +1290,19 @@ export class WebRTCService {
   ): Promise<void> {
     const candidates = this.pendingIceCandidates.get(participantId);
     if (candidates && candidates.length > 0) {
-      console.log(
+      logger.debug(
         `Processing ${candidates.length} buffered ICE candidates for ${participantId}`,
+        undefined,
+        'WebRTCService',
       );
 
       const promises = candidates.map(candidate =>
         this.addIceCandidate(peerConnection, candidate).catch(err =>
-          console.error('Error adding buffered ICE candidate:', err),
+          logger.error(
+            'Error adding buffered ICE candidate:',
+            err,
+            'WebRTCService',
+          ),
         ),
       );
 
@@ -1145,7 +1331,11 @@ export class WebRTCService {
         timestamp: Date.now(),
       });
     } catch (error) {
-      console.error('WebRTCService :: sendIceCandidate() ::', error);
+      logger.error(
+        'WebRTCService :: sendIceCandidate() ::',
+        error,
+        'WebRTCService',
+      );
       throw error;
     }
   }
@@ -1233,7 +1423,11 @@ export class WebRTCService {
         {merge: true},
       );
     } catch (error) {
-      console.error('WebRTCService :: updateLocalParticipantState() ::', error);
+      logger.error(
+        'WebRTCService :: updateLocalParticipantState() ::',
+        error,
+        'WebRTCService',
+      );
       throw error;
     }
   }
@@ -1275,16 +1469,18 @@ export class WebRTCService {
           });
         },
         error => {
-          console.error(
+          logger.error(
             'WebRTCService :: Error in participant states listener:',
             error,
+            'WebRTCService',
           );
         },
       );
     } catch (error) {
-      console.error(
+      logger.error(
         'WebRTCService :: subscribeToParticipantStates() ::',
         error,
+        'WebRTCService',
       );
     }
   }
@@ -1307,7 +1503,7 @@ export class WebRTCService {
    * Stop listening for signaling messages and close all connections
    */
   async cleanup(): Promise<void> {
-    console.log('WebRTCService :: cleanup()');
+    logger.debug('WebRTCService :: cleanup()', undefined, 'WebRTCService');
 
     // Get current user ID and meeting ID for cleanup
     const userId = getAuth().currentUser?.uid;
@@ -1334,10 +1530,18 @@ export class WebRTCService {
     // Close and clean up all peer connections
     this.peerConnections.forEach((connection, participantId) => {
       try {
-        console.log(`Closing connection to ${participantId}`);
+        logger.debug(
+          `Closing connection to ${participantId}`,
+          undefined,
+          'WebRTCService',
+        );
         connection.close();
       } catch (e) {
-        console.error(`Error closing connection to ${participantId}:`, e);
+        logger.error(
+          `Error closing connection to ${participantId}:`,
+          e,
+          'WebRTCService',
+        );
       }
     });
     this.peerConnections.clear();
@@ -1353,7 +1557,7 @@ export class WebRTCService {
           track.stop();
         });
       } catch (e) {
-        console.error('Error stopping local tracks:', e);
+        logger.error('Error stopping local tracks:', e, 'WebRTCService');
       }
       this.localStream = null;
     }
@@ -1372,8 +1576,10 @@ export class WebRTCService {
 
     // Delete the current user's participant state in Firestore
     if (userId && meetingId) {
-      console.log(
+      logger.debug(
         `Deleting participant state for ${userId} in meeting ${meetingId}`,
+        undefined,
+        'WebRTCService',
       );
       try {
         await deleteDoc(
@@ -1386,7 +1592,11 @@ export class WebRTCService {
           ),
         );
       } catch (error) {
-        console.error('Error deleting participant state:', error);
+        logger.error(
+          'Error deleting participant state:',
+          error,
+          'WebRTCService',
+        );
       }
     }
 
@@ -1407,8 +1617,10 @@ export class WebRTCService {
         message.timestamp = Date.now();
       }
 
-      console.log(
+      logger.debug(
         `Sending signaling message: ${message.type} to ${message.receiver}`,
+        undefined,
+        'WebRTCService',
       );
 
       await addDoc(this.signalingCollection, {
@@ -1418,24 +1630,33 @@ export class WebRTCService {
         timestamp: serverTimestamp(),
       });
 
-      console.log(
+      logger.debug(
         `Successfully sent ${message.type} message to ${message.receiver}`,
+        undefined,
+        'WebRTCService',
       );
     } catch (error) {
-      console.error(
+      logger.error(
         `Failed to send signaling message (attempt ${retryCount + 1}):`,
         error,
+        'WebRTCService',
       );
 
       // Log detailed error information
       if (error instanceof Error) {
-        console.error(
+        logger.error(
           `Error code: ${(error as any).code}, message: ${error.message}`,
+          undefined,
+          'WebRTCService',
         );
       }
 
       if (retryCount < this.MAX_SIGNALING_RETRIES) {
-        console.log(`Retrying in ${this.RETRY_DELAY}ms...`);
+        logger.warn(
+          `Retrying in ${this.RETRY_DELAY}ms...`,
+          undefined,
+          'WebRTCService',
+        );
         await new Promise(resolve => setTimeout(resolve, this.RETRY_DELAY));
         await this.sendSignalingMessage(message, retryCount + 1);
       } else {
@@ -1450,7 +1671,11 @@ export class WebRTCService {
     newState: 'connecting' | 'connected' | 'disconnected' | 'failed',
   ): void {
     this.connectionState = newState;
-    console.log(`Connection state changed to: ${newState}`);
+    logger.debug(
+      `Connection state changed to: ${newState}`,
+      undefined,
+      'WebRTCService',
+    );
 
     if (newState === 'disconnected' || newState === 'failed') {
       this.handleDisconnection();
@@ -1468,10 +1693,10 @@ export class WebRTCService {
         this.connectionState === 'failed'
       ) {
         try {
-          console.log('Attempting to reconnect...');
+          logger.warn('Attempting to reconnect...', undefined, 'WebRTCService');
           await this.reconnect();
         } catch (error) {
-          console.error('Reconnection failed:', error);
+          logger.error('Reconnection failed:', error, 'WebRTCService');
           this.updateConnectionState('failed');
         }
       }
@@ -1488,7 +1713,11 @@ export class WebRTCService {
       const userId = getAuth().currentUser?.uid;
       if (!userId) throw new Error('User not authenticated');
 
-      console.log('Beginning reconnection process...');
+      logger.debug(
+        'Beginning reconnection process...',
+        undefined,
+        'WebRTCService',
+      );
 
       // Clean up existing connections completely
       this.peerConnections.forEach(connection => {
@@ -1521,8 +1750,10 @@ export class WebRTCService {
       const meetingData = meetingDoc.data() as any;
 
       if (meetingData?.participants) {
-        console.log(
+        logger.debug(
           `Reconnecting to ${meetingData.participants.length} participants`,
+          undefined,
+          'WebRTCService',
         );
 
         // Ensure local media stream is still valid
@@ -1530,13 +1761,18 @@ export class WebRTCService {
           !this.localStream ||
           this.localStream.getTracks().some(track => !track.enabled)
         ) {
-          console.log('Reinitializing local stream for reconnection');
+          logger.debug(
+            'Reinitializing local stream for reconnection',
+            undefined,
+            'WebRTCService',
+          );
           try {
             await this.initLocalStream();
           } catch (error) {
-            console.error(
+            logger.error(
               'Failed to reinitialize local stream during reconnection:',
               error,
+              'WebRTCService',
             );
           }
         }
@@ -1547,12 +1783,16 @@ export class WebRTCService {
           meetingData.participants,
         );
       } else {
-        console.warn('No participants found in meeting for reconnection');
+        logger.warn(
+          'No participants found in meeting for reconnection',
+          undefined,
+          'WebRTCService',
+        );
       }
 
       this.updateConnectionState('connected');
     } catch (error) {
-      console.error('Reconnection failed:', error);
+      logger.error('Reconnection failed:', error, 'WebRTCService');
       this.updateConnectionState('failed');
       throw error;
     }
@@ -1570,8 +1810,10 @@ export class WebRTCService {
       // @ts-ignore - Adding custom properties to MediaStream
       this.localStream.participantId = info.uid;
 
-      console.log(
+      logger.debug(
         `Local stream updated with participant info: ${info.displayName} (${info.email})`,
+        undefined,
+        'WebRTCService',
       );
     }
   }
@@ -1599,7 +1841,7 @@ export class WebRTCService {
       }
       return null;
     } catch (error) {
-      console.error('Error fetching user info:', error);
+      logger.error('Error fetching user info:', error, 'WebRTCService');
       return null;
     }
   }
@@ -1623,7 +1865,11 @@ export class WebRTCService {
         timestamp: Date.now(),
       });
     } catch (error) {
-      console.error('WebRTCService :: sendReconnectMessage() ::', error);
+      logger.error(
+        'WebRTCService :: sendReconnectMessage() ::',
+        error,
+        'WebRTCService',
+      );
       throw error;
     }
   }
@@ -1647,15 +1893,16 @@ export class WebRTCService {
 
   // Handle Firebase index error by displaying a more user-friendly message
   private handleFirebaseIndexError(error: any): void {
-    console.error('Firebase index error:', error);
+    logger.error('Firebase index error:', error, 'WebRTCService');
 
     // Try to extract the index creation URL if it exists
     const indexUrl = this.extractFirebaseIndexUrl(error.message || '');
 
     if (indexUrl) {
-      console.warn(
+      logger.warn(
         'Firestore query requires an index. Please create it at:',
         indexUrl,
+        'WebRTCService',
       );
 
       // On Android, we can open the URL
@@ -1744,7 +1991,11 @@ export class WebRTCService {
 
       // Only the peer with the lower ID initiates the restart to avoid conflicts
       if (userId < participantId) {
-        console.log(`Initiating ICE restart with ${participantId}`);
+        logger.debug(
+          `Initiating ICE restart with ${participantId}`,
+          undefined,
+          'WebRTCService',
+        );
 
         // Create a new offer with ICE restart flag
         const offer = await peerConnection.createOffer({
@@ -1766,7 +2017,7 @@ export class WebRTCService {
         });
       }
     } catch (error) {
-      console.error('Error during ICE restart:', error);
+      logger.error('Error during ICE restart:', error, 'WebRTCService');
     }
   }
 
@@ -1784,7 +2035,11 @@ export class WebRTCService {
 
       // If not added, add it now
       if (!isTrackAdded) {
-        console.log(`Re-adding track that was missing: ${track.kind}`);
+        logger.debug(
+          `Re-adding track that was missing: ${track.kind}`,
+          undefined,
+          'WebRTCService',
+        );
         peerConnection.addTrack(track, this.localStream!);
       }
     });
@@ -1799,14 +2054,18 @@ export class WebRTCService {
   ): Promise<void> {
     try {
       if (!newStream) {
-        console.error(
+        logger.error(
           'WebRTCService :: updateLocalStream() :: No new stream provided',
+          undefined,
+          'WebRTCService',
         );
         return;
       }
 
-      console.log(
+      logger.debug(
         'WebRTCService :: updateLocalStream() :: Updating local stream',
+        undefined,
+        'WebRTCService',
       );
 
       // Save the new local stream
@@ -1815,8 +2074,10 @@ export class WebRTCService {
       // Get current user ID
       const userId = getAuth().currentUser?.uid;
       if (!userId) {
-        console.error(
+        logger.error(
           'WebRTCService :: updateLocalStream() :: User not authenticated',
+          undefined,
+          'WebRTCService',
         );
         return;
       }
@@ -1829,8 +2090,10 @@ export class WebRTCService {
         if (peerConnection.connectionState === 'closed') continue;
 
         try {
-          console.log(
+          logger.debug(
             `Replacing tracks for peer connection with ${participantId}`,
+            undefined,
+            'WebRTCService',
           );
 
           // Get all senders from this peer connection
@@ -1843,16 +2106,32 @@ export class WebRTCService {
             );
 
             if (sender) {
-              console.log(`Replacing ${track.kind} track for ${participantId}`);
+              logger.debug(
+                `Replacing ${track.kind} track for ${participantId}`,
+                undefined,
+                'WebRTCService',
+              );
               sender
                 .replaceTrack(track)
                 .then(() =>
-                  console.log(`Successfully replaced ${track.kind} track`),
+                  logger.debug(
+                    `Successfully replaced ${track.kind} track`,
+                    undefined,
+                    'WebRTCService',
+                  ),
                 )
-                .catch(err => console.error(`Error replacing track: ${err}`));
+                .catch(err =>
+                  logger.error(
+                    `Error replacing track: ${err}`,
+                    undefined,
+                    'WebRTCService',
+                  ),
+                );
             } else {
-              console.log(
+              logger.debug(
                 `Adding new ${track.kind} track for ${participantId}`,
+                undefined,
+                'WebRTCService',
               );
               peerConnection.addTrack(track, newStream);
             }
@@ -1867,16 +2146,19 @@ export class WebRTCService {
             );
 
           if (isScreenShare) {
-            console.log(
+            logger.debug(
               `Initiating renegotiation for screen share with ${participantId}`,
+              undefined,
+              'WebRTCService',
             );
             // Create a new offer and send it
             await this.createOffer(peerConnection, meetingId, participantId);
           }
         } catch (err) {
-          console.error(
+          logger.error(
             `Error updating stream for peer ${participantId}:`,
             err,
+            'WebRTCService',
           );
         }
       }
@@ -1894,11 +2176,17 @@ export class WebRTCService {
         isAudioEnabled: newStream.getAudioTracks().some(track => track.enabled),
       });
 
-      console.log(
+      logger.debug(
         'WebRTCService :: updateLocalStream() :: Successfully updated local stream',
+        undefined,
+        'WebRTCService',
       );
     } catch (error) {
-      console.error('WebRTCService :: updateLocalStream() ::', error);
+      logger.error(
+        'WebRTCService :: updateLocalStream() ::',
+        error,
+        'WebRTCService',
+      );
       throw error;
     }
   }

@@ -14,6 +14,7 @@ import {
   FirebaseFirestoreTypes,
 } from '@react-native-firebase/firestore';
 import {Platform} from 'react-native';
+import {logger} from 'shared/utils/logger';
 
 /**
  * Manages FCM tokens for the current user, storing them in Firestore
@@ -45,7 +46,11 @@ export class FCMTokenManager {
     try {
       const currentUser = getAuth().currentUser;
       if (!currentUser) {
-        console.error('Cannot save FCM token: No user is logged in');
+        logger.error(
+          'Cannot save FCM token: No user is logged in',
+          undefined,
+          'FCMTokenManager',
+        );
         return false;
       }
 
@@ -78,10 +83,14 @@ export class FCMTokenManager {
       const tokenId = `${userId}_${token.substring(token.length - 12)}`;
 
       await setDoc(doc(this.tokensCollection, tokenId), tokenDoc);
-      console.log('FCM token saved to Firestore');
+      logger.debug(
+        'FCM token saved to Firestore',
+        undefined,
+        'FCMTokenManager',
+      );
       return true;
     } catch (error) {
-      console.error('Error saving FCM token:', error);
+      logger.error('Error saving FCM token', error, 'FCMTokenManager');
       return false;
     }
   }
@@ -98,7 +107,11 @@ export class FCMTokenManager {
     try {
       const currentUser = getAuth().currentUser;
       if (!currentUser) {
-        console.log('No user logged in to update FCM token status');
+        logger.debug(
+          'No user logged in to update FCM token status',
+          undefined,
+          'FCMTokenManager',
+        );
         return false;
       }
 
@@ -110,10 +123,18 @@ export class FCMTokenManager {
         updatedAt: serverTimestamp(),
       });
 
-      console.log('FCM token marked as inactive');
+      logger.debug(
+        'FCM token marked as inactive',
+        undefined,
+        'FCMTokenManager',
+      );
       return true;
     } catch (error) {
-      console.error('Error marking FCM token as inactive:', error);
+      logger.error(
+        'Error marking FCM token as inactive',
+        error,
+        'FCMTokenManager',
+      );
       return false;
     }
   }
@@ -130,7 +151,11 @@ export class FCMTokenManager {
     try {
       const currentUser = getAuth().currentUser;
       if (!currentUser) {
-        console.log('No user logged in to remove FCM token for');
+        logger.debug(
+          'No user logged in to remove FCM token for',
+          undefined,
+          'FCMTokenManager',
+        );
         return false;
       }
 
@@ -138,10 +163,14 @@ export class FCMTokenManager {
       const tokenId = `${userId}_${token.substring(token.length - 12)}`;
 
       await deleteDoc(doc(this.tokensCollection, tokenId));
-      console.log('FCM token removed from Firestore');
+      logger.debug(
+        'FCM token removed from Firestore',
+        undefined,
+        'FCMTokenManager',
+      );
       return true;
     } catch (error) {
-      console.error('Error removing FCM token:', error);
+      logger.error('Error removing FCM token', error, 'FCMTokenManager');
       return false;
     }
   }
@@ -157,7 +186,11 @@ export class FCMTokenManager {
     try {
       const currentUser = getAuth().currentUser;
       if (!currentUser) {
-        console.log('No user logged in to remove FCM tokens for');
+        logger.debug(
+          'No user logged in to remove FCM tokens for',
+          undefined,
+          'FCMTokenManager',
+        );
         return false;
       }
 
@@ -170,7 +203,11 @@ export class FCMTokenManager {
       );
 
       if (snapshot.empty) {
-        console.log('No FCM tokens found for this user');
+        logger.debug(
+          'No FCM tokens found for this user',
+          undefined,
+          'FCMTokenManager',
+        );
         return true;
       }
 
@@ -181,10 +218,14 @@ export class FCMTokenManager {
 
       // Commit the batch delete
       await batch.commit();
-      console.log(`Removed ${snapshot.size} FCM tokens for the user`);
+      logger.debug(
+        `Removed ${snapshot.size} FCM tokens for the user`,
+        undefined,
+        'FCMTokenManager',
+      );
       return true;
     } catch (error) {
-      console.error('Error removing all FCM tokens:', error);
+      logger.error('Error removing all FCM tokens', error, 'FCMTokenManager');
       return false;
     }
   }

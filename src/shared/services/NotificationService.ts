@@ -34,6 +34,7 @@ import {Task} from '../types/taskTypes';
 import {PushNotificationHandler} from '../utils/PushNotificationHandler';
 import {FCMTokenManager} from '../utils/FCMTokenManager';
 import {NotificationPreferences} from '../types/firebase';
+import {logger} from 'shared/utils/logger';
 
 // Channel ID for direct messages
 const DM_CHANNEL_ID = 'direct_messages';
@@ -92,15 +93,18 @@ export class NotificationService {
       if (storedIds) {
         const idsArray = JSON.parse(storedIds);
         this.processedMessageIds = new Set(idsArray);
-        console.log(
+        logger.debug(
           `Loaded ${this.processedMessageIds.size} processed message IDs from storage`,
+          undefined,
+          'NotificationService',
         );
       }
       this.hasLoadedProcessedMessages = true;
     } catch (error) {
-      console.error(
-        'Failed to load processed message IDs from storage:',
+      logger.error(
+        'Failed to load processed message IDs from storage',
         error,
+        'NotificationService',
       );
       this.hasLoadedProcessedMessages = true;
     }
@@ -124,7 +128,11 @@ export class NotificationService {
         JSON.stringify(recentIds),
       );
     } catch (error) {
-      console.error('Failed to save processed message IDs to storage:', error);
+      logger.error(
+        'Failed to save processed message IDs to storage',
+        error,
+        'NotificationService',
+      );
     }
   }
 
@@ -172,14 +180,22 @@ export class NotificationService {
       // Request permissions
       const hasPermission = await PushNotificationHandler.checkPermissions();
       if (!hasPermission) {
-        console.log('Push notification permissions not granted');
+        logger.warn(
+          'Push notification permissions not granted',
+          undefined,
+          'NotificationService',
+        );
         return false;
       }
 
       // Register with FCM
       this.fcmToken = await PushNotificationHandler.register();
       if (!this.fcmToken) {
-        console.log('Failed to get FCM token');
+        logger.warn(
+          'Failed to get FCM token',
+          undefined,
+          'NotificationService',
+        );
         return false;
       }
 
@@ -194,7 +210,7 @@ export class NotificationService {
 
       return true;
     } catch (error) {
-      console.error('Failed to initialize FCM:', error);
+      logger.error('Failed to initialize FCM', error, 'NotificationService');
       return false;
     }
   }
@@ -204,7 +220,7 @@ export class NotificationService {
    */
   private setupTokenRefreshListener(): void {
     onTokenRefresh(getMessaging(), async (token: string) => {
-      console.log('FCM token refreshed:', token);
+      logger.debug('FCM token refreshed', token, 'NotificationService');
       this.fcmToken = token;
       await FCMTokenManager.saveToken(token);
     });
@@ -267,7 +283,11 @@ export class NotificationService {
         });
       }
     } catch (err) {
-      console.error('Failed to create notification channels:', err);
+      logger.error(
+        'Failed to create notification channels',
+        err,
+        'NotificationService',
+      );
     }
   }
 
@@ -280,7 +300,11 @@ export class NotificationService {
 
     // If service is already running, don't start another one
     if (this.isServiceRunning) {
-      console.log('Persistent service already running, skipping restart');
+      logger.debug(
+        'Persistent service already running, skipping restart',
+        undefined,
+        'NotificationService',
+      );
       return;
     }
 
@@ -374,9 +398,17 @@ export class NotificationService {
       );
 
       this.isServiceRunning = true;
-      console.log('Persistent service started with foreground notification');
+      logger.debug(
+        'Persistent service started with foreground notification',
+        undefined,
+        'NotificationService',
+      );
     } catch (err) {
-      console.error('Failed to start persistent service:', err);
+      logger.error(
+        'Failed to start persistent service',
+        err,
+        'NotificationService',
+      );
       this.isServiceRunning = false;
       throw err; // rethrow to allow caller to handle
     }
@@ -403,9 +435,17 @@ export class NotificationService {
 
       await notifee.stopForegroundService();
       this.isServiceRunning = false;
-      console.log('Persistent service stopped');
+      logger.debug(
+        'Persistent service stopped',
+        undefined,
+        'NotificationService',
+      );
     } catch (err) {
-      console.error('Failed to stop persistent service:', err);
+      logger.error(
+        'Failed to stop persistent service',
+        err,
+        'NotificationService',
+      );
     }
   }
 
@@ -416,7 +456,11 @@ export class NotificationService {
   setupMessageListener(): void {
     const currentUser = getAuth().currentUser;
     if (!currentUser) {
-      console.warn('Cannot setup message listener: User not logged in');
+      logger.warn(
+        'Cannot setup message listener: User not logged in',
+        undefined,
+        'NotificationService',
+      );
       return;
     }
 
@@ -429,7 +473,11 @@ export class NotificationService {
     // Start the persistent service to help with Xiaomi/POCO devices
     // Place this after we confirm we have a logged-in user
     this.startPersistentService().catch(err => {
-      console.error('Failed to start persistent service:', err);
+      logger.error(
+        'Failed to start persistent service',
+        err,
+        'NotificationService',
+      );
       // Try again with a delay
       setTimeout(() => this.startPersistentService(), 2000);
     });
@@ -461,8 +509,10 @@ export class NotificationService {
 
                 // Skip if this message has already been processed
                 if (await this.hasProcessedMessage(messageId)) {
-                  console.log(
+                  logger.debug(
                     `Skipping already processed message: ${messageId}`,
+                    undefined,
+                    'NotificationService',
                   );
                   continue;
                 }
@@ -501,11 +551,19 @@ export class NotificationService {
 
           // Process the changes and catch any errors
           processChanges().catch(error => {
-            console.error('Error processing message changes:', error);
+            logger.error(
+              'Error processing message changes',
+              error,
+              'NotificationService',
+            );
           });
         },
         error => {
-          console.error('Error listening for new messages:', error);
+          logger.error(
+            'Error listening for new messages',
+            error,
+            'NotificationService',
+          );
           // Try to reestablish the listener after a short delay
           setTimeout(() => this.setupMessageListener(), 5000);
         },
@@ -514,7 +572,11 @@ export class NotificationService {
       // Store the unsubscribe function
       this.messageListeners[userId] = unsubscribe;
     } catch (error) {
-      console.error('Failed to set up message listener:', error);
+      logger.error(
+        'Failed to set up message listener',
+        error,
+        'NotificationService',
+      );
       // Try again with a delay
       setTimeout(() => this.setupMessageListener(), 5000);
     }
@@ -579,8 +641,10 @@ export class NotificationService {
         !forceNotify &&
         (await this.hasProcessedMessage(notificationDedupeId))
       ) {
-        console.log(
+        logger.debug(
           `Skipping already processed notification for message: ${notificationDedupeId}`,
+          undefined,
+          'NotificationService',
         );
         return false;
       }
@@ -601,12 +665,16 @@ export class NotificationService {
         : `message_${conversationId}_${Date.now()}`;
 
       // Log notification creation for debugging
-      console.log('Creating notification for message:', {
-        notificationId,
-        conversationId,
-        senderId,
-        isQrInitiated: forceNotify,
-      });
+      logger.debug(
+        'Creating notification for message',
+        {
+          notificationId,
+          conversationId,
+          senderId,
+          isQrInitiated: forceNotify,
+        },
+        'NotificationService',
+      );
 
       // Create the notification
       await notifee.displayNotification({
@@ -648,7 +716,11 @@ export class NotificationService {
 
       return true;
     } catch (err) {
-      console.error('Failed to display message notification:', err);
+      logger.error(
+        'Failed to display message notification',
+        err,
+        'NotificationService',
+      );
       if (Platform.OS === 'android') {
         ToastAndroid.show(String(err), ToastAndroid.LONG);
       }
@@ -681,8 +753,10 @@ export class NotificationService {
 
             // Add the message ID to processed list if available
             if (data.messageId && typeof data.messageId === 'string') {
-              console.log(
+              logger.debug(
                 `Adding clicked message to processed list: ${data.messageId}`,
+                undefined,
+                'NotificationService',
               );
               await this.markMessageAsProcessed(data.messageId);
             }
@@ -692,8 +766,10 @@ export class NotificationService {
               const {
                 DeepLinkHandler,
               } = require('../navigation/DeepLinkHandler');
-              console.log(
+              logger.debug(
                 'Navigating to chat from foreground notification via DeepLinkHandler',
+                undefined,
+                'NotificationService',
               );
 
               DeepLinkHandler.navigate('Chat', {
@@ -704,7 +780,11 @@ export class NotificationService {
                 isQrInitiated: false,
               });
             } catch (error) {
-              console.log('Falling back to direct navigation', error);
+              logger.warn(
+                'Falling back to direct navigation',
+                error,
+                'NotificationService',
+              );
 
               // Fallback to direct navigation if DeepLinkHandler fails
               navigation.navigate('Chat', {
@@ -738,19 +818,27 @@ export class NotificationService {
           // Extract message ID if available and add to processed messages
           const messageId = data.messageId;
           if (messageId && typeof messageId === 'string') {
-            console.log(
+            logger.debug(
               `Adding clicked message to processed list: ${messageId}`,
+              undefined,
+              'NotificationService',
             );
             await this.markMessageAsProcessed(messageId);
           }
 
           // Try to navigate to the conversation using DeepLinkHandler
           try {
-            const {DeepLinkHandler} = require('shared/services/DeepLinkHandler');
-            console.log('Navigating to chat from Notifee background event:', {
-              conversationId: data.conversationId,
-              senderId: data.senderId,
-            });
+            const {
+              DeepLinkHandler,
+            } = require('shared/services/DeepLinkHandler');
+            logger.debug(
+              'Navigating to chat from Notifee background event',
+              {
+                conversationId: data.conversationId,
+                senderId: data.senderId,
+              },
+              'NotificationService',
+            );
 
             // Use DeepLinkHandler to navigate
             DeepLinkHandler.navigate('Chat', {
@@ -761,9 +849,10 @@ export class NotificationService {
               isQrInitiated: false,
             });
           } catch (error) {
-            console.error(
-              'Error navigating from Notifee background event:',
+            logger.error(
+              'Error navigating from Notifee background event',
               error,
+              'NotificationService',
             );
           }
 
@@ -801,7 +890,11 @@ export class NotificationService {
       const prefs = prefsDoc.data() as NotificationPreferences;
       return prefs?.mutedRecipients?.includes(recipientId) ?? false;
     } catch (error) {
-      console.error('Error checking if recipient is muted:', error);
+      logger.error(
+        'Error checking if recipient is muted',
+        error,
+        'NotificationService',
+      );
       return false;
     }
   }
@@ -841,7 +934,7 @@ export class NotificationService {
 
       return true;
     } catch (error) {
-      console.error('Error muting recipient:', error);
+      logger.error('Error muting recipient', error, 'NotificationService');
       return false;
     }
   }
@@ -873,7 +966,7 @@ export class NotificationService {
 
       return true;
     } catch (error) {
-      console.error('Error unmuting recipient:', error);
+      logger.error('Error unmuting recipient', error, 'NotificationService');
       return false;
     }
   }
@@ -904,22 +997,23 @@ export class NotificationService {
    */
   async scheduleTaskNotification(task: Task): Promise<string | null> {
     try {
-      console.log(
-        'Attempting to schedule notification for task:',
-        task.id,
-        task.title,
+      logger.debug(
+        'Attempting to schedule notification for task',
+        {id: task.id, title: task.title},
+        'NotificationService',
       );
 
       // If task doesn't have notify enabled or doesn't have a valid date/time, don't schedule
       if (!task.notify || !task.dueDate || !task.dueTime) {
-        console.log(
-          'Task missing required notification fields:',
-          JSON.stringify({
+        logger.warn(
+          'Task missing required notification fields',
+          {
             id: task.id,
             notify: task.notify,
             dueDate: task.dueDate,
             dueTime: task.dueTime,
-          }),
+          },
+          'NotificationService',
         );
         return null;
       }
@@ -932,17 +1026,19 @@ export class NotificationService {
         .split(':')
         .map(num => parseInt(num, 10));
 
-      console.log('Parsed date/time components:', {
-        year,
-        month,
-        day,
-        hours,
-        minutes,
-      });
+      logger.debug(
+        'Parsed date/time components',
+        {year, month, day, hours, minutes},
+        'NotificationService',
+      );
 
       // Create a local Date object solely for displaying logs
       const dateForLogging = new Date(year, month - 1, day, hours, minutes, 0);
-      console.log('Due date for logging:', dateForLogging.toString());
+      logger.debug(
+        'Due date for logging',
+        dateForLogging.toString(),
+        'NotificationService',
+      );
 
       // Calculate the timestamp directly using Indian time (UTC+5:30)
       // Create timestamp using a direct calculation approach
@@ -959,28 +1055,36 @@ export class NotificationService {
 
       // Get the Unix timestamp in milliseconds
       const dueTimestamp = date.getTime();
-      console.log('Calculated due timestamp:', dueTimestamp);
+      logger.debug(
+        'Calculated due timestamp',
+        dueTimestamp,
+        'NotificationService',
+      );
 
       // Get current timestamp for comparison
       const nowTimestamp = Date.now();
-      console.log('Current timestamp:', nowTimestamp);
+      logger.debug('Current timestamp', nowTimestamp, 'NotificationService');
 
       // Validate if the timestamp is in the future
       if (isNaN(dueTimestamp)) {
-        console.warn('Invalid timestamp calculated for task:', task.id);
+        logger.warn(
+          'Invalid timestamp calculated for task',
+          task.id,
+          'NotificationService',
+        );
         return null;
       }
 
       if (dueTimestamp <= nowTimestamp) {
-        console.warn(
-          'Task due time is in the past:',
-          task.id,
-          'Due timestamp:',
-          dueTimestamp,
-          'Current timestamp:',
-          nowTimestamp,
-          'Difference in minutes:',
-          (nowTimestamp - dueTimestamp) / (1000 * 60),
+        logger.warn(
+          'Task due time is in the past',
+          {
+            taskId: task.id,
+            dueTimestamp,
+            nowTimestamp,
+            diffMinutes: (nowTimestamp - dueTimestamp) / (1000 * 60),
+          },
+          'NotificationService',
         );
         return null;
       }
@@ -997,11 +1101,15 @@ export class NotificationService {
             : undefined,
       };
 
-      console.log('Scheduling notification for timestamp:', dueTimestamp);
-      console.log(
-        'Time until notification:',
+      logger.debug(
+        'Scheduling notification for timestamp',
+        dueTimestamp,
+        'NotificationService',
+      );
+      logger.debug(
+        'Time until notification (seconds)',
         (dueTimestamp - nowTimestamp) / 1000,
-        'seconds',
+        'NotificationService',
       );
 
       // Schedule the notification with the trigger
@@ -1039,10 +1147,18 @@ export class NotificationService {
         trigger,
       );
 
-      console.log('Task notification scheduled with ID:', notificationId);
+      logger.debug(
+        'Task notification scheduled with ID',
+        notificationId,
+        'NotificationService',
+      );
       return notificationId;
     } catch (error) {
-      console.error('Failed to schedule task notification:', error);
+      logger.error(
+        'Failed to schedule task notification',
+        error,
+        'NotificationService',
+      );
       return null;
     }
   }
@@ -1058,7 +1174,11 @@ export class NotificationService {
         await notifee.cancelNotification(notificationId);
       }
     } catch (error) {
-      console.error('Failed to cancel task notification:', error);
+      logger.error(
+        'Failed to cancel task notification',
+        error,
+        'NotificationService',
+      );
     }
   }
 
@@ -1068,8 +1188,10 @@ export class NotificationService {
   setupTaskNotificationListener(): void {
     const currentUser = getAuth().currentUser;
     if (!currentUser) {
-      console.warn(
+      logger.warn(
         'Cannot setup task notification listener: User not logged in',
+        undefined,
+        'NotificationService',
       );
       return;
     }
@@ -1078,7 +1200,11 @@ export class NotificationService {
     this.removeTaskListener();
 
     const userId = currentUser.uid;
-    console.log('Setting up task notification listener for user:', userId);
+    logger.debug(
+      'Setting up task notification listener for user',
+      userId,
+      'NotificationService',
+    );
 
     try {
       // Listen for tasks that have notifications enabled and are not completed
@@ -1096,56 +1222,68 @@ export class NotificationService {
       const unsubscribe = onSnapshot(
         tasksQuery,
         async (snapshot: FirebaseFirestoreTypes.QuerySnapshot<Task>) => {
-          console.log(
-            `Task snapshot received with ${
-              snapshot.docChanges().length
-            } changes`,
+          logger.debug(
+            `Task snapshot received with ${snapshot.docChanges().length} changes`,
+            undefined,
+            'NotificationService',
           );
 
           (
             snapshot.docChanges() as FirebaseFirestoreTypes.DocumentChange<Task>[]
           ).forEach(async change => {
             const task = {...change.doc.data()} as Task;
-            console.log(
+            logger.debug(
               `Task change detected: ${change.type} - Task: ${task.id}, ${task.title}`,
+              undefined,
+              'NotificationService',
             );
 
             if (change.type === 'added' || change.type === 'modified') {
               // If task already has a notification, cancel it first
               if (task.notificationId) {
-                console.log(
+                logger.debug(
                   `Cancelling existing notification for task: ${task.id}`,
+                  undefined,
+                  'NotificationService',
                 );
                 await this.cancelTaskNotification(task.notificationId);
               }
 
               // Schedule a new notification if task is not completed
               if (!task.completed) {
-                console.log(
+                logger.debug(
                   `Scheduling notification for task: ${task.id}, ${task.title}`,
+                  undefined,
+                  'NotificationService',
                 );
                 const notificationId =
                   await this.scheduleTaskNotification(task);
 
                 // Update the task with the new notification ID
                 if (notificationId) {
-                  console.log(
+                  logger.debug(
                     `Updating task with new notification ID: ${notificationId}`,
+                    undefined,
+                    'NotificationService',
                   );
                   await updateDoc(doc(getFirestore(), 'tasks', task.id), {
                     notificationId: notificationId,
                   });
                 } else {
-                  console.warn(
+                  logger.warn(
                     `Failed to schedule notification for task: ${task.id}`,
+                    undefined,
+                    'NotificationService',
                   );
                 }
               }
             } else if (change.type === 'removed') {
               // If task is deleted, cancel its notification
               if (task.notificationId) {
-                console.log(
+                logger.debug(
                   `Cancelling notification for deleted task: ${task.id}`,
+                  undefined,
+                  'NotificationService',
                 );
                 await this.cancelTaskNotification(task.notificationId);
               }
@@ -1153,7 +1291,11 @@ export class NotificationService {
           });
         },
         error => {
-          console.error('Error listening for task notifications:', error);
+          logger.error(
+            'Error listening for task notifications',
+            error,
+            'NotificationService',
+          );
           // Try to reestablish the listener after a delay
           setTimeout(() => this.setupTaskNotificationListener(), 5000);
         },
@@ -1161,9 +1303,17 @@ export class NotificationService {
 
       // Store the unsubscribe function
       this.taskListeners[userId] = unsubscribe;
-      console.log('Task notification listener setup complete');
+      logger.debug(
+        'Task notification listener setup complete',
+        undefined,
+        'NotificationService',
+      );
     } catch (error) {
-      console.error('Failed to set up task notification listener:', error);
+      logger.error(
+        'Failed to set up task notification listener',
+        error,
+        'NotificationService',
+      );
       // Try again with a delay
       setTimeout(() => this.setupTaskNotificationListener(), 5000);
     }
@@ -1190,8 +1340,10 @@ export class NotificationService {
         // We don't remove the token from Firestore anymore to ensure
         // notifications can still be received when the app is closed
         // Previously: await FCMTokenManager.removeToken(this.fcmToken);
-        console.log(
+        logger.debug(
           'FCM token preserved in Firestore for background notifications',
+          undefined,
+          'NotificationService',
         );
 
         // Don't unregister or delete the token
@@ -1201,7 +1353,7 @@ export class NotificationService {
         this.fcmToken = null;
       }
     } catch (error) {
-      console.error('Error cleaning up FCM:', error);
+      logger.error('Error cleaning up FCM', error, 'NotificationService');
     }
   }
 }

@@ -16,6 +16,7 @@ import {
   FirebaseFirestoreTypes,
 } from '@react-native-firebase/firestore';
 import {LexAIConversation} from 'lex-ai/types/lexAITypes';
+import {logger} from 'shared/utils/logger';
 
 /**
  * Service class to handle LexAI data storage in Firestore.
@@ -52,7 +53,11 @@ export class LexAIFirestoreService {
         conversationWithUser,
       );
     } catch (error) {
-      console.error('Error saving LexAI conversation to Firestore:', error);
+      logger.error(
+        'Error saving LexAI conversation to Firestore:',
+        error,
+        'LexAIFirestoreService',
+      );
       throw error;
     }
   }
@@ -87,7 +92,11 @@ export class LexAIFirestoreService {
         } as LexAIConversation;
       });
     } catch (error) {
-      console.error('Error loading LexAI conversations from Firestore:', error);
+      logger.error(
+        'Error loading LexAI conversations from Firestore:',
+        error,
+        'LexAIFirestoreService',
+      );
       return [];
     }
   }
@@ -110,8 +119,13 @@ export class LexAIFirestoreService {
       if (docSnap.exists) {
         const data = docSnap.data();
         // Verify ownership
+        // TODO:FIX:See the typescript error
         if (data?.userId !== userId) {
-          console.warn('Unauthorized access to conversation');
+          logger.warn(
+            'Unauthorized access to conversation',
+            undefined,
+            'LexAIFirestoreService',
+          );
           return null;
         }
 
@@ -126,7 +140,11 @@ export class LexAIFirestoreService {
       }
       return null;
     } catch (error) {
-      console.error('Error getting LexAI conversation from Firestore:', error);
+      logger.error(
+        'Error getting LexAI conversation from Firestore:',
+        error,
+        'LexAIFirestoreService',
+      );
       return null;
     }
   }
@@ -154,7 +172,11 @@ export class LexAIFirestoreService {
 
       await deleteDoc(doc(this.conversationsCollection, conversationId));
     } catch (error) {
-      console.error('Error deleting LexAI conversation from Firestore:', error);
+      logger.error(
+        'Error deleting LexAI conversation from Firestore:',
+        error,
+        'LexAIFirestoreService',
+      );
       throw error;
     }
   }
@@ -178,7 +200,11 @@ export class LexAIFirestoreService {
       }
       return null;
     } catch (error) {
-      console.error('Error getting active LexAI conversation ID:', error);
+      logger.error(
+        'Error getting active LexAI conversation ID:',
+        error,
+        'LexAIFirestoreService',
+      );
       return null;
     }
   }
@@ -199,7 +225,11 @@ export class LexAIFirestoreService {
         updatedAt: serverTimestamp(),
       });
     } catch (error) {
-      console.error('Error setting active LexAI conversation ID:', error);
+      logger.error(
+        'Error setting active LexAI conversation ID:',
+        error,
+        'LexAIFirestoreService',
+      );
       throw error;
     }
   }

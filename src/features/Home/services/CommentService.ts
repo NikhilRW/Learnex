@@ -17,6 +17,7 @@ import {
 } from '@react-native-firebase/firestore';
 import {FirestoreComment, AddCommentResponse} from '@/features/Home/types/post';
 import {convertFirestoreComment} from 'shared/services/utils';
+import {logger} from 'shared/utils/logger';
 
 export class CommentService {
   async addComment(postId: string, text: string): Promise<AddCommentResponse> {
@@ -104,7 +105,7 @@ export class CommentService {
         comment: convertFirestoreComment(firestoreComment),
       };
     } catch (error) {
-      console.error('Error in addComment:', error);
+      logger.error('Error in addComment:', error, 'CommentService');
       return {success: false, error: 'Failed to add comment'};
     }
   }
@@ -118,8 +119,10 @@ export class CommentService {
     parentCommentRef?: FirebaseFirestoreTypes.DocumentReference;
   } | null> {
     try {
-      console.log(
+      logger.debug(
         `Finding comment location for postId: ${postId}, commentId: ${commentId}`,
+        undefined,
+        'CommentService',
       );
       const db = getFirestore();
       const postRef = doc(db, 'posts', postId);
@@ -127,7 +130,11 @@ export class CommentService {
       // Check if post exists
       const postDoc = await getDoc(postRef);
       if (!postDoc.exists()) {
-        console.error(`Post with ID ${postId} does not exist`);
+        logger.error(
+          `Post with ID ${postId} does not exist`,
+          undefined,
+          'CommentService',
+        );
         return null;
       }
 
@@ -136,7 +143,11 @@ export class CommentService {
       const commentDoc = await getDoc(commentRef);
 
       if (commentDoc.exists()) {
-        console.log(`Found main comment with ID ${commentId}`);
+        logger.debug(
+          `Found main comment with ID ${commentId}`,
+          undefined,
+          'CommentService',
+        );
         return {
           type: 'main',
           commentRef,
@@ -144,14 +155,18 @@ export class CommentService {
       }
 
       // If not found as main comment, search in replies
-      console.log(
+      logger.debug(
         `Comment ${commentId} not found as main comment, searching in replies...`,
+        undefined,
+        'CommentService',
       );
 
       // Get all main comments
       const commentsSnapshot = await getDocs(collection(postRef, 'comments'));
-      console.log(
+      logger.debug(
         `Found ${commentsSnapshot.size} main comments to search through`,
+        undefined,
+        'CommentService',
       );
 
       // Improved reply search - iterate through each main comment and check its replies collection
@@ -163,8 +178,10 @@ export class CommentService {
         const replyDoc = await getDoc(replyRef);
 
         if (replyDoc.exists()) {
-          console.log(
+          logger.debug(
             `Found reply with ID ${commentId} under main comment ${mainComment.id}`,
+            undefined,
+            'CommentService',
           );
           return {
             type: 'reply',
@@ -174,10 +191,14 @@ export class CommentService {
         }
       }
 
-      console.error(`Comment ${commentId} not found as main comment or reply`);
+      logger.error(
+        `Comment ${commentId} not found as main comment or reply`,
+        undefined,
+        'CommentService',
+      );
       return null;
     } catch (error) {
-      console.error('Error in findCommentLocation:', error);
+      logger.error('Error in findCommentLocation:', error, 'CommentService');
       return null;
     }
   }
@@ -221,7 +242,7 @@ export class CommentService {
 
       return {success: true, liked: !isLiked};
     } catch (error) {
-      console.error('Error in likeComment:', error);
+      logger.error('Error in likeComment:', error, 'CommentService');
       return {success: false, error: 'Failed to update like status'};
     }
   }
@@ -265,7 +286,7 @@ export class CommentService {
 
       return {success: true};
     } catch (error) {
-      console.error('Error in editComment:', error);
+      logger.error('Error in editComment:', error, 'CommentService');
       return {success: false, error: 'Failed to edit comment'};
     }
   }
@@ -343,7 +364,7 @@ export class CommentService {
       await batch.commit();
       return {success: true};
     } catch (error) {
-      console.error('Error in deleteComment:', error);
+      logger.error('Error in deleteComment:', error, 'CommentService');
       return {success: false, error: 'Failed to delete comment'};
     }
   }
@@ -354,11 +375,15 @@ export class CommentService {
     text: string,
   ): Promise<{success: boolean; reply?: any; error?: string}> {
     try {
-      console.log('Adding reply:', {postId, parentCommentId, text});
+      logger.debug(
+        'Adding reply:',
+        {postId, parentCommentId, text},
+        'CommentService',
+      );
 
       const currentUser = getAuth().currentUser;
       if (!currentUser) {
-        console.log('No authenticated user found');
+        logger.warn('No authenticated user found', undefined, 'CommentService');
         return {success: false, error: 'User not authenticated'};
       }
 
@@ -367,7 +392,11 @@ export class CommentService {
       const postRef = doc(db, 'posts', postId);
       const postDoc = await getDoc(postRef);
       if (!postDoc.exists()) {
-        console.error(`Post with ID ${postId} does not exist`);
+        logger.error(
+          `Post with ID ${postId} does not exist`,
+          undefined,
+          'CommentService',
+        );
         return {success: false, error: 'Post not found'};
       }
 
@@ -379,8 +408,10 @@ export class CommentService {
       const parentCommentDoc = await getDoc(parentCommentRef);
 
       if (!parentCommentDoc.exists()) {
-        console.error(
+        logger.error(
           `Parent comment with ID ${parentCommentId} does not exist`,
+          undefined,
+          'CommentService',
         );
         return {success: false, error: 'Parent comment not found'};
       }
@@ -389,7 +420,11 @@ export class CommentService {
       const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
 
       if (!userDoc.exists()) {
-        console.log('User data not found for ID:', currentUser.uid);
+        logger.error(
+          'User data not found for ID:',
+          currentUser.uid,
+          'CommentService',
+        );
         return {success: false, error: 'User data not found'};
       }
 
@@ -400,7 +435,11 @@ export class CommentService {
         username = currentUser.email.split('@')[0];
       }
       if (!username) {
-        console.log('Invalid user data, no username available:', userData);
+        logger.error(
+          'Invalid user data, no username available:',
+          userData,
+          'CommentService',
+        );
         return {success: false, error: 'Invalid user data: username missing'};
       }
 
@@ -424,7 +463,7 @@ export class CommentService {
         editedAt: null,
       };
 
-      console.log('Creating reply with data:', replyData);
+      logger.debug('Creating reply with data:', replyData, 'CommentService');
 
       // Use a batch to ensure atomic operations
       const batch = getFirestore().batch();
@@ -446,7 +485,11 @@ export class CommentService {
 
       // Commit the batch
       await batch.commit();
-      console.log('Reply created successfully with ID:', replyRef.id);
+      logger.debug(
+        'Reply created successfully with ID:',
+        replyRef.id,
+        'CommentService',
+      );
 
       // Return the reply with its ID and a fixed timestamp
       const reply = {
@@ -465,7 +508,7 @@ export class CommentService {
 
       return {success: true, reply};
     } catch (error) {
-      console.error('Error in addReply:', error);
+      logger.error('Error in addReply:', error, 'CommentService');
       return {
         success: false,
         error:
@@ -528,7 +571,7 @@ export class CommentService {
 
       return comments;
     } catch (error) {
-      console.error('Error getting comments:', error);
+      logger.error('Error getting comments:', error, 'CommentService');
       return [];
     }
   }

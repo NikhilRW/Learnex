@@ -1,11 +1,12 @@
-import React from 'react';
-import { View, Image, Text, TouchableOpacity } from 'react-native';
+import React, {memo} from 'react';
+import {View, Text, TouchableOpacity} from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
-import { Avatar } from 'react-native-elements';
-import { getUsernameForLogo } from 'shared/helpers/common/stringHelpers';
-import { PostHeaderProps } from '../../types';
+import {Avatar} from 'react-native-elements';
+import {getUsernameForLogo} from 'shared/helpers/common/stringHelpers';
+import CachedImage from 'shared/components/CachedImage';
+import {PostHeaderProps} from '../../types';
 
-export const PostHeader: React.FC<PostHeaderProps> = ({
+const PostHeaderComponent: React.FC<PostHeaderProps> = ({
   username,
   userProfileImage,
   isDark,
@@ -16,16 +17,14 @@ export const PostHeader: React.FC<PostHeaderProps> = ({
     <View style={styles.header}>
       <View style={styles.userInfo}>
         {userProfileImage ? (
-          <Image
+          <CachedImage
             source={
               typeof userProfileImage === 'string'
-                ? { uri: userProfileImage }
+                ? {uri: userProfileImage}
                 : userProfileImage
             }
-            style={styles.avatar}
-            onError={e =>
-              console.log('Avatar loading error:', e.nativeEvent.error)
-            }
+            style={[styles.avatar]}
+            contentFit="cover"
           />
         ) : (
           <Avatar
@@ -46,3 +45,7 @@ export const PostHeader: React.FC<PostHeaderProps> = ({
     </View>
   );
 };
+
+export const PostHeader = memo(PostHeaderComponent);
+// is it deprecated?
+PostHeader.displayName = 'PostHeader';

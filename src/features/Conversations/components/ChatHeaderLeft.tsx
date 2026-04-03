@@ -1,19 +1,19 @@
-import { View, Text, TouchableOpacity } from 'react-native';
-import React from 'react';
-import { getUsernameForLogo } from 'shared/helpers/common/stringHelpers';
-import { Avatar } from 'react-native-elements';
-import { Image } from 'react-native';
+import {View, Text, TouchableOpacity} from 'react-native';
+import React, {memo, useMemo} from 'react';
+import {getUsernameForLogo} from 'shared/helpers/common/stringHelpers';
+import {Avatar} from 'react-native-elements';
+import CachedImage from 'shared/components/CachedImage';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { createStyles } from '../styles/ChatHeaderLeft.styles';
-import { ChatHeaderLeftProps } from '../types';
+import {createStyles} from '../styles/ChatHeaderLeft.styles';
+import {ChatHeaderLeftProps} from '../types';
 
-const ChatHeaderLeft = ({
+const ChatHeaderLeftComponent = ({
   currentRecipientPhoto,
   isDark,
   navigation,
   recipientName,
 }: ChatHeaderLeftProps) => {
-  const styles = createStyles(isDark);
+  const styles = useMemo(() => createStyles(isDark), [isDark]);
   return (
     <View style={styles.backButtonContainer}>
       <TouchableOpacity
@@ -28,13 +28,14 @@ const ChatHeaderLeft = ({
 
       <View style={styles.recipientPhotoContainer}>
         {currentRecipientPhoto ? (
-          <Image
+          <CachedImage
             source={
               typeof currentRecipientPhoto === 'string'
-                ? { uri: currentRecipientPhoto }
+                ? {uri: currentRecipientPhoto}
                 : currentRecipientPhoto
             }
             style={styles.recipientPhoto}
+            contentFit="cover"
           />
         ) : (
           <Avatar
@@ -50,4 +51,4 @@ const ChatHeaderLeft = ({
   );
 };
 
-export default ChatHeaderLeft;
+export default memo(ChatHeaderLeftComponent);

@@ -11,6 +11,7 @@ import {
 import {GetPostsResponse} from 'shared/types/firebase';
 import {FirestorePost} from '@/features/Home/types/post';
 import {convertFirestorePost} from 'shared/services/utils';
+import {logger} from 'shared/utils/logger';
 
 export class TrendingService {
   private queryCache: Map<string, any[]> = new Map();
@@ -73,7 +74,11 @@ export class TrendingService {
 
       return {success: true, posts};
     } catch (error) {
-      console.error('TrendingService :: getTrendingPosts() ::', error);
+      logger.error(
+        'TrendingService :: getTrendingPosts() ::',
+        error,
+        'TrendingService',
+      );
       return {success: false, error: 'Failed to fetch trending posts'};
     }
   }
@@ -170,7 +175,11 @@ export class TrendingService {
 
       return {success: true, posts, engagementRate};
     } catch (error) {
-      console.error('TrendingService :: getPostsByHashtag() ::', error);
+      logger.error(
+        'TrendingService :: getPostsByHashtag() ::',
+        error,
+        'TrendingService',
+      );
       return {success: false, error: 'Failed to fetch posts by hashtag'};
     }
   }

@@ -24,15 +24,17 @@ export const createStyles = (isDark: boolean) =>
       flexDirection: 'row',
       alignItems: 'center',
       alignSelf: 'center',
+      overflow: 'hidden',
     },
     avatar: {
       width: 40,
       height: 40,
       borderRadius: 20,
       marginRight: 10,
-      borderWidth: 1,
+      // borderWidth: 1,
       marginTop: 1,
-      borderColor: isDark ? '#333' : '#e0e0e0',
+      // borderColor: isDark ? '#333' : '#e0e0e0',
+      overflow:'hidden'
     },
     username: {
       fontWeight: '600',

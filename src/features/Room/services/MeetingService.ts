@@ -21,6 +21,7 @@ import {
 } from '@react-native-firebase/firestore';
 import {generateRoomCode} from 'shared/helpers/common/roomCodeGenerator';
 import {Meeting, MeetingError} from '../types';
+import {logger} from 'shared/utils/logger';
 
 export class MeetingService {
   private meetingsCollection = collection(
@@ -154,8 +155,10 @@ export class MeetingService {
         meetingData.maxParticipants &&
         meetingData.participants.length >= meetingData.maxParticipants
       ) {
-        console.warn(
+        logger.warn(
           `Meeting ${meetingId} has reached maximum participants limit of ${meetingData.maxParticipants}`,
+          undefined,
+          'MeetingService',
         );
         throw this.createError(
           `Meeting has reached maximum participants limit of ${meetingData.maxParticipants}`,
@@ -203,11 +206,17 @@ export class MeetingService {
             userId,
           ),
         );
-        console.log(
+        logger.debug(
           `Deleted participant state for ${userId} in meeting ${meetingId}`,
+          undefined,
+          'MeetingService',
         );
       } catch (error) {
-        console.error('Error deleting participant state:', error);
+        logger.error(
+          'Error deleting participant state:',
+          error,
+          'MeetingService',
+        );
         // Continue with removal from participants list even if state deletion fails
       }
 
@@ -260,11 +269,17 @@ export class MeetingService {
         );
         await batch.commit();
 
-        console.log(
+        logger.debug(
           `Deleted ${participantStatesSnapshot.size} participant states for meeting ${meetingId}`,
+          undefined,
+          'MeetingService',
         );
       } catch (error) {
-        console.error('Error deleting participant states:', error);
+        logger.error(
+          'Error deleting participant states:',
+          error,
+          'MeetingService',
+        );
         // Continue with meeting end even if state deletion fails
       }
 
@@ -323,7 +338,7 @@ export class MeetingService {
 
       return endTime <= now;
     } catch (error) {
-      console.error('Error checking meeting end time:', error);
+      logger.error('Error checking meeting end time:', error, 'MeetingService');
       return false;
     }
   }
@@ -347,7 +362,7 @@ export class MeetingService {
           this.stopEndTimeMonitoring();
         }
       } catch (error) {
-        console.error('Error in end time monitoring:', error);
+        logger.error('Error in end time monitoring:', error, 'MeetingService');
       }
     }, 60000); // Check every minute
   }
@@ -380,8 +395,10 @@ export class MeetingService {
         (snapshot: FirebaseFirestoreTypes.DocumentSnapshot<Meeting>) => {
           if (!snapshot) {
             const error = this.createError('Failed to get meeting data');
-            console.warn(
+            logger.warn(
               'MeetingService: Received null snapshot in meeting listener',
+              undefined,
+              'MeetingService',
             );
             onError(error);
             return;
@@ -415,7 +432,11 @@ export class MeetingService {
                     onUpdate(meeting);
                   })
                   .catch(error => {
-                    console.error('Error ending expired meeting:', error);
+                    logger.error(
+                      'Error ending expired meeting:',
+                      error,
+                      'MeetingService',
+                    );
                   });
               } else {
                 onUpdate(meeting);
@@ -424,20 +445,29 @@ export class MeetingService {
               onError(this.createError('Meeting not found'));
             }
           } catch (error) {
-            console.error(
+            logger.error(
               'MeetingService: Error processing meeting snapshot:',
               error,
+              'MeetingService',
             );
             onError(this.createError('Error processing meeting data', error));
           }
         },
         error => {
-          console.error('MeetingService: Error in meeting listener:', error);
+          logger.error(
+            'MeetingService: Error in meeting listener:',
+            error,
+            'MeetingService',
+          );
           onError(this.createError('Meeting subscription error', error));
         },
       );
     } catch (error) {
-      console.error('MeetingService :: subscribeMeeting() ::', error);
+      logger.error(
+        'MeetingService :: subscribeMeeting() ::',
+        error,
+        'MeetingService',
+      );
       onError(
         this.createError('Failed to subscribe to meeting updates', error),
       );

@@ -1,5 +1,6 @@
 import {useState, useEffect} from 'react';
 import {Platform, PermissionsAndroid, Alert, Linking} from 'react-native';
+import {logger} from 'shared/utils/logger';
 
 /**
  * Manages Android storage permissions needed for media uploads.
@@ -95,7 +96,7 @@ export const usePermissions = () => {
 
       return permissionGranted;
     } catch (err) {
-      console.warn('Error requesting permissions:', err);
+      logger.warn('Error requesting permissions:', err, 'CreatePost');
       setHasStoragePermission(false);
       return false;
     } finally {

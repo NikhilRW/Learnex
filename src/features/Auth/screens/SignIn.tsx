@@ -15,9 +15,11 @@ import {NavigationProp, useNavigation} from '@react-navigation/native';
 import {Formik} from 'formik';
 import {signInData} from 'shared/types/authTypes';
 import {useTypedSelector} from 'hooks/redux/useTypedSelector';
+import {selectFirebase, selectIsDark} from 'shared/store/selectors';
 import {signInSchema} from 'auth/schema/yupSchemas';
 import ErrorMessage from 'auth/components/ErrorMessage';
 import Snackbar from 'react-native-snackbar';
+import {logger} from 'shared/utils/logger';
 import {changeIsLoggedIn, changeProfileColor} from 'shared/reducers/User';
 import {useTypedDispatch} from 'hooks/redux/useTypedDispatch';
 import {getRandomColors} from 'shared/helpers/common/stringHelpers';
@@ -28,10 +30,9 @@ import OAuthButton from 'auth/components/OAuthButton';
 import {AuthStackParamList} from '@/shared/navigation/routes/AuthStack';
 
 const SignIn = () => {
-  const theme = useTypedSelector(state => state.user.theme);
-  const isDark = theme === 'dark';
+  const isDark = useTypedSelector(selectIsDark);
   const navigation = useNavigation<NavigationProp<AuthStackParamList>>();
-  const firebase = useTypedSelector(state => state.firebase.firebase);
+  const firebase = useTypedSelector(selectFirebase);
   const dispatch = useTypedDispatch();
   const [isPasswordHidden, setisPasswordHidden] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -45,7 +46,7 @@ const SignIn = () => {
     try {
       setIsGoogleLoading(true);
       const response = await firebase.auth.googleSignIn();
-      console.log('response', response);
+      logger.debug('Google sign-in response', response, 'SignIn');
       if (response.success) {
         dispatch(changeProfileColor(getRandomColors()));
         dispatch(changeIsLoggedIn(true));
@@ -59,7 +60,7 @@ const SignIn = () => {
         });
       }
     } catch (error) {
-      console.error('Google sign in error:', error);
+      logger.error('Google sign in error:', error, 'SignIn');
       Snackbar.show({
         text: 'Failed to sign in with Google',
         duration: Snackbar.LENGTH_LONG,
@@ -87,7 +88,7 @@ const SignIn = () => {
         });
       }
     } catch (error) {
-      console.error('GitHub sign in error:', error);
+      logger.error('GitHub sign in error:', error, 'SignIn');
       Snackbar.show({
         text: 'Failed to sign in with GitHub',
         duration: Snackbar.LENGTH_LONG,
@@ -171,7 +172,7 @@ const SignIn = () => {
         backgroundColor: '#007cb5',
       });
     } catch (error) {
-      console.error('Forgot password error:', error);
+      logger.error('Forgot password error:', error, 'SignIn');
       Snackbar.show({
         text: 'Failed to process password reset',
         duration: Snackbar.LENGTH_LONG,

@@ -22,6 +22,7 @@ import {
 import Config from 'react-native-superconfig';
 import {signUpData} from 'shared/types/authTypes';
 import {AuthResponse, FirebaseUser} from 'shared/types/firebase';
+import {logger} from 'shared/utils/logger';
 
 export class AuthService {
   constructor() {
@@ -29,7 +30,11 @@ export class AuthService {
       webClientId:
         '378245937295-p9lvf9tenrtchg6d2t5g6tamlhm5a168.apps.googleusercontent.com',
     });
-    console.log('UserID ' + getAuth().currentUser?.uid);
+    logger.debug(
+      'UserID ' + getAuth().currentUser?.uid,
+      undefined,
+      'AuthService',
+    );
   }
 
   currentUser() {
@@ -72,7 +77,11 @@ export class AuthService {
 
       return {success: true};
     } catch (error: any) {
-      console.log('AuthService :: signUpWithEmailAndPassword() ::', error);
+      logger.error(
+        'AuthService :: signUpWithEmailAndPassword() ::',
+        error,
+        'AuthService',
+      );
       return {success: false, error};
     }
   }
@@ -99,13 +108,21 @@ export class AuthService {
             require('shared/services/NotificationService').default;
           notificationService.setupMessageListener();
         } catch (error) {
-          console.error('Failed to setup notification listeners:', error);
+          logger.error(
+            'Failed to setup notification listeners',
+            error,
+            'AuthService',
+          );
         }
       }
 
       return {success: true};
     } catch (error: any) {
-      console.log('AuthService :: loginWithEmailAndPassword() ::', error);
+      logger.error(
+        'AuthService :: loginWithEmailAndPassword() ::',
+        error,
+        'AuthService',
+      );
       return {success: false, error};
     }
   }
@@ -115,7 +132,11 @@ export class AuthService {
       await getAuth().sendPasswordResetEmail(email);
       return {success: true};
     } catch (error) {
-      console.log('AuthService :: sendPasswordResetEmail() ::', error);
+      logger.error(
+        'AuthService :: sendPasswordResetEmail() ::',
+        error,
+        'AuthService',
+      );
       return {success: false, error};
     }
   }
@@ -138,7 +159,11 @@ export class AuthService {
           require('shared/services/NotificationService').default;
         notificationService.removeMessageListener();
       } catch (error) {
-        console.error('Failed to clean up notification listeners:', error);
+        logger.error(
+          'Failed to clean up notification listeners',
+          error,
+          'AuthService',
+        );
       }
 
       await getAuth().signOut();
@@ -147,7 +172,7 @@ export class AuthService {
       }
       return {success: true};
     } catch (error: any) {
-      console.log('AuthService :: signOut() ::', error);
+      logger.error('AuthService :: signOut() ::', error, 'AuthService');
       return {success: false, error};
     }
   }
@@ -205,7 +230,11 @@ export class AuthService {
               require('shared/services/NotificationService').default;
             notificationService.setupMessageListener();
           } catch (error) {
-            console.error('Failed to setup notification listeners:', error);
+            logger.error(
+              'Failed to setup notification listeners',
+              error,
+              'AuthService',
+            );
           }
         }
       }
@@ -219,7 +248,7 @@ export class AuthService {
       } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
         return {success: false, error: 'Play services not available'};
       }
-      console.log('AuthService :: googleSignIn() ::', error);
+      logger.error('AuthService :: googleSignIn() ::', error, 'AuthService');
       return {success: false, error};
     }
   }
@@ -283,7 +312,7 @@ export class AuthService {
 
       return {success: true};
     } catch (error) {
-      console.log('AuthService :: githubSignIn() ::', error);
+      logger.error('AuthService :: githubSignIn() ::', error, 'AuthService');
       return {success: false, error};
     }
   }
@@ -294,7 +323,7 @@ export class AuthService {
         'azure-test',
         accessToken,
       );
-      console.log('accessToken', accessToken);
+      logger.debug('accessToken', accessToken, 'AuthService');
       await getAuth().signInWithCredential(linkedinCredential);
 
       // Handle user document (create or update)
@@ -335,7 +364,7 @@ export class AuthService {
       }
       return {success: true};
     } catch (error) {
-      console.log('AuthService :: linkedinSignIn() ::', error);
+      logger.error('AuthService :: linkedinSignIn() ::', error, 'AuthService');
       return {success: false, error};
     }
   }

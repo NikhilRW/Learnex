@@ -3,6 +3,7 @@ import Config from 'react-native-superconfig';
 import {LexAIConversation} from 'lex-ai/types/lexAITypes';
 import {SearchResult} from '../types/lexAI.types';
 import {logDebug} from 'lex-ai/utils/common';
+import {logger} from 'shared/utils/logger';
 
 /**
  * Format date for history display
@@ -136,7 +137,7 @@ export const fetchSearchResults = async (
       .slice(0, 5); // Limit to 5 results for better UX
   } catch (error) {
     logDebug('Error in Google Search API call', {error: String(error)});
-    console.error('Google Search API Error:', error);
+    logger.error('Google Search API Error:', error, 'LexAIUtils');
 
     // Fallback to direct Google search if API call fails
     return [

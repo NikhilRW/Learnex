@@ -1,6 +1,7 @@
 import Firebase from '@/shared/services/firebase';
 import {useState} from 'react';
 import Snackbar from 'react-native-snackbar';
+import {logger} from 'shared/utils/logger';
 
 export const usePostComments = (
   postId: string,
@@ -54,7 +55,7 @@ export const usePostComments = (
         });
       }
     } catch (error) {
-      console.error('Error adding comment:', error);
+      logger.error('Error adding comment:', error, 'PostComments');
       Snackbar.show({
         text: 'An error occurred while adding your comment',
         duration: Snackbar.LENGTH_LONG,

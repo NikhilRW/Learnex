@@ -1,3 +1,5 @@
+import {logger} from 'shared/utils/logger';
+
 // Custom UUID generator that doesn't rely on crypto.getRandomValues()
 export const generateUUID = (): string => {
   // Use a timestamp-based prefix to ensure uniqueness
@@ -12,10 +14,13 @@ export const generateUUID = (): string => {
 };
 
 export const logDebug = (message: string, data?: any) => {
-    const timestamp = new Date().toISOString();
-    const logMessage = `[LexAI ${timestamp}] ${message}`;
-    console.log(logMessage);
-    if (data) {
-        console.log('Data:', JSON.stringify(data, null, 2));
-    }
+  const timestamp = new Date().toISOString();
+  const logMessage = `[LexAI ${timestamp}] ${message}`;
+
+  if (data) {
+    logger.debug(logMessage, data, 'LexAI');
+    return;
+  }
+
+  logger.debug(logMessage, undefined, 'LexAI');
 };

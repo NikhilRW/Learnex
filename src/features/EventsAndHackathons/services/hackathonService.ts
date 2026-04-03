@@ -2,6 +2,7 @@ import axios from 'axios';
 import {HackathonSummary, HackathonDetails, EventSource} from '../types';
 import {StorageService} from './storageService';
 import {API_BASE_URL} from '../constants';
+import {logger} from 'shared/utils/logger';
 
 /**
  * Service for fetching hackathon and event data from the backend API
@@ -51,7 +52,7 @@ export class HackathonService {
       await StorageService.cacheHackathons(hackathons, finalLocation);
       return hackathons;
     } catch (error) {
-      console.error('Error fetching hackathons:', error);
+      logger.error('Error fetching hackathons:', error, 'HackathonService');
       throw error;
     }
   }
@@ -72,9 +73,10 @@ export class HackathonService {
         `${API_BASE_URL}/hackathons/${source}/${id}`,
       );
 
-      console.log(
+      logger.debug(
         'Fetched hackathon details from Flask API:',
         response.data.title,
+        'HackathonService',
       );
 
       // Process and validate image URL
@@ -99,7 +101,11 @@ export class HackathonService {
       // The Flask API returns the object directly, not wrapped in a response object
       return event;
     } catch (error) {
-      console.error('Error fetching hackathon details:', error);
+      logger.error(
+        'Error fetching hackathon details:',
+        error,
+        'HackathonService',
+      );
       throw error;
     }
   }
@@ -129,7 +135,7 @@ export class HackathonService {
         },
       };
     } catch (error) {
-      console.error('Error getting refresh status:', error);
+      logger.error('Error getting refresh status:', error, 'HackathonService');
       return {
         isRefreshing: false,
         message: 'Error getting refresh status',
@@ -157,18 +163,30 @@ export class HackathonService {
     const waitForCompletion = options?.waitForCompletion !== false; // Default to true if not specified
 
     try {
-      console.log('Forcing server to refresh events by scraping again...');
+      logger.debug(
+        'Forcing server to refresh events by scraping again...',
+        undefined,
+        'HackathonService',
+      );
 
       // Call the backend refresh endpoint with force=true to ensure it scrapes data again
       const response = await axios.get(`${this.baseUrl}/refresh?force=true`);
 
       if (response.data && response.data.status === 'success') {
-        console.log('Server has started refreshing events in background');
+        logger.debug(
+          'Server has started refreshing events in background',
+          undefined,
+          'HackathonService',
+        );
 
         // Only wait for refresh to complete if waitForCompletion is true
         if (waitForCompletion) {
           // Wait for refresh to complete by polling the status
-          console.log('Waiting for backend to refresh data...');
+          logger.debug(
+            'Waiting for backend to refresh data...',
+            undefined,
+            'HackathonService',
+          );
           let isRefreshing = true;
           let attempts = 0;
           const maxAttempts = 20; // Maximum polling attempts
@@ -181,14 +199,18 @@ export class HackathonService {
             const status = await this.getRefreshStatus();
             isRefreshing = status.isRefreshing;
 
-            console.log(
+            logger.debug(
               `Refresh status check ${attempts}/${maxAttempts}: ${status.message}`,
+              undefined,
+              'HackathonService',
             );
 
             // If refresh complete, break the loop
             if (!isRefreshing) {
-              console.log(
+              logger.debug(
                 `Refresh complete! Found ${status.eventCounts.total} events`,
+                undefined,
+                'HackathonService',
               );
               break;
             }
@@ -196,25 +218,37 @@ export class HackathonService {
 
           // If we timed out
           if (isRefreshing && attempts >= maxAttempts) {
-            console.log(
+            logger.warn(
               'Refresh is taking longer than expected. Continuing anyway...',
+              undefined,
+              'HackathonService',
             );
           }
         } else {
-          console.log(
+          logger.debug(
             'Not waiting for refresh to complete (waitForCompletion=false)',
+            undefined,
+            'HackathonService',
           );
         }
 
         return {success: true, message: response.data.message};
       } else if (response.data && response.data.status === 'in_progress') {
         // A refresh is already in progress
-        console.log('A refresh operation is already in progress');
+        logger.debug(
+          'A refresh operation is already in progress',
+          undefined,
+          'HackathonService',
+        );
 
         // Only wait for existing refresh if waitForCompletion is true
         if (waitForCompletion) {
           // Wait for existing refresh to complete
-          console.log('Waiting for existing refresh to complete...');
+          logger.debug(
+            'Waiting for existing refresh to complete...',
+            undefined,
+            'HackathonService',
+          );
           let isRefreshing = true;
           let attempts = 0;
           const maxAttempts = 20;
@@ -226,33 +260,43 @@ export class HackathonService {
             const status = await this.getRefreshStatus();
             isRefreshing = status.isRefreshing;
 
-            console.log(
+            logger.debug(
               `Refresh status check ${attempts}/${maxAttempts}: ${status.message}`,
+              undefined,
+              'HackathonService',
             );
 
             if (!isRefreshing) {
-              console.log(
+              logger.debug(
                 `Existing refresh complete! Found ${status.eventCounts.total} events`,
+                undefined,
+                'HackathonService',
               );
               break;
             }
           }
         } else {
-          console.log(
+          logger.debug(
             'Not waiting for existing refresh to complete (waitForCompletion=false)',
+            undefined,
+            'HackathonService',
           );
         }
 
         return {success: true, message: 'Used existing refresh operation'};
       } else {
-        console.error('Failed to refresh events:', response.data);
+        logger.error(
+          'Failed to refresh events:',
+          response.data,
+          'HackathonService',
+        );
         return {
           success: false,
           message: response.data?.message || 'Unknown error occurred',
         };
       }
     } catch (error) {
-      console.error('Error refreshing events:', error);
+      logger.error('Error refreshing events:', error, 'HackathonService');
       return {
         success: false,
         message:

@@ -21,6 +21,7 @@ import {Task, SubTask} from 'shared/types/taskTypes';
 import notificationService from './NotificationService';
 import axios from 'axios';
 import Config from 'react-native-superconfig';
+import {logger} from 'shared/utils/logger';
 
 export class TaskService {
   private tasksCollection = collection(
@@ -53,7 +54,7 @@ export class TaskService {
         ...doc.data(),
       })) as Task[];
     } catch (error) {
-      console.log('TaskService :: getTasks() ::', error);
+      logger.error('TaskService :: getTasks() ::', error, 'TaskService');
       throw error;
     }
   }
@@ -62,7 +63,7 @@ export class TaskService {
     try {
       const tasks = await this.getTasks();
       const tasksTitles = tasks.map(task => task.title);
-      console.log('tasksTitles', tasksTitles);
+      logger.debug('tasksTitles', tasksTitles, 'TaskService');
       const payload = {
         messages: [
           {
@@ -80,7 +81,7 @@ export class TaskService {
         reasoning_effort: 'medium',
         stop: null,
       };
-      console.log('payload', payload);
+      logger.debug('payload', payload, 'TaskService');
       const response = await axios.post(
         `https://api.groq.com/openai/v1/chat/completions`,
         payload,
@@ -94,7 +95,11 @@ export class TaskService {
       const aiSuggestedTask = response.data.choices[0].message.content;
       return aiSuggestedTask;
     } catch (error) {
-      console.log('TaskService :: getTaskSugesstions() ::', error);
+      logger.error(
+        'TaskService :: getTaskSugesstions() ::',
+        error,
+        'TaskService',
+      );
       throw error;
     }
   }
@@ -104,62 +109,80 @@ export class TaskService {
    */
   async addTask(task: Omit<Task, 'id'>): Promise<string> {
     try {
-      console.log(
+      logger.debug(
         `TaskService :: addTask() :: Attempting to add task: "${task.title}"`,
+        undefined,
+        'TaskService',
       );
-      console.log(
-        `TaskService :: addTask() :: Task data:`,
-        JSON.stringify(task),
+      logger.debug(
+        'TaskService :: addTask() :: Task data',
+        task,
+        'TaskService',
       );
 
       const userId = getAuth().currentUser?.uid;
       if (!userId) {
-        console.log('TaskService :: addTask() :: User not authenticated');
+        logger.error(
+          'TaskService :: addTask() :: User not authenticated',
+          undefined,
+          'TaskService',
+        );
         throw new Error('User not authenticated');
       }
 
       // Check if a task with the same name already exists
-      console.log(
+      logger.debug(
         `TaskService :: addTask() :: Checking for existing task with name: "${task.title}"`,
+        undefined,
+        'TaskService',
       );
       const existingTask = await this.findTaskByName(task.title);
       if (existingTask) {
-        console.warn(
+        logger.warn(
           `TaskService :: addTask() :: Task with name "${task.title}" already exists (ID: ${existingTask.id})`,
+          {taskId: existingTask.id},
+          'TaskService',
         );
         throw new Error(
           `A task with the name "${task.title}" already exists. Please use a different name.`,
         );
       }
-      console.log(
+      logger.debug(
         `TaskService :: addTask() :: No existing task found with name: "${task.title}", proceeding with creation`,
+        undefined,
+        'TaskService',
       );
 
       // Validate date/time format
       if (task.notify) {
         if (!task.dueDate || !task.dueDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
-          console.warn(
-            `TaskService :: addTask() :: Invalid dueDate format:`,
+          logger.warn(
+            'TaskService :: addTask() :: Invalid dueDate format',
             task.dueDate,
+            'TaskService',
           );
         }
         if (!task.dueTime || !task.dueTime.match(/^\d{2}:\d{2}$/)) {
-          console.warn(
-            `TaskService :: addTask() :: Invalid dueTime format:`,
+          logger.warn(
+            'TaskService :: addTask() :: Invalid dueTime format',
             task.dueTime,
+            'TaskService',
           );
         }
 
-        console.log(
+        logger.debug(
           `TaskService :: addTask() :: Task due date/time: ${task.dueDate} ${task.dueTime}`,
+          undefined,
+          'TaskService',
         );
       }
 
       // Ensure task contains all required fields
       if (task.notify && (!task.dueDate || !task.dueTime)) {
-        console.warn(
-          `TaskService :: addTask() :: Task has notify enabled but missing date/time:`,
-          JSON.stringify(task),
+        logger.warn(
+          'TaskService :: addTask() :: Task has notify enabled but missing date/time',
+          task,
+          'TaskService',
         );
       }
 
@@ -171,20 +194,26 @@ export class TaskService {
         isDuoTask: task.isDuoTask !== undefined ? task.isDuoTask : false,
       };
 
-      console.log(
+      logger.debug(
         `TaskService :: addTask() :: Adding task to Firestore, notify: ${
           task.notify ? 'Yes' : 'No'
         }, isDuoTask: ${taskWithUser.isDuoTask ? 'Yes' : 'No'}`,
+        undefined,
+        'TaskService',
       );
       const docRef = await addDoc(this.tasksCollection, taskWithUser);
-      console.log(
+      logger.debug(
         `TaskService :: addTask() :: Task added with ID: ${docRef.id}`,
+        undefined,
+        'TaskService',
       );
 
       // Schedule notification if needed
       if (task.notify) {
-        console.log(
+        logger.debug(
           `TaskService :: addTask() :: Scheduling notification for task: ${docRef.id}`,
+          undefined,
+          'TaskService',
         );
         const taskWithId = {...taskWithUser, id: docRef.id} as Task;
 
@@ -193,35 +222,44 @@ export class TaskService {
             await notificationService.scheduleTaskNotification(taskWithId);
 
           if (notificationId) {
-            console.log(
+            logger.debug(
               `TaskService :: addTask() :: Notification scheduled successfully, ID: ${notificationId}`,
+              undefined,
+              'TaskService',
             );
             // Update the task with the notification ID
             await updateDoc(doc(this.tasksCollection, docRef.id), {
               notificationId: notificationId,
             });
-            console.log(
-              `TaskService :: addTask() :: Updated task with notification ID`,
+            logger.debug(
+              'TaskService :: addTask() :: Updated task with notification ID',
+              undefined,
+              'TaskService',
             );
           } else {
-            console.warn(
+            logger.warn(
               `TaskService :: addTask() :: Failed to schedule notification for task: ${docRef.id}`,
+              undefined,
+              'TaskService',
             );
           }
         } catch (notificationError) {
-          console.error(
-            `TaskService :: addTask() :: Error scheduling notification:`,
+          logger.error(
+            'TaskService :: addTask() :: Error scheduling notification',
             notificationError,
+            'TaskService',
           );
         }
       }
 
-      console.log(
+      logger.debug(
         `TaskService :: addTask() :: Successfully completed task creation: "${task.title}" (ID: ${docRef.id})`,
+        undefined,
+        'TaskService',
       );
       return docRef.id;
     } catch (error) {
-      console.log('TaskService :: addTask() ::', error);
+      logger.error('TaskService :: addTask() ::', error, 'TaskService');
       throw error;
     }
   }
@@ -231,51 +269,68 @@ export class TaskService {
    */
   async updateTask(taskId: string, taskData: Partial<Task>): Promise<void> {
     try {
-      console.log(
+      logger.debug(
         `TaskService :: updateTask() :: Attempting to update task with ID: ${taskId}`,
+        undefined,
+        'TaskService',
       );
-      console.log(
-        `TaskService :: updateTask() :: Update data:`,
-        JSON.stringify(taskData),
+      logger.debug(
+        'TaskService :: updateTask() :: Update data',
+        taskData,
+        'TaskService',
       );
 
       const userId = getAuth().currentUser?.uid;
       if (!userId) {
-        console.log('TaskService :: updateTask() :: User not authenticated');
+        logger.error(
+          'TaskService :: updateTask() :: User not authenticated',
+          undefined,
+          'TaskService',
+        );
         throw new Error('User not authenticated');
       }
 
       // Verify task belongs to current user
-      console.log(
+      logger.debug(
         `TaskService :: updateTask() :: Verifying task ownership for user: ${userId}`,
+        undefined,
+        'TaskService',
       );
       const taskDoc = await getDoc(doc(this.tasksCollection, taskId));
 
       if (!taskDoc.exists()) {
-        console.log(
+        logger.warn(
           `TaskService :: updateTask() :: Task does not exist: ${taskId}`,
+          undefined,
+          'TaskService',
         );
         throw new Error('Task not found or unauthorized');
       }
 
       if (taskDoc.data()?.userId !== userId) {
-        console.log(
+        logger.warn(
           `TaskService :: updateTask() :: Unauthorized task access. Owner: ${
             taskDoc.data()?.userId
           }, Requester: ${userId}`,
+          undefined,
+          'TaskService',
         );
         throw new Error('Task not found or unauthorized');
       }
 
       const existingTask = {id: taskId, ...taskDoc.data()} as Task;
-      console.log(
+      logger.debug(
         `TaskService :: updateTask() :: Found task: "${existingTask.title}"`,
+        undefined,
+        'TaskService',
       );
 
       // Log if notification settings are changing
       if (taskData.notify !== undefined) {
-        console.log(
+        logger.debug(
           `Notification setting changing from ${existingTask.notify} to ${taskData.notify}`,
+          undefined,
+          'TaskService',
         );
       }
 
@@ -284,8 +339,10 @@ export class TaskService {
         taskData.dueDate !== undefined &&
         taskData.dueDate !== existingTask.dueDate
       ) {
-        console.log(
+        logger.debug(
           `Due date changing from ${existingTask.dueDate} to ${taskData.dueDate}`,
+          undefined,
+          'TaskService',
         );
       }
 
@@ -293,16 +350,19 @@ export class TaskService {
         taskData.dueTime !== undefined &&
         taskData.dueTime !== existingTask.dueTime
       ) {
-        console.log(
+        logger.debug(
           `Due time changing from ${existingTask.dueTime} to ${taskData.dueTime}`,
+          undefined,
+          'TaskService',
         );
       }
 
       // Cancel existing notification if it exists
       if (existingTask.notificationId) {
-        console.log(
-          'Cancelling existing notification:',
+        logger.debug(
+          'Cancelling existing notification',
           existingTask.notificationId,
+          'TaskService',
         );
         await notificationService.cancelTaskNotification(
           existingTask.notificationId,
@@ -316,7 +376,7 @@ export class TaskService {
         updatedAt: serverTimestamp(),
       });
 
-      console.log('Task updated in database');
+      logger.debug('Task updated in database', undefined, 'TaskService');
 
       // If task is not completed and notifications are enabled, schedule a new notification
       const updatedTask = {
@@ -326,35 +386,47 @@ export class TaskService {
       } as Task;
 
       if (updatedTask.notify && !updatedTask.completed) {
-        console.log('Scheduling new notification for updated task');
+        logger.debug(
+          'Scheduling new notification for updated task',
+          undefined,
+          'TaskService',
+        );
         try {
           const notificationId =
             await notificationService.scheduleTaskNotification(updatedTask);
 
           if (notificationId) {
-            console.log('New notification scheduled with ID:', notificationId);
+            logger.debug(
+              'New notification scheduled with ID',
+              notificationId,
+              'TaskService',
+            );
             await updateDoc(doc(this.tasksCollection, taskId), {
               notificationId: notificationId,
             });
           } else {
-            console.warn('Failed to schedule notification for updated task');
+            logger.warn(
+              'Failed to schedule notification for updated task',
+              undefined,
+              'TaskService',
+            );
           }
         } catch (notificationError) {
-          console.error(
-            'Error scheduling notification for updated task:',
+          logger.error(
+            'Error scheduling notification for updated task',
             notificationError,
+            'TaskService',
           );
         }
       } else {
-        console.log(
-          'Task not eligible for notification: notify=',
-          updatedTask.notify,
-          'completed=',
-          updatedTask.completed,
+        logger.debug(
+          'Task not eligible for notification',
+          {notify: updatedTask.notify, completed: updatedTask.completed},
+          'TaskService',
         );
       }
     } catch (error) {
-      console.log('TaskService :: updateTask() ::', error);
+      logger.error('TaskService :: updateTask() ::', error, 'TaskService');
       throw error;
     }
   }
@@ -364,44 +436,56 @@ export class TaskService {
    */
   async toggleTaskCompletion(taskId: string): Promise<void> {
     try {
-      console.log(
+      logger.debug(
         `TaskService :: toggleTaskCompletion() :: Attempting to toggle completion for task with ID: ${taskId}`,
+        undefined,
+        'TaskService',
       );
 
       const userId = getAuth().currentUser?.uid;
       if (!userId) {
-        console.log(
+        logger.error(
           'TaskService :: toggleTaskCompletion() :: User not authenticated',
+          undefined,
+          'TaskService',
         );
         throw new Error('User not authenticated');
       }
 
       // Get current task data
-      console.log(
+      logger.debug(
         `TaskService :: toggleTaskCompletion() :: Verifying task ownership for user: ${userId}`,
+        undefined,
+        'TaskService',
       );
       const taskDoc = await getDoc(doc(this.tasksCollection, taskId));
 
       if (!taskDoc.exists()) {
-        console.log(
+        logger.warn(
           `TaskService :: toggleTaskCompletion() :: Task does not exist: ${taskId}`,
+          undefined,
+          'TaskService',
         );
         throw new Error('Task not found or unauthorized');
       }
 
       if (taskDoc.data()?.userId !== userId) {
-        console.log(
+        logger.warn(
           `TaskService :: toggleTaskCompletion() :: Unauthorized task access. Owner: ${
             taskDoc.data()?.userId
           }, Requester: ${userId}`,
+          undefined,
+          'TaskService',
         );
         throw new Error('Task not found or unauthorized');
       }
 
       const existingTask = {id: taskId, ...taskDoc.data()} as Task;
       const currentStatus = existingTask.completed || false;
-      console.log(
+      logger.debug(
         `TaskService :: toggleTaskCompletion() :: Found task: "${existingTask.title}", current status: ${currentStatus}`,
+        undefined,
+        'TaskService',
       );
 
       // If task has notification and is being marked as completed, cancel it
@@ -430,7 +514,11 @@ export class TaskService {
         }
       }
     } catch (error) {
-      console.log('TaskService :: toggleTaskCompletion() ::', error);
+      logger.error(
+        'TaskService :: toggleTaskCompletion() ::',
+        error,
+        'TaskService',
+      );
       throw error;
     }
   }
@@ -440,47 +528,63 @@ export class TaskService {
    */
   async deleteTask(taskId: string): Promise<void> {
     try {
-      console.log(
+      logger.debug(
         `TaskService :: deleteTask() :: Attempting to delete task with ID: ${taskId}`,
+        undefined,
+        'TaskService',
       );
 
       const userId = getAuth().currentUser?.uid;
       if (!userId) {
-        console.log('TaskService :: deleteTask() :: User not authenticated');
+        logger.error(
+          'TaskService :: deleteTask() :: User not authenticated',
+          undefined,
+          'TaskService',
+        );
         throw new Error('User not authenticated');
       }
 
       // Verify task belongs to current user
-      console.log(
+      logger.debug(
         `TaskService :: deleteTask() :: Verifying task ownership for user: ${userId}`,
+        undefined,
+        'TaskService',
       );
       const taskDoc = await getDoc(doc(this.tasksCollection, taskId));
 
       if (!taskDoc.exists()) {
-        console.log(
+        logger.warn(
           `TaskService :: deleteTask() :: Task does not exist: ${taskId}`,
+          undefined,
+          'TaskService',
         );
         throw new Error('Task not found or unauthorized');
       }
 
       if (taskDoc.data()?.userId !== userId) {
-        console.log(
+        logger.warn(
           `TaskService :: deleteTask() :: Unauthorized task access. Owner: ${
             taskDoc.data()?.userId
           }, Requester: ${userId}`,
+          undefined,
+          'TaskService',
         );
         throw new Error('Task not found or unauthorized');
       }
 
       const existingTask = taskDoc.data() as Task;
-      console.log(
+      logger.debug(
         `TaskService :: deleteTask() :: Task found: "${existingTask.title}"`,
+        undefined,
+        'TaskService',
       );
 
       // Cancel the notification if it exists
       if (existingTask.notificationId) {
-        console.log(
+        logger.debug(
           `TaskService :: deleteTask() :: Cancelling notification: ${existingTask.notificationId}`,
+          undefined,
+          'TaskService',
         );
         await notificationService.cancelTaskNotification(
           existingTask.notificationId,
@@ -488,11 +592,13 @@ export class TaskService {
       }
 
       await deleteDoc(doc(this.tasksCollection, taskId));
-      console.log(
+      logger.debug(
         `TaskService :: deleteTask() :: Successfully deleted task with ID: ${taskId}`,
+        undefined,
+        'TaskService',
       );
     } catch (error) {
-      console.log('TaskService :: deleteTask() ::', error);
+      logger.error('TaskService :: deleteTask() ::', error, 'TaskService');
       throw error;
     }
   }
@@ -504,21 +610,27 @@ export class TaskService {
    */
   async findTaskByName(taskName: string): Promise<Task | null> {
     try {
-      console.log(
+      logger.debug(
         `TaskService :: findTaskByName() :: Looking for task with name: "${taskName}"`,
+        undefined,
+        'TaskService',
       );
 
       const userId = getAuth().currentUser?.uid;
       if (!userId) {
-        console.log(
+        logger.error(
           'TaskService :: findTaskByName() :: User not authenticated',
+          undefined,
+          'TaskService',
         );
         throw new Error('User not authenticated');
       }
 
       // Find tasks with the given name
-      console.log(
+      logger.debug(
         `TaskService :: findTaskByName() :: Querying Firestore with userId=${userId}, title="${taskName}"`,
+        undefined,
+        'TaskService',
       );
 
       const tasksSnapshot = await getDocs(
@@ -531,16 +643,20 @@ export class TaskService {
       );
 
       if (tasksSnapshot.empty) {
-        console.log(
+        logger.debug(
           `TaskService :: findTaskByName() :: No task found with name: "${taskName}"`,
+          undefined,
+          'TaskService',
         );
         return null;
       }
 
       // Return the first matching task
       const doc = tasksSnapshot.docs[0];
-      console.log(
+      logger.debug(
         `TaskService :: findTaskByName() :: Found task with ID: ${doc.id}`,
+        undefined,
+        'TaskService',
       );
 
       return {
@@ -548,7 +664,7 @@ export class TaskService {
         ...doc.data(),
       } as Task;
     } catch (error) {
-      console.log('TaskService :: findTaskByName() ::', error);
+      logger.error('TaskService :: findTaskByName() ::', error, 'TaskService');
       throw error;
     }
   }
@@ -558,30 +674,42 @@ export class TaskService {
    */
   async deleteTaskByName(taskName: string): Promise<void> {
     try {
-      console.log(
+      logger.debug(
         `TaskService :: deleteTaskByName() :: Attempting to delete task: "${taskName}"`,
+        undefined,
+        'TaskService',
       );
 
       const task = await this.findTaskByName(taskName);
       if (!task) {
-        console.log(
+        logger.warn(
           `TaskService :: deleteTaskByName() :: Task not found: "${taskName}"`,
+          undefined,
+          'TaskService',
         );
         throw new Error(`Task with name "${taskName}" not found`);
       }
 
-      console.log(
+      logger.debug(
         `TaskService :: deleteTaskByName() :: Found task with ID: ${task.id}, proceeding with deletion`,
+        undefined,
+        'TaskService',
       );
 
       // Use the existing deleteTask method with the found ID
       await this.deleteTask(task.id);
 
-      console.log(
+      logger.debug(
         `TaskService :: deleteTaskByName() :: Successfully deleted task: "${taskName}" (ID: ${task.id})`,
+        undefined,
+        'TaskService',
       );
     } catch (error) {
-      console.log('TaskService :: deleteTaskByName() ::', error);
+      logger.error(
+        'TaskService :: deleteTaskByName() ::',
+        error,
+        'TaskService',
+      );
       throw error;
     }
   }
@@ -594,34 +722,47 @@ export class TaskService {
     taskData: Partial<Task>,
   ): Promise<void> {
     try {
-      console.log(
+      logger.debug(
         `TaskService :: updateTaskByName() :: Attempting to update task: "${taskName}"`,
+        undefined,
+        'TaskService',
       );
-      console.log(
-        `TaskService :: updateTaskByName() :: Update data:`,
-        JSON.stringify(taskData),
+      logger.debug(
+        'TaskService :: updateTaskByName() :: Update data',
+        taskData,
+        'TaskService',
       );
 
       const task = await this.findTaskByName(taskName);
       if (!task) {
-        console.log(
+        logger.warn(
           `TaskService :: updateTaskByName() :: Task not found: "${taskName}"`,
+          undefined,
+          'TaskService',
         );
         throw new Error(`Task with name "${taskName}" not found`);
       }
 
-      console.log(
+      logger.debug(
         `TaskService :: updateTaskByName() :: Found task with ID: ${task.id}, proceeding with update`,
+        undefined,
+        'TaskService',
       );
 
       // Use the existing updateTask method with the found ID
       await this.updateTask(task.id, taskData);
 
-      console.log(
+      logger.debug(
         `TaskService :: updateTaskByName() :: Successfully updated task: "${taskName}" (ID: ${task.id})`,
+        undefined,
+        'TaskService',
       );
     } catch (error) {
-      console.log('TaskService :: updateTaskByName() ::', error);
+      logger.error(
+        'TaskService :: updateTaskByName() ::',
+        error,
+        'TaskService',
+      );
       throw error;
     }
   }
@@ -631,30 +772,42 @@ export class TaskService {
    */
   async toggleTaskCompletionByName(taskName: string): Promise<void> {
     try {
-      console.log(
+      logger.debug(
         `TaskService :: toggleTaskCompletionByName() :: Attempting to toggle completion for task: "${taskName}"`,
+        undefined,
+        'TaskService',
       );
 
       const task = await this.findTaskByName(taskName);
       if (!task) {
-        console.log(
+        logger.warn(
           `TaskService :: toggleTaskCompletionByName() :: Task not found: "${taskName}"`,
+          undefined,
+          'TaskService',
         );
         throw new Error(`Task with name "${taskName}" not found`);
       }
 
-      console.log(
+      logger.debug(
         `TaskService :: toggleTaskCompletionByName() :: Found task with ID: ${task.id}, current completion status: ${task.completed}`,
+        undefined,
+        'TaskService',
       );
 
       // Use the existing toggleTaskCompletion method with the found ID
       await this.toggleTaskCompletion(task.id);
 
-      console.log(
+      logger.debug(
         `TaskService :: toggleTaskCompletionByName() :: Successfully toggled completion for task: "${taskName}" (ID: ${task.id})`,
+        undefined,
+        'TaskService',
       );
     } catch (error) {
-      console.log('TaskService :: toggleTaskCompletionByName() ::', error);
+      logger.error(
+        'TaskService :: toggleTaskCompletionByName() ::',
+        error,
+        'TaskService',
+      );
       throw error;
     }
   }
@@ -666,28 +819,38 @@ export class TaskService {
    */
   async createDuoTask(task: Omit<Task, 'id'>): Promise<string> {
     try {
-      console.log(
+      logger.debug(
         `TaskService :: createDuoTask() :: Creating team task: "${task.title}"`,
+        undefined,
+        'TaskService',
       );
 
       const userId = getAuth().currentUser?.uid;
       if (!userId) {
-        console.log('TaskService :: createDuoTask() :: User not authenticated');
+        logger.error(
+          'TaskService :: createDuoTask() :: User not authenticated',
+          undefined,
+          'TaskService',
+        );
         throw new Error('User not authenticated');
       }
 
       // Check if collaborators is provided and valid
       if (!task.collaborators || task.collaborators.length < 2) {
-        console.warn(
+        logger.warn(
           'TaskService :: createDuoTask() :: Missing or invalid collaborators',
+          undefined,
+          'TaskService',
         );
         throw new Error('Team task requires at least two collaborators');
       }
 
       // Verify current user is one of the collaborators
       if (!task.collaborators.includes(userId)) {
-        console.warn(
+        logger.warn(
           'TaskService :: createDuoTask() :: Current user not in collaborators list',
+          undefined,
+          'TaskService',
         );
         throw new Error('Current user must be a collaborator');
       }
@@ -711,12 +874,16 @@ export class TaskService {
             : 0,
       };
 
-      console.log(
+      logger.debug(
         `TaskService :: createDuoTask() :: Adding team task to Firestore`,
+        undefined,
+        'TaskService',
       );
       const docRef = await addDoc(this.tasksCollection, teamTask);
-      console.log(
+      logger.debug(
         `TaskService :: createDuoTask() :: Team task added with ID: ${docRef.id}`,
+        undefined,
+        'TaskService',
       );
 
       // Create notifications for collaborators (except current user)
@@ -734,8 +901,10 @@ export class TaskService {
           read: false,
           createdAt: serverTimestamp(),
         });
-        console.log(
+        logger.debug(
           `TaskService :: createDuoTask() :: Notification sent to collaborator: ${collaboratorId}`,
+          undefined,
+          'TaskService',
         );
       }
 
@@ -743,36 +912,43 @@ export class TaskService {
       if (task.notify) {
         const taskWithId = {...teamTask, id: docRef.id} as Task;
         try {
-          console.log(
+          logger.debug(
             `TaskService :: createDuoTask() :: Scheduling notification for task: ${docRef.id}`,
+            undefined,
+            'TaskService',
           );
           const notificationId =
             await notificationService.scheduleTaskNotification(taskWithId);
 
           if (notificationId) {
-            console.log(
+            logger.debug(
               `TaskService :: createDuoTask() :: Notification scheduled successfully, ID: ${notificationId}`,
+              undefined,
+              'TaskService',
             );
             // Update the task with the notification ID
             await updateDoc(doc(this.tasksCollection, docRef.id), {
               notificationId: notificationId,
             });
           } else {
-            console.warn(
+            logger.warn(
               `TaskService :: createDuoTask() :: Failed to schedule notification for task: ${docRef.id}`,
+              undefined,
+              'TaskService',
             );
           }
         } catch (notificationError) {
-          console.error(
-            `TaskService :: createDuoTask() :: Error scheduling notification:`,
+          logger.error(
+            'TaskService :: createDuoTask() :: Error scheduling notification',
             notificationError,
+            'TaskService',
           );
         }
       }
 
       return docRef.id;
     } catch (error) {
-      console.error('TaskService :: createDuoTask() ::', error);
+      logger.error('TaskService :: createDuoTask() ::', error, 'TaskService');
       throw error;
     }
   }
@@ -782,13 +958,19 @@ export class TaskService {
    */
   async updateDuoTask(taskId: string, task: Partial<Task>): Promise<Task> {
     try {
-      console.log(
+      logger.debug(
         `TaskService :: updateDuoTask() :: Updating team task: "${task.title}" (ID: ${taskId})`,
+        undefined,
+        'TaskService',
       );
 
       const userId = getAuth().currentUser?.uid;
       if (!userId) {
-        console.log('TaskService :: updateDuoTask() :: User not authenticated');
+        logger.error(
+          'TaskService :: updateDuoTask() :: User not authenticated',
+          undefined,
+          'TaskService',
+        );
         throw new Error('User not authenticated');
       }
 
@@ -813,8 +995,10 @@ export class TaskService {
       };
 
       await updateDoc(doc(this.tasksCollection, taskId), updateData);
-      console.log(
+      logger.debug(
         `TaskService :: updateDuoTask() :: Team task updated successfully`,
+        undefined,
+        'TaskService',
       );
 
       // Handle notification updates
@@ -841,8 +1025,10 @@ export class TaskService {
             await updateDoc(doc(this.tasksCollection, taskId), {
               notificationId: notificationId,
             });
-            console.log(
+            logger.debug(
               `TaskService :: updateDuoTask() :: Updated notification`,
+              undefined,
+              'TaskService',
             );
           }
         }
@@ -867,8 +1053,10 @@ export class TaskService {
             createdAt: serverTimestamp(),
           });
         }
-        console.log(
+        logger.debug(
           `TaskService :: updateDuoTask() :: Notifications sent to collaborators`,
+          undefined,
+          'TaskService',
         );
       }
 
@@ -879,7 +1067,7 @@ export class TaskService {
         ...updatedTaskDoc.data(),
       } as Task;
     } catch (error) {
-      console.error('TaskService :: updateDuoTask() ::', error);
+      logger.error('TaskService :: updateDuoTask() ::', error, 'TaskService');
       throw error;
     }
   }
@@ -894,8 +1082,10 @@ export class TaskService {
         throw new Error('User not authenticated');
       }
 
-      console.log(
+      logger.debug(
         `TaskService :: getDuoTasks() :: Fetching team tasks for user: ${userId}`,
+        undefined,
+        'TaskService',
       );
       const teamTasksSnapshot = await getDocs(
         query(
@@ -906,15 +1096,17 @@ export class TaskService {
         ),
       );
 
-      console.log(
+      logger.debug(
         `TaskService :: getDuoTasks() :: Found ${teamTasksSnapshot.size} team tasks`,
+        undefined,
+        'TaskService',
       );
       return teamTasksSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
       })) as Task[];
     } catch (error) {
-      console.log('TaskService :: getDuoTasks() ::', error);
+      logger.error('TaskService :: getDuoTasks() ::', error, 'TaskService');
       throw error;
     }
   }
@@ -970,7 +1162,11 @@ export class TaskService {
 
       return tasks;
     } catch (error) {
-      console.error('TaskService :: getPendingDuoTaskInvitations() ::', error);
+      logger.error(
+        'TaskService :: getPendingDuoTaskInvitations() ::',
+        error,
+        'TaskService',
+      );
       throw error;
     }
   }
@@ -985,8 +1181,10 @@ export class TaskService {
         throw new Error('User not authenticated');
       }
 
-      console.log(
+      logger.debug(
         `TaskService :: acceptDuoTaskInvitation() :: User ${userId} accepting task ${taskId}`,
+        undefined,
+        'TaskService',
       );
 
       // Get the task to verify user is a collaborator
@@ -1008,8 +1206,10 @@ export class TaskService {
         updatedAt: serverTimestamp(),
       });
 
-      console.log(
+      logger.debug(
         `TaskService :: acceptDuoTaskInvitation() :: Updated task status to active`,
+        undefined,
+        'TaskService',
       );
 
       // Update notification as read
@@ -1028,8 +1228,10 @@ export class TaskService {
           batch.update(doc.ref, {read: true});
         });
         await batch.commit();
-        console.log(
+        logger.debug(
           `TaskService :: acceptDuoTaskInvitation() :: Updated notifications as read`,
+          undefined,
+          'TaskService',
         );
       }
 
@@ -1047,12 +1249,18 @@ export class TaskService {
           read: false,
           createdAt: serverTimestamp(),
         });
-        console.log(
+        logger.debug(
           `TaskService :: acceptDuoTaskInvitation() :: Notification sent to task creator: ${notifyUserId}`,
+          undefined,
+          'TaskService',
         );
       }
     } catch (error) {
-      console.error('TaskService :: acceptDuoTaskInvitation() ::', error);
+      logger.error(
+        'TaskService :: acceptDuoTaskInvitation() ::',
+        error,
+        'TaskService',
+      );
       throw error;
     }
   }
@@ -1067,8 +1275,10 @@ export class TaskService {
         throw new Error('User not authenticated');
       }
 
-      console.log(
+      logger.debug(
         `TaskService :: rejectDuoTaskInvitation() :: User ${userId} declining task ${taskId}`,
+        undefined,
+        'TaskService',
       );
 
       // Get the task
@@ -1093,8 +1303,10 @@ export class TaskService {
           updatedAt: serverTimestamp(),
           lastUpdatedBy: userId,
         });
-        console.log(
+        logger.debug(
           `TaskService :: rejectDuoTaskInvitation() :: Converted task to regular task`,
+          undefined,
+          'TaskService',
         );
       } else {
         // Update collaborators list
@@ -1103,8 +1315,10 @@ export class TaskService {
           updatedAt: serverTimestamp(),
           lastUpdatedBy: userId,
         });
-        console.log(
+        logger.debug(
           `TaskService :: rejectDuoTaskInvitation() :: Removed user from collaborators`,
+          undefined,
+          'TaskService',
         );
       }
       // Update notification as read
@@ -1123,8 +1337,10 @@ export class TaskService {
           batch.update(doc.ref, {read: true});
         });
         await batch.commit();
-        console.log(
+        logger.debug(
           `TaskService :: rejectDuoTaskInvitation() :: Updated notifications as read`,
+          undefined,
+          'TaskService',
         );
       }
 
@@ -1142,12 +1358,18 @@ export class TaskService {
           read: false,
           createdAt: serverTimestamp(),
         });
-        console.log(
+        logger.debug(
           `TaskService :: rejectDuoTaskInvitation() :: Notification sent to task creator: ${notifyUserId}`,
+          undefined,
+          'TaskService',
         );
       }
     } catch (error) {
-      console.error('TaskService :: rejectDuoTaskInvitation() ::', error);
+      logger.error(
+        'TaskService :: rejectDuoTaskInvitation() ::',
+        error,
+        'TaskService',
+      );
       throw error;
     }
   }
@@ -1262,11 +1484,17 @@ export class TaskService {
         await batch.commit();
       }
 
-      console.log(
+      logger.debug(
         `TaskService :: updateDuoTaskSubtask() :: Subtask ${subtaskId} updated successfully`,
+        undefined,
+        'TaskService',
       );
     } catch (error) {
-      console.error('TaskService :: updateDuoTaskSubtask() ::', error);
+      logger.error(
+        'TaskService :: updateDuoTaskSubtask() ::',
+        error,
+        'TaskService',
+      );
       throw error;
     }
   }
@@ -1354,11 +1582,17 @@ export class TaskService {
         await batch.commit();
       }
 
-      console.log(
+      logger.debug(
         `TaskService :: addDuoTaskSubtask() :: Subtask added successfully to task ${taskId}`,
+        undefined,
+        'TaskService',
       );
     } catch (error) {
-      console.error('TaskService :: addDuoTaskSubtask() ::', error);
+      logger.error(
+        'TaskService :: addDuoTaskSubtask() ::',
+        error,
+        'TaskService',
+      );
       throw error;
     }
   }
@@ -1409,7 +1643,11 @@ export class TaskService {
             userData = userDoc.data() || userData;
           }
         } catch (e) {
-          console.error('Error fetching user data for message:', e);
+          logger.error(
+            'Error fetching user data for message',
+            e,
+            'TaskService',
+          );
         }
 
         messages.push({
@@ -1427,7 +1665,11 @@ export class TaskService {
 
       return messages;
     } catch (error) {
-      console.error('TaskService :: getDuoTaskMessages() ::', error);
+      logger.error(
+        'TaskService :: getDuoTaskMessages() ::',
+        error,
+        'TaskService',
+      );
       throw error;
     }
   }
@@ -1489,11 +1731,17 @@ export class TaskService {
         await batch.commit();
       }
 
-      console.log(
+      logger.debug(
         `TaskService :: sendDuoTaskMessage() :: Message sent successfully for task ${taskId}`,
+        undefined,
+        'TaskService',
       );
     } catch (error) {
-      console.error('TaskService :: sendDuoTaskMessage() ::', error);
+      logger.error(
+        'TaskService :: sendDuoTaskMessage() ::',
+        error,
+        'TaskService',
+      );
       throw error;
     }
   }
@@ -1524,15 +1772,19 @@ export class TaskService {
         throw new Error('User not authenticated');
       }
 
-      console.log(
+      logger.debug(
         `TaskService :: getTaskById() :: Fetching task with ID: ${taskId}`,
+        undefined,
+        'TaskService',
       );
 
       const taskDoc = await getDoc(doc(this.tasksCollection, taskId));
 
       if (!taskDoc.exists()) {
-        console.log(
+        logger.warn(
           `TaskService :: getTaskById() :: Task not found: ${taskId}`,
+          undefined,
+          'TaskService',
         );
         return null;
       }
@@ -1545,19 +1797,23 @@ export class TaskService {
       // Verify user has access to this task
       if (!task.isDuoTask || !task.collaborators?.includes(userId)) {
         if (task.userId !== userId) {
-          console.log(
+          logger.warn(
             `TaskService :: getTaskById() :: User does not have access to task: ${taskId}`,
+            undefined,
+            'TaskService',
           );
           return null;
         }
       }
 
-      console.log(
+      logger.debug(
         `TaskService :: getTaskById() :: Successfully retrieved task: ${taskId}`,
+        undefined,
+        'TaskService',
       );
       return task;
     } catch (error) {
-      console.error('TaskService :: getTaskById() ::', error);
+      logger.error('TaskService :: getTaskById() ::', error, 'TaskService');
       throw error;
     }
   }

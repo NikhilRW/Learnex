@@ -6,21 +6,23 @@ import {
   Share,
   Platform,
 } from 'react-native';
-import React, { useEffect, useState } from 'react';
+import React, {useEffect, useState} from 'react';
 import QRCodeView from 'react-native-qrcode-svg';
-import { useNavigation } from '@react-navigation/native';
-import { DrawerNavigationProp } from '@react-navigation/drawer';
-import { useTypedSelector } from 'hooks/redux/useTypedSelector';
+import {useNavigation} from '@react-navigation/native';
+import {DrawerNavigationProp} from '@react-navigation/drawer';
+import {useTypedSelector} from 'hooks/redux/useTypedSelector';
+import {selectFirebase, selectIsDark} from 'shared/store/selectors';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { createStyles } from 'qr-code/styles/QRCode';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {createStyles} from 'qr-code/styles/QRCode';
+import {SafeAreaView} from 'react-native-safe-area-context';
+import {logger} from 'shared/utils/logger';
 
 // QR code format - uses a specific URI scheme for app deep linking
 // Format: learnex://chat/{userId}
 const QRCode = () => {
   const navigation = useNavigation<DrawerNavigationProp<any>>();
-  const isDark = useTypedSelector(state => state.user.theme) === 'dark';
-  const firebase = useTypedSelector(state => state.firebase.firebase);
+  const isDark = useTypedSelector(selectIsDark);
+  const firebase = useTypedSelector(selectFirebase);
   const currentUser = firebase.auth.currentUser();
   const [fullName, setFullName] = useState<string>('');
   const [qrValue, setQrValue] = useState<string>('');
@@ -29,7 +31,7 @@ const QRCode = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      const { fullName } = await firebase.user.getNameUsernamestring();
+      const {fullName} = await firebase.user.getNameUsernamestring();
       setFullName(fullName);
 
       // Create a deep link URL with the current user's ID
@@ -65,31 +67,33 @@ const QRCode = () => {
       if (result.action === Share.sharedAction) {
         if (result.activityType) {
           // Shared with activity type of result.activityType
-          console.log('Shared with activity type:', result.activityType);
+          logger.debug(
+            'Shared with activity type:',
+            result.activityType,
+            'QRCode',
+          );
         } else {
           // Shared
-          console.log('Shared successfully');
+          logger.debug('Shared successfully', undefined, 'QRCode');
         }
       } else if (result.action === Share.dismissedAction) {
         // Dismissed
-        console.log('Share dismissed');
+        logger.debug('Share dismissed', undefined, 'QRCode');
       }
     } catch (error) {
-      console.error('Error sharing:', error);
+      logger.error('Error sharing:', error, 'QRCode');
     } finally {
       setIsSharing(false);
     }
   };
 
   return (
-    <SafeAreaView
-      style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <StatusBar
         barStyle={isDark ? 'light-content' : 'dark-content'}
         backgroundColor={isDark ? '#1a1a1a' : '#f5f5f5'}
       />
-      <View
-        style={styles.customHeader}>
+      <View style={styles.customHeader}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}>
@@ -99,9 +103,7 @@ const QRCode = () => {
             color={isDark ? 'white' : 'black'}
           />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          Your QR Code
-        </Text>
+        <Text style={styles.headerTitle}>Your QR Code</Text>
         <TouchableOpacity
           style={styles.shareButton}
           onPress={handleShare}
@@ -113,8 +115,7 @@ const QRCode = () => {
           />
         </TouchableOpacity>
       </View>
-      <View
-        style={styles.qrCodeContainer}>
+      <View style={styles.qrCodeContainer}>
         <QRCodeView
           ecl="M"
           quietZone={10}
@@ -123,8 +124,8 @@ const QRCode = () => {
             uri:
               currentUser?.photoURL ||
               'https://ui-avatars.com/api/?name==' +
-              encodeURIComponent(fullName) ||
-              'Anonymous'
+                encodeURIComponent(fullName) ||
+              'Anonymous',
           }}
           logoSize={100}
           logoMargin={-20}
@@ -133,8 +134,7 @@ const QRCode = () => {
           size={300}
         />
 
-        <Text
-          style={styles.infoText}>
+        <Text style={styles.infoText}>
           Scan this QR code to start a conversation with me
         </Text>
 

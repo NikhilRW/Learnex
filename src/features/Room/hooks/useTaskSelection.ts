@@ -3,6 +3,7 @@ import {Alert} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {Task} from 'shared/types/taskTypes';
 import {TaskService} from 'shared/services/TaskService';
+import {logger} from 'shared/utils/logger';
 
 const taskService = new TaskService();
 
@@ -40,7 +41,7 @@ export const useTaskSelection = () => {
         }
       }
     } catch (error) {
-      console.error('Error fetching team tasks:', error);
+      logger.error('Error fetching team tasks:', error, 'RoomTaskSelection');
       Alert.alert('Error', 'Failed to load team tasks');
     } finally {
       setIsTasksLoading(false);

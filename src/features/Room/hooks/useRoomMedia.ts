@@ -2,6 +2,7 @@ import {useState, useCallback} from 'react';
 import {Alert} from 'react-native';
 import {WebRTCService} from 'room/services/WebRTCService';
 import {getAuth} from '@react-native-firebase/auth';
+import {logger} from 'shared/utils/logger';
 import {
   ExtendedMediaStream,
   UseRoomMediaParams,
@@ -59,8 +60,10 @@ export const useRoomMedia = ({
       const videoTracks = localStream.getVideoTracks();
       if (videoTracks.length > 0) {
         try {
-          console.log(
+          logger.debug(
             `Flipping camera from ${isFrontCamera ? 'front' : 'back'} to ${isFrontCamera ? 'back' : 'front'}`,
+            undefined,
+            'useRoomMedia',
           );
 
           // Use the native _switchCamera method available in react-native-webrtc
@@ -69,11 +72,17 @@ export const useRoomMedia = ({
               track._switchCamera();
               // Update camera facing mode state
               setIsFrontCamera(!isFrontCamera);
-              console.log(
+              logger.debug(
                 `Camera flipped successfully to ${!isFrontCamera ? 'front' : 'back'}`,
+                undefined,
+                'useRoomMedia',
               );
             } else {
-              console.warn('_switchCamera method not available on this track');
+              logger.warn(
+                '_switchCamera method not available on this track',
+                undefined,
+                'useRoomMedia',
+              );
 
               // Fallback approach for browsers or platforms without _switchCamera
               // This would require reinitializing the camera with opposite facing mode
@@ -81,14 +90,22 @@ export const useRoomMedia = ({
             }
           });
         } catch (error) {
-          console.error('Error flipping camera:', error);
+          logger.error('Error flipping camera:', error, 'useRoomMedia');
         }
       } else {
-        console.warn('No video tracks available to flip camera');
+        logger.warn(
+          'No video tracks available to flip camera',
+          undefined,
+          'useRoomMedia',
+        );
         Alert.alert('Camera Error', 'No video available to switch cameras');
       }
     } else {
-      console.warn('No local stream available to flip camera');
+      logger.warn(
+        'No local stream available to flip camera',
+        undefined,
+        'useRoomMedia',
+      );
       Alert.alert('Camera Error', 'Camera not initialized');
     }
   }, [localStream, isFrontCamera]);
@@ -104,31 +121,38 @@ export const useRoomMedia = ({
           stream.participantId = currentUser?.uid;
         }
 
-        console.log('Updating local stream:', stream.id);
-        console.log(
+        logger.debug('Updating local stream:', stream.id, 'useRoomMedia');
+        logger.debug(
           'Stream tracks:',
           stream
             .getTracks()
             .map(t => `${t.kind}:${t.enabled}`)
             .join(', '),
+          'useRoomMedia',
         );
 
         // Update the local stream in WebRTCService - this will trigger renegotiation
         webRTCService
           .updateLocalStream(stream, meetingId)
           .then(() => {
-            console.log(
+            logger.debug(
               'Local stream updated successfully and connections renegotiated',
+              undefined,
+              'useRoomMedia',
             );
           })
           .catch((error: Error) => {
-            console.error('Error updating local stream:', error);
+            logger.error('Error updating local stream:', error, 'useRoomMedia');
           });
 
         // Update local state
         setLocalStream(stream);
       } catch (error) {
-        console.error('Error in handleLocalStreamUpdate:', error);
+        logger.error(
+          'Error in handleLocalStreamUpdate:',
+          error,
+          'useRoomMedia',
+        );
       }
     },
     [currentUser?.uid, meetingId, setLocalStream, webRTCService],

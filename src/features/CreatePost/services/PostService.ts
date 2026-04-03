@@ -5,6 +5,7 @@ import {
   serverTimestamp,
 } from '@react-native-firebase/firestore';
 import {getAuth} from '@react-native-firebase/auth';
+import {logger} from 'shared/utils/logger';
 
 interface MediaUrl {
   url: string;
@@ -64,6 +65,10 @@ export const savePostToFirestore = async (
     timestamp: serverTimestamp(),
   };
 
-  console.log('Creating post with data:', JSON.stringify(postData, null, 2));
+  logger.debug(
+    'Creating post with data:',
+    JSON.stringify(postData, null, 2),
+    'PostService',
+  );
   await addDoc(collection(getFirestore(), 'posts'), postData);
 };

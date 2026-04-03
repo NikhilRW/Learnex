@@ -1,3 +1,5 @@
+import {logger} from 'shared/utils/logger';
+
 /**
  * DeepLinkHandler - Utility for handling deep links in the app
  */
@@ -20,17 +22,21 @@ export class DeepLinkHandler {
    */
   public static navigate(screenName: string, params?: any): boolean {
     if (!this.navigationRef || !this.navigationRef.isReady()) {
-      console.log('Navigation not ready, storing navigation request for later');
+      logger.debug(
+        'Navigation not ready, storing navigation request for later',
+        {screenName, params},
+        'DeepLinkHandler',
+      );
       this.pendingNavigation = {screenName, params};
       return false;
     }
 
     try {
-      console.log(`Navigating to ${screenName}`, params);
+      logger.debug(`Navigating to ${screenName}`, params, 'DeepLinkHandler');
       this.navigationRef.navigate(screenName, params);
       return true;
     } catch (error) {
-      console.error('Error during navigation:', error);
+      logger.error('Error during navigation', error, 'DeepLinkHandler');
       return false;
     }
   }
@@ -43,7 +49,7 @@ export class DeepLinkHandler {
     if (!url) return;
 
     try {
-      console.log('Handling deep link:', url);
+      logger.debug('Handling deep link', url, 'DeepLinkHandler');
 
       // Parse the URL
       const parsedUrl = new URL(url);
@@ -51,7 +57,11 @@ export class DeepLinkHandler {
 
       // Check if we have a valid navigation ref
       if (!this.navigationRef || !this.navigationRef.isReady()) {
-        console.log('Navigation not ready, storing deep link for later');
+        logger.debug(
+          'Navigation not ready, storing deep link for later',
+          url,
+          'DeepLinkHandler',
+        );
         this.pendingDeepLink = url;
         return;
       }
@@ -87,7 +97,7 @@ export class DeepLinkHandler {
               const senderPhoto =
                 parsedUrl.searchParams.get('senderPhoto') || '';
 
-                // UserStack
+              // UserStack
               // Navigate to the chat screen
               this.navigationRef.navigate('UserStack', {
                 conversationId,
@@ -101,11 +111,15 @@ export class DeepLinkHandler {
           // Add more cases for other deep link types
 
           default:
-            console.log('Unknown deep link path:', pathSegments[0]);
+            logger.warn(
+              'Unknown deep link path',
+              pathSegments[0],
+              'DeepLinkHandler',
+            );
         }
       }
     } catch (error) {
-      console.error('Error handling deep link:', error);
+      logger.error('Error handling deep link', error, 'DeepLinkHandler');
     }
   }
 
@@ -133,14 +147,22 @@ export class DeepLinkHandler {
   public static checkPendingNavigation(): void {
     // Check for any pending deep link
     if (this.pendingDeepLink && this.navigationRef?.isReady()) {
-      console.log('Processing pending deep link from app startup');
+      logger.debug(
+        'Processing pending deep link from app startup',
+        this.pendingDeepLink,
+        'DeepLinkHandler',
+      );
       this.handleDeepLink(this.pendingDeepLink);
       this.pendingDeepLink = null;
     }
 
     // Check for any pending direct navigation
     if (this.pendingNavigation && this.navigationRef?.isReady()) {
-      console.log('Processing pending navigation from app startup');
+      logger.debug(
+        'Processing pending navigation from app startup',
+        this.pendingNavigation,
+        'DeepLinkHandler',
+      );
       const {screenName, params} = this.pendingNavigation;
       this.navigate(screenName, params);
       this.pendingNavigation = null;

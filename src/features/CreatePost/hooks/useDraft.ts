@@ -1,6 +1,7 @@
 import {useState, useEffect} from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {PostFormData} from '../types';
+import {logger} from 'shared/utils/logger';
 
 const DRAFT_STORAGE_KEY = 'create_post_draft';
 
@@ -20,7 +21,7 @@ export const useDraft = (
         setShowDraftBanner(true);
       }
     } catch (e) {
-      console.error('Failed to check draft', e);
+      logger.error('Failed to check draft', e, 'CreatePostDraft');
     }
   };
 
@@ -28,7 +29,7 @@ export const useDraft = (
     try {
       await AsyncStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(data));
     } catch (e) {
-      console.error('Failed to save draft', e);
+      logger.error('Failed to save draft', e, 'CreatePostDraft');
     }
   };
 
@@ -37,7 +38,7 @@ export const useDraft = (
       await AsyncStorage.removeItem(DRAFT_STORAGE_KEY);
       setShowDraftBanner(false);
     } catch (e) {
-      console.error('Failed to clear draft', e);
+      logger.error('Failed to clear draft', e, 'CreatePostDraft');
     }
   };
 
@@ -49,7 +50,7 @@ export const useDraft = (
       }
       setShowDraftBanner(false);
     } catch (e) {
-      console.error('Failed to restore draft', e);
+      logger.error('Failed to restore draft', e, 'CreatePostDraft');
     }
   };
 

@@ -17,23 +17,19 @@ type ChatMessageRowProps = {
   currentUserId: string;
   isDark: boolean;
   onLongPress: (id: string) => void;
+  reactionCounts: {[type: string]: number};
+  myReaction?: string;
 };
 
 const ChatMessageRow = React.memo(
-  ({item, currentUserId, isDark, onLongPress}: ChatMessageRowProps) => {
-    // Reaction counts are recomputed only when THIS item's reactions change,
-    // not whenever the parent list re-renders.
-    const reactionCounts = useMemo(() => {
-      const counts: {[type: string]: number} = {};
-      if (item.reactions) {
-        Object.values(item.reactions).forEach(type => {
-          counts[type] = (counts[type] || 0) + 1;
-        });
-      }
-      return counts;
-    }, [item.reactions]);
-
-    const myReaction = item.reactions?.[currentUserId];
+  ({
+    item,
+    currentUserId,
+    isDark,
+    onLongPress,
+    reactionCounts,
+    myReaction,
+  }: ChatMessageRowProps) => {
     const isCurrentUserMessage = item.senderId === currentUserId;
 
     return (
@@ -122,17 +118,56 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   const [messageText, setMessageText] = useState('');
   const flatListRef = useRef<any>(null);
 
-  // Track the last known message count so we only auto-scroll when a NEW
-  // message is added — not when an existing message is updated (e.g. a
-  // reaction is added/removed).
-  const lastMessageCountRef = useRef(0);
+  const isAtBottomRef = useRef(true);
+  const pendingScrollRef = useRef(false);
+  const lastMessageIdRef = useRef<string | null>(null);
+
+  const handleScroll = useCallback((event: any) => {
+    const {contentOffset, contentSize, layoutMeasurement} = event.nativeEvent;
+    const distanceFromBottom =
+      contentSize.height - layoutMeasurement.height - contentOffset.y;
+    isAtBottomRef.current = distanceFromBottom < 80;
+  }, []);
+
+  const handleContentSizeChange = useCallback(() => {
+    if (pendingScrollRef.current) {
+      pendingScrollRef.current = false;
+      flatListRef.current?.scrollToEnd({animated: true});
+    }
+  }, []);
 
   useEffect(() => {
-    if (messages.length > lastMessageCountRef.current && flatListRef.current) {
-      flatListRef.current.scrollToEnd({animated: true});
+    const lastMessage = messages[messages.length - 1];
+    const lastMessageId = lastMessage?.id ?? null;
+
+    if (lastMessageId && lastMessageId !== lastMessageIdRef.current) {
+      const shouldAutoScroll =
+        isAtBottomRef.current || lastMessage?.senderId === currentUserId;
+      if (shouldAutoScroll) {
+        pendingScrollRef.current = true;
+      }
+      lastMessageIdRef.current = lastMessageId;
     }
-    lastMessageCountRef.current = messages.length;
-  }, [messages]);
+  }, [messages, currentUserId]);
+
+  const normalizedMessages = useMemo(
+    () =>
+      messages.map(message => {
+        const reactionCounts: {[type: string]: number} = {};
+        if (message.reactions) {
+          Object.values(message.reactions).forEach(type => {
+            reactionCounts[type] = (reactionCounts[type] || 0) + 1;
+          });
+        }
+
+        return {
+          ...message,
+          reactionCounts,
+          myReaction: message.reactions?.[currentUserId],
+        };
+      }),
+    [messages, currentUserId],
+  );
 
   const handleSendMessage = () => {
     if (messageText.trim()) {
@@ -144,12 +179,21 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   // Stable render callback — only recreated when the values that affect the
   // row actually change, keeping LegendList's internal diffing efficient.
   const renderItem = useCallback(
-    ({item}: {item: Message}) => (
+    ({
+      item,
+    }: {
+      item: Message & {
+        reactionCounts: {[type: string]: number};
+        myReaction?: string;
+      };
+    }) => (
       <ChatMessageRow
         item={item}
         currentUserId={currentUserId}
         isDark={isDark}
         onLongPress={onLongPressMessage}
+        reactionCounts={item.reactionCounts}
+        myReaction={item.myReaction}
       />
     ),
     [currentUserId, isDark, onLongPressMessage],
@@ -190,13 +234,16 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
       ) : (
         <LegendList
           ref={flatListRef}
-          data={messages}
+          data={normalizedMessages}
           renderItem={renderItem}
           keyExtractor={item => item.id}
           style={[styles.messagesList, isDark && styles.messagesListDark]}
           contentContainerStyle={styles.messagesContent}
           estimatedItemSize={80}
           recycleItems={true}
+          onContentSizeChange={handleContentSizeChange}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
         />
       )}
 

@@ -10,6 +10,7 @@ import {
 import {styles} from 'auth/styles/SignUp';
 import React, {useCallback, useEffect, useState} from 'react';
 import FeatherIcon from 'react-native-vector-icons/Feather';
+import {logger} from 'shared/utils/logger';
 import BouncyCheckbox from 'react-native-bouncy-checkbox';
 import {Input} from 'react-native-elements';
 import MaterialsIcon from 'react-native-vector-icons/MaterialIcons';
@@ -29,15 +30,15 @@ import {signUpData} from 'shared/types/authTypes';
 import ErrorMessage from 'auth/components/ErrorMessage';
 import {signUpSchema} from 'auth/schema/yupSchemas';
 import {useTypedSelector} from 'hooks/redux/useTypedSelector';
+import {selectFirebase, selectIsDark} from 'shared/store/selectors';
 import Snackbar from 'react-native-snackbar';
 import debounce from 'lodash.debounce';
 import OAuthButton from '../components/OAuthButton';
 
 const SignUp = () => {
   const isKeyboardVisible = useIsKeyboardVisible();
-  const theme = useTypedSelector(state => state.user.theme);
-  const isDark = theme === 'dark';
-  const firebase = useTypedSelector(state => state.firebase.firebase);
+  const isDark = useTypedSelector(selectIsDark);
+  const firebase = useTypedSelector(selectFirebase);
   const navigation = useNavigation<AuthNavigationProps>();
   const [isConfirmPasswordHidden, setisConfirmPasswordHidden] =
     useState<boolean>(false);
@@ -169,7 +170,7 @@ const SignUp = () => {
     if (success) {
       navigation.getParent()?.navigate('UserStack');
     } else {
-      console.log('Google Sign-In Failed :: ', error);
+      logger.warn('Google Sign-In Failed :: ', error, 'SignUp');
       Snackbar.show({
         text: 'Google Sign-In Failed',
         duration: Snackbar.LENGTH_LONG,
@@ -186,7 +187,7 @@ const SignUp = () => {
     if (success) {
       navigation.getParent()?.navigate('UserStack');
     } else {
-      console.log('GitHub Sign-In Failed :: ', error);
+      logger.warn('GitHub Sign-In Failed :: ', error, 'SignUp');
       Snackbar.show({
         text: 'GitHub Sign-In Failed',
         duration: Snackbar.LENGTH_LONG,

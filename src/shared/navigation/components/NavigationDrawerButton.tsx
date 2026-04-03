@@ -1,39 +1,50 @@
-import { TouchableOpacity, View, Dimensions } from 'react-native';
-import React, { useEffect, useState, useCallback, memo } from 'react';
-import { Image } from 'react-native';
-import { ParamListBase } from '@react-navigation/native';
-import { DrawerNavigationProp } from '@react-navigation/drawer';
-import { useTypedSelector } from 'hooks/redux/useTypedSelector';
+import {TouchableOpacity, View, Dimensions} from 'react-native';
+import React, {useEffect, useState, useCallback, memo} from 'react';
+import {Image} from 'react-native';
+import {ParamListBase} from '@react-navigation/native';
+import {DrawerNavigationProp} from '@react-navigation/drawer';
+import {useTypedSelector} from 'hooks/redux/useTypedSelector';
+import {
+  selectFirebase,
+  selectTheme,
+  selectUserPhoto,
+  selectUserProfileColor,
+} from 'shared/store/selectors';
+import {logger} from 'shared/utils/logger';
 import Icon from 'react-native-vector-icons/Feather';
-import { TextInput } from 'react-native-gesture-handler';
-import { Avatar } from 'react-native-elements';
-import { getUsernameForLogo } from 'shared/helpers/common/stringHelpers';
-import { getStyles } from '../styles/NavigationDrawerButton.styles';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {TextInput} from 'react-native-gesture-handler';
+import {Avatar} from 'react-native-elements';
+import {getUsernameForLogo} from 'shared/helpers/common/stringHelpers';
+import {getStyles} from '../styles/NavigationDrawerButton.styles';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const {width: SCREEN_WIDTH} = Dimensions.get('window');
 
 const NavigationDrawerButton = memo(
-  ({ navigation }: { navigation: DrawerNavigationProp<ParamListBase> }) => {
+  ({navigation}: {navigation: DrawerNavigationProp<ParamListBase>}) => {
     const insets = useSafeAreaInsets();
-    const theme = useTypedSelector(state => state.user.theme);
+    const theme = useTypedSelector(selectTheme);
     const isDark = theme === 'dark';
-    const firebase = useTypedSelector(state => state.firebase.firebase);
+    const firebase = useTypedSelector(selectFirebase);
     const [userData, setUserData] = useState<{
       fullName: string;
       username: string;
     } | null>(null);
     const [photoURL, setPhotoURL] = useState<string | null>(null);
     const [searchText, setSearchText] = useState('');
-    const profileColor = useTypedSelector(state => state.user.userProfileColor);
-    const reduxPhotoURL = useTypedSelector(state => state.user.userPhoto);
+    const profileColor = useTypedSelector(selectUserProfileColor);
+    const reduxPhotoURL = useTypedSelector(selectUserPhoto);
 
     useEffect(() => {
       const fetchUserData = async () => {
         try {
           const currentUser = firebase.currentUser();
           if (!currentUser) {
-            console.log('No current user');
+            logger.debug(
+              'No current user',
+              undefined,
+              'NavigationDrawerButton',
+            );
             return;
           }
 
@@ -43,7 +54,11 @@ const NavigationDrawerButton = memo(
           }
           // If not, check Firebase user photo URL
           else if (currentUser.photoURL) {
-            console.log('User photo URL:', currentUser.photoURL);
+            logger.debug(
+              'User photo URL',
+              currentUser.photoURL,
+              'NavigationDrawerButton',
+            );
             if (
               typeof currentUser.photoURL === 'string' &&
               (currentUser.photoURL.startsWith('http://') ||
@@ -52,23 +67,39 @@ const NavigationDrawerButton = memo(
             ) {
               setPhotoURL(currentUser.photoURL);
             } else {
-              console.log('Invalid photo URL format:', currentUser.photoURL);
+              logger.warn(
+                'Invalid photo URL format',
+                currentUser.photoURL,
+                'NavigationDrawerButton',
+              );
               setPhotoURL(null);
             }
           } else {
-            console.log('No photo URL available');
+            logger.debug(
+              'No photo URL available',
+              undefined,
+              'NavigationDrawerButton',
+            );
             setPhotoURL(null);
           }
 
           const data = await firebase.user.getNameUsernamestring();
-          console.log('data : ' + data.username);
+          logger.debug('User data fetched', data, 'NavigationDrawerButton');
           if (data) {
             setUserData(data);
           } else {
-            console.log('No user data found');
+            logger.debug(
+              'No user data found',
+              undefined,
+              'NavigationDrawerButton',
+            );
           }
         } catch (error) {
-          console.error('Error fetching user data:', error);
+          logger.error(
+            'Error fetching user data',
+            error,
+            'NavigationDrawerButton',
+          );
           setUserData(null);
         }
       };
@@ -134,15 +165,16 @@ const NavigationDrawerButton = memo(
           <TouchableOpacity onPress={handleOpenDrawer} activeOpacity={0.7}>
             {photoURL ? (
               <Image
-                source={{ uri: photoURL }}
+                source={{uri: photoURL}}
                 style={[
                   styles.container,
-                  { borderColor: isDark ? `#2379C2` : `#2379C2` },
+                  {borderColor: isDark ? `#2379C2` : `#2379C2`},
                 ]}
                 onError={e => {
-                  console.log(
-                    'Profile image loading error:',
+                  logger.warn(
+                    'Profile image loading error',
                     e.nativeEvent.error,
+                    'NavigationDrawerButton',
                   );
                   setPhotoURL(null);
                 }}

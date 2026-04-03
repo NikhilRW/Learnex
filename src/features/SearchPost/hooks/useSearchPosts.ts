@@ -1,13 +1,15 @@
 import {useState, useEffect, useCallback, useRef, startTransition} from 'react';
 import {ViewToken} from 'react-native';
 import {useTypedSelector} from 'hooks/redux/useTypedSelector';
+import {selectFirebase} from 'shared/store/selectors';
+import {logger} from 'shared/utils/logger';
 import {PostType} from 'shared/types/post';
 import {ViewabilityPair, UseSearchPostsResult} from '../types';
 
 const MAX_RETRIES = 3;
 
 export const useSearchPosts = (searchText?: string): UseSearchPostsResult => {
-  const firebase = useTypedSelector(state => state.firebase.firebase);
+  const firebase = useTypedSelector(selectFirebase);
   const [posts, setPosts] = useState<PostType[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -46,7 +48,7 @@ export const useSearchPosts = (searchText?: string): UseSearchPostsResult => {
           }
         }
       } catch (error) {
-        console.error('Error fetching search results:', error);
+        logger.error('Error fetching search results:', error, 'SearchPosts');
         if (isMounted) setLoading(false);
       }
     };
@@ -88,7 +90,7 @@ export const useSearchPosts = (searchText?: string): UseSearchPostsResult => {
         });
       }
     } catch (error) {
-      console.error('Error refreshing search results:', error);
+      logger.error('Error refreshing search results:', error, 'SearchPosts');
     } finally {
       setRefreshing(false);
     }

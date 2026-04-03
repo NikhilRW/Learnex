@@ -12,6 +12,7 @@ import LexAIService from 'shared/services/LexAIService';
 import {setActiveConversation} from 'lex-ai/reducers/LexAI';
 import {DispatchType} from 'shared/store/store';
 import {generateUUID, logDebug} from 'lex-ai/utils/common';
+import {logger} from 'shared/utils/logger';
 import {UserStackParamList} from 'shared/navigation/routes/UserStack';
 import {
   isDirectSearchCommand,
@@ -318,7 +319,7 @@ export const useLexAIMessaging = ({
         errorMessage: error?.message || 'Unknown error',
         errorString: String(error),
       });
-      console.error('Error processing message:', error);
+      logger.error('Error processing message:', error, 'LexAIMessaging');
 
       const errorMessage: LexAIMessage = {
         id: generateUUID(),

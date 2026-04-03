@@ -7,6 +7,7 @@ import {DEFAULT_MEETING_SETTINGS} from '../constants/common';
 import {MeetingService} from '../services/MeetingService';
 import {TaskService} from 'shared/services/TaskService';
 import {UserStackParamList} from 'shared/navigation/routes/UserStack';
+import {logger} from 'shared/utils/logger';
 
 type RoomScreenRouteProp = RouteProp<{Room: RoomParams}, 'Room'>;
 
@@ -31,7 +32,11 @@ export const useRoomNavigation = (
       // Handle meeting data if provided
       if (route.params?.meetingData) {
         const agenticMeetingData = route.params.meetingData;
-        console.log('Received meeting data from LexAI:', agenticMeetingData);
+        logger.debug(
+          'Received meeting data from LexAI:',
+          agenticMeetingData,
+          'RoomNavigation',
+        );
         const meetingData = {
           title: agenticMeetingData.title || '',
           description: agenticMeetingData.description || '',
@@ -56,7 +61,11 @@ export const useRoomNavigation = (
                 setSelectedTask(task);
               }
             } catch (error) {
-              console.error('Failed to fetch task details:', error);
+              logger.error(
+                'Failed to fetch task details:',
+                error,
+                'RoomNavigation',
+              );
             }
           };
 
@@ -77,9 +86,10 @@ export const useRoomNavigation = (
       }
       // Handle join mode if provided
       else if (route.params?.joinMode && route.params?.roomCode) {
-        console.log(
+        logger.debug(
           'Received join room request with code:',
           route.params.roomCode,
+          'RoomNavigation',
         );
         // Set active tab to join
         setActiveTab('join');
@@ -97,7 +107,7 @@ export const useRoomNavigation = (
             isHost: false,
           });
         } catch (error) {
-          console.error('Failed to join meeting:', error);
+          logger.error('Failed to join meeting:', error, 'RoomNavigation');
           Alert.alert(
             'Error',
             error instanceof Error ? error.message : 'Failed to join meeting',

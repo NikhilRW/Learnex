@@ -1,15 +1,16 @@
-import { LegendList } from '@legendapp/list';
-import React, { useCallback, useMemo } from 'react';
-import { View, ActivityIndicator, RefreshControl } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { DrawerNavigationProp } from '@react-navigation/drawer';
-import { useTypedSelector } from 'hooks/redux/useTypedSelector';
+import {LegendList} from '@legendapp/list';
+import React, {useCallback, useMemo} from 'react';
+import {View, ActivityIndicator, RefreshControl} from 'react-native';
+import {useNavigation} from '@react-navigation/native';
+import {DrawerNavigationProp} from '@react-navigation/drawer';
+import {useTypedSelector} from 'hooks/redux/useTypedSelector';
+import {selectIsDark} from 'shared/store/selectors';
 import Post from 'home/components/Post';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { primaryColor } from 'shared/res/strings/eng';
-import { UserStackParamList } from 'shared/navigation/routes/UserStack';
-import { styles } from '../styles/SavedPosts';
-import { useSavedPosts } from '../hooks/useSavedPosts';
+import {SafeAreaView} from 'react-native-safe-area-context';
+import {primaryColor} from 'shared/res/strings/eng';
+import {UserStackParamList} from 'shared/navigation/routes/UserStack';
+import {styles} from '../styles/SavedPosts';
+import {useSavedPosts} from '../hooks/useSavedPosts';
 import SavedPostsHeader from '../components/SavedPostsHeader';
 import SavedPostsEmptyState from '../components/SavedPostsEmptyState';
 
@@ -20,9 +21,9 @@ const ItemSeparator = () => <View style={styles.separator} />;
  * Shows a nice empty state when no saved posts exist.
  */
 const SavedPosts: React.FC = () => {
-  const isDark = useTypedSelector(state => state.user.theme) === 'dark';
+  const isDark = useTypedSelector(selectIsDark);
   const navigation = useNavigation<DrawerNavigationProp<UserStackParamList>>();
-  const { savedPosts, loading, refreshing, onRefresh } = useSavedPosts();
+  const {savedPosts, loading, refreshing, onRefresh} = useSavedPosts();
   const handleBackPress = useCallback(() => {
     navigation.goBack();
   }, [navigation]);
@@ -32,7 +33,7 @@ const SavedPosts: React.FC = () => {
   }, [navigation]);
 
   const renderSavedPost = useCallback(
-    ({ item }: { item: (typeof savedPosts)[number] }) => (
+    ({item}: {item: (typeof savedPosts)[number]}) => (
       <Post post={item} isVisible={true} />
     ),
     [],
@@ -40,7 +41,9 @@ const SavedPosts: React.FC = () => {
 
   const contentContainerStyle = useMemo(
     () =>
-      savedPosts.length === 0 ? styles.contentContainerEmpty : styles.contentContainer,
+      savedPosts.length === 0
+        ? styles.contentContainerEmpty
+        : styles.contentContainer,
     [savedPosts.length],
   );
 

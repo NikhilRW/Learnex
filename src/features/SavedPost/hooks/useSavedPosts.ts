@@ -7,6 +7,8 @@ import {
   getDocs,
 } from '@react-native-firebase/firestore';
 import {useTypedSelector} from 'hooks/redux/useTypedSelector';
+import {selectFirebase} from 'shared/store/selectors';
+import {logger} from 'shared/utils/logger';
 import {PostType} from 'shared/types/post';
 import {FirestorePost, convertFirestorePost} from 'shared/services/utils';
 
@@ -21,7 +23,7 @@ export const useSavedPosts = (): UseSavedPostsResult => {
   const [savedPosts, setSavedPosts] = useState<PostType[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const firebase = useTypedSelector(state => state.firebase.firebase);
+  const firebase = useTypedSelector(selectFirebase);
 
   const fetchSavedPosts = useCallback(async () => {
     try {
@@ -80,7 +82,7 @@ export const useSavedPosts = (): UseSavedPostsResult => {
 
           return convertedPost;
         } catch (error) {
-          console.error(`Error fetching post ${postId}:`, error);
+          logger.error(`Error fetching post ${postId}:`, error, 'SavedPosts');
           return null;
         }
       });
@@ -97,7 +99,7 @@ export const useSavedPosts = (): UseSavedPostsResult => {
 
       setSavedPosts(posts);
     } catch (error) {
-      console.error('Error fetching saved posts:', error);
+      logger.error('Error fetching saved posts:', error, 'SavedPosts');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -108,7 +110,11 @@ export const useSavedPosts = (): UseSavedPostsResult => {
     fetchSavedPosts();
 
     const unsubscribe = firebase.subscribeToSavedPosts(() => {
-      console.log('Saved posts changed, refreshing...');
+      logger.debug(
+        'Saved posts changed, refreshing...',
+        undefined,
+        'SavedPosts',
+      );
       fetchSavedPosts();
     });
 

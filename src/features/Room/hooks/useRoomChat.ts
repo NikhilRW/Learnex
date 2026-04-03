@@ -13,6 +13,7 @@ import {
   orderBy,
   serverTimestamp,
 } from '@react-native-firebase/firestore';
+import {logger} from 'shared/utils/logger';
 import {Message, UseRoomChatParams, UseRoomChatReturn} from '../types';
 
 export const useRoomChat = ({
@@ -82,7 +83,7 @@ export const useRoomChat = ({
         }
       },
       error => {
-        console.error('Error subscribing to messages:', error);
+        logger.error('Error subscribing to messages:', error, 'RoomChat');
       },
     );
 
@@ -122,7 +123,7 @@ export const useRoomChat = ({
           },
         );
       } catch (error) {
-        console.error('Error sending message:', error);
+        logger.error('Error sending message:', error, 'RoomChat');
         Alert.alert('Error', 'Failed to send message');
       }
     },
@@ -161,7 +162,7 @@ export const useRoomChat = ({
         // Update message with new reactions
         await updateDoc(messageRef, {reactions});
       } catch (error) {
-        console.error('Error adding reaction to message:', error);
+        logger.error('Error adding reaction to message:', error, 'RoomChat');
       }
     },
     [currentUser, meetingId],

@@ -1,5 +1,6 @@
 import {format, parseISO, isAfter, isWithinInterval} from 'date-fns';
 import {EventStatus} from '../types';
+import {logger} from 'shared/utils/logger';
 
 /**
  * Format a date for display
@@ -25,7 +26,7 @@ export const formatDate = (dateString: string): string => {
 
     return format(date, 'dd MMM yyyy');
   } catch (error) {
-    console.error('Error formatting date:', error);
+    logger.error('Error formatting date:', error, 'dateUtils');
     return 'TBA';
   }
 };
@@ -86,7 +87,7 @@ export const getEventStatus = (
 
     return {type: 'upcoming', text: formatDate(startDate)};
   } catch (error) {
-    console.error('Error calculating event status:', error);
+    logger.error('Error calculating event status:', error, 'dateUtils');
     return {type: 'upcoming', text: formatDate(startDate)};
   }
 };

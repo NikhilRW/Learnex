@@ -1,5 +1,6 @@
 import {Comment, PostType, FirestoreComment} from 'shared/types/post';
 import {ImageSourcePropType} from 'react-native';
+import {logger} from 'shared/utils/logger';
 
 // FirestoreComment now imported from types/post
 
@@ -42,7 +43,7 @@ export function formatTimestamp(date: Date): string {
   // Check if the timestamp string contains negative value
   if (diffInSeconds < 0) {
     // For any negative time difference, always show "just now"
-    console.log('Negative time detected:', diffInSeconds, 'seconds');
+    logger.warn('Negative time detected', {diffInSeconds}, 'serviceUtils');
     return 'just now';
   }
 
@@ -120,7 +121,11 @@ export function formatFirestoreTimestamp(timestamp: any): string {
 
     return formatTimestamp(date);
   } catch (error) {
-    console.error('Error formatting timestamp:', error, timestamp);
+    logger.error(
+      'Error formatting timestamp',
+      {error, timestamp},
+      'serviceUtils',
+    );
     return 'just now';
   }
 
@@ -189,7 +194,11 @@ export function convertFirestorePost(
     }
   }
 
-  console.log(`Converting post ${postData.id} with hashtags:`, hashtags);
+  logger.debug(
+    `Converting post ${postData.id} with hashtags`,
+    hashtags,
+    'serviceUtils',
+  );
 
   // Extract numeric values, handle Firebase FieldValue objects from optimistic updates
   const extractNumber = (val: any, fallback = 0): number => {

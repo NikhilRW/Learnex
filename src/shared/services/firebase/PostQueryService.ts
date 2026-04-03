@@ -12,13 +12,12 @@ import {
   onSnapshot,
   FirebaseFirestoreTypes,
 } from '@react-native-firebase/firestore';
-import {GetPostsResponse} from 'shared/types/firebase';
-import {FirestorePost} from '@/features/Home/types/post';
-import {convertFirestorePost} from 'shared/services/utils';
-import {CommentService} from '../../features/Home/services/CommentService';
-import {SavedPostService} from '../../features/SavedPost/services/SavedPostService';
+import {convertFirestorePost, FirestorePost} from 'shared/services/utils';
+import {logger} from 'shared/utils/logger';
 import {LikeCache} from './LikeCache';
-
+import { CommentService } from '@/features/Home/services'; 
+import { SavedPostService } from '@/features/SavedPost/services/SavedPostService';
+import { GetPostsResponse } from '@/shared/types/responses';
 export class PostQueryService {
   private activeListeners: Map<string, () => void> = new Map();
   private queryCache: Map<string, any[]> = new Map();
@@ -44,7 +43,11 @@ export class PostQueryService {
     try {
       const currentUser = getAuth().currentUser;
       if (!currentUser) {
-        console.error('Cannot subscribe to posts: User not authenticated');
+        logger.error(
+          'Cannot subscribe to posts: User not authenticated',
+          undefined,
+          'PostQueryService',
+        );
         return () => {};
       }
 
@@ -85,16 +88,18 @@ export class PostQueryService {
             const posts = await Promise.all(postsPromises);
             callback(posts);
           } catch (error) {
-            console.error(
+            logger.error(
               'PostQueryService: Error processing posts snapshot:',
               error,
+              'PostQueryService',
             );
           }
         },
         error => {
-          console.error(
+          logger.error(
             'PostQueryService: Error in posts subscription:',
             error,
+            'PostQueryService',
           );
         },
       );
@@ -106,9 +111,10 @@ export class PostQueryService {
         this.activeListeners.delete('posts');
       };
     } catch (error) {
-      console.error(
+      logger.error(
         'PostQueryService: Error setting up posts subscription:',
         error,
+        'PostQueryService',
       );
       return () => {};
     }
@@ -123,6 +129,7 @@ export class PostQueryService {
       likedByUser?: string;
       timeRange?: 'day' | 'week' | 'month' | 'year';
     } = {},
+    // TODO:fix this type.
   ): Promise<GetPostsResponse> {
     try {
       const currentUser = getAuth().currentUser;
@@ -316,7 +323,7 @@ export class PostQueryService {
         };
       }
     } catch (error) {
-      console.error('Error getting posts:', error);
+      logger.error('Error getting posts:', error, 'PostQueryService');
       return {success: false, error: 'Failed to fetch posts'};
     }
   }
@@ -394,7 +401,11 @@ export class PostQueryService {
 
       return {success: true, posts, lastVisible: lastVisibleDoc};
     } catch (error) {
-      console.error('PostQueryService :: getPostsBySearch ::', error);
+      logger.error(
+        'PostQueryService :: getPostsBySearch ::',
+        error,
+        'PostQueryService',
+      );
       return {success: false, error: 'Failed to fetch posts'};
     }
   }

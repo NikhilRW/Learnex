@@ -11,6 +11,7 @@ import {
   Timestamp,
 } from '@react-native-firebase/firestore';
 import {getAuth} from '@react-native-firebase/auth';
+import {logger} from 'shared/utils/logger';
 import {ChatMessage} from '../types';
 
 export interface UseChatMessagesParams {
@@ -64,7 +65,11 @@ export const useChatMessages = ({
       ).onSnapshot(
         snapshot => {
           if (!snapshot) {
-            console.warn('Received null snapshot');
+            logger.warn(
+              'Received null snapshot',
+              undefined,
+              'RoomChatMessages',
+            );
             return;
           }
 
@@ -107,14 +112,14 @@ export const useChatMessages = ({
               });
             }
           } catch (err) {
-            console.error('Error processing messages:', err);
+            logger.error('Error processing messages:', err, 'RoomChatMessages');
             setError('Error processing messages');
           }
 
           setIsLoading(false);
         },
         err => {
-          console.error('Error listening to messages:', err);
+          logger.error('Error listening to messages:', err, 'RoomChatMessages');
           setError('Failed to load messages');
           setIsLoading(false);
         },
@@ -122,7 +127,7 @@ export const useChatMessages = ({
 
       return unsubscribe;
     } catch (err) {
-      console.error('Error initializing chat:', err);
+      logger.error('Error initializing chat:', err, 'RoomChatMessages');
       setError('Failed to initialize chat');
       setIsLoading(false);
       return null;

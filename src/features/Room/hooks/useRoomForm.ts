@@ -14,6 +14,7 @@ import {
 } from '../utils/validation';
 import {MeetingService} from '../services/MeetingService';
 import {UserStackParamList} from 'shared/navigation/routes/UserStack';
+import {logger} from 'shared/utils/logger';
 
 const meetingService = new MeetingService();
 
@@ -70,7 +71,7 @@ export const useRoomForm = () => {
         isHost: true,
       });
     } catch (error) {
-      console.error('Failed to create meeting:', error);
+      logger.error('Failed to create meeting:', error, 'RoomForm');
       Alert.alert(
         'Error',
         error instanceof Error ? error.message : 'Failed to create meeting',
@@ -102,7 +103,7 @@ export const useRoomForm = () => {
         isHost: false,
       });
     } catch (error) {
-      console.error('Failed to join meeting:', error);
+      logger.error('Failed to join meeting:', error, 'RoomForm');
       Alert.alert(
         'Error',
         error instanceof Error ? error.message : 'Failed to join meeting',

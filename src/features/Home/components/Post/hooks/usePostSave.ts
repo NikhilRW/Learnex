@@ -2,6 +2,7 @@ import {useState, useEffect} from 'react';
 import firestore from '@react-native-firebase/firestore';
 import Snackbar from 'react-native-snackbar';
 import Firebase from '@/shared/services/firebase';
+import {logger} from 'shared/utils/logger';
 
 export const usePostSave = (
   postId: string,
@@ -29,7 +30,7 @@ export const usePostSave = (
           setIsSaved(false);
         }
       } catch (error) {
-        console.error('Error checking post saved status:', error);
+        logger.error('Error checking post saved status:', error, 'PostSave');
         setIsSaved(false);
       }
     };
@@ -64,7 +65,7 @@ export const usePostSave = (
         });
       }
     } catch (error) {
-      console.error('Error saving post:', error);
+      logger.error('Error saving post:', error, 'PostSave');
       Snackbar.show({
         text: 'An error occurred while saving the post',
         duration: Snackbar.LENGTH_LONG,

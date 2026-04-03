@@ -1,7 +1,6 @@
 import React, {useState, useRef, useEffect, useMemo, useCallback} from 'react';
 import {
   View,
-  Image,
   TouchableOpacity,
   TouchableWithoutFeedback,
   Animated,
@@ -10,6 +9,7 @@ import {
 import Icon from 'react-native-vector-icons/Feather';
 import Video from 'react-native-video';
 import {useTypedSelector} from 'hooks/redux/useTypedSelector';
+import {selectFirebase, selectIsDark} from 'shared/store/selectors';
 import CommentModal from 'home/components/CommentModal';
 import {useNavigation} from '@react-navigation/native';
 import {MessageService} from 'conversations/services/MessageService';
@@ -25,6 +25,8 @@ import {
 } from '@react-native-firebase/firestore';
 import {getAuth} from '@react-native-firebase/auth';
 import PostOptionsModal from './PostOptionsModal';
+import CachedImage from 'shared/components/CachedImage';
+import {logger} from 'shared/utils/logger';
 import {createStyles} from '../styles/Post';
 import {onSnapshot} from '@react-native-firebase/firestore';
 
@@ -45,7 +47,7 @@ import {
   combineMediaArray,
 } from './Post/utils/postHelpers';
 
-import {PostProps} from '../types';
+import {Comment, PostProps} from '../types';
 
 /**
  * Post component that displays a social media post with images
@@ -55,8 +57,8 @@ type UserNavigation = NativeStackNavigationProp<UserStackParamList>;
 
 const Post: React.FC<PostProps> = ({post, isVisible = false}) => {
   // Theme and navigation
-  const isDark = useTypedSelector(state => state.user.theme) === 'dark';
-  const firebase = useTypedSelector(state => state.firebase.firebase);
+  const isDark = useTypedSelector(selectIsDark);
+  const firebase = useTypedSelector(selectFirebase);
   const navigation = useNavigation<UserNavigation>();
   const messageService = useRef(new MessageService()).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -69,6 +71,13 @@ const Post: React.FC<PostProps> = ({post, isVisible = false}) => {
   const [userProfileImage, setUserProfileImage] = useState<string | null>(
     post.user.image,
   );
+  const [optimisticLikesDelta, setOptimisticLikesDelta] = useState(0);
+  const [optimisticComments, setOptimisticComments] = useState<Comment[]>([]);
+
+  useEffect(() => {
+    setOptimisticLikesDelta(0);
+    setOptimisticComments([]);
+  }, [post.id]);
 
   // Custom hooks for business logic
   const {isLiked, handleLikePost} = usePostLike(
@@ -109,9 +118,7 @@ const Post: React.FC<PostProps> = ({post, isVisible = false}) => {
     isAddingComment,
     handleAddComment,
   } = usePostComments(post.id, firebase, comment => {
-    const updatedCommentsList = [...(post.commentsList || []), comment];
-    post.commentsList = updatedCommentsList;
-    post.comments = (post.comments || 0) + 1;
+    setOptimisticComments(prev => [...prev, comment]);
   });
 
   const videoContainerStyle = useMemo(
@@ -126,6 +133,31 @@ const Post: React.FC<PostProps> = ({post, isVisible = false}) => {
     }),
     [screenWidth, imageHeight],
   );
+
+  const baseImageHeight = useMemo(() => {
+    if (imageHeight - 12 > 0) {
+      return imageHeight - 12;
+    }
+    return post.isVertical ? 480 : 300;
+  }, [imageHeight, post.isVertical]);
+
+  const baseImageHeightStyle = useMemo(
+    () => ({height: baseImageHeight}),
+    [baseImageHeight],
+  );
+
+  const fullModalImageHeightStyle = useMemo(() => ({height: '100%'}), []);
+
+  const baseCommentsList = useMemo(
+    () => post.commentsList || [],
+    [post.commentsList],
+  );
+  const commentsList = useMemo(
+    () => [...baseCommentsList, ...optimisticComments],
+    [baseCommentsList, optimisticComments],
+  );
+  const commentsCount = (post.comments || 0) + optimisticComments.length;
+  const likesCount = (post.likes || 0) + optimisticLikesDelta;
 
   // Combine all media for carousel
   const allMedia = React.useMemo(
@@ -181,7 +213,11 @@ const Post: React.FC<PostProps> = ({post, isVisible = false}) => {
         if (videoObject.uri) {
           source = videoObject.uri;
         } else {
-          console.error('Video object has no URI property:', videoSource);
+          logger.error(
+            'Video object has no URI property:',
+            videoSource,
+            'Post',
+          );
           return (
             <View style={styles.errorContainer}>
               <Text>Invalid video format</Text>
@@ -189,7 +225,7 @@ const Post: React.FC<PostProps> = ({post, isVisible = false}) => {
           );
         }
       } else {
-        console.error('Video has invalid format:', videoSource);
+        logger.error('Video has invalid format:', videoSource, 'Post');
         return (
           <View style={styles.errorContainer}>
             <Text>Invalid video format</Text>
@@ -208,7 +244,9 @@ const Post: React.FC<PostProps> = ({post, isVisible = false}) => {
               paused={isPaused}
               repeat
               onProgress={handleVideoProgress}
-              onError={error => console.error('Video loading error:', error)}
+              onError={error =>
+                logger.error('Video loading error:', error, 'Post')
+              }
             />
             {isPaused && <View style={styles.pausedOverlay} />}
           </View>
@@ -244,25 +282,24 @@ const Post: React.FC<PostProps> = ({post, isVisible = false}) => {
         return null; // Skip invalid images
       }
 
-      const imageHeightValue = isFullModal
-        ? '100%'
-        : imageHeight - 12 || (post.isVertical ? 480 : 300);
-      const imageHeightStyle = {height: imageHeightValue};
+      const imageHeightStyle = isFullModal
+        ? fullModalImageHeightStyle
+        : baseImageHeightStyle;
 
       return (
         <TouchableWithoutFeedback onPress={handleMediaTouch}>
-          <Image
+          <CachedImage
             source={source}
             style={[styles.postImage, imageHeightStyle]}
-            resizeMode="cover"
-            onError={error =>
-              console.error('Image loading error', error.nativeEvent.error)
+            contentFit="cover"
+            onError={() =>
+              logger.error('Image loading error', undefined, 'Post')
             }
           />
         </TouchableWithoutFeedback>
       );
     },
-    [imageHeight, handleMediaTouch, post.isVertical, styles],
+    [baseImageHeightStyle, fullModalImageHeightStyle, handleMediaTouch, styles],
   );
 
   const renderMedia = useCallback(() => {
@@ -384,7 +421,7 @@ const Post: React.FC<PostProps> = ({post, isVisible = false}) => {
         isQrInitiated: false,
       });
     } catch (error) {
-      console.error('Error starting conversation:', error);
+      logger.error('Error starting conversation:', error, 'Post');
       Snackbar.show({
         text: 'Failed to start conversation',
         duration: Snackbar.LENGTH_LONG,
@@ -420,7 +457,7 @@ const Post: React.FC<PostProps> = ({post, isVisible = false}) => {
         });
       }
     } catch (error) {
-      console.error('Error hiding post:', error);
+      logger.error('Error hiding post:', error, 'Post');
       Snackbar.show({
         text: 'Failed to hide post',
         duration: Snackbar.LENGTH_LONG,
@@ -474,7 +511,7 @@ const Post: React.FC<PostProps> = ({post, isVisible = false}) => {
         });
       }
     } catch (error) {
-      console.error('Error deleting post:', error);
+      logger.error('Error deleting post:', error, 'Post');
       Snackbar.dismiss();
       Snackbar.show({
         text: 'Failed to delete post',
@@ -491,16 +528,26 @@ const Post: React.FC<PostProps> = ({post, isVisible = false}) => {
     setShowFullPostModal(true);
   }, []);
 
+  const postSnapshot = useMemo(
+    () => ({
+      ...post,
+      likes: likesCount,
+      comments: commentsCount,
+      commentsList,
+    }),
+    [post, likesCount, commentsCount, commentsList],
+  );
+
   // Process description and hashtags using imported utility functions
   const formattedDescription = React.useMemo(
     () => formatDescriptionWithHashtags(post.description || '', styles),
-    [post, styles],
+    [post.description, styles],
   );
 
   // Wrapper for handleLikePost
   const onLikePress = async () => {
     await handleLikePost((likesChange: number) => {
-      post.likes += likesChange;
+      setOptimisticLikesDelta(prev => prev + likesChange);
     });
   };
 
@@ -531,11 +578,11 @@ const Post: React.FC<PostProps> = ({post, isVisible = false}) => {
         styles={styles}
       />
       <PostFooter
-        likes={post.likes}
+        likes={likesCount}
         username={post.user.username}
         formattedDescription={formattedDescription}
-        commentsCount={post.comments}
-        hasComments={!!(post.commentsList && post.commentsList.length > 0)}
+        commentsCount={commentsCount}
+        hasComments={commentsList.length > 0}
         timestamp={post.timestamp}
         onViewCommentsPress={() => setShowComments(true)}
         onCaptionPress={handleOpenFullPost}
@@ -545,7 +592,7 @@ const Post: React.FC<PostProps> = ({post, isVisible = false}) => {
         key={`${post.id}-comment-${showComments ? 'open' : 'closed'}`}
         visible={showComments}
         onClose={() => setShowComments(false)}
-        comments={post.commentsList || []}
+        comments={commentsList}
         isDark={isDark}
         onAddComment={handleAddComment}
         newComment={newComment}
@@ -575,7 +622,7 @@ const Post: React.FC<PostProps> = ({post, isVisible = false}) => {
         isLiked={isLiked}
         isSaved={isSaved}
         isSaving={isSaving}
-        post={post}
+        post={postSnapshot}
         renderImageContent={renderImageContent}
         renderVideoContent={renderVideoContent}
         screenWidth={screenWidth}
@@ -583,7 +630,7 @@ const Post: React.FC<PostProps> = ({post, isVisible = false}) => {
         setShowFullPostModal={setShowFullPostModal}
         showFullPostModal={showFullPostModal}
         formattedDescription={formattedDescription}
-        userProfileImage={post.user.image}
+        userProfileImage={userProfileImage!}
       />
     </Animated.View>
   );

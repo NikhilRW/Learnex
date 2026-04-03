@@ -3,6 +3,7 @@ import {Alert, BackHandler} from 'react-native';
 import {CommonActions, useNavigation} from '@react-navigation/native';
 import {DrawerNavigationProp} from '@react-navigation/drawer';
 import {UserStackParamList} from 'shared/navigation/routes/UserStack';
+import {logger} from 'shared/utils/logger';
 import {
   ParticipantState,
   UseRoomActionsParams,
@@ -146,7 +147,11 @@ export const useRoomActions = ({
                       }),
                     );
                   } catch (error) {
-                    console.error('Failed to update task:', error);
+                    logger.error(
+                      'Failed to update task:',
+                      error,
+                      'RoomActions',
+                    );
                     Alert.alert('Error', 'Failed to update task status');
                     await meetingService.endMeeting(meeting.id);
                     cleanup();
@@ -181,7 +186,7 @@ export const useRoomActions = ({
         );
       }
     } catch (error) {
-      console.error('Failed to end/leave meeting:', error);
+      logger.error('Failed to end/leave meeting:', error, 'RoomActions');
       // Even if there's an error, try to navigate away
       navigation.dispatch(
         CommonActions.navigate('Tabs', {

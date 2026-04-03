@@ -2,9 +2,11 @@ import {useEffect, useState} from 'react';
 import {Share, Linking, Alert} from 'react-native';
 import {useNavigation, useRoute, RouteProp} from '@react-navigation/native';
 import {useTypedSelector} from 'hooks/redux/useTypedSelector';
+import {selectIsDark} from 'shared/store/selectors';
 import {HackathonService} from '../services';
 import {HackathonDetails} from '../types';
 import {UserStackParamList} from 'shared/navigation/routes/UserStack';
+import {logger} from 'shared/utils/logger';
 
 type EventDetailsRouteProp = RouteProp<UserStackParamList, 'EventDetails'>;
 
@@ -26,7 +28,7 @@ export const useEventDetails = () => {
   const navigation = useNavigation();
   const route = useRoute<EventDetailsRouteProp>();
   const {id, source} = route.params;
-  const isDark = useTypedSelector(state => state.user.theme) === 'dark';
+  const isDark = useTypedSelector(selectIsDark);
 
   /**
    * Fetch event details from the API
@@ -36,10 +38,10 @@ export const useEventDetails = () => {
     setError(null);
     try {
       const eventData = await HackathonService.getHackathonDetails(source, id);
-      console.log('Event source in details:', source);
+      logger.debug('Event source in details:', source, 'EventDetails');
       setEvent(eventData);
     } catch (err) {
-      console.error('Error fetching event details:', err);
+      logger.error('Error fetching event details:', err, 'EventDetails');
       setError('Failed to fetch event details. Please try again.');
     } finally {
       setLoading(false);
@@ -67,7 +69,7 @@ export const useEventDetails = () => {
         url: event.url,
       });
     } catch (err) {
-      console.error('Error sharing event:', err);
+      logger.error('Error sharing event:', err, 'EventDetails');
     }
   };
 

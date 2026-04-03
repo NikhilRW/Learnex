@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import {
   Modal,
   View,
@@ -9,10 +9,11 @@ import {
   Alert,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { Task, SubTask } from 'shared/types/taskTypes';
-import { styles, duoTaskDetailsStyles } from 'tasks/styles/Tasks.styles';
-import { TaskService } from 'shared/services/TaskService';
-import { getAuth } from '@react-native-firebase/auth';
+import {SubTask} from 'shared/types/taskTypes';
+import {styles} from 'tasks/styles/Tasks.styles';
+import {TaskService} from 'shared/services/TaskService';
+import {logger} from 'shared/utils/logger';
+import {getAuth} from '@react-native-firebase/auth';
 import {
   getFirestore,
   doc,
@@ -20,7 +21,7 @@ import {
   Timestamp,
 } from '@react-native-firebase/firestore';
 
-import { DuoTaskDetailsModalProps } from '../types';
+import {DuoTaskDetailsModalProps} from '../types';
 
 const DuoTaskDetailsModal: React.FC<DuoTaskDetailsModalProps> = ({
   modalVisible,
@@ -56,7 +57,11 @@ const DuoTaskDetailsModal: React.FC<DuoTaskDetailsModalProps> = ({
 
       setCollaborators(collaboratorDetails);
     } catch (error) {
-      console.error('Error loading collaborator details:', error);
+      logger.error(
+        'Error loading collaborator details:',
+        error,
+        'DuoTaskDetailsModal',
+      );
     }
   }, [task.collaborators]);
 
@@ -87,7 +92,7 @@ const DuoTaskDetailsModal: React.FC<DuoTaskDetailsModalProps> = ({
 
       setNewSubtaskTitle('');
     } catch (error) {
-      console.error('Error adding subtask:', error);
+      logger.error('Error adding subtask:', error, 'DuoTaskDetailsModal');
       Alert.alert('Error', 'Failed to add subtask. Please try again.');
     }
   };
@@ -111,7 +116,7 @@ const DuoTaskDetailsModal: React.FC<DuoTaskDetailsModalProps> = ({
         onTaskUpdated(updatedTask);
       }
     } catch (error) {
-      console.error('Error updating subtask:', error);
+      logger.error('Error updating subtask:', error, 'DuoTaskDetailsModal');
       Alert.alert('Error', 'Failed to update subtask. Please try again.');
     }
   };
@@ -139,11 +144,16 @@ const DuoTaskDetailsModal: React.FC<DuoTaskDetailsModalProps> = ({
         <View
           style={[
             styles.modalContent,
-            isDark ? duoTaskDetailsStyles.modalContentDark : duoTaskDetailsStyles.modalContentLight,
+            isDark
+              ? duoTaskDetailsStyles.modalContentDark
+              : duoTaskDetailsStyles.modalContentLight,
           ]}>
           <View style={styles.modalHeader}>
             <Text
-              style={[styles.modalTitle, isDark ? styles.textDark : styles.textLight]}>
+              style={[
+                styles.modalTitle,
+                isDark ? styles.textDark : styles.textLight,
+              ]}>
               {task?.title}
             </Text>
             <TouchableOpacity onPress={onClose}>
@@ -154,7 +164,12 @@ const DuoTaskDetailsModal: React.FC<DuoTaskDetailsModalProps> = ({
           {/* Progress bar */}
           <View style={duoTaskDetailsStyles.progressWrapper}>
             <View style={duoTaskDetailsStyles.progressRow}>
-              <Text style={isDark ? duoTaskDetailsStyles.progressLabelDark : duoTaskDetailsStyles.progressLabelLight}>
+              <Text
+                style={
+                  isDark
+                    ? duoTaskDetailsStyles.progressLabelDark
+                    : duoTaskDetailsStyles.progressLabelLight
+                }>
                 Progress: {task?.progress || 0}%
               </Text>
 
@@ -176,13 +191,17 @@ const DuoTaskDetailsModal: React.FC<DuoTaskDetailsModalProps> = ({
             <View
               style={[
                 duoTaskDetailsStyles.progressTrack,
-                isDark ? duoTaskDetailsStyles.progressTrackDark : duoTaskDetailsStyles.progressTrackLight,
+                isDark
+                  ? duoTaskDetailsStyles.progressTrackDark
+                  : duoTaskDetailsStyles.progressTrackLight,
               ]}>
               <View
                 style={[
                   duoTaskDetailsStyles.progressFill,
-                  { width: `${task?.progress || 0}%` },
-                  task?.completed ? duoTaskDetailsStyles.progressFillCompleted : duoTaskDetailsStyles.progressFillActive,
+                  {width: `${task?.progress || 0}%`},
+                  task?.completed
+                    ? duoTaskDetailsStyles.progressFillCompleted
+                    : duoTaskDetailsStyles.progressFillActive,
                 ]}
               />
             </View>
@@ -192,23 +211,43 @@ const DuoTaskDetailsModal: React.FC<DuoTaskDetailsModalProps> = ({
           <View
             style={[
               duoTaskDetailsStyles.tabsContainer,
-              isDark ? duoTaskDetailsStyles.tabsContainerDark : duoTaskDetailsStyles.tabsContainerLight,
+              isDark
+                ? duoTaskDetailsStyles.tabsContainerDark
+                : duoTaskDetailsStyles.tabsContainerLight,
             ]}>
             <TouchableOpacity
               style={[
                 duoTaskDetailsStyles.tab,
-                activeTab === 'details' ? duoTaskDetailsStyles.tabActive : duoTaskDetailsStyles.tabInactive,
+                activeTab === 'details'
+                  ? duoTaskDetailsStyles.tabActive
+                  : duoTaskDetailsStyles.tabInactive,
               ]}
               onPress={() => setActiveTab('details')}>
-              <Text style={isDark ? duoTaskDetailsStyles.tabTextDark : duoTaskDetailsStyles.tabTextLight}>Details</Text>
+              <Text
+                style={
+                  isDark
+                    ? duoTaskDetailsStyles.tabTextDark
+                    : duoTaskDetailsStyles.tabTextLight
+                }>
+                Details
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[
                 duoTaskDetailsStyles.tab,
-                activeTab === 'subtasks' ? duoTaskDetailsStyles.tabActive : duoTaskDetailsStyles.tabInactive,
+                activeTab === 'subtasks'
+                  ? duoTaskDetailsStyles.tabActive
+                  : duoTaskDetailsStyles.tabInactive,
               ]}
               onPress={() => setActiveTab('subtasks')}>
-              <Text style={isDark ? duoTaskDetailsStyles.tabTextDark : duoTaskDetailsStyles.tabTextLight}>Subtasks</Text>
+              <Text
+                style={
+                  isDark
+                    ? duoTaskDetailsStyles.tabTextDark
+                    : duoTaskDetailsStyles.tabTextLight
+                }>
+                Subtasks
+              </Text>
             </TouchableOpacity>
           </View>
 
@@ -218,40 +257,68 @@ const DuoTaskDetailsModal: React.FC<DuoTaskDetailsModalProps> = ({
               <View className="pb-10">
                 <View style={duoTaskDetailsStyles.detailItem}>
                   <Text
-                    style={isDark ? duoTaskDetailsStyles.detailLabelDark : duoTaskDetailsStyles.detailLabelLight}>
+                    style={
+                      isDark
+                        ? duoTaskDetailsStyles.detailLabelDark
+                        : duoTaskDetailsStyles.detailLabelLight
+                    }>
                     Description
                   </Text>
                   <Text
-                    style={isDark ? duoTaskDetailsStyles.detailValueDark : duoTaskDetailsStyles.detailValueLight}>
+                    style={
+                      isDark
+                        ? duoTaskDetailsStyles.detailValueDark
+                        : duoTaskDetailsStyles.detailValueLight
+                    }>
                     {task?.description || 'No description'}
                   </Text>
                 </View>
 
                 <View style={duoTaskDetailsStyles.detailItem}>
                   <Text
-                    style={isDark ? duoTaskDetailsStyles.detailLabelDark : duoTaskDetailsStyles.detailLabelLight}>
+                    style={
+                      isDark
+                        ? duoTaskDetailsStyles.detailLabelDark
+                        : duoTaskDetailsStyles.detailLabelLight
+                    }>
                     Due Date
                   </Text>
                   <Text
-                    style={isDark ? duoTaskDetailsStyles.detailValueDark : duoTaskDetailsStyles.detailValueLight}>
+                    style={
+                      isDark
+                        ? duoTaskDetailsStyles.detailValueDark
+                        : duoTaskDetailsStyles.detailValueLight
+                    }>
                     {task?.dueDate} {task?.dueTime ? `at ${task.dueTime}` : ''}
                   </Text>
                 </View>
 
                 <View style={duoTaskDetailsStyles.detailItem}>
                   <Text
-                    style={isDark ? duoTaskDetailsStyles.detailLabelDark : duoTaskDetailsStyles.detailLabelLight}>
+                    style={
+                      isDark
+                        ? duoTaskDetailsStyles.detailLabelDark
+                        : duoTaskDetailsStyles.detailLabelLight
+                    }>
                     Priority
                   </Text>
                   <View style={duoTaskDetailsStyles.priorityRow}>
                     <View
                       style={[
                         duoTaskDetailsStyles.priorityDot,
-                        { backgroundColor: getPriorityColor(task?.priority || 'medium') },
+                        {
+                          backgroundColor: getPriorityColor(
+                            task?.priority || 'medium',
+                          ),
+                        },
                       ]}
                     />
                     <Text
-                      style={isDark ? duoTaskDetailsStyles.detailValueDark : duoTaskDetailsStyles.detailValueLight}>
+                      style={
+                        isDark
+                          ? duoTaskDetailsStyles.detailValueDark
+                          : duoTaskDetailsStyles.detailValueLight
+                      }>
                       {task?.priority.charAt(0).toUpperCase() +
                         task?.priority.slice(1)}
                     </Text>
@@ -260,11 +327,19 @@ const DuoTaskDetailsModal: React.FC<DuoTaskDetailsModalProps> = ({
 
                 <View style={duoTaskDetailsStyles.detailItem}>
                   <Text
-                    style={isDark ? duoTaskDetailsStyles.detailLabelDark : duoTaskDetailsStyles.detailLabelLight}>
+                    style={
+                      isDark
+                        ? duoTaskDetailsStyles.detailLabelDark
+                        : duoTaskDetailsStyles.detailLabelLight
+                    }>
                     Category
                   </Text>
                   <Text
-                    style={isDark ? duoTaskDetailsStyles.detailValueDark : duoTaskDetailsStyles.detailValueLight}>
+                    style={
+                      isDark
+                        ? duoTaskDetailsStyles.detailValueDark
+                        : duoTaskDetailsStyles.detailValueLight
+                    }>
                     {task?.category || 'None'}
                   </Text>
                 </View>
@@ -272,7 +347,9 @@ const DuoTaskDetailsModal: React.FC<DuoTaskDetailsModalProps> = ({
                 <View style={duoTaskDetailsStyles.detailItem}>
                   <Text
                     style={[
-                      isDark ? duoTaskDetailsStyles.detailLabelDark : duoTaskDetailsStyles.detailLabelLight,
+                      isDark
+                        ? duoTaskDetailsStyles.detailLabelDark
+                        : duoTaskDetailsStyles.detailLabelLight,
                       duoTaskDetailsStyles.teamMemberLabel,
                     ]}>
                     Team Members
@@ -282,7 +359,9 @@ const DuoTaskDetailsModal: React.FC<DuoTaskDetailsModalProps> = ({
                       key={collaborator.id}
                       style={[
                         duoTaskDetailsStyles.collaboratorCard,
-                        isDark ? duoTaskDetailsStyles.collaboratorCardDark : duoTaskDetailsStyles.collaboratorCardLight,
+                        isDark
+                          ? duoTaskDetailsStyles.collaboratorCardDark
+                          : duoTaskDetailsStyles.collaboratorCardLight,
                       ]}>
                       <View style={duoTaskDetailsStyles.avatar}>
                         <Text style={duoTaskDetailsStyles.avatarText}>
@@ -296,14 +375,23 @@ const DuoTaskDetailsModal: React.FC<DuoTaskDetailsModalProps> = ({
                         </Text>
                       </View>
                       <View style={duoTaskDetailsStyles.collaboratorInfo}>
-                        <Text style={isDark ? duoTaskDetailsStyles.collaboratorNameDark : duoTaskDetailsStyles.collaboratorNameLight}>
+                        <Text
+                          style={
+                            isDark
+                              ? duoTaskDetailsStyles.collaboratorNameDark
+                              : duoTaskDetailsStyles.collaboratorNameLight
+                          }>
                           {collaborator.displayName ||
                             collaborator.email ||
                             'Unknown user'}
                           {collaborator.isCurrentUser ? ' (You)' : ''}
                         </Text>
                         <Text
-                          style={isDark ? duoTaskDetailsStyles.collaboratorEmailDark : duoTaskDetailsStyles.collaboratorEmailLight}>
+                          style={
+                            isDark
+                              ? duoTaskDetailsStyles.collaboratorEmailDark
+                              : duoTaskDetailsStyles.collaboratorEmailLight
+                          }>
                           {collaborator.email}
                         </Text>
                       </View>
@@ -320,7 +408,9 @@ const DuoTaskDetailsModal: React.FC<DuoTaskDetailsModalProps> = ({
                         onClose();
                         onDeleteTask(task.id);
                       }}>
-                      <Text style={duoTaskDetailsStyles.actionButtonText}>Delete</Text>
+                      <Text style={duoTaskDetailsStyles.actionButtonText}>
+                        Delete
+                      </Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -329,7 +419,9 @@ const DuoTaskDetailsModal: React.FC<DuoTaskDetailsModalProps> = ({
                         onClose();
                         onEditTask(task);
                       }}>
-                      <Text style={duoTaskDetailsStyles.actionButtonText}>Edit</Text>
+                      <Text style={duoTaskDetailsStyles.actionButtonText}>
+                        Edit
+                      </Text>
                     </TouchableOpacity>
                   </View>
                 )}
@@ -341,7 +433,11 @@ const DuoTaskDetailsModal: React.FC<DuoTaskDetailsModalProps> = ({
               <View>
                 <View style={styles.inputGroup}>
                   <Text
-                    style={isDark ? duoTaskDetailsStyles.detailLabelDark : duoTaskDetailsStyles.detailLabelLight}>
+                    style={
+                      isDark
+                        ? duoTaskDetailsStyles.detailLabelDark
+                        : duoTaskDetailsStyles.detailLabelLight
+                    }>
                     Add New Subtask
                   </Text>
                   <View style={duoTaskDetailsStyles.addSubtaskRow}>
@@ -359,14 +455,18 @@ const DuoTaskDetailsModal: React.FC<DuoTaskDetailsModalProps> = ({
                     <TouchableOpacity
                       style={duoTaskDetailsStyles.addSubtaskButton}
                       onPress={handleAddSubtask}>
-                      <Text style={duoTaskDetailsStyles.addSubtaskButtonText}>Add</Text>
+                      <Text style={duoTaskDetailsStyles.addSubtaskButtonText}>
+                        Add
+                      </Text>
                     </TouchableOpacity>
                   </View>
                 </View>
 
                 <Text
                   style={[
-                    isDark ? duoTaskDetailsStyles.detailLabelDark : duoTaskDetailsStyles.detailLabelLight,
+                    isDark
+                      ? duoTaskDetailsStyles.detailLabelDark
+                      : duoTaskDetailsStyles.detailLabelLight,
                     duoTaskDetailsStyles.subtaskCountLabel,
                   ]}>
                   Subtasks ({task?.subtasks?.length || 0})
@@ -386,13 +486,19 @@ const DuoTaskDetailsModal: React.FC<DuoTaskDetailsModalProps> = ({
                       key={subtask.id}
                       style={[
                         duoTaskDetailsStyles.subtaskRow,
-                        isDark ? duoTaskDetailsStyles.subtaskRowDark : duoTaskDetailsStyles.subtaskRowLight,
+                        isDark
+                          ? duoTaskDetailsStyles.subtaskRowDark
+                          : duoTaskDetailsStyles.subtaskRowLight,
                       ]}>
                       <TouchableOpacity
                         style={[
                           duoTaskDetailsStyles.subtaskCheckbox,
-                          isDark ? duoTaskDetailsStyles.subtaskCheckboxDark : duoTaskDetailsStyles.subtaskCheckboxLight,
-                          subtask.completed ? duoTaskDetailsStyles.subtaskCheckboxActive : duoTaskDetailsStyles.subtaskCheckboxInactive,
+                          isDark
+                            ? duoTaskDetailsStyles.subtaskCheckboxDark
+                            : duoTaskDetailsStyles.subtaskCheckboxLight,
+                          subtask.completed
+                            ? duoTaskDetailsStyles.subtaskCheckboxActive
+                            : duoTaskDetailsStyles.subtaskCheckboxInactive,
                         ]}
                         onPress={() =>
                           toggleSubtaskCompletion(subtask.id, subtask.completed)
@@ -405,16 +511,22 @@ const DuoTaskDetailsModal: React.FC<DuoTaskDetailsModalProps> = ({
                       <View style={duoTaskDetailsStyles.subtaskContent}>
                         <Text
                           style={[
-                            isDark ? duoTaskDetailsStyles.subtaskTitleDark : duoTaskDetailsStyles.subtaskTitleLight,
-                            subtask.completed && duoTaskDetailsStyles.subtaskTitleCompleted,
+                            isDark
+                              ? duoTaskDetailsStyles.subtaskTitleDark
+                              : duoTaskDetailsStyles.subtaskTitleLight,
+                            subtask.completed &&
+                              duoTaskDetailsStyles.subtaskTitleCompleted,
                           ]}>
                           {subtask.title}
                         </Text>
                         {subtask.description && (
                           <Text
                             style={[
-                              isDark ? duoTaskDetailsStyles.subtaskDescDark : duoTaskDetailsStyles.subtaskDescLight,
-                              subtask.completed && duoTaskDetailsStyles.subtaskDescCompleted,
+                              isDark
+                                ? duoTaskDetailsStyles.subtaskDescDark
+                                : duoTaskDetailsStyles.subtaskDescLight,
+                              subtask.completed &&
+                                duoTaskDetailsStyles.subtaskDescCompleted,
                             ]}>
                             {subtask.description}
                           </Text>
@@ -422,7 +534,11 @@ const DuoTaskDetailsModal: React.FC<DuoTaskDetailsModalProps> = ({
 
                         {subtask.assignedTo && (
                           <Text
-                            style={isDark ? duoTaskDetailsStyles.assignedTextDark : duoTaskDetailsStyles.assignedTextLight}>
+                            style={
+                              isDark
+                                ? duoTaskDetailsStyles.assignedTextDark
+                                : duoTaskDetailsStyles.assignedTextLight
+                            }>
                             Assigned to:{' '}
                             {subtask.assignedTo === getAuth().currentUser?.uid
                               ? 'You'

@@ -1,5 +1,5 @@
 import {LegendList} from '@legendapp/list';
-import React, {useEffect, useState, useCallback, useMemo} from 'react';
+import React, {useEffect, useState, useCallback, useMemo, useRef} from 'react';
 import {
   View,
   Text,
@@ -8,13 +8,16 @@ import {
   RefreshControl,
 } from 'react-native';
 import {Avatar, SearchBar} from 'react-native-elements';
+import CachedImage from 'shared/components/CachedImage';
 import {useTypedSelector} from 'hooks/redux/useTypedSelector';
+import {selectFirebase, selectIsDark} from 'shared/store/selectors';
 import {useNavigation} from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {MessageService} from '../services/MessageService';
 import {getUsernameForLogo} from 'shared/helpers/common/stringHelpers';
 import Snackbar from 'react-native-snackbar';
+import {logger} from 'shared/utils/logger';
 import {
   getFirestore,
   collection,
@@ -26,10 +29,62 @@ import {SCREEN_WIDTH} from 'shared/constants/common';
 import {ContactUser} from '../types';
 import {getStyles} from '../styles/ContactList';
 
+type ContactRowProps = {
+  item: ContactUser;
+  onPress: (user: ContactUser) => void;
+  styles: ReturnType<typeof getStyles>;
+};
+
+const ContactRow = React.memo(({item, onPress, styles}: ContactRowProps) => {
+  const avatarSize = Math.min(SCREEN_WIDTH * 0.12, 50);
+  const avatarStyle = useMemo(
+    () => [
+      styles.avatar,
+      {
+        width: avatarSize,
+        height: avatarSize,
+        borderRadius: avatarSize / 2,
+      },
+    ],
+    [avatarSize, styles.avatar],
+  );
+
+  return (
+    <TouchableOpacity style={styles.userItem} onPress={() => onPress(item)}>
+      {item.image ? (
+        <CachedImage
+          source={{uri: item.image}}
+          style={avatarStyle}
+          contentFit="cover"
+        />
+      ) : (
+        <Avatar
+          rounded
+          title={getUsernameForLogo(item.fullName || item.username)}
+          size={avatarSize}
+          containerStyle={styles.avatar}
+        />
+      )}
+
+      <View style={styles.userDetails}>
+        <Text style={styles.userName} numberOfLines={1}>
+          {item.fullName || item.username}
+        </Text>
+
+        <Text style={styles.username}>@{item.username}</Text>
+      </View>
+
+      <Ionicons name="chatbubble-outline" size={24} color="#2379C2" />
+    </TouchableOpacity>
+  );
+});
+
+ContactRow.displayName = 'ContactRow';
+
 const ContactListScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp<UserStackParamList>>();
-  const isDark = useTypedSelector(state => state.user.theme) === 'dark';
-  const firebase = useTypedSelector(state => state.firebase.firebase);
+  const isDark = useTypedSelector(selectIsDark);
+  const firebase = useTypedSelector(selectFirebase);
   const currentUser = firebase.currentUser();
 
   const [users, setUsers] = useState<ContactUser[]>([]);
@@ -37,7 +92,7 @@ const ContactListScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-  const messageService = useMemo(() => new MessageService(), []);
+  const messageService = useRef(new MessageService()).current;
 
   const styles = useMemo(() => getStyles(isDark), [isDark]);
 
@@ -58,7 +113,7 @@ const ContactListScreen: React.FC = () => {
       setFilteredUsers(usersData);
       setLoading(false);
     } catch (error) {
-      console.error('Error fetching users:', error);
+      logger.error('Error fetching users:', error, 'ContactList');
       setLoading(false);
       Snackbar.show({
         text: 'Failed to load contacts',
@@ -78,7 +133,7 @@ const ContactListScreen: React.FC = () => {
     try {
       await fetchUsers();
     } catch (error) {
-      console.error('Error refreshing contacts:', error);
+      logger.error('Error refreshing contacts:', error, 'ContactList');
       Snackbar.show({
         text: 'Failed to refresh contacts',
         duration: Snackbar.LENGTH_LONG,
@@ -131,7 +186,7 @@ const ContactListScreen: React.FC = () => {
           isQrInitiated: false,
         });
       } catch (error) {
-        console.error('Error starting conversation:', error);
+        logger.error('Error starting conversation:', error, 'ContactList');
         Snackbar.show({
           text: 'Failed to start conversation',
           duration: Snackbar.LENGTH_LONG,
@@ -170,37 +225,9 @@ const ContactListScreen: React.FC = () => {
 
   const renderUserItem = useCallback(
     ({item}: {item: ContactUser}) => (
-      <TouchableOpacity
-        style={styles.userItem}
-        onPress={() => handleUserPress(item)}>
-        {item.image ? (
-          <Avatar
-            rounded
-            size={Math.min(SCREEN_WIDTH * 0.12, 50)}
-            containerStyle={styles.avatar}
-            source={{uri: item.image}}
-          />
-        ) : (
-          <Avatar
-            rounded
-            title={getUsernameForLogo(item.fullName || item.username)}
-            size={Math.min(SCREEN_WIDTH * 0.12, 50)}
-            containerStyle={styles.avatar}
-          />
-        )}
-
-        <View style={styles.userDetails}>
-          <Text style={styles.userName} numberOfLines={1}>
-            {item.fullName || item.username}
-          </Text>
-
-          <Text style={styles.username}>@{item.username}</Text>
-        </View>
-
-        <Ionicons name="chatbubble-outline" size={24} color="#2379C2" />
-      </TouchableOpacity>
+      <ContactRow item={item} onPress={handleUserPress} styles={styles} />
     ),
-    [styles, handleUserPress],
+    [handleUserPress, styles],
   );
 
   return (

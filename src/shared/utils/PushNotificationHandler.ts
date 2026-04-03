@@ -1,5 +1,5 @@
 import {Platform, PermissionsAndroid} from 'react-native';
-import{
+import {
   AuthorizationStatus,
   getInitialNotification,
   getMessaging,
@@ -14,6 +14,7 @@ import notifee, {
   AndroidImportance,
   AndroidCategory,
 } from '@notifee/react-native';
+import {logger} from 'shared/utils/logger';
 
 /**
  * PushNotificationHandler - Utility for handling push notifications in the app
@@ -25,7 +26,11 @@ export class PushNotificationHandler {
    */
   public static async checkPermissions(): Promise<boolean> {
     try {
-      console.log('Checking push notification permissions');
+      logger.debug(
+        'Checking push notification permissions',
+        undefined,
+        'PushNotificationHandler',
+      );
 
       // For iOS, request permission
       if (Platform.OS === 'ios') {
@@ -35,10 +40,18 @@ export class PushNotificationHandler {
           authStatus === AuthorizationStatus.PROVISIONAL;
 
         if (enabled) {
-          console.log('iOS notification permissions granted');
+          logger.debug(
+            'iOS notification permissions granted',
+            undefined,
+            'PushNotificationHandler',
+          );
           return true;
         } else {
-          console.log('iOS notification permissions denied');
+          logger.debug(
+            'iOS notification permissions denied',
+            undefined,
+            'PushNotificationHandler',
+          );
           return false;
         }
       }
@@ -53,10 +66,18 @@ export class PushNotificationHandler {
         );
 
         if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-          console.log('Android notification permissions granted');
+          logger.debug(
+            'Android notification permissions granted',
+            undefined,
+            'PushNotificationHandler',
+          );
           return true;
         } else {
-          console.log('Android notification permissions denied');
+          logger.debug(
+            'Android notification permissions denied',
+            undefined,
+            'PushNotificationHandler',
+          );
           return false;
         }
       }
@@ -64,7 +85,11 @@ export class PushNotificationHandler {
       // For Android below 13 or if permissions check otherwise succeeded
       return true;
     } catch (error) {
-      console.error('Error checking push notification permissions:', error);
+      logger.error(
+        'Error checking push notification permissions',
+        error,
+        'PushNotificationHandler',
+      );
       return false;
     }
   }
@@ -75,20 +100,28 @@ export class PushNotificationHandler {
    */
   public static async register(): Promise<string | null> {
     try {
-      console.log('Registering for push notifications');
+      logger.debug(
+        'Registering for push notifications',
+        undefined,
+        'PushNotificationHandler',
+      );
       // Get the FCM token
       await registerDeviceForRemoteMessages(getMessaging());
       const fcmToken = (await hasPermission(getMessaging()))
         ? await getToken(getMessaging())
         : null;
       if (fcmToken) {
-        console.log('FCM Token:', fcmToken);
+        logger.debug('FCM Token', fcmToken, 'PushNotificationHandler');
         return fcmToken;
       }
 
       return null;
     } catch (error) {
-      console.error('Error registering for push notifications:', error);
+      logger.error(
+        'Error registering for push notifications',
+        error,
+        'PushNotificationHandler',
+      );
       return null;
     }
   }
@@ -102,7 +135,11 @@ export class PushNotificationHandler {
   public static setupMessageHandlers(): void {
     // Handle foreground messages
     onMessage(getMessaging(), async remoteMessage => {
-      console.log('Foreground notification received:', remoteMessage);
+      logger.debug(
+        'Foreground notification received',
+        remoteMessage,
+        'PushNotificationHandler',
+      );
 
       // Check if this message has already been processed to avoid duplicate notifications
       const messageId =
@@ -115,7 +152,11 @@ export class PushNotificationHandler {
       if (messageId) {
         // If we've already processed this message, skip it
         if (PushNotificationHandler.processedMessageIds.has(messageId)) {
-          console.log(`Skipping already processed FCM message: ${messageId}`);
+          logger.debug(
+            `Skipping already processed FCM message: ${messageId}`,
+            undefined,
+            'PushNotificationHandler',
+          );
           return;
         }
 
@@ -140,7 +181,11 @@ export class PushNotificationHandler {
     });
     // Handle notification opened when app is in background
     onNotificationOpenedApp(getMessaging(), remoteMessage => {
-      console.log('Notification opened from background state:', remoteMessage);
+      logger.debug(
+        'Notification opened from background state',
+        remoteMessage,
+        'PushNotificationHandler',
+      );
 
       // Get the data from the notification
       const data = remoteMessage.data || {};
@@ -151,10 +196,14 @@ export class PushNotificationHandler {
 
         // Handle direct message notifications
         if (data.type === 'direct_message' || data.conversationId) {
-          console.log('Navigating to chat from notification tap:', {
-            conversationId: data.conversationId,
-            senderId: data.senderId,
-          });
+          logger.debug(
+            'Navigating to chat from notification tap',
+            {
+              conversationId: data.conversationId,
+              senderId: data.senderId,
+            },
+            'PushNotificationHandler',
+          );
 
           // Navigate to the chat screen
           DeepLinkHandler.navigate('Chat', {
@@ -165,16 +214,21 @@ export class PushNotificationHandler {
           });
         }
       } catch (error) {
-        console.error('Error navigating from notification:', error);
+        logger.error(
+          'Error navigating from notification',
+          error,
+          'PushNotificationHandler',
+        );
       }
     });
 
     // Check if the app was opened from a notification when in quit state
     getInitialNotification(getMessaging()).then(remoteMessage => {
       if (remoteMessage) {
-        console.log(
-          'App opened from quit state by notification:',
+        logger.debug(
+          'App opened from quit state by notification',
           remoteMessage,
+          'PushNotificationHandler',
         );
 
         // Get the data from the notification
@@ -186,10 +240,14 @@ export class PushNotificationHandler {
 
           // Handle direct message notifications
           if (data.type === 'direct_message' || data.conversationId) {
-            console.log('Navigating to chat from initial notification:', {
-              conversationId: data.conversationId,
-              senderId: data.senderId,
-            });
+            logger.debug(
+              'Navigating to chat from initial notification',
+              {
+                conversationId: data.conversationId,
+                senderId: data.senderId,
+              },
+              'PushNotificationHandler',
+            );
 
             // Navigate to the chat screen
             DeepLinkHandler.navigate('Chat', {
@@ -200,7 +258,11 @@ export class PushNotificationHandler {
             });
           }
         } catch (error) {
-          console.error('Error navigating from initial notification:', error);
+          logger.error(
+            'Error navigating from initial notification',
+            error,
+            'PushNotificationHandler',
+          );
         }
       }
     });
@@ -292,7 +354,11 @@ export class PushNotificationHandler {
         },
       });
     } catch (error) {
-      console.error('Error displaying foreground notification:', error);
+      logger.error(
+        'Error displaying foreground notification',
+        error,
+        'PushNotificationHandler',
+      );
     }
   }
 
@@ -346,9 +412,17 @@ export class PushNotificationHandler {
       // when the app is closed. Instead, we rely on FCMTokenManager to manage token validity.
       // Previously: await getMessaging().deleteToken();
 
-      console.log('FCM token preserved for background notifications');
+      logger.debug(
+        'FCM token preserved for background notifications',
+        undefined,
+        'PushNotificationHandler',
+      );
     } catch (error) {
-      console.error('Error handling push notification unregistration:', error);
+      logger.error(
+        'Error handling push notification unregistration',
+        error,
+        'PushNotificationHandler',
+      );
     }
   }
 

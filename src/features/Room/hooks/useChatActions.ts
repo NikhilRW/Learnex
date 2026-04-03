@@ -10,6 +10,7 @@ import {
   serverTimestamp,
 } from '@react-native-firebase/firestore';
 import {getAuth} from '@react-native-firebase/auth';
+import {logger} from 'shared/utils/logger';
 
 export interface UseChatActionsParams {
   meetingId: string;
@@ -51,7 +52,7 @@ export const useChatActions = ({
           timestamp: serverTimestamp(),
         });
       } catch (err) {
-        console.error('Error sending message:', err);
+        logger.error('Error sending message:', err, 'RoomChatActions');
         onError('Failed to send message');
         Alert.alert('Error', 'Failed to send message');
       }
@@ -75,7 +76,7 @@ export const useChatActions = ({
           editedAt: serverTimestamp(),
         });
       } catch (err) {
-        console.error('Error editing message:', err);
+        logger.error('Error editing message:', err, 'RoomChatActions');
         onError('Failed to edit message');
         Alert.alert('Error', 'Failed to edit message');
       }
@@ -95,7 +96,7 @@ export const useChatActions = ({
           ),
         );
       } catch (err) {
-        console.error('Error deleting message:', err);
+        logger.error('Error deleting message:', err, 'RoomChatActions');
         onError('Failed to delete message');
         Alert.alert('Error', 'Failed to delete message');
       }

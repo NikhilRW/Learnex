@@ -7,10 +7,11 @@ import {
   Text,
   Animated,
 } from 'react-native';
-import { StyleSheet } from 'react-native-unistyles';
+import {StyleSheet} from 'react-native-unistyles';
 import Icon from 'react-native-vector-icons/Feather';
 import Video from 'react-native-video';
-import { PostMediaProps } from '../../types';
+import {PostMediaProps} from '../../types';
+import {logger} from 'shared/utils/logger';
 
 export const PostMedia: React.FC<PostMediaProps> = ({
   allMedia,
@@ -39,7 +40,7 @@ export const PostMedia: React.FC<PostMediaProps> = ({
     } else if (typeof videoSource === 'string') {
       source = videoSource;
     } else if (videoSource && typeof videoSource === 'object') {
-      const videoObject = videoSource as { uri?: string };
+      const videoObject = videoSource as {uri?: string};
       if (videoObject.uri) {
         source = videoObject.uri;
       } else {
@@ -62,17 +63,19 @@ export const PostMedia: React.FC<PostMediaProps> = ({
         <View
           style={[
             styles.videoContainer,
-            { width: screenWidth - 24, height: imageHeight },
+            {width: screenWidth - 24, height: imageHeight},
           ]}>
           <Video
             ref={videoRef}
-            source={{ uri: source }}
+            source={{uri: source}}
             style={styles.postImage}
             resizeMode={isVertical ? 'cover' : 'contain'}
             paused={isPaused}
             repeat
             onProgress={onVideoProgress}
-            onError={error => console.error('Video loading error:', error)}
+            onError={error =>
+              logger.error('Video loading error:', error, 'PostMedia')
+            }
           />
           {isPaused && <View style={styles.pausedOverlay} />}
         </View>
@@ -85,13 +88,13 @@ export const PostMedia: React.FC<PostMediaProps> = ({
     if (typeof imageSource === 'number') {
       source = imageSource;
     } else if (typeof imageSource === 'string') {
-      source = { uri: imageSource };
+      source = {uri: imageSource};
     } else if (
       imageSource &&
       typeof imageSource === 'object' &&
       'uri' in imageSource
     ) {
-      source = { uri: imageSource.uri };
+      source = {uri: imageSource.uri};
     } else {
       return null;
     }
@@ -102,15 +105,14 @@ export const PostMedia: React.FC<PostMediaProps> = ({
           source={source}
           style={[
             styles.postImage,
-            { height: imageHeight || (isVertical ? 480 : 300) },
+            {height: imageHeight || (isVertical ? 480 : 300)},
           ]}
           resizeMode={isVertical ? 'cover' : 'contain'}
           onError={error =>
-            console.error(
+            logger.error(
               'Image loading error for source',
-              source,
-              ':',
-              error.nativeEvent.error,
+              {source, error: error.nativeEvent.error},
+              'PostMedia',
             )
           }
         />
@@ -156,7 +158,7 @@ export const PostMedia: React.FC<PostMediaProps> = ({
                 index === currentMediaIndex
                   ? '#fff'
                   : 'rgba(255, 255, 255, 0.5)';
-              const dotBgStyle = { backgroundColor: bgColor };
+              const dotBgStyle = {backgroundColor: bgColor};
               const mediaKey =
                 typeof mediaItem.source === 'string'
                   ? mediaItem.source

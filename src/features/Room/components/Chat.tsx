@@ -1,5 +1,5 @@
-import { LegendList } from '@legendapp/list';
-import React, { useState, useEffect, useRef } from 'react';
+import {LegendList} from '@legendapp/list';
+import React, {useState, useEffect, useRef} from 'react';
 import {
   View,
   Text,
@@ -10,20 +10,21 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { getAuth } from '@react-native-firebase/auth';
-import { useTypedSelector } from 'hooks/redux/useTypedSelector';
-import { UserService } from 'shared/services/UserService';
-import { styles } from '../styles/Chat.styles';
-import { ChatProps } from '../types';
-import { useChatMessages } from '../hooks/useChatMessages';
-import { useChatActions } from '../hooks/useChatActions';
-import { ChatMessageItem } from './ChatMessageItem';
-import { ChatInput } from './ChatInput';
-import { EditMessageModal } from './EditMessageModal';
-import { MessageContextMenu } from './MessageContextMenu';
+import {getAuth} from '@react-native-firebase/auth';
+import {useTypedSelector} from 'hooks/redux/useTypedSelector';
+import {selectIsDark} from 'shared/store/selectors';
+import {UserService} from 'shared/services/UserService';
+import {styles} from '../styles/Chat.styles';
+import {ChatProps} from '../types';
+import {useChatMessages} from '../hooks/useChatMessages';
+import {useChatActions} from '../hooks/useChatActions';
+import {ChatMessageItem} from './ChatMessageItem';
+import {ChatInput} from './ChatInput';
+import {EditMessageModal} from './EditMessageModal';
+import {MessageContextMenu} from './MessageContextMenu';
 
-const Chat: React.FC<ChatProps> = ({ meetingId, isVisible, onClose }) => {
-  const isDark = useTypedSelector(state => state.user.theme) === 'dark';
+const Chat: React.FC<ChatProps> = ({meetingId, isVisible, onClose}) => {
+  const isDark = useTypedSelector(selectIsDark);
   const [userName, setUserName] = useState('');
   const [newMessage, setNewMessage] = useState('');
   const [selectedMessage, setSelectedMessage] = useState<any>(null);
@@ -36,7 +37,7 @@ const Chat: React.FC<ChatProps> = ({ meetingId, isVisible, onClose }) => {
   useEffect(() => {
     const initUserName = async () => {
       const userService = new UserService();
-      const { username } = await userService.getNameUsernamestring();
+      const {username} = await userService.getNameUsernamestring();
       const fullName = getAuth().currentUser?.displayName;
       setUserName(username || fullName || '');
     };
@@ -44,12 +45,16 @@ const Chat: React.FC<ChatProps> = ({ meetingId, isVisible, onClose }) => {
   }, []);
 
   // Hooks for chat functionality
-  const { messages, isLoading, error, setError } = useChatMessages({
+  const {messages, isLoading, error, setError} = useChatMessages({
     meetingId,
     userName,
   });
 
-  const { sendMessage: sendMessageAction, editMessage, deleteMessage } = useChatActions({
+  const {
+    sendMessage: sendMessageAction,
+    editMessage,
+    deleteMessage,
+  } = useChatActions({
     meetingId,
     userName,
     onError: setError,
@@ -59,7 +64,7 @@ const Chat: React.FC<ChatProps> = ({ meetingId, isVisible, onClose }) => {
   useEffect(() => {
     if (messages.length > 0) {
       setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
+        flatListRef.current?.scrollToEnd({animated: true});
       }, 100);
     }
   }, [messages.length]);
@@ -175,7 +180,7 @@ const Chat: React.FC<ChatProps> = ({ meetingId, isVisible, onClose }) => {
           style={styles.messageList}
           estimatedItemSize={100}
           recycleItems={true}
-          renderItem={({ item }) => (
+          renderItem={({item}) => (
             <ChatMessageItem
               message={item}
               isDark={isDark}

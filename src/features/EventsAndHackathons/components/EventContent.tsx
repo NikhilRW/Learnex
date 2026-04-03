@@ -1,8 +1,9 @@
-import { View, Text } from 'react-native';
+import {View, Text} from 'react-native';
 import React from 'react';
-import { createStyles } from 'events-and-hackathons/styles/EventDetails';
-import { useTypedSelector } from '@/shared/hooks/redux/useTypedSelector';
-import { formatDate } from '../utils';
+import {createStyles} from 'events-and-hackathons/styles/EventDetails';
+import {useTypedSelector} from '@/shared/hooks/redux/useTypedSelector';
+import {selectIsDark} from 'shared/store/selectors';
+import {formatDate} from '../utils';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {
   TimelineSection,
@@ -14,10 +15,10 @@ import {
   EligibilitySection,
   TeamSizeSection,
 } from '../components';
-import { EventContentProps } from '../types';
+import {EventContentProps} from '../types';
 
-const EventContent: React.FC<EventContentProps> = ({ event }) => {
-  const isDark = useTypedSelector(state => state.user.theme) === 'dark';
+const EventContent: React.FC<EventContentProps> = ({event}) => {
+  const isDark = useTypedSelector(selectIsDark);
   const styles = createStyles(isDark);
   return (
     <View style={styles.content}>

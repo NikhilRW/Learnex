@@ -1,16 +1,18 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { DrawerNavigationProp } from '@react-navigation/drawer';
-import { MeetingService } from 'room/services/MeetingService';
-import { WebRTCService } from 'room/services/WebRTCService';
+import React, {useCallback, useEffect, useState} from 'react';
+import {View, Text, TouchableOpacity} from 'react-native';
+import {useNavigation, useRoute, RouteProp} from '@react-navigation/native';
+import {DrawerNavigationProp} from '@react-navigation/drawer';
+import {MeetingService} from 'room/services/MeetingService';
+import {WebRTCService} from 'room/services/WebRTCService';
 import Room from 'room/components/Room';
-import { useTypedSelector } from 'hooks/redux/useTypedSelector';
-import { UserStackParamList } from 'shared/navigation/routes/UserStack';
-import { getAuth } from '@react-native-firebase/auth';
+import {useTypedSelector} from 'hooks/redux/useTypedSelector';
+import {selectFirebase, selectIsDark} from 'shared/store/selectors';
+import {UserStackParamList} from 'shared/navigation/routes/UserStack';
+import {getAuth} from '@react-native-firebase/auth';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { TaskService } from 'shared/services/TaskService';
-import { styles } from 'room/styles/RoomScreen';
+import {TaskService} from 'shared/services/TaskService';
+import {logger} from 'shared/utils/logger';
+import {styles} from 'room/styles/RoomScreen';
 // Import hooks
 import {
   useRoomConnection,
@@ -33,18 +35,17 @@ const taskService = new TaskService();
 const RoomScreen: React.FC = () => {
   const navigation = useNavigation<RoomScreenNavigationProp>();
   const route = useRoute<RoomScreenRouteProp>();
-  const { meeting, isHost } = route.params;
-  const userTheme = useTypedSelector(state => state.user);
-  const isDark = userTheme.theme === 'dark';
+  const {meeting, isHost} = route.params;
+  const isDark = useTypedSelector(selectIsDark);
   const [username, setUsername] = useState('');
   const [fullName, setFullName] = useState('');
   const currentUser = getAuth().currentUser;
-  const firebase = useTypedSelector(state => state.firebase);
+  const firebase = useTypedSelector(selectFirebase);
 
   // Cleanup function
   const cleanup = useCallback(async () => {
     try {
-      console.log('Cleaning up resources');
+      logger.debug('Cleaning up resources', undefined, 'RoomScreen');
 
       // Leave the meeting
       await meetingService.leaveMeeting(meeting.id);
@@ -53,15 +54,16 @@ const RoomScreen: React.FC = () => {
       meetingService.cleanup();
       webRTCService.cleanup();
     } catch (error) {
-      console.error('Cleanup error:', error);
+      logger.error('Cleanup error:', error, 'RoomScreen');
     }
   }, [meeting.id]);
 
   // Use chat hook first to get unsubscribeMessages
-  const { messages, sendMessage, handleMessageReaction, unsubscribeMessages } =
+  const {messages, sendMessage, handleMessageReaction, unsubscribeMessages} =
     useRoomChat({
       meetingId: meeting.id,
-      currentUserName: fullName || username || currentUser?.email || 'Anonymous',
+      currentUserName:
+        fullName || username || currentUser?.email || 'Anonymous',
     });
 
   // Use actions hook (needs cleanup and unsubscribeMessages)
@@ -118,13 +120,17 @@ const RoomScreen: React.FC = () => {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const { fullName: fetchedFullName, username: fetchedUsername } =
-          await firebase.firebase.user.getNameUsernamestring();
-        console.log(fetchedFullName, fetchedUsername);
+        const {fullName: fetchedFullName, username: fetchedUsername} =
+          await firebase.user.getNameUsernamestring();
+        logger.debug(
+          'Fetched user profile',
+          {fullName: fetchedFullName, username: fetchedUsername},
+          'RoomScreen',
+        );
         setUsername(fetchedUsername);
         setFullName(fetchedFullName);
       } catch (err) {
-        console.error('Error fetching user data:', err);
+        logger.error('Error fetching user data:', err, 'RoomScreen');
         setUsername('Anonymous');
         setFullName('Anonymous');
       }

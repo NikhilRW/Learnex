@@ -17,6 +17,12 @@ import ContactListScreen from 'conversations/screens/ContactList';
 import SavedPosts from 'saved-post/screens/SavedPosts';
 import {BottomTabNavigationProp} from '@react-navigation/bottom-tabs';
 import {useTypedSelector} from 'hooks/redux/useTypedSelector';
+import {
+  selectDeepLinkProcessed,
+  selectDeepLinkUrl,
+  selectFirebase,
+  selectIsDark,
+} from 'shared/store/selectors';
 import NavigationIconHelper from 'shared/helpers/navigation/NavigationIconHelper';
 import {Dimensions, Alert, ImageSourcePropType, StatusBar} from 'react-native';
 import {useEffect, useRef, useCallback} from 'react';
@@ -34,7 +40,7 @@ import {
   getDoc,
 } from '@react-native-firebase/firestore';
 import FloatingBottomTabBar from 'shared/navigation/components/FloatingBottomTabBar';
-import {getMessaging} from '@react-native-firebase/messaging';
+import {logger} from 'shared/utils/logger';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
@@ -131,7 +137,7 @@ const extractRoomCodeFromUrl = (url: string): string | null => {
 
     return null;
   } catch (error) {
-    console.error('Error parsing deep link URL:', error);
+    logger.error('Error parsing deep link URL:', error, 'UserStack');
     return null;
   }
 };
@@ -152,7 +158,7 @@ const extractUserIdFromChatUrl = (url: string): string | null => {
     }
     return null;
   } catch (error) {
-    console.error('Error parsing chat deep link URL:', error);
+    logger.error('Error parsing chat deep link URL:', error, 'UserStack');
     return null;
   }
 };
@@ -205,16 +211,14 @@ const TabNavigator = ({isDark}: {isDark: boolean}) => {
  */
 const UserStack = () => {
   const Drawer = createDrawerNavigator();
-  const theme = useTypedSelector(state => state.user.theme);
-  const isDark = theme === 'dark';
-  const deepLinkUrl = useTypedSelector(state => state.deepLink.url);
-  const deepLinkProcessed = useTypedSelector(state => state.deepLink.processed);
+  const isDark = useTypedSelector(selectIsDark);
+  const deepLinkUrl = useTypedSelector(selectDeepLinkUrl);
+  const deepLinkProcessed = useTypedSelector(selectDeepLinkProcessed);
   const navigation = useNavigation();
   const dispatch = useTypedDispatch();
   const meetingService = useRef(new MeetingService()).current;
   const messageService = useRef(new MessageService()).current;
-  const firebase = useTypedSelector(state => state.firebase.firebase);
-  const messaging = getMessaging();
+  const firebase = useTypedSelector(selectFirebase);
 
   useEffect(() => {
     StatusBar.setBarStyle(isDark ? 'light-content' : 'dark-content', true);
@@ -263,16 +267,30 @@ const UserStack = () => {
         // Initialize Firebase Cloud Messaging
         const fcmInitialized = await notificationService.initializeFCM();
         if (fcmInitialized) {
-          console.log('Firebase Cloud Messaging initialized successfully');
+          logger.debug(
+            'Firebase Cloud Messaging initialized successfully',
+            undefined,
+            'UserStack',
+          );
         } else {
-          console.warn(
+          logger.warn(
             'Firebase Cloud Messaging initialization failed or permission denied',
+            undefined,
+            'UserStack',
           );
         }
 
-        console.log('Notification services initialized');
+        logger.debug(
+          'Notification services initialized',
+          undefined,
+          'UserStack',
+        );
       } catch (error) {
-        console.error('Failed to set up notification services:', error);
+        logger.error(
+          'Failed to set up notification services:',
+          error,
+          'UserStack',
+        );
       }
     };
 
@@ -288,16 +306,24 @@ const UserStack = () => {
         notificationService.removeTaskListener();
         notificationService.cleanupFCM();
       } catch (error) {
-        console.error('Failed to clean up notification listeners:', error);
+        logger.error(
+          'Failed to clean up notification listeners:',
+          error,
+          'UserStack',
+        );
       }
     };
-  }, [navigation, messaging]);
+  }, [navigation]);
 
   // Handle deep link navigation
   useEffect(() => {
     const handleDeepLink = async () => {
       if (deepLinkUrl && !deepLinkProcessed) {
-        console.log('Processing deep link in UserStack:', deepLinkUrl);
+        logger.debug(
+          'Processing deep link in UserStack:',
+          deepLinkUrl,
+          'UserStack',
+        );
 
         // Mark as processed to prevent multiple attempts
         dispatch(markDeepLinkProcessed());
@@ -337,10 +363,11 @@ const UserStack = () => {
               userData.image ||
               null;
 
-            console.log('Starting chat with user:', {
-              recipientName,
-              recipientPhoto,
-            });
+            logger.debug(
+              'Starting chat with user:',
+              {recipientName, recipientPhoto},
+              'UserStack',
+            );
 
             // Create or get a conversation between the two users
             const conversation = await messageService.getOrCreateConversation(
@@ -356,12 +383,17 @@ const UserStack = () => {
                 `qr_conversation_${conversation.id}`,
                 'true',
               );
-              console.log(
+              logger.debug(
                 'Marked conversation as QR-initiated:',
                 conversation.id,
+                'UserStack',
               );
             } catch (storageError) {
-              console.error('Failed to mark QR conversation:', storageError);
+              logger.error(
+                'Failed to mark QR conversation',
+                storageError,
+                'UserStack',
+              );
               // Continue even if storage fails
             }
 
@@ -386,7 +418,11 @@ const UserStack = () => {
 
             return; // Exit after handling chat link
           } catch (error) {
-            console.error('Error processing chat deep link:', error);
+            logger.error(
+              'Error processing chat deep link:',
+              error,
+              'UserStack',
+            );
             Alert.alert(
               'Error',
               error instanceof Error
@@ -404,8 +440,6 @@ const UserStack = () => {
           try {
             // Get meeting by room code
             const meeting = await meetingService.getMeetingByRoomCode(roomCode);
-            console.log(navigation.getState()?.routeNames);
-            console.log(navigation.getState()?.index);
 
             // Navigate to RoomScreen
             navigation.dispatch(
@@ -426,7 +460,11 @@ const UserStack = () => {
               dispatch(clearDeepLink());
             }, 2000);
           } catch (error) {
-            console.error('Error processing meeting deep link:', error);
+            logger.error(
+              'Error processing meeting deep link:',
+              error,
+              'UserStack',
+            );
             Alert.alert(
               'Error',
               error instanceof Error ? error.message : 'Unable to join meeting',

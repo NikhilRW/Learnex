@@ -1,6 +1,7 @@
 import Firebase from '@/shared/services/firebase';
 import {useState, useEffect} from 'react';
 import Snackbar from 'react-native-snackbar';
+import {logger} from 'shared/utils/logger';
 // import Firebase from 'shared/services/FirebaseService';
 
 export const usePostLike = (
@@ -38,7 +39,7 @@ export const usePostLike = (
         });
       }
     } catch (error) {
-      console.error('Error liking post:', error);
+      logger.error('Error liking post:', error, 'PostLike');
       setIsLiked(!isLiked);
 
       Snackbar.show({

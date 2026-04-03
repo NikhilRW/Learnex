@@ -11,6 +11,7 @@ import {
   getDocs,
 } from '@react-native-firebase/firestore';
 import {AuthResponse} from 'shared/types/firebase';
+import {logger} from 'shared/utils/logger';
 
 export class UserService {
   async getNameUsernamestring(): Promise<{fullName: string; username: string}> {
@@ -27,7 +28,11 @@ export class UserService {
       }
       return {fullName: '', username: doc.email};
     } catch (error) {
-      console.log('UserService :: getNameUsernamestring() ::', error);
+      logger.error(
+        'UserService :: getNameUsernamestring() ::',
+        error,
+        'UserService',
+      );
       throw error;
     }
   }
@@ -42,7 +47,11 @@ export class UserService {
       );
       return {success: user.empty};
     } catch (error) {
-      console.log('UserService :: checkUsernameIsAvailable() ::', error);
+      logger.error(
+        'UserService :: checkUsernameIsAvailable() ::',
+        error,
+        'UserService',
+      );
       return {success: false, error};
     }
   }
@@ -53,7 +62,11 @@ export class UserService {
       );
       return {success: user.empty};
     } catch (error) {
-      console.log('UserService :: checkEmailIsAvailable() ::', error);
+      logger.error(
+        'UserService :: checkEmailIsAvailable() ::',
+        error,
+        'UserService',
+      );
       return {success: false, error};
     }
   }
@@ -84,7 +97,11 @@ export class UserService {
 
       return {success: false};
     } catch (error: any) {
-      console.log('UserService :: checkUsernameOrEmailRegistered() ::', error);
+      logger.error(
+        'UserService :: checkUsernameOrEmailRegistered() ::',
+        error,
+        'UserService',
+      );
       return {success: false, error};
     }
   }
@@ -100,7 +117,11 @@ export class UserService {
       }
       return null;
     } catch (error) {
-      console.log('UserService :: getUserEmailById() ::', error);
+      logger.error(
+        'UserService :: getUserEmailById() ::',
+        error,
+        'UserService',
+      );
       return null;
     }
   }
@@ -114,7 +135,11 @@ export class UserService {
       await updateDoc(currentUserDoc.ref, {username: newUsername});
       return {success: true};
     } catch (error) {
-      console.log('UserService :: checkUsernameIsAvailable() ::', error);
+      logger.error(
+        'UserService :: checkUsernameIsAvailable() ::',
+        error,
+        'UserService',
+      );
       return {success: false, error};
     }
   }
@@ -139,7 +164,7 @@ export class UserService {
       }
       return {email: null, fullName: null, username: null};
     } catch (error) {
-      console.log('UserService :: getUserInfoById() ::', error);
+      logger.error('UserService :: getUserInfoById() ::', error, 'UserService');
       return {email: null, fullName: null, username: null};
     }
   }
@@ -170,7 +195,11 @@ export class UserService {
 
       return {success: true};
     } catch (error) {
-      console.log('UserService :: updateProfilePhoto() ::', error);
+      logger.error(
+        'UserService :: updateProfilePhoto() ::',
+        error,
+        'UserService',
+      );
       return {success: false, error};
     }
   }
@@ -282,7 +311,7 @@ export class UserService {
 
       return Array.from(userMap.values());
     } catch (error) {
-      console.log('UserService :: searchUsers() ::', error);
+      logger.error('UserService :: searchUsers() ::', error, 'UserService');
       return [];
     }
   }

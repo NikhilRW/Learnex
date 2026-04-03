@@ -1,8 +1,7 @@
 import {useEffect, useState} from 'react';
 import {Alert, PermissionsAndroid, Platform} from 'react-native';
 import {PushNotificationHandler} from 'shared/utils/PushNotificationHandler';
-
-const STARTUP_PERMISSION_DELAY_MS = 1000;
+import {logger} from 'shared/utils/logger';
 
 export const useAppPermissions = (): boolean | null => {
   const [permissionsGranted, setPermissionsGranted] = useState<boolean | null>(
@@ -56,7 +55,11 @@ export const useAppPermissions = (): boolean | null => {
 
             if (cameraPermission !== PermissionsAndroid.RESULTS.GRANTED) {
               allPermissionsGranted = false;
-              console.warn('Camera permission not granted');
+              logger.warn(
+                'Camera permission not granted',
+                undefined,
+                'useAppPermissions',
+              );
             }
           }
 
@@ -74,7 +77,11 @@ export const useAppPermissions = (): boolean | null => {
 
             if (writeStoragePermission !== PermissionsAndroid.RESULTS.GRANTED) {
               allPermissionsGranted = false;
-              console.warn('Write storage permission not granted');
+              logger.warn(
+                'Write storage permission not granted',
+                undefined,
+                'useAppPermissions',
+              );
             }
           }
 
@@ -92,12 +99,20 @@ export const useAppPermissions = (): boolean | null => {
 
             if (micPermission !== PermissionsAndroid.RESULTS.GRANTED) {
               allPermissionsGranted = false;
-              console.warn('Microphone permission not granted');
+              logger.warn(
+                'Microphone permission not granted',
+                undefined,
+                'useAppPermissions',
+              );
             }
           }
 
           if (!allPermissionsGranted) {
-            console.warn('Not all permissions were granted');
+            logger.warn(
+              'Not all permissions were granted',
+              undefined,
+              'useAppPermissions',
+            );
           }
         }
 
@@ -119,7 +134,11 @@ export const useAppPermissions = (): boolean | null => {
           );
         }
       } catch (error) {
-        console.error('Error requesting permissions:', error);
+        logger.error(
+          'Error requesting permissions',
+          error,
+          'useAppPermissions',
+        );
 
         if (isActive) {
           setPermissionsGranted(false);
@@ -127,13 +146,10 @@ export const useAppPermissions = (): boolean | null => {
       }
     };
 
-    const timeoutId = setTimeout(() => {
-      void requestAllPermissions();
-    }, STARTUP_PERMISSION_DELAY_MS);
+    void requestAllPermissions();
 
     return () => {
       isActive = false;
-      clearTimeout(timeoutId);
     };
   }, []);
 

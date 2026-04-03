@@ -1,11 +1,10 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, {useState, useCallback, useEffect} from 'react';
 import {
   View,
   Modal,
   Text,
   TouchableOpacity,
   ScrollView,
-  Image,
   TextInput,
   ActivityIndicator,
   Alert,
@@ -17,12 +16,15 @@ import Icon from 'react-native-vector-icons/Feather';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import AntDesign from 'react-native-vector-icons/AntDesign';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
-import { Comment } from 'home/types/post';
-import { useTypedSelector } from 'hooks/redux/useTypedSelector';
-import { formatFirestoreTimestamp } from 'shared/services/utils';
-import { primaryColor } from 'shared/res/strings/eng';
-import { Avatar } from 'react-native-elements';
-import { getUsernameForLogo } from 'shared/helpers/common/stringHelpers';
+import {Comment} from 'home/types/post';
+import {useTypedSelector} from 'hooks/redux/useTypedSelector';
+import {selectFirebase} from 'shared/store/selectors';
+import {formatFirestoreTimestamp} from 'shared/services/utils';
+import {primaryColor} from 'shared/res/strings/eng';
+import {Avatar} from 'react-native-elements';
+import CachedImage from 'shared/components/CachedImage';
+import {logger} from 'shared/utils/logger';
+import {getUsernameForLogo} from 'shared/helpers/common/stringHelpers';
 import {
   onSnapshot,
   getFirestore,
@@ -33,8 +35,10 @@ import {
   deleteDoc,
   addDoc,
 } from '@react-native-firebase/firestore';
-import { createStyles } from '../styles/CommentModal.styles';
-import { CommentModalProps } from '../types';
+import {createStyles} from '../styles/CommentModal.styles';
+import {CommentModalProps} from '../types';
+
+const Image = CachedImage;
 
 interface CommentOptionsModalProps {
   selectedComment: Comment | null;
@@ -147,9 +151,9 @@ const CommentModal: React.FC<CommentModalProps> = ({
   onClose,
   comments,
   isDark,
-  onAddComment = async () => { },
+  onAddComment = async () => {},
   newComment = '',
-  setNewComment = () => { },
+  setNewComment = () => {},
   isAddingComment = false,
   postId = '',
 }) => {
@@ -161,7 +165,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
   const [refreshing, setRefreshing] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
   const [selectedComment, setSelectedComment] = useState<Comment | null>(null);
-  const firebase = useTypedSelector(state => state.firebase.firebase);
+  const firebase = useTypedSelector(selectFirebase);
   const currentUser = firebase.currentUser();
   const [localComments, setLocalComments] = useState(comments);
   const [userProfileImages, setUserProfileImages] = useState<
@@ -218,7 +222,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
       setRefreshing(true);
       await onAddComment();
     } catch (error) {
-      console.error('Error refreshing comments:', error);
+      logger.error('Error refreshing comments:', error, 'CommentModal');
       Alert.alert('Error', 'Failed to refresh comments');
     } finally {
       setRefreshing(false);
@@ -244,12 +248,12 @@ const CommentModal: React.FC<CommentModalProps> = ({
       const commentSnapshot = await getDoc(commentRef);
 
       if (!commentSnapshot.exists()) {
-        console.error('Comment not found');
+        logger.error('Comment not found', undefined, 'CommentModal');
         return;
       }
 
       const commentData = commentSnapshot.data() as
-        | { likes?: number; isLiked?: boolean }
+        | {likes?: number; isLiked?: boolean}
         | undefined;
       const currentLikes = commentData?.likes || 0;
       const isLiked = commentData?.isLiked || false;
@@ -267,7 +271,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
       // If replies are nested, you'll need to adjust the path accordingly.
 
       // Simulate success response for UI update
-      const response: { success: boolean; error?: string } = { success: true };
+      const response: {success: boolean; error?: string} = {success: true};
 
       // Only update UI if the API call succeeds
       if (response.success) {
@@ -297,7 +301,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
               }
               return reply;
             });
-            return { ...comment, replies: updatedReplies };
+            return {...comment, replies: updatedReplies};
           }
           return comment;
         });
@@ -305,11 +309,11 @@ const CommentModal: React.FC<CommentModalProps> = ({
         // Update the UI only after successful API response
         setLocalComments(updatedComments);
       } else {
-        console.error('Like comment failed:', response.error);
+        logger.error('Like comment failed:', response.error, 'CommentModal');
         // No UI update if the API call fails
       }
     } catch (error) {
-      console.error('Error liking comment:', error);
+      logger.error('Error liking comment:', error, 'CommentModal');
       // No alert - just log the error
     }
   };
@@ -339,7 +343,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
               }
               return reply;
             });
-            return { ...comment, replies: updatedReplies };
+            return {...comment, replies: updatedReplies};
           }
           return comment;
         });
@@ -356,15 +360,15 @@ const CommentModal: React.FC<CommentModalProps> = ({
           commentId,
         );
 
-        const result: { success: boolean; error?: string } = await updateDoc(
+        const result: {success: boolean; error?: string} = await updateDoc(
           commentRef,
           {
             text: editedText.trim(),
             editedAt: new Date().toISOString(),
           },
         )
-          .then(() => ({ success: true }))
-          .catch(error => ({ success: false, error: error.message }));
+          .then(() => ({success: true}))
+          .catch(error => ({success: false, error: error.message}));
 
         if (!result.success) {
           Alert.alert('Error', result.error || 'Failed to edit comment');
@@ -374,7 +378,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
           setEditedText(editedText);
         }
       } catch (error) {
-        console.error('Error editing comment:', error);
+        logger.error('Error editing comment:', error, 'CommentModal');
         Alert.alert('Error', 'Failed to edit comment');
         // If edit fails, revert to original comments
         setLocalComments(comments);
@@ -423,9 +427,10 @@ const CommentModal: React.FC<CommentModalProps> = ({
                   commentId,
                 );
 
-                const result: { success: boolean; error?: string } = await deleteDoc(commentRef)
-                  .then(() => ({ success: true }))
-                  .catch(error => ({ success: false, error: error.message }));
+                const result: {success: boolean; error?: string} =
+                  await deleteDoc(commentRef)
+                    .then(() => ({success: true}))
+                    .catch(error => ({success: false, error: error.message}));
 
                 if (!result.success) {
                   Alert.alert(
@@ -436,7 +441,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
                   setLocalComments(comments);
                 }
               } catch (error) {
-                console.error('Error deleting comment:', error);
+                logger.error('Error deleting comment:', error, 'CommentModal');
                 Alert.alert('Error', 'Failed to delete comment');
                 // If deletion fails, revert to original comments
                 setLocalComments(comments);
@@ -444,7 +449,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
             },
           },
         ],
-        { cancelable: true },
+        {cancelable: true},
       );
     },
     [postId, localComments, comments],
@@ -481,7 +486,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
         if (comment.id === commentId) {
           const newReplies = comment.replies || [];
           newReplies.push(newReply);
-          return { ...comment, replies: newReplies };
+          return {...comment, replies: newReplies};
         }
         return comment;
       });
@@ -490,7 +495,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
       setReplyingTo(null);
       setReplyText('');
     } catch (error) {
-      console.error('Error adding reply:', error);
+      logger.error('Error adding reply:', error, 'CommentModal');
       Alert.alert('Error', 'Failed to add reply');
     } finally {
       setIsAddingReply(false);
@@ -516,7 +521,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
         key={comment.id}
         style={[styles.commentItem, isReply && styles.replyItem]}>
         {displayImage ? (
-          <Image source={{ uri: displayImage }} style={styles.commentAvatar} />
+          <Image source={{uri: displayImage}} style={styles.commentAvatar} />
         ) : (
           <Avatar
             rounded
@@ -563,7 +568,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
                   {isReply && typeof comment.timestamp === 'string'
                     ? comment.timestamp
                     : typeof comment.timestamp === 'string' &&
-                      comment.timestamp.includes('-')
+                        comment.timestamp.includes('-')
                       ? 'just now'
                       : typeof comment.timestamp === 'string'
                         ? comment.timestamp
@@ -693,7 +698,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
                 style={[
                   styles.postButton,
                   (replyingTo ? !replyText.trim() : !newComment.trim()) &&
-                  styles.disabledPostButton,
+                    styles.disabledPostButton,
                 ]}
                 disabled={
                   replyingTo

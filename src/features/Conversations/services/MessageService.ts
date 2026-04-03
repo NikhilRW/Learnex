@@ -20,7 +20,7 @@ import {
 import {Conversation, Message} from 'conversations/models/Message';
 import {FirebaseErrorHandler} from 'shared/helpers/firebase/FirebaseErrorHandler';
 import notificationService from 'shared/services/NotificationService';
-import Config from 'react-native-superconfig';
+import {logger} from 'shared/utils/logger';
 import {getAuth} from '@react-native-firebase/auth';
 
 // Configure backend URL for sending push notifications
@@ -221,16 +221,24 @@ export class MessageService {
                   userData.image;
               }
             } catch (err) {
-              console.log('Error getting current user data:', err);
+              logger.error(
+                'Error getting current user data:',
+                err,
+                'MessageService',
+              );
               // Continue with what we have
             }
           }
 
-          console.log('Sending notification with sender info:', {
-            senderName,
-            senderPhoto,
-            isQrInitiated,
-          });
+          logger.debug(
+            'Sending notification with sender info:',
+            {
+              senderName,
+              senderPhoto,
+              isQrInitiated,
+            },
+            'MessageService',
+          );
 
           // Send notification to the recipient via local service
           await notificationService.displayMessageNotification(
@@ -245,7 +253,11 @@ export class MessageService {
           );
         }
       } catch (err) {
-        console.error('Error sending local notification:', err);
+        logger.error(
+          'Error sending local notification:',
+          err,
+          'MessageService',
+        );
         // Continue even if notification fails - messaging functionality
         // should work independently of notification delivery
       }
@@ -281,9 +293,10 @@ export class MessageService {
                   userData.image;
               }
             } catch (err) {
-              console.log(
+              logger.error(
                 'Error getting current user data for backend notification:',
                 err,
+                'MessageService',
               );
               // Continue with what we have
             }
@@ -300,9 +313,10 @@ export class MessageService {
             isQrInitiated: isQrInitiated,
           };
 
-          console.log(
+          logger.debug(
             'Sending backend notification with payload:',
             notificationPayload,
+            'MessageService',
           );
 
           // Check for network connectivity before making the request
@@ -338,41 +352,69 @@ export class MessageService {
 
               if (response.ok) {
                 const data = await response.json();
-                console.log('Backend notification response:', data);
+                logger.debug(
+                  'Backend notification response:',
+                  data,
+                  'MessageService',
+                );
               } else {
                 const errorText = await response.text();
-                console.error(
+                logger.error(
                   `Backend notification failed with status: ${response.status}`,
+                  errorText,
+                  'MessageService',
                 );
-                console.error(`Error body: ${errorText}`);
+                logger.error(
+                  'Backend notification error body:',
+                  errorText,
+                  'MessageService',
+                );
 
                 // If we get a 404 specifically with /batch in the error, it's likely
                 // the Vercel routing issue with Firebase batch endpoint
                 if (response.status === 404 && errorText.includes('/batch')) {
-                  console.log(
+                  logger.warn(
                     'Detected Firebase batch endpoint issue with Vercel, using local notification only',
+                    undefined,
+                    'MessageService',
                   );
                   // Continue with message sending despite notification failure
                 }
               }
             } catch (error) {
               // This catch block will handle network errors and the 404 batch error
-              console.error('Error sending backend notification:', error);
-              console.log('Using local notification only');
+              logger.error(
+                'Error sending backend notification:',
+                error,
+                'MessageService',
+              );
+              logger.warn(
+                'Using local notification only',
+                undefined,
+                'MessageService',
+              );
               // Local notification handled above, so we can safely continue
             }
           } else {
-            console.log('Device is offline, using local notification only');
+            logger.warn(
+              'Device is offline, using local notification only',
+              undefined,
+              'MessageService',
+            );
           }
         }
       } catch (error) {
-        console.error('Error preparing notification:', error);
+        logger.error('Error preparing notification:', error, 'MessageService');
         // Errors in notification should not prevent message sending
       }
 
       return newMessage;
     } catch (error) {
-      console.error('MessageService :: sendMessage() ::', error);
+      logger.error(
+        'MessageService :: sendMessage() ::',
+        error,
+        'MessageService',
+      );
       throw error;
     }
   }
@@ -395,7 +437,11 @@ export class MessageService {
       return response.ok;
     } catch (error) {
       // Any error means we're offline
-      console.log('Network connectivity check failed:', error);
+      logger.warn(
+        'Network connectivity check failed:',
+        error,
+        'MessageService',
+      );
       return false;
     }
   }
@@ -432,7 +478,11 @@ export class MessageService {
         callback(conversations);
       },
       error => {
-        console.error('Error listening to conversations:', error);
+        logger.error(
+          'Error listening to conversations:',
+          error,
+          'MessageService',
+        );
       },
     );
   }
@@ -452,7 +502,11 @@ export class MessageService {
       );
 
       if (conversationsQuery.empty) {
-        console.log('No conversations found for user', userId);
+        logger.debug(
+          'No conversations found for user',
+          userId,
+          'MessageService',
+        );
         return;
       }
 
@@ -478,8 +532,10 @@ export class MessageService {
       });
 
       await batch.commit();
-      console.log(
+      logger.debug(
         `Updated participant details for user ${userId} in ${conversationsQuery.size} conversations`,
+        undefined,
+        'MessageService',
       );
     } catch (error) {
       throw this.errorHandler.handleError(
@@ -500,8 +556,10 @@ export class MessageService {
         doc(this.conversationsCollection, conversationId),
       );
       if (!conversationDoc.exists()) {
-        console.warn(
+        logger.warn(
           `Conversation ${conversationId} not found. Cannot mark messages as read.`,
+          undefined,
+          'MessageService',
         );
         return;
       }
@@ -542,7 +600,11 @@ export class MessageService {
       // Check if the message exists
       const messageDoc = await getDoc(doc(this.messagesCollection, messageId));
       if (!messageDoc.exists()) {
-        console.warn(`Message ${messageId} not found. Cannot delete message.`);
+        logger.warn(
+          `Message ${messageId} not found. Cannot delete message.`,
+          undefined,
+          'MessageService',
+        );
         return;
       }
 
@@ -560,7 +622,11 @@ export class MessageService {
       const messageDocSnapshot = await getDoc(messageDocRef);
 
       if (!messageDocSnapshot.exists()) {
-        console.warn(`Message ${messageId} not found. Cannot edit message.`);
+        logger.warn(
+          `Message ${messageId} not found. Cannot edit message.`,
+          undefined,
+          'MessageService',
+        );
         return;
       }
 
@@ -583,8 +649,10 @@ export class MessageService {
         const conversationDocSnapshot = await getDoc(conversationDocRef);
 
         if (!conversationDocSnapshot.exists()) {
-          console.warn(
+          logger.warn(
             `Conversation ${messageData.conversationId} not found. Cannot update last message.`,
+            undefined,
+            'MessageService',
           );
           return;
         }
@@ -618,8 +686,10 @@ export class MessageService {
         doc(this.conversationsCollection, conversationId),
       );
       if (!conversationDoc.exists()) {
-        console.warn(
+        logger.warn(
           `Conversation ${conversationId} not found. Cannot update typing status.`,
+          undefined,
+          'MessageService',
         );
         return;
       }
@@ -643,8 +713,10 @@ export class MessageService {
         doc(this.conversationsCollection, conversationId),
       );
       if (!conversationDoc.exists()) {
-        console.warn(
+        logger.warn(
           `Conversation ${conversationId} not found. Cannot delete conversation.`,
+          undefined,
+          'MessageService',
         );
         return;
       }

@@ -1,3 +1,5 @@
+import {logger} from 'shared/utils/logger';
+
 interface FirebaseError {
   code?: string;
   message?: string;
@@ -18,7 +20,7 @@ export class FirebaseErrorHandler {
     defaultMessage: string = 'An error occurred',
   ): Error {
     // Log the original error for debugging
-    console.error('Firebase error:', error);
+    logger.error('Firebase error', error, 'FirebaseErrorHandler');
 
     // If it's a Firebase error with a code, handle it specifically
     if (typeof error === 'object' && error !== null) {

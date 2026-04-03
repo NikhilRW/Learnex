@@ -9,7 +9,7 @@ import { styles } from 'getting-started/styles/GettingStarted';
 const GettingStarted = () => {
   const navigate = useNavigation<AuthNavigationProps>();
   return (
-    <View className="w-screen h-screen bg-white flex justify-center items-center px-[15%] py-[20%] relative ">
+    <View className="w-screen h-screen bg-white flex justify-center items-center px-[15%] py-[20%] relative">
       <MaterialsIcon
         name="circle"
         color={'#37B6F0'}

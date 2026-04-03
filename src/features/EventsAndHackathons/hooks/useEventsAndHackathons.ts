@@ -2,7 +2,10 @@ import {useEffect, useState, useCallback} from 'react';
 import {useNavigation} from '@react-navigation/native';
 import {useDispatch} from 'react-redux';
 import {AnyAction} from '@reduxjs/toolkit';
+// it is deprecated
 import {useTypedSelector} from 'hooks/redux/useTypedSelector';
+import {selectHackathon, selectIsDark} from 'shared/store/selectors';
+import {logger} from 'shared/utils/logger';
 import {HackathonService} from '../services';
 import {HackathonSummary} from '../types';
 import {showToast} from '../utils';
@@ -28,9 +31,9 @@ export const useEventsAndHackathons = () => {
   const navigation = useNavigation();
 
   // Get state from Redux
-  const isDark = useTypedSelector(state => state.user.theme) === 'dark';
+  const isDark = useTypedSelector(selectIsDark);
   const {events, filteredEvents, loading, error, filterType, lastFetched} =
-    useTypedSelector(state => state.hackathon);
+    useTypedSelector(selectHackathon);
 
   /**
    * Fetch events from the API
@@ -47,7 +50,7 @@ export const useEventsAndHackathons = () => {
 
         return result.type.includes('/fulfilled');
       } catch (fetchError) {
-        console.error('Error fetching events:', fetchError);
+        logger.error('Error fetching events:', fetchError, 'Events');
         return false;
       }
     },
@@ -58,12 +61,16 @@ export const useEventsAndHackathons = () => {
    * Effect for initial load and focus listener
    */
   useEffect(() => {
-    console.log('Initial load: Fetching events');
+    logger.debug('Initial load: Fetching events', undefined, 'Events');
     fetchEvents();
 
     // Add listener for when screen comes into focus
     const unsubscribeFocus = navigation.addListener('focus', () => {
-      console.log('Events screen focused, fetching data...');
+      logger.debug(
+        'Events screen focused, fetching data...',
+        undefined,
+        'Events',
+      );
       fetchEvents();
     });
 
@@ -101,7 +108,7 @@ export const useEventsAndHackathons = () => {
    * Handle refresh when pull-to-refresh is triggered
    */
   const onRefresh = useCallback(async () => {
-    console.log('User triggered Pull-to-Refresh');
+    logger.debug('User triggered Pull-to-Refresh', undefined, 'Events');
     setRefreshing(true);
 
     try {
@@ -114,7 +121,7 @@ export const useEventsAndHackathons = () => {
         showToast('Failed to refresh events. Try again later.', 'long');
       }
     } catch (refreshError) {
-      console.error('Error refreshing events:', refreshError);
+      logger.error('Error refreshing events:', refreshError, 'Events');
       showToast(
         'Failed to refresh events. Check your network connection.',
         'long',
@@ -128,7 +135,7 @@ export const useEventsAndHackathons = () => {
    * Handle manual refresh from the reload button
    */
   const handleManualRefresh = useCallback(async () => {
-    console.log('User triggered Manual Refresh');
+    logger.debug('User triggered Manual Refresh', undefined, 'Events');
     showToast('Fetching latest events...');
     setRefreshing(true);
 
@@ -142,10 +149,14 @@ export const useEventsAndHackathons = () => {
         });
 
         if (refreshResult.success) {
-          console.log('Backend scraping successful');
+          logger.debug('Backend scraping successful', undefined, 'Events');
           showToast('Events refreshed successfully!');
         } else {
-          console.log('Backend scraping failed:', refreshResult.message);
+          logger.warn(
+            'Backend scraping failed:',
+            refreshResult.message,
+            'Events',
+          );
 
           if (
             refreshResult.message &&
@@ -159,7 +170,7 @@ export const useEventsAndHackathons = () => {
           }
         }
       } catch (serverError) {
-        console.error('Error during server refresh:', serverError);
+        logger.error('Error during server refresh:', serverError, 'Events');
         showToast('Server refresh failed.', 'long');
       }
 
@@ -181,19 +192,27 @@ export const useEventsAndHackathons = () => {
           result.payload.events.length > 0;
 
         if (receivedData) {
-          console.log(`Loaded ${result.payload.events.length} events`);
+          logger.debug(
+            `Loaded ${result.payload.events.length} events`,
+            undefined,
+            'Events',
+          );
         } else {
           showToast('No events found. Try again later.', 'long');
         }
       } catch (fetchError) {
-        console.error('Error fetching events after refresh:', fetchError);
+        logger.error(
+          'Error fetching events after refresh:',
+          fetchError,
+          'Events',
+        );
         showToast(
           'Failed to load events. Check your network connection.',
           'long',
         );
       }
     } catch (manualRefreshError) {
-      console.error('Error refreshing events:', manualRefreshError);
+      logger.error('Error refreshing events:', manualRefreshError, 'Events');
       showToast('Failed to refresh events.', 'long');
     } finally {
       setRefreshing(false);

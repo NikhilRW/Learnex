@@ -1,15 +1,20 @@
 import {LegendList} from '@legendapp/list';
 import React, {useState, useEffect, useRef, useCallback, useMemo} from 'react';
-import {TextInput, useColorScheme} from 'react-native';
+import {InteractionManager, TextInput, useColorScheme} from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import {LexAIMessage, LexAIMode} from 'lex-ai/types/lexAITypes';
-import {useSelector} from 'react-redux';
 import {styles} from 'lex-ai/styles/LexAI.styles';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useTypedSelector} from 'hooks/redux/useTypedSelector';
+import {
+  selectFirebase,
+  selectLexAIMode,
+  selectTheme,
+} from 'shared/store/selectors';
+import {logger} from 'shared/utils/logger';
 
 // Import types
-import {RootState, LexAIMessageWithLinks} from '../types/lexAI.types';
+import {LexAIMessageWithLinks} from '../types/lexAI.types';
 import {
   lightColors,
   darkColors,
@@ -43,7 +48,7 @@ const LexAI = () => {
   const systemColorScheme = useColorScheme();
 
   // Get user theme preference from Redux
-  const userTheme = useSelector((state: RootState) => state.user.theme);
+  const userTheme = useTypedSelector(selectTheme);
   const isDarkMode =
     userTheme === 'dark' ||
     (userTheme === 'system' && systemColorScheme === 'dark');
@@ -52,7 +57,7 @@ const LexAI = () => {
   const colors = isDarkMode ? darkColors : lightColors;
 
   // Access the lexAI state from Redux with proper typing
-  const currentMode = useSelector((state: RootState) => state.lexAI.mode);
+  const currentMode = useTypedSelector(selectLexAIMode);
 
   const [debugMode] = useState(false);
   const flatListRef = useRef<any>(null);
@@ -61,7 +66,7 @@ const LexAI = () => {
   const contentHeightRef = useRef(0);
   const inputRef = useRef<TextInput>(null);
 
-  const firebase = useTypedSelector(state => state.firebase.firebase);
+  const firebase = useTypedSelector(selectFirebase);
   const currentUser = firebase.currentUser();
   const [userName, setUserName] = useState<string>('');
 
@@ -91,12 +96,10 @@ const LexAI = () => {
   });
 
   // Scroll to end helper
-  const scrollToEnd = useCallback(() => {
-    setTimeout(() => {
-      if (flatListRef.current) {
-        flatListRef.current.scrollToEnd({animated: true});
-      }
-    }, 100);
+  const scrollToEnd = useCallback((animated: boolean = true) => {
+    InteractionManager.runAfterInteractions(() => {
+      flatListRef.current?.scrollToEnd({animated});
+    });
   }, []);
 
   // Gated autoscroll handlers — only scroll when user is already near the bottom
@@ -158,7 +161,7 @@ const LexAI = () => {
           setUserName(fullName || 'User');
         }
       } catch (error) {
-        console.error('Error fetching user name:', error);
+        logger.error('Error fetching user name:', error, 'LexAI');
         setUserName('User');
       }
     };
@@ -177,6 +180,18 @@ const LexAI = () => {
       />
     ),
     [colors, debugMode, isDarkMode],
+  );
+
+  const keyExtractor = useCallback(
+    (item: LexAIMessage | LexAIMessageWithLinks) => {
+      if (item.id) return item.id;
+      const createdAt = (item as any).createdAt;
+      if (createdAt) return `created-${createdAt}`;
+      const timestamp = (item as any).timestamp;
+      if (timestamp) return `ts-${timestamp}`;
+      return `${item.role}-${item.content?.slice(0, 20) ?? 'message'}`;
+    },
+    [],
   );
 
   const emptyComponent = useCallback(
@@ -226,7 +241,7 @@ const LexAI = () => {
         <LegendList
           style={styles.messageList}
           data={visibleMessages}
-          keyExtractor={item => item.id}
+          keyExtractor={keyExtractor}
           renderItem={renderMessage}
           ref={flatListRef}
           onContentSizeChange={handleContentSizeChange}

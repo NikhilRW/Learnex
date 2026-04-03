@@ -11,15 +11,29 @@ import {
   TextInput,
   ScrollView,
 } from 'react-native';
-import React, {useEffect, useMemo, useRef, useState} from 'react';
+import React, {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {useTypedSelector} from 'hooks/redux/useTypedSelector';
+import {
+  selectFirebase,
+  selectIsDark,
+  selectUserPhoto,
+  selectUserProfileColor,
+} from 'shared/store/selectors';
 import {useTypedDispatch} from 'hooks/redux/useTypedDispatch';
 import {
   changeIsLoggedIn,
   changeThemeColor,
   updateUserPhoto,
 } from 'shared/reducers/User';
-import {Avatar, Image} from 'react-native-elements';
+import {Avatar} from 'react-native-elements';
+import CachedImage from 'shared/components/CachedImage';
 import {getUsernameForLogo} from 'shared/helpers/common/stringHelpers';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import AntDesign from 'react-native-vector-icons/AntDesign';
@@ -40,20 +54,99 @@ import Config from 'react-native-superconfig';
 import {MessageService} from 'conversations/services/MessageService';
 import {deleteOldProfilePhoto} from 'shared/utils/cloudinary';
 import {DEFAULT_UPLOAD_PRESET} from 'shared/constants/cloudinary';
+import {logger} from 'shared/utils/logger';
 
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
 
+type DrawerSectionProps = {
+  title: string;
+  options: string[];
+  onOptionPress: (option: string) => void;
+  renderOptionIcon: (option: string) => React.ReactNode;
+  styles: ReturnType<typeof createStyles>;
+};
+
+const DrawerSection = memo(
+  ({
+    title,
+    options,
+    onOptionPress,
+    renderOptionIcon,
+    styles,
+  }: DrawerSectionProps) => (
+    <View>
+      <Text style={styles.sectionTitle}>{title}</Text>
+      {options.map(option => (
+        <TouchableOpacity
+          key={option}
+          style={styles.optionItem}
+          onPress={() => onOptionPress(option)}>
+          {renderOptionIcon(option)}
+          <Text
+            style={styles.optionText}
+            numberOfLines={2}
+            ellipsizeMode="tail">
+            {option}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  ),
+);
+
+DrawerSection.displayName = 'DrawerSection';
+
+type DrawerProfileHeaderProps = {
+  renderAvatar: () => React.ReactNode;
+  username: string;
+  email: string;
+  onEditUsername: () => void;
+  styles: ReturnType<typeof createStyles>;
+};
+
+const DrawerProfileHeader = memo(
+  ({
+    renderAvatar,
+    username,
+    email,
+    onEditUsername,
+    styles,
+  }: DrawerProfileHeaderProps) => (
+    <View style={styles.profileContainer}>
+      {renderAvatar()}
+
+      <View style={styles.usernameContainer}>
+        <View className="flex-row items-center">
+          <Text style={styles.username} numberOfLines={1} ellipsizeMode="tail">
+            {username}
+          </Text>
+          <TouchableOpacity
+            onPress={onEditUsername}
+            style={styles.usernameEditIcon}>
+            <AntDesign name="edit" size={20} color="#ffffff80" />
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.email} numberOfLines={1} ellipsizeMode="tail">
+          {email}
+        </Text>
+      </View>
+    </View>
+  ),
+);
+
+DrawerProfileHeader.displayName = 'DrawerProfileHeader';
+
 const NavigationDrawer = (props: DrawerContentComponentProps) => {
-  const firebase = useTypedSelector(state => state.firebase.firebase);
+  const firebase = useTypedSelector(selectFirebase);
   const insets = useSafeAreaInsets();
   const currentUser = firebase.currentUser();
-  const isDark = useTypedSelector(state => state.user.theme) === 'dark';
+  const isDark = useTypedSelector(selectIsDark);
   const [username, setUsername] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [photoURL, setPhotoURL] = useState<string | null>(null);
   const dispatch = useTypedDispatch();
-  const profileColor = useTypedSelector(state => state.user.userProfileColor);
-  const reduxPhotoURL = useTypedSelector(state => state.user.userPhoto);
+  const profileColor = useTypedSelector(selectUserProfileColor);
+  const reduxPhotoURL = useTypedSelector(selectUserPhoto);
   const navigation = props.navigation;
   const styles = useMemo(() => createStyles(isDark), [isDark]);
   const messageService = useRef(new MessageService()).current;
@@ -71,8 +164,10 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
   useEffect(() => {
     // Check if Cloudinary config values are available
     if (!Config.CLOUDINARY_CLOUD_NAME || !Config.CLOUDINARY_UPLOAD_PRESET) {
-      console.warn(
+      logger.warn(
         'Cloudinary config values missing. Make sure CLOUDINARY_CLOUD_NAME and CLOUDINARY_UPLOAD_PRESET are set in your .env file',
+        undefined,
+        'NavigationDrawer',
       );
     }
   }, []);
@@ -126,7 +221,7 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
         });
       }
     } catch (err) {
-      console.error('Sign out error:', err);
+      logger.error('Sign out error:', err, 'NavigationDrawer');
       Snackbar.show({
         text: 'An error occurred while signing out',
         duration: Snackbar.LENGTH_LONG,
@@ -136,56 +231,61 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
     }
   };
 
-  const handleOptionPress = async (option: string) => {
-    // Close the drawer
-    navigation.closeDrawer();
+  const handleOptionPress = useCallback(
+    async (option: string) => {
+      // Close the drawer
+      navigation.closeDrawer();
 
-    // Navigate based on the selected option
-    switch (option) {
-      case 'Room':
-        navigation.navigate('Room');
-        break;
-      case 'Tasks':
-        navigation.navigate('Tasks');
-        break;
-      case 'Events & Hackathons':
-        navigation.navigate('EventsAndHackathons');
-        break;
-      case 'Direct Messages':
-        navigation.navigate('Conversations');
-        break;
-      case 'Saved':
-        navigation.navigate('SavedPosts');
-        break;
-      case 'Generate QR':
-        navigation.navigate('QRCode');
-        break;
-      case 'About us':
-        if (await Linking.canOpenURL('https://learnex-web.vercel.app/#about')) {
-          await Linking.openURL('https://learnex-web.vercel.app/#about');
-        } else {
+      // Navigate based on the selected option
+      switch (option) {
+        case 'Room':
+          navigation.navigate('Room');
+          break;
+        case 'Tasks':
+          navigation.navigate('Tasks');
+          break;
+        case 'Events & Hackathons':
+          navigation.navigate('EventsAndHackathons');
+          break;
+        case 'Direct Messages':
+          navigation.navigate('Conversations');
+          break;
+        case 'Saved':
+          navigation.navigate('SavedPosts');
+          break;
+        case 'Generate QR':
+          navigation.navigate('QRCode');
+          break;
+        case 'About us':
+          if (
+            await Linking.canOpenURL('https://learnex-web.vercel.app/#about')
+          ) {
+            await Linking.openURL('https://learnex-web.vercel.app/#about');
+          } else {
+            Snackbar.show({
+              text: 'Cannot open URL',
+              duration: Snackbar.LENGTH_SHORT,
+            });
+          }
+          break;
+        case 'Toggle Theme':
+          dispatch(changeThemeColor(isDark ? 'light' : 'dark'));
+          break;
+        case 'LexAI':
+          navigation.navigate('LexAI');
+          break;
+        default:
           Snackbar.show({
-            text: 'Cannot open URL',
+            text: `${option} feature coming soon!`,
             duration: Snackbar.LENGTH_SHORT,
+            textColor: 'white',
+            backgroundColor: '#007cb5',
           });
-        }
-        break;
-      case 'Toggle Theme':
-        dispatch(changeThemeColor(isDark ? 'light' : 'dark'));
-        break;
-      case 'LexAI':
-        navigation.navigate('LexAI');
-        break;
-      default:
-        Snackbar.show({
-          text: `${option} feature coming soon!`,
-          duration: Snackbar.LENGTH_SHORT,
-          textColor: 'white',
-          backgroundColor: '#007cb5',
-        });
-        break;
-    }
-  };
+          break;
+      }
+    },
+    [dispatch, isDark, navigation],
+  );
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -196,11 +296,11 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
         }
         // If not, check Firebase user photo URL
         else if (currentUser?.photoURL) {
-          __DEV__ &&
-            console.log(
-              'NavigationDrawer: User photo URL:',
-              currentUser.photoURL,
-            );
+          logger.debug(
+            'NavigationDrawer: User photo URL:',
+            currentUser.photoURL,
+            'NavigationDrawer',
+          );
           // Validate URL format
           if (
             typeof currentUser.photoURL === 'string' &&
@@ -212,12 +312,19 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
             // Also update Redux store
             dispatch(updateUserPhoto(currentUser.photoURL));
           } else {
-            __DEV__ &&
-              console.log('NavigationDrawer: Invalid photo URL format');
+            logger.debug(
+              'NavigationDrawer: Invalid photo URL format',
+              undefined,
+              'NavigationDrawer',
+            );
             setPhotoURL(null);
           }
         } else {
-          __DEV__ && console.log('NavigationDrawer: No photo URL available');
+          logger.debug(
+            'NavigationDrawer: No photo URL available',
+            undefined,
+            'NavigationDrawer',
+          );
           setPhotoURL(null);
         }
 
@@ -231,7 +338,7 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
           setEmail(currentUser.email);
         }
       } catch (err) {
-        console.error('Error fetching user data:', err);
+        logger.error('Error fetching user data:', err, 'NavigationDrawer');
         // Set default values in case of error
         setUsername('User');
         setNewUsername('User');
@@ -278,7 +385,11 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
       const {success} = await firebase.user.checkUsernameIsAvailable(user_name);
       return success;
     } catch (err) {
-      console.error('Error checking username availability:', err);
+      logger.error(
+        'Error checking username availability:',
+        err,
+        'NavigationDrawer',
+      );
       return false;
     }
   };
@@ -336,7 +447,7 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
         });
       }
     } catch (error) {
-      console.error('Error updating username:', error);
+      logger.error('Error updating username:', error, 'NavigationDrawer');
       Snackbar.show({
         text: 'An error occurred while updating username',
         duration: Snackbar.LENGTH_SHORT,
@@ -391,7 +502,7 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
         updateProfilePhoto(result.assets[0].uri);
       }
     } catch (error) {
-      console.error('Error taking photo:', error);
+      logger.error('Error taking photo:', error, 'NavigationDrawer');
       Snackbar.show({
         text: 'Failed to take photo',
         duration: Snackbar.LENGTH_SHORT,
@@ -416,7 +527,7 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
         updateProfilePhoto(result.assets[0].uri);
       }
     } catch (error) {
-      console.error('Error picking photo:', error);
+      logger.error('Error picking photo:', error, 'NavigationDrawer');
       Snackbar.show({
         text: 'Failed to pick photo',
         duration: Snackbar.LENGTH_SHORT,
@@ -482,9 +593,10 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
                 image: data.secure_url,
               });
             } catch (error) {
-              console.error(
+              logger.error(
                 'Error updating conversation participant details:',
                 error,
+                'NavigationDrawer',
               );
               // Continue even if this fails - the profile photo will still be updated in the system
             }
@@ -518,7 +630,7 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
         });
       }
     } catch (error) {
-      console.error('Error updating profile photo:', error);
+      logger.error('Error updating profile photo:', error, 'NavigationDrawer');
       Snackbar.show({
         text: 'An error occurred while updating profile photo',
         duration: Snackbar.LENGTH_SHORT,
@@ -530,7 +642,7 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
     }
   };
 
-  const renderAvatar = () => {
+  const renderAvatar = useCallback(() => {
     return (
       <TouchableOpacity
         onPress={handleAvatarPress}
@@ -548,12 +660,16 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
             <ActivityIndicator color="#2379C2" size="small" />
           </View>
         ) : photoURL && photoURL.length > 0 ? (
-          <Image
+          <CachedImage
             source={{uri: photoURL}}
-            containerStyle={styles.avatar}
+            style={styles.avatar}
+            contentFit="cover"
             onError={() => {
-              __DEV__ &&
-                console.log('NavigationDrawer: Profile image loading error');
+              logger.debug(
+                'NavigationDrawer: Profile image loading error',
+                undefined,
+                'NavigationDrawer',
+              );
               setPhotoURL(null); // Fallback to initials avatar
             }}
           />
@@ -575,56 +691,59 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
         </View>
       </TouchableOpacity>
     );
-  };
+  }, [
+    handleAvatarPress,
+    isUploading,
+    isDark,
+    photoURL,
+    profileColor,
+    styles,
+    username,
+  ]);
 
-  const renderOptionIcon = (option: string) => {
-    const iconName =
-      optionIcons[option as keyof typeof optionIcons] || 'circle';
-    return (
-      <View style={styles.iconContainer}>
-        {option === 'Toggle Theme' ? (
-          <FontAwesome5Icon
-            name={iconName}
-            color={isDark ? '#2379C2' : '#2379C2'}
-            size={Math.min(SCREEN_WIDTH * 0.045, 18)}
-          />
-        ) : option === 'LexAI' ? (
-          <Image
-            source={require('shared/res/pngs/lexai.png')}
-            style={styles.lexAiIcon}
-          />
-        ) : (
-          <FontAwesome
-            name={iconName}
-            color={isDark ? '#2379C2' : '#2379C2'}
-            size={Math.min(SCREEN_WIDTH * 0.045, 18)}
-          />
-        )}
-      </View>
-    );
-  };
+  const renderOptionIcon = useCallback(
+    (option: string) => {
+      const iconName =
+        optionIcons[option as keyof typeof optionIcons] || 'circle';
+      return (
+        <View style={styles.iconContainer}>
+          {option === 'Toggle Theme' ? (
+            <FontAwesome5Icon
+              name={iconName}
+              color={isDark ? '#2379C2' : '#2379C2'}
+              size={Math.min(SCREEN_WIDTH * 0.045, 18)}
+            />
+          ) : option === 'LexAI' ? (
+            <CachedImage
+              source={require('shared/res/pngs/lexai.png')}
+              style={styles.lexAiIcon}
+              contentFit="contain"
+            />
+          ) : (
+            <FontAwesome
+              name={iconName}
+              color={isDark ? '#2379C2' : '#2379C2'}
+              size={Math.min(SCREEN_WIDTH * 0.045, 18)}
+            />
+          )}
+        </View>
+      );
+    },
+    [isDark, styles.iconContainer, styles.lexAiIcon],
+  );
 
-  const renderNavigationSection = (title: string, options: string[]) => {
-    return (
-      <View>
-        <Text style={styles.sectionTitle}>{title}</Text>
-        {options.map((option, index) => (
-          <TouchableOpacity
-            key={index}
-            style={styles.optionItem}
-            onPress={() => handleOptionPress(option)}>
-            {renderOptionIcon(option)}
-            <Text
-              style={styles.optionText}
-              numberOfLines={2}
-              ellipsizeMode="tail">
-              {option}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-    );
-  };
+  const renderNavigationSection = useCallback(
+    (title: string, options: string[]) => (
+      <DrawerSection
+        title={title}
+        options={options}
+        onOptionPress={handleOptionPress}
+        renderOptionIcon={renderOptionIcon}
+        styles={styles}
+      />
+    ),
+    [handleOptionPress, renderOptionIcon, styles],
+  );
 
   return (
     <View
@@ -636,28 +755,13 @@ const NavigationDrawer = (props: DrawerContentComponentProps) => {
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}>
         <View style={styles.contentContainer}>
-          <View style={styles.profileContainer}>
-            {renderAvatar()}
-
-            <View style={styles.usernameContainer}>
-              <View className="flex-row items-center">
-                <Text
-                  style={styles.username}
-                  numberOfLines={1}
-                  ellipsizeMode="tail">
-                  {username}
-                </Text>
-                <TouchableOpacity
-                  onPress={handleEditUsername}
-                  style={styles.usernameEditIcon}>
-                  <AntDesign name="edit" size={20} color="#ffffff80" />
-                </TouchableOpacity>
-              </View>
-              <Text style={styles.email} numberOfLines={1} ellipsizeMode="tail">
-                {email}
-              </Text>
-            </View>
-          </View>
+          <DrawerProfileHeader
+            renderAvatar={renderAvatar}
+            username={username}
+            email={email}
+            onEditUsername={handleEditUsername}
+            styles={styles}
+          />
 
           <View style={styles.optionsContainer}>
             {renderNavigationSection('Main', navigationCategories.main)}

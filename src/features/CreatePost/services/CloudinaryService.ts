@@ -2,6 +2,7 @@ import {Alert} from 'react-native';
 import {DEFAULT_UPLOAD_PRESET} from 'shared/constants/cloudinary';
 import {CLOUDINARY_CONFIG} from '../constants';
 import {MediaItem} from '../types';
+import {logger} from 'shared/utils/logger';
 
 type ProgressCallback = (progress: number) => void;
 type IndexCallback = (index: number) => void;
@@ -31,7 +32,7 @@ export const uploadMediaToCloudinary = async (
       name: mediaItem.name || (mediaItem.isVideo ? 'upload.mp4' : 'upload.jpg'),
     } as any;
 
-    console.log(file);
+    logger.debug('Cloudinary upload file', file, 'CloudinaryService');
 
     const uploadFormData = new FormData();
     uploadFormData.append('file', file);
@@ -49,7 +50,7 @@ export const uploadMediaToCloudinary = async (
     );
 
     const data = await response.json();
-    console.log('Cloudinary response:', data);
+    logger.debug('Cloudinary response:', data, 'CloudinaryService');
 
     onProgress(progressEnd);
 
@@ -75,10 +76,10 @@ export const uploadMediaToCloudinary = async (
       throw new Error(`Cloudinary error: ${data.error.message}`);
     }
 
-    console.log('data_t', data);
+    logger.debug('Cloudinary response payload', data, 'CloudinaryService');
     throw new Error('Failed to upload to Cloudinary');
   } catch (error) {
-    console.error('Error uploading to Cloudinary:', error);
+    logger.error('Error uploading to Cloudinary:', error, 'CloudinaryService');
     throw error;
   }
 };

@@ -2,6 +2,7 @@ import {useState, useEffect, useCallback, useRef} from 'react';
 import {Alert} from 'react-native';
 import {Task} from 'shared/types/taskTypes';
 import {TaskService} from 'shared/services/TaskService';
+import {logger} from 'shared/utils/logger';
 import {getAuth} from '@react-native-firebase/auth';
 import {useIsFocused} from '@react-navigation/native';
 import {
@@ -66,7 +67,7 @@ export const useDuoTasks = () => {
       const duoTasks = await taskService.getDuoTasks();
       setTasks(duoTasks);
     } catch (error) {
-      console.error('Error fetching team tasks:', error);
+      logger.error('Error fetching team tasks:', error, 'DuoTasks');
       Alert.alert('Error', 'Failed to load team tasks. Please try again.');
     } finally {
       setIsLoading(false);
@@ -78,7 +79,7 @@ export const useDuoTasks = () => {
       const pendingInvites = await taskService.getPendingDuoTaskInvitations();
       setInvitations(pendingInvites);
     } catch (error) {
-      console.error('Error fetching invitations:', error);
+      logger.error('Error fetching invitations:', error, 'DuoTasks');
     }
   }, [taskService]);
 
@@ -129,7 +130,7 @@ export const useDuoTasks = () => {
           setTasks(updatedTasks);
         }
       },
-      error => console.error('Error in tasks listener:', error),
+      error => logger.error('Error in tasks listener:', error, 'DuoTasks'),
     );
 
     const unsubscribeInvitations = onSnapshot(
@@ -142,7 +143,8 @@ export const useDuoTasks = () => {
       async snapshot => {
         if (!snapshot.empty) await fetchInvitations();
       },
-      error => console.error('Error in invitations listener:', error),
+      error =>
+        logger.error('Error in invitations listener:', error, 'DuoTasks'),
     );
 
     listenersRef.current = [unsubscribeTasks, unsubscribeInvitations];
@@ -185,7 +187,7 @@ export const useDuoTasks = () => {
       closeModal();
       await fetchTasks();
     } catch (error) {
-      console.error('Error creating team task:', error);
+      logger.error('Error creating team task:', error, 'DuoTasks');
       Alert.alert('Error', 'Failed to create team task. Please try again.');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -199,7 +201,7 @@ export const useDuoTasks = () => {
       closeModal();
       await fetchTasks();
     } catch (error) {
-      console.error('Error updating duo task:', error);
+      logger.error('Error updating duo task:', error, 'DuoTasks');
       Alert.alert('Error', 'Failed to update duo task. Please try again.');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -219,7 +221,11 @@ export const useDuoTasks = () => {
         await fetchTasks();
         await fetchInvitations();
       } catch (error) {
-        console.error('Error accepting duo task invitation:', error);
+        logger.error(
+          'Error accepting duo task invitation',
+          error,
+          'useDuoTasks',
+        );
         Alert.alert('Error', 'Failed to accept invitation. Please try again.');
       }
     },
@@ -234,7 +240,11 @@ export const useDuoTasks = () => {
         await fetchTasks();
         await fetchInvitations();
       } catch (error) {
-        console.error('Error declining team task invitation:', error);
+        logger.error(
+          'Error declining team task invitation',
+          error,
+          'useDuoTasks',
+        );
         Alert.alert('Error', 'Failed to decline invitation. Please try again.');
       }
     },
@@ -269,7 +279,7 @@ export const useDuoTasks = () => {
                 await taskService.deleteTask(id);
                 await fetchTasks();
               } catch (error) {
-                console.error('Error deleting task:', error);
+                logger.error('Error deleting task', error, 'useDuoTasks');
                 Alert.alert(
                   'Error',
                   'Failed to delete task. Please try again.',
@@ -289,7 +299,7 @@ export const useDuoTasks = () => {
       await fetchTasks();
       await fetchInvitations();
     } catch (error) {
-      console.error('Error refreshing tasks:', error);
+      logger.error('Error refreshing tasks', error, 'useDuoTasks');
     } finally {
       setRefreshing(false);
     }

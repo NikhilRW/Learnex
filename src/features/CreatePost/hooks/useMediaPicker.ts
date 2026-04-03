@@ -1,6 +1,7 @@
 import {useState} from 'react';
 import {Alert, Linking} from 'react-native';
 import {launchImageLibrary} from 'react-native-image-picker';
+import {logger} from 'shared/utils/logger';
 import {CLOUDINARY_CONFIG} from '../constants';
 import {MediaItem, PostFormData} from '../types';
 
@@ -78,13 +79,17 @@ export const useMediaPicker = (
       const result = await launchImageLibrary(options);
 
       if (result.didCancel) {
-        console.log('User cancelled image picker');
+        logger.debug(
+          'User cancelled image picker',
+          undefined,
+          'useMediaPicker',
+        );
         return;
       }
 
       if (result.errorCode) {
         const errorMsg = `ImagePicker error: ${result.errorMessage || result.errorCode}`;
-        console.error(errorMsg);
+        logger.error(errorMsg, undefined, 'useMediaPicker');
         setPickerError(errorMsg);
         Alert.alert(
           'Error',
@@ -177,7 +182,7 @@ export const useMediaPicker = (
       }
     } catch (error) {
       const errorMsg = 'Failed to pick media';
-      console.error('Error picking media:', error);
+      logger.error('Error picking media:', error, 'useMediaPicker');
       setPickerError(errorMsg);
       Alert.alert('Error', errorMsg);
     }

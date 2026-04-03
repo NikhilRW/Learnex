@@ -11,6 +11,7 @@ import {
 import LexAIService from 'shared/services/LexAIService';
 import {DispatchType} from 'shared/store/store';
 import {generateUUID, logDebug} from 'lex-ai/utils/common';
+import {logger} from 'shared/utils/logger';
 import {changeThemeColor} from '@/shared/reducers/User';
 import {UserStackParamList} from 'shared/navigation/routes/UserStack';
 import {LexAIMessageWithLinks} from '../types/lexAI.types';
@@ -494,7 +495,7 @@ export const useLexAIToolExecution = ({
           tool: toolCall.toolName,
           error: String(error),
         });
-        console.error('Error executing tool call:', error);
+        logger.error('Error executing tool call:', error, 'LexAI');
       }
     },
     [

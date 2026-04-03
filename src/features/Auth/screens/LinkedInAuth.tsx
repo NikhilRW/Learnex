@@ -1,19 +1,21 @@
 import axios from 'axios';
-import React, { useRef } from 'react';
-import { View } from 'react-native';
+import React, {useRef} from 'react';
+import {View} from 'react-native';
 import Config from 'react-native-superconfig';
 import WebView from 'react-native-webview';
-import { ShouldStartLoadRequest } from 'react-native-webview/lib/WebViewTypes';
-import { useTypedSelector } from 'hooks/redux/useTypedSelector';
+import {ShouldStartLoadRequest} from 'react-native-webview/lib/WebViewTypes';
+import {useTypedSelector} from 'hooks/redux/useTypedSelector';
+import {selectFirebase} from 'shared/store/selectors';
 import Snackbar from 'react-native-snackbar';
-import { useTypedDispatch } from 'hooks/redux/useTypedDispatch';
-import { changeIsLoggedIn, changeProfileColor } from 'shared/reducers/User';
-import { getRandomColors } from 'shared/helpers/common/stringHelpers';
-import { styles } from '../styles/LinkedInAuth.styles';
+import {useTypedDispatch} from 'hooks/redux/useTypedDispatch';
+import {changeIsLoggedIn, changeProfileColor} from 'shared/reducers/User';
+import {getRandomColors} from 'shared/helpers/common/stringHelpers';
+import {logger} from 'shared/utils/logger';
+import {styles} from '../styles/LinkedInAuth.styles';
 
 const LinkedInAuth = () => {
   const ref = useRef<WebView>(null);
-  const firebase = useTypedSelector(state => state.firebase.firebase);
+  const firebase = useTypedSelector(selectFirebase);
   const dispatch = useTypedDispatch();
 
   const handleURIChange = (event: ShouldStartLoadRequest) => {
@@ -42,7 +44,7 @@ const LinkedInAuth = () => {
       },
     );
     if (response.data.access_token !== null) {
-      const { success, error } = await firebase.auth.linkedinSignIn(
+      const {success, error} = await firebase.auth.linkedinSignIn(
         response.data.access_token,
       );
       if (success) {
@@ -55,10 +57,10 @@ const LinkedInAuth = () => {
           textColor: 'white',
           backgroundColor: '#007cb5',
         });
-        console.log(error);
+        logger.error('LinkedIn auth failed', error, 'LinkedInAuth');
       }
     } else {
-      Snackbar.show({ text: 'LinkedIn Authentication Failed' });
+      Snackbar.show({text: 'LinkedIn Authentication Failed'});
     }
   };
   return (
