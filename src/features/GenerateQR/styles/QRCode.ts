@@ -1,71 +1,67 @@
 import {StyleSheet} from 'react-native-unistyles';
 
-export const createStyles = (isDark: boolean) =>
-  StyleSheet.create({
-    container: {
-      flex: 1,
-      paddingHorizontal: 13,
-      backgroundColor: isDark ? '#1a1a1a' : '#f5f5f5',
-    },
-    headerTitle: {
-      fontSize: 20,
-      fontWeight: 'bold',
-      color: isDark ? 'white' : 'black',
-    },
-    backButton: {
-      padding: 8,
-    },
-    shareButton: {
-      padding: 8,
-    },
-    customHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      height: 56,
-      borderBottomWidth: 1,
-      borderBottomColor: 'rgba(0, 0, 0, 0.1)',
-      backgroundColor: isDark ? '#1a1a1a' : '#f5f5f5',
-    },
-    qrCodeContainer: {
-      alignItems: 'center',
-      justifyContent: 'center',
-      flex: 1,
-      borderRadius: 20,
-      padding: 20,
-      backgroundColor: isDark ? '#1a1a1a' : '#f5f5f5',
-    },
-    infoText: {
-      marginTop: 20,
-      fontSize: 16,
-      textAlign: 'center',
-      marginBottom: 30,
-      color: isDark ? '#cccccc' : '#555555',
-    },
-    shareButtonLarge: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingHorizontal: 20,
-      paddingVertical: 12,
-      borderRadius: 10,
-      marginTop: 20,
-      width: '80%',
-      maxWidth: 300,
-      backgroundColor: '#2379C2',
-    },
-    shareButtonText: {
-      color: 'white',
-      fontSize: 16,
-      fontWeight: '600',
-    },
-    shareButtonIcon: {
-      marginRight: 8,
-    },
-    iconColor: {
-      color: isDark ? 'white' : 'black',
-    },
-    disabledOpacity: {
-      opacity: 0.6,
-    },
-  });
+export const styles = StyleSheet.create(theme => ({
+  container: {
+    flex: 1,
+    paddingHorizontal: theme.sizes.screenPaddingX,
+    backgroundColor: theme.colors.background,
+  },
+  headerTitle: {
+    fontSize: theme.fontSizes.xl,
+    fontWeight: '700',
+    color: theme.colors.text.primary,
+  },
+  backButton: {
+    padding: theme.sizes.iconButtonPadding,
+  },
+  shareButton: {
+    padding: theme.sizes.iconButtonPadding,
+  },
+  customHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    height: theme.sizes.headerHeight,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.borderSubtle,
+    backgroundColor: theme.colors.background,
+  },
+  qrCodeContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+    borderRadius: theme.sizes.qrInfoMarginTop,
+    padding: theme.sizes.qrInfoMarginTop,
+    backgroundColor: theme.colors.background,
+  },
+  infoText: {
+    marginTop: theme.sizes.qrInfoMarginTop,
+    fontSize: theme.fontSizes.md,
+    textAlign: 'center',
+    marginBottom: theme.sizes.qrInfoMarginBottom,
+    color: theme.colors.text.secondary,
+  },
+  shareButtonLarge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: theme.sizes.shareButtonPaddingH,
+    paddingVertical: theme.sizes.shareButtonPaddingV,
+    borderRadius: theme.sizes.shareButtonRadius,
+    marginTop: theme.sizes.qrInfoMarginTop,
+    width: '80%',
+    maxWidth: theme.sizes.shareButtonMaxWidth,
+    backgroundColor: theme.colors.cta,
+  },
+  shareButtonText: {
+    color: theme.colors.textOnPrimary,
+    fontSize: theme.fontSizes.md,
+    fontWeight: '600',
+  },
+  shareButtonIcon: {
+    marginRight: theme.sizes.shareButtonIconMargin,
+  },
+  disabledOpacity: {
+    opacity: 0.6,
+  },
+}));

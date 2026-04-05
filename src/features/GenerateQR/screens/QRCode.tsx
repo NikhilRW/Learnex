@@ -6,33 +6,56 @@ import {
   Share,
   Platform,
 } from 'react-native';
-import React, {useEffect, useState} from 'react';
+import {useEffect, useState} from 'react';
 import QRCodeView from 'react-native-qrcode-svg';
 import {useNavigation} from '@react-navigation/native';
 import {DrawerNavigationProp} from '@react-navigation/drawer';
 import {useTypedSelector} from 'hooks/redux/useTypedSelector';
-import {selectFirebase, selectIsDark} from 'shared/store/selectors';
+import {selectFirebase} from 'shared/store/selectors';
 import Icon from 'react-native-vector-icons/Ionicons';
-import {createStyles} from 'qr-code/styles/QRCode';
 import {SafeAreaView} from 'react-native-safe-area-context';
+import {withUnistyles} from 'react-native-unistyles';
+import {styles} from 'qr-code/styles/QRCode';
 import {logger} from 'shared/utils/logger';
+
+const UniQRCodeView = withUnistyles(QRCodeView, theme => ({
+  quietZone: theme.sizes.qrQuietZone,
+  logoSize: theme.sizes.qrLogoSize,
+  logoMargin: theme.sizes.qrLogoMargin,
+  logoBorderRadius: theme.sizes.qrLogoRadius,
+  size: theme.sizes.qrSize,
+}));
+const HeaderIcon = withUnistyles(Icon, theme => ({
+  size: theme.iconSizes.lg,
+  color: theme.colors.text.primary,
+}));
+const ShareIcon = withUnistyles(Icon, theme => ({
+  size: theme.iconSizes.md,
+  color: theme.colors.textOnPrimary,
+}));
+const UniStatusBar = withUnistyles(StatusBar, (theme, rt) => ({
+  backgroundColor: theme.colors.background,
+  barStyle:
+    rt.colorScheme === 'dark'
+      ? ('light-content' as const)
+      : ('dark-content' as const),
+}));
 
 // QR code format - uses a specific URI scheme for app deep linking
 // Format: learnex://chat/{userId}
 const QRCode = () => {
   const navigation = useNavigation<DrawerNavigationProp<any>>();
-  const isDark = useTypedSelector(selectIsDark);
   const firebase = useTypedSelector(selectFirebase);
   const currentUser = firebase.auth.currentUser();
   const [fullName, setFullName] = useState<string>('');
   const [qrValue, setQrValue] = useState<string>('');
   const [isSharing, setIsSharing] = useState<boolean>(false);
-  const styles = createStyles(isDark);
 
   useEffect(() => {
     const fetchData = async () => {
-      const {fullName} = await firebase.user.getNameUsernamestring();
-      setFullName(fullName);
+      const {fullName: actualFullName} =
+        await firebase.user.getNameUsernamestring();
+      setFullName(actualFullName);
 
       // Create a deep link URL with the current user's ID
       // This URL will be used to start a chat with the user when scanned
@@ -89,36 +112,24 @@ const QRCode = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar
-        barStyle={isDark ? 'light-content' : 'dark-content'}
-        backgroundColor={isDark ? '#1a1a1a' : '#f5f5f5'}
-      />
+      <UniStatusBar />
       <View style={styles.customHeader}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}>
-          <Icon
-            name="arrow-back"
-            size={24}
-            color={isDark ? 'white' : 'black'}
-          />
+          <HeaderIcon name="arrow-back" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Your QR Code</Text>
         <TouchableOpacity
           style={styles.shareButton}
           onPress={handleShare}
           disabled={isSharing || !qrValue}>
-          <Icon
-            name="share-social-outline"
-            size={24}
-            color={isDark ? 'white' : 'black'}
-          />
+          <HeaderIcon name="share-social-outline" />
         </TouchableOpacity>
       </View>
       <View style={styles.qrCodeContainer}>
-        <QRCodeView
+        <UniQRCodeView
           ecl="M"
-          quietZone={10}
           value={qrValue || 'Loading...'}
           logo={{
             uri:
@@ -127,11 +138,7 @@ const QRCode = () => {
                 encodeURIComponent(fullName) ||
               'Anonymous',
           }}
-          logoSize={100}
-          logoMargin={-20}
-          logoBorderRadius={35}
           logoBackgroundColor="transparent"
-          size={300}
         />
 
         <Text style={styles.infoText}>
@@ -145,12 +152,7 @@ const QRCode = () => {
           ]}
           onPress={handleShare}
           disabled={isSharing || !qrValue}>
-          <Icon
-            name="share-social"
-            size={20}
-            color="white"
-            style={styles.shareButtonIcon}
-          />
+          <ShareIcon name="share-social" style={styles.shareButtonIcon} />
           <Text style={styles.shareButtonText}>
             {isSharing ? 'Sharing...' : 'Share Chat Link'}
           </Text>

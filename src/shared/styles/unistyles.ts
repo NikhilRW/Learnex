@@ -1,8 +1,6 @@
 import {Appearance} from 'react-native';
 import {StyleSheet} from 'react-native-unistyles';
-import {moderateScale, scale, verticalScale} from 'react-native-size-matters';
-import { primaryColor } from '../res/strings/eng';
-import { secondsInDay } from 'date-fns/constants';
+import {moderateScale} from 'react-native-size-matters';
 
 export const palette = {
   purple: '#5A31F4',
@@ -12,70 +10,75 @@ export const palette = {
   white: '#F0F2F3',
 } as const;
 
+const ms = (value: number) => moderateScale(value, 0);
+
 const spacing = {
-  xs: scale(4),
-  s: scale(8),
-  m: scale(16),
-  l: scale(24),
-  xl: scale(40),
-  xxl: scale(56),
+  xs: ms(4),
+  s: ms(8),
+  m: ms(16),
+  l: ms(24),
+  xl: ms(40),
+  xxl: ms(56),
 } as const;
 
 const margins = {
-  xs: scale(4),
-  s: scale(8),
-  m: scale(16),
-  l: scale(24),
-  xl: scale(32),
-  xxl: scale(48),
+  xs: ms(4),
+  s: ms(8),
+  m: ms(16),
+  l: ms(24),
+  xl: ms(32),
+  xxl: ms(48),
 } as const;
 
 const paddings = {
-  xs: scale(4),
-  s: scale(8),
-  m: scale(16),
-  l: scale(24),
-  xl: scale(32),
-  xxl: scale(48),
+  xs: ms(4),
+  s: ms(8),
+  m: ms(16),
+  l: ms(24),
+  xl: ms(32),
+  xxl: ms(48),
 } as const;
 
 const radii = {
-  xs: scale(4),
-  s: scale(8),
-  m: scale(12),
-  l: scale(16),
-  xl: scale(24),
-  pill: scale(999),
+  xs: ms(4),
+  s: ms(8),
+  m: ms(12),
+  l: ms(16),
+  xl: ms(24),
+  pill: ms(999),
 } as const;
 
 const fontSizes = {
-  xs: moderateScale(12),
-  sm: moderateScale(14),
-  md: moderateScale(16),
-  lg: moderateScale(18),
-  xl: moderateScale(20),
-  xxl: moderateScale(24),
-  display: moderateScale(32),
+  xs: ms(12),
+  sm: ms(14),
+  md: ms(16),
+  lg: ms(18),
+  xl: ms(20),
+  xxl: ms(24),
+  display: ms(32),
 } as const;
 
 const iconSizes = {
-  xs: scale(12),
-  sm: scale(16),
-  md: scale(20),
-  lg: scale(24),
-  xl: scale(32),
-  xxl: scale(40),
+  xs: ms(12),
+  sm: ms(16),
+  md: ms(20),
+  lg: ms(24),
+  xl: ms(32),
+  xxl: ms(40),
 } as const;
 
 export const theme = {
   colors: {
-    background: palette.white,
-    foreground: palette.black,
+    background: '#f5f5f5',
+    foreground: '#ffffff',
     text: {
-      primary: palette.black,
-      secondary: '#5C5C5C',
+      primary: '#000000',
+      secondary: '#555555',
     },
-    primary: palette.purple,
+    primary: '#2379C2',
+    cta: '#2379C2',
+    borderSubtle: 'rgba(0, 0, 0, 0.1)',
+    textOnPrimary: '#ffffff',
     success: palette.green,
     danger: palette.red,
     failure: palette.red,
@@ -89,18 +92,32 @@ export const theme = {
   textVariants: {
     header: {
       fontFamily: 'Raleway',
-      fontSize: moderateScale(36),
+      fontSize: ms(36),
       fontWeight: '700',
     },
     body: {
       fontFamily: 'Merriweather',
-      fontSize: moderateScale(16),
+      fontSize: ms(16),
       fontWeight: '400',
     },
   },
   sizes: {
-    screenPaddingX: scale(16),
-    screenPaddingY: verticalScale(16),
+    screenPaddingX: ms(16),
+    screenPaddingY: ms(16),
+    headerHeight: ms(56),
+    iconButtonPadding: ms(8),
+    qrQuietZone: ms(10),
+    qrLogoSize: ms(100),
+    qrLogoMargin: ms(-20),
+    qrLogoRadius: ms(35),
+    qrSize: ms(300),
+    qrInfoMarginTop: ms(20),
+    qrInfoMarginBottom: ms(30),
+    shareButtonPaddingH: ms(20),
+    shareButtonPaddingV: ms(12),
+    shareButtonRadius: ms(10),
+    shareButtonMaxWidth: ms(300),
+    shareButtonIconMargin: ms(8),
   },
 } as const;
 
@@ -108,12 +125,15 @@ export const darkTheme = {
   ...theme,
   colors: {
     ...theme.colors,
-    background: palette.black,
-    foreground: palette.white,
+    background: '#1a1a1a',
+    foreground: '#1a1a1a',
     text: {
-      primary: palette.white,
-      secondary: '#C7C7C7',
+      primary: '#ffffff',
+      secondary: '#cccccc',
     },
+    borderSubtle: 'rgba(0, 0, 0, 0.1)',
+    textOnPrimary: '#ffffff',
+    cta: '#2379C2',
   },
 } as const;
 
