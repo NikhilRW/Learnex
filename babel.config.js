@@ -1,6 +1,5 @@
 const plugins = [
   'nativewind/babel',
-  'react-native-reanimated/plugin',
   [
     'babel-plugin-inline-import',
     {
@@ -45,6 +44,7 @@ const plugins = [
       root: 'src',
     },
   ],
+  'react-native-worklets/plugin',
 ];
 
 if (process.env.NODE_ENV === 'production') {
@@ -53,5 +53,6 @@ if (process.env.NODE_ENV === 'production') {
 
 module.exports = {
   presets: ['babel-preset-expo'],
+  
   plugins,
 };

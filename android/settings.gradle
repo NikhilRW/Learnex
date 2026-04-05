@@ -1,4 +1,4 @@
-pluginManagement { includeBuild("../node_modules/@react-native/gradle-plugin") 
+pluginManagement { includeBuild("../node_modules/@react-native/gradle-plugin")
   def expoPluginsPath = new File(
     providers.exec {
       workingDir(rootDir)
@@ -8,7 +8,7 @@ pluginManagement { includeBuild("../node_modules/@react-native/gradle-plugin")
   ).absolutePath
   includeBuild(expoPluginsPath)
 }
-plugins { id("com.facebook.react.settings") 
+plugins { id("com.facebook.react.settings")
 id("expo-autolinking-settings")
 }
 extensions.configure(com.facebook.react.ReactSettingsExtension){ ex -> ex.autolinkLibrariesFromCommand(expoAutolinking.rnConfigCommand) }

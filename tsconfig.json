@@ -20,6 +20,7 @@
       "res/*": ["./src/shared/res/*"],
       "hooks/*": ["./src/shared/hooks/*"],
       "room/*": ["./src/features/Room/*"]
-    }
+    },
+    "types": ["jest"]
   }
 }

@@ -34,7 +34,8 @@
         android:allowBackup="false"
         android:theme="@style/AppTheme"
         android:supportsRtl="true"
-        android:usesCleartextTraffic="true">
+        android:usesCleartextTraffic="${usesCleartextTraffic}"
+    >
         <service
             android:name="app.notifee.core.ForegroundService"
             android:foregroundServiceType="dataSync"

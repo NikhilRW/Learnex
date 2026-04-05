@@ -1,6 +1,8 @@
-const { getDefaultConfig } = require('expo/metro-config');
-const { mergeConfig } = require('@react-native/metro-config');
-const { wrapWithReanimatedMetroConfig } = require('react-native-reanimated/metro-config');
+const {getDefaultConfig} = require('expo/metro-config');
+
+if (!process.env.NODE_ENV) {
+  process.env.NODE_ENV = 'development';
+}
 /**
  * Metro configuration
  * https://reactnative.dev/docs/metro
@@ -8,6 +10,4 @@ const { wrapWithReanimatedMetroConfig } = require('react-native-reanimated/metro
  * @type {import('metro-config').MetroConfig}
  */
 const config = getDefaultConfig(__dirname);
-const reanimatedConfig = wrapWithReanimatedMetroConfig(config);
-const finalConfig = mergeConfig(reanimatedConfig, {});
-module.exports = finalConfig;
+module.exports = config;

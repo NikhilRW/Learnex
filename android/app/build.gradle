@@ -10,8 +10,6 @@ apply plugin: "org.rnrepo.tools.prebuilds-plugin"
  */
 react {
     autolinkLibrariesWithApp()
-    //
-    // Added by install-expo-modules
     entryFile = file(["node", "-e", "require('expo/scripts/resolveAppEntry')", rootDir.getAbsoluteFile().getParentFile().getAbsolutePath(), "android", "absolute"].execute(null, rootDir).text.trim())
     cliFile = new File(["node", "--print", "require.resolve('@expo/cli')"].execute(null, rootDir).text.trim())
     bundleCommand = "export:embed"
@@ -25,7 +23,7 @@ def enableProguardInReleaseBuilds = true
 /**
  * The preferred build flavor of JavaScriptCore (JSC)
  */
-def jscFlavor = 'org.webkit:android-jsc:+'
+def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
 android {
     ndkVersion rootProject.ext.ndkVersion
