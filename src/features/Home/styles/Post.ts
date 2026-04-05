@@ -26,15 +26,18 @@ export const createStyles = (isDark: boolean) =>
       alignSelf: 'center',
       overflow: 'hidden',
     },
+    avatarContainer: {
+      width: 40,
+      height: 40,
+      overflow: 'hidden',
+      borderRadius: 20,
+      marginRight: 10,
+      marginTop: 1,
+    },
     avatar: {
       width: 40,
       height: 40,
       borderRadius: 20,
-      marginRight: 10,
-      // borderWidth: 1,
-      marginTop: 1,
-      // borderColor: isDark ? '#333' : '#e0e0e0',
-      overflow:'hidden'
     },
     username: {
       fontWeight: '600',

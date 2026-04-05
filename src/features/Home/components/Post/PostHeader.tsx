@@ -23,7 +23,8 @@ const PostHeaderComponent: React.FC<PostHeaderProps> = ({
                 ? {uri: userProfileImage}
                 : userProfileImage
             }
-            style={[styles.avatar]}
+            style={styles.avatar}
+            containerStyle={styles.avatarContainer}
             contentFit="cover"
           />
         ) : (

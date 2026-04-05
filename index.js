@@ -2,6 +2,7 @@
  * @format
  */
 import 'react-native-url-polyfill/auto';
+import './src/shared/styles/unistyles';
 import notifee, {
   AndroidImportance,
   AndroidVisibility,
@@ -13,7 +14,6 @@ import {name as appName} from './app.json';
 // Register main component
 AppRegistry.registerComponent(appName, () => App);
 
-
 // Create notification channels at app startup
 async function createChannels() {
   await notifee.createChannel({
@@ -21,7 +21,7 @@ async function createChannels() {
     name: 'Direct Messages',
     description: 'Notifications for direct messages',
     lights: true,
-    sound:'notification',
+    sound: 'notification',
     vibration: true,
     importance: AndroidImportance.HIGH,
     visibility: AndroidVisibility.PUBLIC,

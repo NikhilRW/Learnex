@@ -1,6 +1,7 @@
 {
   "extends": "@react-native/typescript-config/tsconfig.json",
   "compilerOptions": {
+    "jsx": "react-native",
     "paths": {
       "@/*": ["./src/*"],
       "lex-ai/*": ["./src/features/LexAI/*"],

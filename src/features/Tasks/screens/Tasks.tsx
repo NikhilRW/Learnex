@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import {
   Text,
   View,
@@ -122,7 +122,6 @@ const Tasks = () => {
           <Icon name="menu" size={24} color={iconColor} />
         </TouchableOpacity>
       </View>
-
       <View style={styles.contentContainer}>
         {/* Action buttons */}
         <View style={styles.header}>

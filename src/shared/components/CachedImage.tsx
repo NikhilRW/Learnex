@@ -1,4 +1,4 @@
-import {StyleProp, ImageStyle} from 'react-native';
+import {StyleProp, ImageStyle, View} from 'react-native';
 import { NitroImage } from 'react-native-nitro-image';
 
 type SourceInput = string | number | {uri?: string} | null | undefined;
@@ -10,6 +10,7 @@ export type CachedImageProps = Omit<NitroImageProps, 'image'> & {
   source?: SourceInput;
   fallback?: React.ReactNode;
   style?: StyleProp<ImageStyle>;
+  containerStyle?: StyleProp<ImageStyle>;
   contentFit?: 'cover' | 'contain' | 'fill' | 'scale-down';
 };
 
@@ -40,7 +41,7 @@ const normalizeSource = (source?: SourceInput): NitroSource | null => {
   return null;
 };
 
-const CachedImage = ({ source, fallback = null, style, contentFit, ...rest }: CachedImageProps) => {
+const CachedImage = ({ source, fallback = null, style, contentFit,containerStyle, ...rest }: CachedImageProps) => {
   const normalizedSource = normalizeSource(source);
 
   if (!normalizedSource) {
@@ -51,13 +52,15 @@ const CachedImage = ({ source, fallback = null, style, contentFit, ...rest }: Ca
     rest.resizeMode ?? (contentFit as NitroImageProps['resizeMode']);
 
   return (
-    <NitroImage
+    <View style={containerStyle}>
+      <NitroImage
       image={normalizedSource}
 
       style={style}
       {...rest}
-      resizeMode={resolvedResizeMode}
-    />
+        resizeMode={resolvedResizeMode}
+      />
+    </View>
   );
 };
 
